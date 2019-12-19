@@ -1,0 +1,4 @@
+
+       [console_scripts]
+       pypads=pypads.cli.pypads:pypads
+   

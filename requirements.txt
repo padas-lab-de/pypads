@@ -1,0 +1,6 @@
+click>=6.7
+mlflow>=1.4.0
+pytest>=5.2.4
+scikit_learn==0.21.3
+boltons>=19.3.0
+pip>=19.3.1
