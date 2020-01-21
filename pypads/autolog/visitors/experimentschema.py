@@ -1,9 +1,9 @@
 from .schema import Attribute, Schema, ListAttribute, AlgorithmSchema
 
 
-PipelineSchema = Schema(
+default_pipeline_schema = Schema(
     {
-        "steps": ListAttribute("steps", "The steps", False,[
+        "steps": ListAttribute("steps", "The steps", False, [
             {
                 "doc": Attribute("doc", "Docstring", True, str),
                 "algorithm": Attribute("algorithm", "The name of the used algorithm", False, str)

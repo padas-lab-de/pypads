@@ -1,15 +1,20 @@
 {
-
     "fns": {
-      "fit": [
-          "fit", "fit_predict", "fit_transform"
-      ],
-      "predict": [
-          "fit_predict", "predict", "score"
-      ],
-      "transform": [
-          "fit_transform", "transform"
-      ]
+        "pypads_fit": [
+            "fit", "fit_predict", "fit_transform"
+        ],
+        "pypads_predict": [
+            "fit_predict", "predict", "score"
+        ],
+        "pypads_transform": [
+            "fit_transform", "transform"
+        ]
+    },
+    "events": {
+      "parameters": ["pypads_fit"],
+      "cpu": [],
+      "output": ["pypads_fit"],
+      "input": ["pypads_fit"]
     },
     "algorithms": [
         {
