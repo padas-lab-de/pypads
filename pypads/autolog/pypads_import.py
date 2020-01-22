@@ -1,3 +1,4 @@
+import ast
 import glob
 import importlib
 import inspect
@@ -5,26 +6,24 @@ import json
 import operator
 import os
 import pickle
-import random
 import sys
 import types
 from importlib._bootstrap_external import PathFinder, SourceFileLoader
-from importlib.resources import read_text
 from inspect import isclass
-from logging import warning
+from logging import warning, info
 from os.path import expanduser
+from pickle import PicklingError
 from types import ModuleType
 from typing import Callable
 
 import mlflow
 from boltons.funcutils import wraps
-
-from pypads import _name
-from pypads.bindings.generic_visitor import default_visitor
+from mlflow.utils.autologging_utils import try_mlflow_log
 
 punched_modules = []
 mapping_files = glob.glob(expanduser("~") + ".pypads/bindings/**.json")
-mapping_files.extend(glob.glob(os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..')) + "/bindings/resources/mapping/**.json"))
+mapping_files.extend(
+    glob.glob(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) + "/bindings/resources/mapping/**.json"))
 
 mappings = {}
 for mapping in mapping_files:
@@ -55,7 +54,8 @@ class PyPadsLoader(SourceFileLoader):
         out = super().exec_module(module)
 
         punched_modules.append(module.__name__)
-        impls = [(package, content, file) for package, _, _, content, file in get_implementations() if package.rsplit('.', 1)[0] == module.__name__]
+        impls = [(package, content, file) for package, _, _, content, file in get_implementations() if
+                 package.rsplit('.', 1)[0] == module.__name__]
         for package, content, file in impls:
             setattr(module, package.rsplit('.', 1)[-1], _wrap(getattr(module, package.rsplit('.', 1)[-1]), package,
                                                               content, file))
@@ -123,52 +123,37 @@ def _wrap(wrappee, package, mapping, m_file):
                     orig_attr = getattr(self._pads_wrapped_instance, item)
                     if callable(orig_attr):
 
-                        pypads_fn = [k for k, v in mapping["fns"].items() if item in v]
-                        events = [k for k, v in mapping["events"].items() if item in v or set(pypads_fn) & set(v)]
+                        pypads_fn = [k for k, v in mapping["hook_fns"].items() if item in v]
 
-                        if "parameters" in events:
-                            @wraps(orig_attr)
-                            def hooked(self, *args, **kwargs):
-                                result = orig_attr(*args, **kwargs)
-                                # prevent wrapped_class from becoming unwrapped
-                                visitor = default_visitor(self)
+                        from pypads.base import get_current_pads
+                        pads = get_current_pads()
 
-                                for k, v in visitor[0]["steps"][0]["hyper_parameters"]["model_parameters"].items():
-                                    mlflow.log_param(package + "." + k, v)
-                                if result is self._pads_wrapped_instance:
-                                    return self
-                                return result
-                            orig_attr = hooked
+                        # Get logging config
+                        run = pads.mlf.get_run(mlflow.active_run().info.run_id)
 
-                        if "output" in events:
-                            @wraps(orig_attr)
-                            def hooked(self, *args, **kwargs):
-                                result = orig_attr(*args, **kwargs)
-                                name = wrappee.__name__ + "." + item + "_output.bin"
-                                path = os.path.join(expanduser("~") + "/.pypads/test/" + name)
-                                fd = open(path, "w+")
-                                pickle.dump(result, fd)
-                                mlflow.log_artifact(path)
-                                if result is self._pads_wrapped_instance:
-                                    return self
-                                return result
-                            orig_attr = hooked
+                        fn_stack = [orig_attr]
 
-                        if "input" in events:
-                            @wraps(orig_attr)
-                            def hooked(self, *args, **kwargs):
-                                name = wrappee.__name__ + "." + item + "_input.bin"
-                                path = os.path.join(expanduser("~") + "/.pypads/test/" + name)
-                                fd = open(path, "w+")
-                                pickle.dump({"args": args, **kwargs}, fd)
-                                mlflow.log_artifact(path)
-                                result = orig_attr(*args, **kwargs)
-                                if result is self._pads_wrapped_instance:
-                                    return self
-                                return result
-                            orig_attr = hooked
+                        from pypads.base import CONFIG_NAME
+                        if CONFIG_NAME in run.data.tags:
+                            config = ast.literal_eval(run.data.tags[CONFIG_NAME])
+                            for log_event, hook_fns in config["events"].items():
 
-                        return types.MethodType(orig_attr, self)
+                                # If one hook_fns is in this config.
+                                if set(hook_fns) & set(pypads_fn):
+
+                                    fn = pads.function_registry.find_function(log_event)
+                                    if fn:
+                                        hooked = types.MethodType(fn, self)
+
+                                        @wraps(orig_attr)
+                                        def ctx_setter(self, *args, pypads_hooked_fn=hooked, **kwargs):
+                                            return pypads_hooked_fn(pypads_wrappe=wrappee, pypads_package=package,
+                                                                    pypads_item=item, pypads_fn_stack=fn_stack, *args,
+                                                                    **kwargs)
+
+                                        # Overwrite fn call structure
+                                        fn_stack.append(types.MethodType(ctx_setter, self))
+                        return fn_stack.pop()
                     return orig_attr
 
                 # Need to pretend to be the wrapped class, for the sake of objects that
@@ -206,11 +191,33 @@ def _wrap(wrappee, package, mapping, m_file):
     return out
 
 
+def to_folder(ctx):
+    expanduser("~") + "/.pypads/" + mlflow.active_run().info.experiment_id
+
+
+def try_write_artifact(file_name, obj):
+    path = os.path.join(expanduser("~") + "/.pypads/" + mlflow.active_run().info.experiment_id + "/" + file_name)
+
+    # Todo allow for configuring output format
+    if not os.path.exists(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path))
+
+    try:
+        with open(path, "wb+") as fd:
+            pickle.dump(obj, fd)
+    except PicklingError as e:
+        warning("Couldn't pickle output. Trying to save toString instead. " + str(e))
+        with open(path, "w+") as fd:
+            fd.write(str(obj))
+
+    try_mlflow_log(mlflow.log_artifact, path)
+
+
 def extend_import_module():
     sys.meta_path.insert(0, PyPadsFinder())
 
 
-def pypads_track(mod_globals=None):
+def activate_tracking(mod_globals=None):
     extend_import_module()
     for i in set(i.rsplit('.', 1)[0] for i, _, _, _, _ in get_implementations() if
                  i.rsplit('.', 1)[0] in sys.modules and i.rsplit('.', 1)[0] not in punched_modules):
@@ -219,19 +226,15 @@ def pypads_track(mod_globals=None):
         module = loader.load_module(i)
         loader.exec_module(module)
         sys.modules[i] = module
+        warning(i + " was imported before PyPads. PyPads has to imported before importing tracked libraries."
+                    " Otherwise it can only try to wrap classes on global level.")
         if mod_globals:
             for k, l in mod_globals.items():
                 if isinstance(l, ModuleType) and i in str(l):
                     mod_globals[k] = module
                 elif inspect.isclass(l) and i in str(l) and hasattr(module, l.__name__):
                     if k not in mod_globals:
-                        warning(i + " was imported before pypads, but couldn't be modified on globals.")
+                        warning(i + " was imported before PyPads, but couldn't be modified on globals.")
                     else:
+                        info("Modded " + i + " after importing it. This might fail.")
                         mod_globals[k] = getattr(module, l.__name__)
-        else:
-            warning(i + " was imported before pypads. Pypads has to imported before importing tracked libraries."
-                " Otherwise it only can wrap classes on global level.")
-
-    mlflow.set_tracking_uri(uri="file:/Users/weissger/.mlruns")
-    mlflow.start_run()
-    mlflow.set_tag("pypads", "pypads")

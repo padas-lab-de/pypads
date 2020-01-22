@@ -1,5 +1,5 @@
 {
-    "fns": {
+    "hook_fns": {
         "pypads_fit": [
             "fit", "fit_predict", "fit_transform"
         ],
@@ -9,12 +9,6 @@
         "pypads_transform": [
             "fit_transform", "transform"
         ]
-    },
-    "events": {
-      "parameters": ["pypads_fit"],
-      "cpu": [],
-      "output": ["pypads_fit"],
-      "input": ["pypads_fit"]
     },
     "algorithms": [
         {
