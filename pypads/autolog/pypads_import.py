@@ -4,6 +4,8 @@ import inspect
 import json
 import operator
 import os
+import pickle
+import random
 import sys
 import types
 from importlib._bootstrap_external import PathFinder, SourceFileLoader
@@ -18,7 +20,7 @@ import mlflow
 from boltons.funcutils import wraps
 
 from pypads import _name
-from pypads.bindings.scikit import SciKitVisitor
+from pypads.bindings.generic_visitor import default_visitor
 
 punched_modules = []
 mapping_files = glob.glob(expanduser("~") + ".pypads/bindings/**.json")
@@ -66,6 +68,8 @@ class PyPadsFinder(PathFinder):
 
     def find_spec(cls, fullname, path=None, target=None):
         try:
+            # Search and skip if not found (kinda like a loop)
+            next(i for i, _, _, _, _ in get_implementations() if i.rsplit('.', 1)[0] == fullname)
             if fullname not in sys.modules:
                 path_ = sys.meta_path[1:]
                 i = iter(path_)
@@ -119,50 +123,52 @@ def _wrap(wrappee, package, mapping, m_file):
                     orig_attr = getattr(self._pads_wrapped_instance, item)
                     if callable(orig_attr):
 
-                        if item in mapping["fns"]["fit"]:
+                        pypads_fn = [k for k, v in mapping["fns"].items() if item in v]
+                        events = [k for k, v in mapping["events"].items() if item in v or set(pypads_fn) & set(v)]
+
+                        if "parameters" in events:
                             @wraps(orig_attr)
                             def hooked(self, *args, **kwargs):
                                 result = orig_attr(*args, **kwargs)
                                 # prevent wrapped_class from becoming unwrapped
-                                visitor = SciKitVisitor(self)
+                                visitor = default_visitor(self)
 
                                 for k, v in visitor[0]["steps"][0]["hyper_parameters"]["model_parameters"].items():
                                     mlflow.log_param(package + "." + k, v)
                                 if result is self._pads_wrapped_instance:
                                     return self
                                 return result
+                            orig_attr = hooked
 
-                            return types.MethodType(hooked, self)
-
-                        if item in mapping["fns"]["predict"]:
+                        if "output" in events:
                             @wraps(orig_attr)
                             def hooked(self, *args, **kwargs):
                                 result = orig_attr(*args, **kwargs)
-                                # prevent wrapped_class from becoming unwrapped
-                                visitor = SciKitVisitor(self)
-
-                                for k, v in visitor[0]["steps"][0]["hyper_parameters"]["model_parameters"].items():
-                                    mlflow.log_param(package + "." + k, v)
+                                name = wrappee.__name__ + "." + item + "_output.bin"
+                                path = os.path.join(expanduser("~") + "/.pypads/test/" + name)
+                                fd = open(path, "w+")
+                                pickle.dump(result, fd)
+                                mlflow.log_artifact(path)
                                 if result is self._pads_wrapped_instance:
                                     return self
                                 return result
+                            orig_attr = hooked
 
-                            return types.MethodType(hooked, self)
-
-                        if item in mapping["fns"]["transform"]:
+                        if "input" in events:
                             @wraps(orig_attr)
                             def hooked(self, *args, **kwargs):
+                                name = wrappee.__name__ + "." + item + "_input.bin"
+                                path = os.path.join(expanduser("~") + "/.pypads/test/" + name)
+                                fd = open(path, "w+")
+                                pickle.dump({"args": args, **kwargs}, fd)
+                                mlflow.log_artifact(path)
                                 result = orig_attr(*args, **kwargs)
-                                # prevent wrapped_class from becoming unwrapped
-                                visitor = SciKitVisitor(self)
-
-                                for k, v in visitor[0]["steps"][0]["hyper_parameters"]["model_parameters"].items():
-                                    mlflow.log_param(package + "." + k, v)
                                 if result is self._pads_wrapped_instance:
                                     return self
                                 return result
+                            orig_attr = hooked
 
-                            return types.MethodType(hooked, self)
+                        return types.MethodType(orig_attr, self)
                     return orig_attr
 
                 # Need to pretend to be the wrapped class, for the sake of objects that
@@ -204,27 +210,28 @@ def extend_import_module():
     sys.meta_path.insert(0, PyPadsFinder())
 
 
-def pypads_track():
+def pypads_track(mod_globals=None):
     extend_import_module()
-    # modded_locals = {}
-    # for i in set(i.rsplit('.', 1)[0] for i, _, _, _, _ in get_implementations() if
-    #              i.rsplit('.', 1)[0] in sys.modules and i.rsplit('.', 1)[0] not in punched_modules):
-    #     spec = importlib.util.find_spec(i)
-    #     loader = PyPadsLoader(spec.name, spec.origin)
-    #     module = loader.load_module(i)
-    #     loader.exec_module(module)
-    #     sys.modules[i] = module
-    #     for k, l in globals().items():
-    #         if isinstance(l, ModuleType) and i in str(l):
-    #             globals()[k] = module
-    #         elif inspect.isclass(l) and i in str(l) and hasattr(module, l.__name__):
-    #             globals()[k] = getattr(module, l.__name__)
-    #             print("setted globals")
-    #     warning(i + " was imported before pypads. Pypads has to imported before importing tracked libraries."
-    #             " Otherwise it only can wrap classes on global level.")
-    #
+    for i in set(i.rsplit('.', 1)[0] for i, _, _, _, _ in get_implementations() if
+                 i.rsplit('.', 1)[0] in sys.modules and i.rsplit('.', 1)[0] not in punched_modules):
+        spec = importlib.util.find_spec(i)
+        loader = PyPadsLoader(spec.name, spec.origin)
+        module = loader.load_module(i)
+        loader.exec_module(module)
+        sys.modules[i] = module
+        if mod_globals:
+            for k, l in mod_globals.items():
+                if isinstance(l, ModuleType) and i in str(l):
+                    mod_globals[k] = module
+                elif inspect.isclass(l) and i in str(l) and hasattr(module, l.__name__):
+                    if k not in mod_globals:
+                        warning(i + " was imported before pypads, but couldn't be modified on globals.")
+                    else:
+                        mod_globals[k] = getattr(module, l.__name__)
+        else:
+            warning(i + " was imported before pypads. Pypads has to imported before importing tracked libraries."
+                " Otherwise it only can wrap classes on global level.")
+
     mlflow.set_tracking_uri(uri="file:/Users/weissger/.mlruns")
     mlflow.start_run()
     mlflow.set_tag("pypads", "pypads")
-
-    #return modded_locals

@@ -3,6 +3,8 @@ General visitors, that can be combined recursively to extract arbitrary data fro
 """
 
 import abc
+import importlib
+import inspect
 from abc import abstractmethod
 
 from .mappings import type_mappings
@@ -225,9 +227,14 @@ class SelectVisitor(Visitor):
         """
         visitor = None
         for k in self.visitors.keys():
-            if k and isinstance(object, k):
-                visitor = self.visitors[k]
-                break
+            if k:
+                if isinstance(k, str):
+                    splits = k.rsplit('.', 1)
+                    module = importlib.import_module(splits[0])
+                    k = getattr(module, splits[-1])
+                if inspect.isclass(k) and isinstance(object, k):
+                    visitor = self.visitors[k]
+                    break
         if visitor is None:
             if None in self.visitors:
                 visitor = self.visitors[None]

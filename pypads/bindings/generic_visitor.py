@@ -1,7 +1,7 @@
 
 from sklearn.pipeline import Pipeline
 
-from pypads.autolog.visitors.experimentschema import PipelineSchema
+from pypads.autolog.visitors.experimentschema import default_pipeline_schema
 from pypads.autolog.visitors.generalvisitor import generalize_visitor
 from pypads.autolog.visitors.visitor import ListVisitor, AlgorithmVisitor, SubpathVisitor, SelectVisitor
 
@@ -17,11 +17,9 @@ SciKitPipelineVisitor = {
                     "doc"
             }
 
-
-SciKitSelector = {
-    Pipeline: SciKitPipelineVisitor,
+default_selector = {
+    "sklearn.pipeline.Pipeline": SciKitPipelineVisitor,
     None: SubpathVisitor("steps[]", generalize_visitor(AlgorithmVisitor()))
 }
 
-
-SciKitVisitor = SelectVisitor(SciKitSelector, PipelineSchema)
+default_visitor = SelectVisitor(default_selector, default_pipeline_schema)
