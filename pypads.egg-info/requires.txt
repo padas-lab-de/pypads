@@ -1,4 +1,0 @@
-click>=6.7
-GitPython>=3.0.2
-pytest>=5.2.4
-pyhash>=0.9.3
