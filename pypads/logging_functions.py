@@ -32,7 +32,7 @@ def parameters(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_f
 
     try:
         # prevent wrapped_class from becoming unwrapped
-        visitor = default_visitor(pypads_wrappe)
+        visitor = default_visitor(self)
 
         for k, v in visitor[0]["steps"][0]["hyper_parameters"]["model_parameters"].items():
             try_mlflow_log(mlflow.log_param, pypads_package + "." + str(id(self)) + "." + get_now() + "." + k, v)
@@ -101,3 +101,8 @@ def input(self, *args, write_format=WriteFormats.pickle, pypads_wrappe, pypads_p
     if result is self._pads_wrapped_instance:
         return self
     return result
+
+
+def cpu(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_stack, **kwargs):
+    import platform
+    mlflow.set_tag("pypads.processor", platform.processor())

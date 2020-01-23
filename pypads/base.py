@@ -5,7 +5,7 @@ from types import FunctionType
 import mlflow
 from mlflow.tracking import MlflowClient
 
-from pypads.logging_functions import parameters, output, input
+from pypads.logging_functions import parameters, output, input, cpu
 from pypads.logging_util import WriteFormats
 
 
@@ -40,7 +40,8 @@ class FunctionRegistry:
 DEFAULT_MAPPING = {
     "parameters": parameters,
     "output": output,
-    "input": input
+    "input": input,
+    "cpu": cpu
 }
 
 # Default config.

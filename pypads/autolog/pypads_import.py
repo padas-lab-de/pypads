@@ -9,6 +9,7 @@ import sys
 import types
 from importlib._bootstrap_external import PathFinder, SourceFileLoader
 from inspect import isclass
+from itertools import chain
 from logging import warning, info, debug
 from os.path import expanduser
 from types import ModuleType
@@ -33,10 +34,22 @@ def get_implementations():
     for file, content in mappings.items():
         from pypads.base import get_current_pads
         if not get_current_pads().filter_mapping_files or file in get_current_pads():
-            for alg in content["algorithms"]:
-                if alg["implementation"] and len(alg["implementation"]) > 0:
-                    for library, package in alg["implementation"].items():
-                        yield package, library, alg, content, file
+            if "algorithms" in content:
+                for alg in content["algorithms"]:
+                    if alg["implementation"] and len(alg["implementation"]) > 0:
+                        for library, package in alg["implementation"].items():
+                            yield package, library, alg, content, file
+
+
+def get_base_class_implementations():
+    for file, content in mappings.items():
+        from pypads.base import get_current_pads
+        if not get_current_pads().filter_mapping_files or file in get_current_pads():
+            if "base_classes" in content:
+                for alg in content["base_classes"]:
+                    if alg["implementation"] and len(alg["implementation"]) > 0:
+                        for library, package in alg["implementation"].items():
+                            yield package, library, alg, content, file
 
 
 class PyPadsLoader(SourceFileLoader):
@@ -58,6 +71,12 @@ class PyPadsLoader(SourceFileLoader):
         for package, content, file in impls:
             setattr(module, package.rsplit('.', 1)[-1], _wrap(getattr(module, package.rsplit('.', 1)[-1]), package,
                                                               content, file))
+
+        base_impls = [(package, content, file) for package, _, _, content, file in get_base_class_implementations() if
+                      package.rsplit('.', 1)[0] == module.__name__]
+        for package, content, file in base_impls:
+            setattr(module, package.rsplit('.', 1)[-1], _wrap(getattr(module, package.rsplit('.', 1)[-1]), package,
+                                                              content, file, base_class=True))
         # sys.modules.update({fullname: _wrap(module)})
 
         return out
@@ -71,7 +90,8 @@ class PyPadsFinder(PathFinder):
     def find_spec(cls, fullname, path=None, target=None):
         try:
             # Search and skip if not found (kinda like a loop)
-            next(i for i, _, _, _, _ in get_implementations() if i.rsplit('.', 1)[0] == fullname)
+            next(i for i, _, _, _, _ in chain(get_implementations(), get_base_class_implementations()) if
+                 i.rsplit('.', 1)[0] == fullname)
             if fullname not in sys.modules:
                 path_ = sys.meta_path[1:]
                 i = iter(path_)
@@ -97,13 +117,14 @@ def new_method_proxy(func):
     :param func:
     :return:
     """
+
     def inner(self, *args):
         return func(self._pads_wrapped_instance, *args)
 
     return inner
 
 
-def _wrap(wrappee, package, mapping, m_file):
+def _wrap(wrappee, package, mapping, m_file, base_class=False):
     """
     Wrapping function for duck punching all objects.
     :param wrappee: object to wrap
@@ -130,14 +151,12 @@ def _wrap(wrappee, package, mapping, m_file):
                     # print("__getattribute__ on class of " + str(wrappee) + " with name " + item)
                     if item == "_pads_wrapped_instance":
                         return object.__getattribute__(self, item)
-                    # try:
-                    #    orig_attr = getattr(self._pads_wrapped_instance, item)
-                    # except AttributeError as e:
-                    #    info("Call couldn't be passed to base instance "
-                    #         + str(self._pads_wrapped_instance)
-                    #         + '. Duck punched class might be a super class. Trying to pipe call directly to the real '
-                    #           'object.')
-                    orig_attr = object.__getattribute__(self, item)
+
+                    if base_class:
+                        orig_attr = object.__getattribute__(self, item)
+                    else:
+                        orig_attr = getattr(self._pads_wrapped_instance, item)
+
                     if callable(orig_attr):
 
                         pypads_fn = [k for k, v in mapping["hook_fns"].items() if item in v]

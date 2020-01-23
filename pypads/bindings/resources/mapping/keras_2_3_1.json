@@ -5,7 +5,7 @@
             "fit_generator"
         ]
     },
-    "algorithms": [
+  "base_classes": [
         {
             "name": "keras algorithm",
             "other_names": [],
@@ -15,6 +15,7 @@
             }
         }
     ],
+  "algorithms": [],
     "metadata": {
         "author": "Thomas Weißgerber",
         "library": "keras",
