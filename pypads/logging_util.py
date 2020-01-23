@@ -3,7 +3,6 @@ import pickle
 from enum import Enum
 from logging import warning
 from os.path import expanduser
-from pickle import PicklingError
 
 import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
@@ -23,7 +22,7 @@ class WriteFormats(Enum):
     text = 2
 
 
-def try_write_artifact(file_name, obj, write_format: WriteFormats):
+def try_write_artifact(file_name, obj, write_format):
     """
     Function to write an artifact to disk. TODO
     :param write_format:
@@ -39,16 +38,18 @@ def try_write_artifact(file_name, obj, write_format: WriteFormats):
 
     # Functions for the options to write to
     def write_text(p, o):
-        with open(p + ".pickle", "w+") as fd:
+        with open(p + ".txt", "w+") as fd:
             fd.write(str(o))
+            return fd.name
 
     def write_pickle(p, o):
         try:
-            with open(p + ".txt", "wb+") as fd:
+            with open(p + ".pickle", "wb+") as fd:
                 pickle.dump(o, fd)
-        except PicklingError as e:
+                return fd.name
+        except Exception as e:
             warning("Couldn't pickle output. Trying to save toString instead. " + str(e))
-            write_text(file_name, o)
+            return write_text(p, o)
 
     # Options to write to
     options = {
@@ -57,7 +58,14 @@ def try_write_artifact(file_name, obj, write_format: WriteFormats):
     }
 
     # Write to disk
-    options[write_format](path, obj)
+    if isinstance(write_format, str):
+        if WriteFormats[write_format]:
+            write_format = WriteFormats[write_format]
+        else:
+            warning("Configured write format " + write_format + " not supported! ")
+            return
+
+    path = options[write_format](path, obj)
 
     # Log artifact to mlflow
     try_mlflow_log(mlflow.log_artifact, path)

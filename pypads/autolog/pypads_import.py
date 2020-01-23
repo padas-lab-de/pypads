@@ -31,10 +31,12 @@ for mapping in mapping_files:
 
 def get_implementations():
     for file, content in mappings.items():
-        for alg in content["algorithms"]:
-            if alg["implementation"] and len(alg["implementation"]) > 0:
-                for library, package in alg["implementation"].items():
-                    yield package, library, alg, content, file
+        from pypads.base import get_current_pads
+        if not get_current_pads().filter_mapping_files or file in get_current_pads():
+            for alg in content["algorithms"]:
+                if alg["implementation"] and len(alg["implementation"]) > 0:
+                    for library, package in alg["implementation"].items():
+                        yield package, library, alg, content, file
 
 
 class PyPadsLoader(SourceFileLoader):
@@ -117,7 +119,6 @@ def _wrap(wrappee, package, mapping, m_file):
         if "slot wrapper" not in str(wrappee.__init__):
             class ClassWrapper(wrappee):
 
-
                 @wraps(wrappee.__init__)
                 def __init__(self, *args, **kwargs):
                     print("Pypads tracked class " + str(wrappee) + " initialized.")
@@ -155,7 +156,10 @@ def _wrap(wrappee, package, mapping, m_file):
                             for log_event, event_config in config["events"].items():
 
                                 hook_fns = event_config["on"]
-                                hook_params = event_config["with"]
+                                if "with" in event_config:
+                                    hook_params = event_config["with"]
+                                else:
+                                    hook_params = {}
 
                                 # If one hook_fns is in this config.
                                 if set(hook_fns) & set(pypads_fn):
@@ -165,17 +169,18 @@ def _wrap(wrappee, package, mapping, m_file):
                                         hooked = types.MethodType(fn, self)
 
                                         @wraps(orig_attr)
-                                        def ctx_setter(self, *args, pypads_hooked_fn=hooked, **kwargs):
+                                        def ctx_setter(self, *args, pypads_hooked_fn=hooked,
+                                                       pypads_hook_params=hook_params, **kwargs):
 
                                             # check for name collision
                                             if set([k for k, v in kwargs.items()]) & set(
-                                                    [k for k, v in hook_params.items()]):
+                                                    [k for k, v in pypads_hook_params.items()]):
                                                 warning("Hook parameter is overwriting a parameter in the standard "
                                                         "model call. This most likely will produce side effects.")
 
                                             return pypads_hooked_fn(pypads_wrappe=wrappee, pypads_package=package,
                                                                     pypads_item=item, pypads_fn_stack=fn_stack, *args,
-                                                                    **{**kwargs, **hook_params})
+                                                                    **{**kwargs, **pypads_hook_params})
 
                                         # Overwrite fn call structure
                                         fn_stack.append(types.MethodType(ctx_setter, self))

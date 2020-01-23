@@ -5,7 +5,6 @@ from types import FunctionType
 import mlflow
 from mlflow.tracking import MlflowClient
 
-from pypads.autolog.pypads_import import activate_tracking
 from pypads.logging_functions import parameters, output, input
 from pypads.logging_util import WriteFormats
 
@@ -51,8 +50,8 @@ DEFAULT_MAPPING = {
 DEFAULT_CONFIG = {"events": {
     "parameters": {"on": ["pypads_fit"]},
     "cpu": {"on": ["pypads_fit"]},
-    "output": {"on": ["pypads_fit", "pypads_predict"], "with": {"type": WriteFormats.pickle}},
-    "input": {"on": ["pypads_fit"], "with": {"type": WriteFormats.pickle}}
+    "output": {"on": ["pypads_fit", "pypads_predict"], "with": {"write_format": WriteFormats.pickle.name}},
+    "input": {"on": ["pypads_fit"], "with": {"write_format": WriteFormats.pickle.name}}
 }}
 
 # Tag name to save the config to in mlflow context.
@@ -87,7 +86,7 @@ class PyPads:
     """
     current_pads = None
 
-    def __init__(self, uri=None, name=None, mapping=None, config=None, mod_globals=None):
+    def __init__(self, uri=None, name=None, filter_mapping_files=None, mapping=None, config=None, mod_globals=None):
         """
         TODO
         :param uri:
@@ -96,6 +95,9 @@ class PyPads:
         :param config:
         :param mod_globals:
         """
+        if filter_mapping_files is None:
+            filter_mapping_files = []
+        self.filter_mapping_files = filter_mapping_files
         self._uri = uri or os.environ.get('MLFLOW_PATH') or 'file:' + os.path.expanduser('~/.mlruns')
         mlflow.set_tracking_uri(self._uri)
 
@@ -117,9 +119,10 @@ class PyPads:
             self._run = mlflow.start_run(experiment_id=self._experiment.info.experiment_id)
         else:
             self._run = run
-
-        activate_tracking(mod_globals=mod_globals)
         PyPads.current_pads = self
+
+        from pypads.autolog.pypads_import import activate_tracking
+        activate_tracking(mod_globals=mod_globals)
 
     @property
     def mlf(self) -> MlflowClient:

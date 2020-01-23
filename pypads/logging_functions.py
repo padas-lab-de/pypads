@@ -32,7 +32,7 @@ def parameters(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_f
 
     try:
         # prevent wrapped_class from becoming unwrapped
-        visitor = default_visitor(self)
+        visitor = default_visitor(pypads_wrappe)
 
         for k, v in visitor[0]["steps"][0]["hyper_parameters"]["model_parameters"].items():
             try_mlflow_log(mlflow.log_param, pypads_package + "." + str(id(self)) + "." + get_now() + "." + k, v)
@@ -50,7 +50,7 @@ def parameters(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_f
     return result
 
 
-def output(self, write_format=WriteFormats.pickle, *args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_stack,
+def output(self, *args, write_format=WriteFormats.pickle, pypads_wrappe, pypads_package, pypads_item, pypads_fn_stack,
            **kwargs):
     """
     Function logging the output of the current pipeline object function call.
@@ -89,12 +89,12 @@ def input(self, *args, write_format=WriteFormats.pickle, pypads_wrappe, pypads_p
     for i in range(len(args)):
         arg = args[i]
         name = pypads_wrappe.__name__ + "." + str(id(self)) + "." + get_now() + "." + pypads_item + ".args." + str(
-            i) + ".bin"
+            i)
         try_write_artifact(name, arg, write_format)
 
     for (k, v) in kwargs.items():
         name = pypads_wrappe.__name__ + "." + str(
-            id(self)) + "." + get_now() + "." + pypads_item + ".kwargs." + k + ".txt"
+            id(self)) + "." + get_now() + "." + pypads_item + ".kwargs." + k
         try_write_artifact(name, v, write_format)
 
     result = pypads_fn_stack.pop()(*args, **kwargs)
