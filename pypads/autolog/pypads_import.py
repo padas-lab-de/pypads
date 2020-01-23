@@ -65,6 +65,9 @@ class PyPadsLoader(SourceFileLoader):
 
 
 class PyPadsFinder(PathFinder):
+    """
+    Import lib extension. This finder provides a special loader if mapping files contain the object.
+    """
 
     def find_spec(cls, fullname, path=None, target=None):
         try:
@@ -89,11 +92,12 @@ class PyPadsFinder(PathFinder):
             pass
 
 
-def _wrapped_name(path):
-    return "pypads_" + path
-
-
 def new_method_proxy(func):
+    """
+    Proxy method for calling the non-punched function.
+    :param func:
+    :return:
+    """
     def inner(self, *args):
         return func(self._pads_wrapped_instance, *args)
 
@@ -101,6 +105,14 @@ def new_method_proxy(func):
 
 
 def _wrap(wrappee, package, mapping, m_file):
+    """
+    Wrapping function for duck punching all objects.
+    :param wrappee: object to wrap
+    :param package: package of the object to wrap
+    :param mapping: related mapping in the mapping file
+    :param m_file: mapping file
+    :return: duck punched / wrapped object
+    """
     # print("Wrapping: " + str(wrappee))
 
     if isclass(wrappee):
@@ -192,11 +204,22 @@ def _wrap(wrappee, package, mapping, m_file):
 
 
 def to_folder(ctx):
-    expanduser("~") + "/.pypads/" + mlflow.active_run().info.experiment_id
+    """
+    TODO
+    :param ctx:
+    :return:
+    """
+    return os.path.join(expanduser("~") + "/.pypads/" + mlflow.active_run().info.experiment_id + "/" + ctx)
 
 
 def try_write_artifact(file_name, obj):
-    path = os.path.join(expanduser("~") + "/.pypads/" + mlflow.active_run().info.experiment_id + "/" + file_name)
+    """
+    Function to write an artifact to disk. TODO
+    :param file_name:
+    :param obj:
+    :return:
+    """
+    path = to_folder(file_name)
 
     # Todo allow for configuring output format
     if not os.path.exists(os.path.dirname(path)):
@@ -214,10 +237,20 @@ def try_write_artifact(file_name, obj):
 
 
 def extend_import_module():
+    """
+    Function to add the custom import logic to the python importlib execution
+    :return:
+    """
     sys.meta_path.insert(0, PyPadsFinder())
 
 
 def activate_tracking(mod_globals=None):
+    """
+    Function to duck punch all objects defined in the mapping files. This should at best be called before importing
+    any libraries.
+    :param mod_globals: globals() object used to duckpunch already loaded classes
+    :return:
+    """
     extend_import_module()
     for i in set(i.rsplit('.', 1)[0] for i, _, _, _, _ in get_implementations() if
                  i.rsplit('.', 1)[0] in sys.modules and i.rsplit('.', 1)[0] not in punched_modules):

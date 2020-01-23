@@ -12,6 +12,14 @@ from pypads.bindings.generic_visitor import default_visitor
 
 
 class FunctionRegistry:
+    """
+    This class holds function mappings. Logging functionalities get a name and a underlying function.
+    Example.: parameters -> function logging the parameters of the library calls.
+    {
+    "parameters": <fn>,
+    "model": <fn>
+    }
+    """
 
     def __init__(self, mapping=None):
         if mapping is None:
@@ -29,10 +37,25 @@ class FunctionRegistry:
 
 
 def get_now():
+    """
+    Function for providing a current human readable timestamp.
+    :return: timestamp
+    """
     return datetime.datetime.now().strftime("%d_%b_%Y_%H-%M-%S.%f")
 
 
 def parameters(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_stack, **kwargs):
+    """
+    Function logging the parameters of the current pipeline object function call.
+    :param self: Wrapper library object
+    :param args: Input args to the real library call
+    :param pypads_wrappe: pypads provided - wrapped library object
+    :param pypads_package: pypads provided - wrapped library package
+    :param pypads_item: pypads provided - wrapped function name
+    :param pypads_fn_stack: pypads provided - stack of all the next functions to execute
+    :param kwargs: Input kwargs to the real library call
+    :return:
+    """
     result = pypads_fn_stack.pop()(*args, **kwargs)
     # prevent wrapped_class from becoming unwrapped
     visitor = default_visitor(self)
@@ -45,8 +68,19 @@ def parameters(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_f
 
 
 def output(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_stack, **kwargs):
+    """
+    Function logging the output of the current pipeline object function call.
+    :param self: Wrapper library object
+    :param args: Input args to the real library call
+    :param pypads_wrappe: pypads provided - wrapped library object
+    :param pypads_package: pypads provided - wrapped library package
+    :param pypads_item: pypads provided - wrapped function name
+    :param pypads_fn_stack: pypads provided - stack of all the next functions to execute
+    :param kwargs: Input kwargs to the real library call
+    :return:
+    """
     result = pypads_fn_stack.pop()(*args, **kwargs)
-    name = pypads_wrappe.__name__ + "." + str(id(self)) + "." + get_now() + "." + pypads_item + "_output.txt"
+    name = pypads_wrappe.__name__ + "." + str(id(self)) + "." + get_now() + "." + pypads_item + "_output"
     try_write_artifact(name, result)
     if result is self._pads_wrapped_instance:
         return self
@@ -54,6 +88,17 @@ def output(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_st
 
 
 def input(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_stack, **kwargs):
+    """
+    Function logging the input parameters of the current pipeline object function call.
+    :param self: Wrapper library object
+    :param args: Input args to the real library call
+    :param pypads_wrappe: pypads provided - wrapped library object
+    :param pypads_package: pypads provided - wrapped library package
+    :param pypads_item: pypads provided - wrapped function name
+    :param pypads_fn_stack: pypads provided - stack of all the next functions to execute
+    :param kwargs: Input kwargs to the real library call
+    :return:
+    """
     for i in range(len(args)):
         arg = args[i]
         name = pypads_wrappe.__name__ + "." + str(id(self)) + "." + get_now() + "." + pypads_item + "_input_" + str(
@@ -71,12 +116,17 @@ def input(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_sta
     return result
 
 
+# Default mappings. We allow to log parameters, output or input
 DEFAULT_MAPPING = {
     "parameters": parameters,
     "output": output,
     "input": input
 }
 
+# Default config.
+# Pypads mapping files shouldn't interact directly with the logging functions,
+# but define events on which different logging functions can listen.
+# This config defines such a listening structure.
 DEFAULT_CONFIG = {"events": {
     "parameters": ["pypads_fit"],
     "cpu": [],
@@ -84,13 +134,25 @@ DEFAULT_CONFIG = {"events": {
     "input": ["pypads_fit"]
 }}
 
+# Tag name to save the config to in mlflow context.
 CONFIG_NAME = "pypads.config"
 
 
 class PyPads:
+    """
+    PyPads app. Serves as the main entrypoint to PyPads. After constructing this app tracking is activated..
+    """
     current_pads = None
 
     def __init__(self, uri=None, name=None, mapping=None, config=None, mod_globals=None):
+        """
+        TODO
+        :param uri:
+        :param name:
+        :param mapping:
+        :param config:
+        :param mod_globals:
+        """
         self._uri = uri or os.environ.get('MLFLOW_PATH') or 'file:' + os.path.expanduser('~/.mlruns')
         mlflow.set_tracking_uri(self._uri)
 
@@ -134,6 +196,10 @@ class PyPads:
 
 
 def get_current_pads() -> PyPads:
+    """
+    Get the currently active pypads instance. All duck punched objects use this function for interacting with pypads.
+    :return:
+    """
     if not PyPads.current_pads:
         warning("PyPads has to be initialized before logging can be used. Initializing for your with default values.")
         PyPads()
