@@ -1,0 +1,24 @@
+{
+    "hook_fns": {
+        "pypads_fit": [
+            "fit",
+            "fit_generator"
+        ]
+    },
+    "algorithms": [
+        {
+            "name": "keras algorithm",
+            "other_names": [],
+            "visitor": "BaseClassVisitor",
+            "implementation": {
+                "keras": "keras.engine.training.Model"
+            }
+        }
+    ],
+    "metadata": {
+        "author": "Thomas Weißgerber",
+        "library": "keras",
+        "library_version": "2.3.1",
+        "mapping_version": "0.1"
+    }
+}

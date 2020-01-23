@@ -1,14 +1,13 @@
-import datetime
 import os
 from logging import warning
 from types import FunctionType
 
 import mlflow
 from mlflow.tracking import MlflowClient
-from mlflow.utils.autologging_utils import try_mlflow_log
 
-from pypads.autolog.pypads_import import activate_tracking, try_write_artifact
-from pypads.bindings.generic_visitor import default_visitor
+from pypads.autolog.pypads_import import activate_tracking
+from pypads.logging_functions import parameters, output, input
+from pypads.logging_util import WriteFormats
 
 
 class FunctionRegistry:
@@ -36,85 +35,7 @@ class FunctionRegistry:
         self.fns[name] = fn
 
 
-def get_now():
-    """
-    Function for providing a current human readable timestamp.
-    :return: timestamp
-    """
-    return datetime.datetime.now().strftime("%d_%b_%Y_%H-%M-%S.%f")
-
-
-def parameters(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_stack, **kwargs):
-    """
-    Function logging the parameters of the current pipeline object function call.
-    :param self: Wrapper library object
-    :param args: Input args to the real library call
-    :param pypads_wrappe: pypads provided - wrapped library object
-    :param pypads_package: pypads provided - wrapped library package
-    :param pypads_item: pypads provided - wrapped function name
-    :param pypads_fn_stack: pypads provided - stack of all the next functions to execute
-    :param kwargs: Input kwargs to the real library call
-    :return:
-    """
-    result = pypads_fn_stack.pop()(*args, **kwargs)
-    # prevent wrapped_class from becoming unwrapped
-    visitor = default_visitor(self)
-
-    for k, v in visitor[0]["steps"][0]["hyper_parameters"]["model_parameters"].items():
-        try_mlflow_log(mlflow.log_param, pypads_package + "." + str(id(self)) + "." + get_now() + "." + k, v)
-    if result is self._pads_wrapped_instance:
-        return self
-    return result
-
-
-def output(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_stack, **kwargs):
-    """
-    Function logging the output of the current pipeline object function call.
-    :param self: Wrapper library object
-    :param args: Input args to the real library call
-    :param pypads_wrappe: pypads provided - wrapped library object
-    :param pypads_package: pypads provided - wrapped library package
-    :param pypads_item: pypads provided - wrapped function name
-    :param pypads_fn_stack: pypads provided - stack of all the next functions to execute
-    :param kwargs: Input kwargs to the real library call
-    :return:
-    """
-    result = pypads_fn_stack.pop()(*args, **kwargs)
-    name = pypads_wrappe.__name__ + "." + str(id(self)) + "." + get_now() + "." + pypads_item + "_output"
-    try_write_artifact(name, result)
-    if result is self._pads_wrapped_instance:
-        return self
-    return result
-
-
-def input(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_stack, **kwargs):
-    """
-    Function logging the input parameters of the current pipeline object function call.
-    :param self: Wrapper library object
-    :param args: Input args to the real library call
-    :param pypads_wrappe: pypads provided - wrapped library object
-    :param pypads_package: pypads provided - wrapped library package
-    :param pypads_item: pypads provided - wrapped function name
-    :param pypads_fn_stack: pypads provided - stack of all the next functions to execute
-    :param kwargs: Input kwargs to the real library call
-    :return:
-    """
-    for i in range(len(args)):
-        arg = args[i]
-        name = pypads_wrappe.__name__ + "." + str(id(self)) + "." + get_now() + "." + pypads_item + "_input_" + str(
-            i) + ".bin"
-        try_write_artifact(name, arg)
-
-    for (k, v) in kwargs.items():
-        name = pypads_wrappe.__name__ + "." + str(
-            id(self)) + "." + get_now() + "." + pypads_item + "_input_" + k + ".txt"
-        try_write_artifact(name, v)
-
-    result = pypads_fn_stack.pop()(*args, **kwargs)
-    if result is self._pads_wrapped_instance:
-        return self
-    return result
-
+# --- Pypads App ---
 
 # Default mappings. We allow to log parameters, output or input
 DEFAULT_MAPPING = {
@@ -128,19 +49,41 @@ DEFAULT_MAPPING = {
 # but define events on which different logging functions can listen.
 # This config defines such a listening structure.
 DEFAULT_CONFIG = {"events": {
-    "parameters": ["pypads_fit"],
-    "cpu": [],
-    "output": ["pypads_fit", "pypads_predict"],
-    "input": ["pypads_fit"]
+    "parameters": {"on": ["pypads_fit"]},
+    "cpu": {"on": ["pypads_fit"]},
+    "output": {"on": ["pypads_fit", "pypads_predict"], "with": {"type": WriteFormats.pickle}},
+    "input": {"on": ["pypads_fit"], "with": {"type": WriteFormats.pickle}}
 }}
 
 # Tag name to save the config to in mlflow context.
 CONFIG_NAME = "pypads.config"
 
+"""
+TODO keras:
+Logs loss and any other metrics specified in the fit
+    function, and optimizer data as parameters. Model checkpoints
+    are logged as artifacts to a 'models' directory.
+    EarlyStopping Integration with Keras Automatic Logging
+    MLflow will detect if an ``EarlyStopping`` callback is used in a ``fit()``/``fit_generator()``
+    call, and if the ``restore_best_weights`` parameter is set to be ``True``, then MLflow will
+    log the metrics associated with the restored model as a final, extra step. The epoch of the
+    restored model will also be logged as the metric ``restored_epoch``.
+    This allows for easy comparison between the actual metrics of the restored model and
+    the metrics of other models.
+    If ``restore_best_weights`` is set to be ``False``,
+    then MLflow will not log an additional step.
+    Regardless of ``restore_best_weights``, MLflow will also log ``stopped_epoch``,
+    which indicates the epoch at which training stopped due to early stopping.
+    If training does not end due to early stopping, then ``stopped_epoch`` will be logged as ``0``.
+    MLflow will also log the parameters of the EarlyStopping callback,
+    excluding ``mode`` and ``verbose``.
+"""
+
 
 class PyPads:
     """
-    PyPads app. Serves as the main entrypoint to PyPads. After constructing this app tracking is activated..
+    PyPads app. Enable automatic logging for all libs in mapping files.
+    Serves as the main entrypoint to PyPads. After constructing this app tracking is activated.
     """
     current_pads = None
 

@@ -1,3 +1,2 @@
 mlflow>=1.4.0
-pytest>=5.2.4
 boltons>=19.3.0

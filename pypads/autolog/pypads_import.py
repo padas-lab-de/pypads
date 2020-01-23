@@ -5,20 +5,17 @@ import inspect
 import json
 import operator
 import os
-import pickle
 import sys
 import types
 from importlib._bootstrap_external import PathFinder, SourceFileLoader
 from inspect import isclass
-from logging import warning, info
+from logging import warning, info, debug
 from os.path import expanduser
-from pickle import PicklingError
 from types import ModuleType
 from typing import Callable
 
 import mlflow
 from boltons.funcutils import wraps
-from mlflow.utils.autologging_utils import try_mlflow_log
 
 punched_modules = []
 mapping_files = glob.glob(expanduser("~") + ".pypads/bindings/**.json")
@@ -113,13 +110,13 @@ def _wrap(wrappee, package, mapping, m_file):
     :param m_file: mapping file
     :return: duck punched / wrapped object
     """
-    # print("Wrapping: " + str(wrappee))
-
+    debug("Wrapping: " + str(wrappee))
     if isclass(wrappee):
 
         # TODO what about classes deriving directly from object or other slots?
         if "slot wrapper" not in str(wrappee.__init__):
             class ClassWrapper(wrappee):
+
 
                 @wraps(wrappee.__init__)
                 def __init__(self, *args, **kwargs):
@@ -132,7 +129,14 @@ def _wrap(wrappee, package, mapping, m_file):
                     # print("__getattribute__ on class of " + str(wrappee) + " with name " + item)
                     if item == "_pads_wrapped_instance":
                         return object.__getattribute__(self, item)
-                    orig_attr = getattr(self._pads_wrapped_instance, item)
+                    # try:
+                    #    orig_attr = getattr(self._pads_wrapped_instance, item)
+                    # except AttributeError as e:
+                    #    info("Call couldn't be passed to base instance "
+                    #         + str(self._pads_wrapped_instance)
+                    #         + '. Duck punched class might be a super class. Trying to pipe call directly to the real '
+                    #           'object.')
+                    orig_attr = object.__getattribute__(self, item)
                     if callable(orig_attr):
 
                         pypads_fn = [k for k, v in mapping["hook_fns"].items() if item in v]
@@ -148,7 +152,10 @@ def _wrap(wrappee, package, mapping, m_file):
                         from pypads.base import CONFIG_NAME
                         if CONFIG_NAME in run.data.tags:
                             config = ast.literal_eval(run.data.tags[CONFIG_NAME])
-                            for log_event, hook_fns in config["events"].items():
+                            for log_event, event_config in config["events"].items():
+
+                                hook_fns = event_config["on"]
+                                hook_params = event_config["with"]
 
                                 # If one hook_fns is in this config.
                                 if set(hook_fns) & set(pypads_fn):
@@ -159,9 +166,16 @@ def _wrap(wrappee, package, mapping, m_file):
 
                                         @wraps(orig_attr)
                                         def ctx_setter(self, *args, pypads_hooked_fn=hooked, **kwargs):
+
+                                            # check for name collision
+                                            if set([k for k, v in kwargs.items()]) & set(
+                                                    [k for k, v in hook_params.items()]):
+                                                warning("Hook parameter is overwriting a parameter in the standard "
+                                                        "model call. This most likely will produce side effects.")
+
                                             return pypads_hooked_fn(pypads_wrappe=wrappee, pypads_package=package,
                                                                     pypads_item=item, pypads_fn_stack=fn_stack, *args,
-                                                                    **kwargs)
+                                                                    **{**kwargs, **hook_params})
 
                                         # Overwrite fn call structure
                                         fn_stack.append(types.MethodType(ctx_setter, self))
@@ -187,6 +201,7 @@ def _wrap(wrappee, package, mapping, m_file):
                 __instancecheck__ = new_method_proxy(operator.attrgetter("__instancecheck__"))
 
             out = ClassWrapper
+            debug("Success wrapping: " + str(wrappee))
         else:
             out = wrappee
     elif isinstance(wrappee, Callable):
@@ -201,39 +216,6 @@ def _wrap(wrappee, package, mapping, m_file):
         # print("Wrapped variable " + str(wrappee))
         out = wrappee
     return out
-
-
-def to_folder(ctx):
-    """
-    TODO
-    :param ctx:
-    :return:
-    """
-    return os.path.join(expanduser("~") + "/.pypads/" + mlflow.active_run().info.experiment_id + "/" + ctx)
-
-
-def try_write_artifact(file_name, obj):
-    """
-    Function to write an artifact to disk. TODO
-    :param file_name:
-    :param obj:
-    :return:
-    """
-    path = to_folder(file_name)
-
-    # Todo allow for configuring output format
-    if not os.path.exists(os.path.dirname(path)):
-        os.makedirs(os.path.dirname(path))
-
-    try:
-        with open(path, "wb+") as fd:
-            pickle.dump(obj, fd)
-    except PicklingError as e:
-        warning("Couldn't pickle output. Trying to save toString instead. " + str(e))
-        with open(path, "w+") as fd:
-            fd.write(str(obj))
-
-    try_mlflow_log(mlflow.log_artifact, path)
 
 
 def extend_import_module():
