@@ -7,7 +7,7 @@ class PadreAppTest(unittest.TestCase):
 
         # Activate tracking of pypads
         from pypads.base import PyPads
-        PyPads()
+        tracker = PyPads()
         from sklearn import datasets, metrics
         from sklearn.tree import DecisionTreeClassifier
 
@@ -23,6 +23,27 @@ class PadreAppTest(unittest.TestCase):
         # summarize the fit of the model
         print(metrics.classification_report(expected, predicted))
         print(metrics.confusion_matrix(expected, predicted))
+
+        # assert statements
+        import mlflow
+        run = mlflow.active_run()
+        assert tracker._run.info.run_id == run.info.run_id
+
+        n_inputs = 5  # number of inputs of DecisionTreeClassifier.fit
+        n_outputs = 1 + 1  # number of outputs of fit and predict and score
+        assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
+
+        import urllib
+        import os
+        parameters = tracker._mlf.list_artifacts(run.info.run_id, path='../params')
+        assert len(parameters) != 0
+        assert 'split_quality' in ''.join([p.path for p in parameters])
+        f = parameters[0]
+        path = urllib.parse.urlparse(os.path.join(run.info.artifact_uri, f.path)).path
+        if 'split_quality' in path:
+            with open(path, 'r') as p:
+                param = p.read()
+            assert model.criterion == param
 
     def test_parameter_logging_in_pipelines(self):
 
@@ -51,7 +72,7 @@ class PadreAppTest(unittest.TestCase):
     def test_simple_parameter_mapping(self):
         # Activate tracking of pypads
         from pypads.base import PyPads
-        PyPads(config={"events": {"parameters": ["pypads_fit"]}})
+        tracker = PyPads(config={"events": {"parameters": ["pypads_fit"]}})
         from sklearn import datasets, metrics
         from sklearn.tree import DecisionTreeClassifier
 
@@ -67,11 +88,18 @@ class PadreAppTest(unittest.TestCase):
         # summarize the fit of the model
         print(metrics.classification_report(expected, predicted))
         print(metrics.confusion_matrix(expected, predicted))
+
+        # assert statements
+        import mlflow
+        run = mlflow.active_run()
+        assert tracker._run.info.run_id == run.info.run_id
+
+        assert len(tracker.mlf.list_artifacts(run.info.run_id)) == 0
 
     def test_experiment_configuration(self):
         # Activate tracking of pypads
         from pypads.base import PyPads
-        PyPads(name="ConfiguredExperiment")
+        tracker = PyPads(name="ConfiguredExperiment")
         from sklearn import datasets, metrics
         from sklearn.tree import DecisionTreeClassifier
 
@@ -87,13 +115,16 @@ class PadreAppTest(unittest.TestCase):
         # summarize the fit of the model
         print(metrics.classification_report(expected, predicted))
         print(metrics.confusion_matrix(expected, predicted))
+
+        # assert statements
+        assert tracker._experiment.name == "ConfiguredExperiment"
 
     def test_predefined_experiment(self):
         import mlflow
         mlflow.create_experiment("PredefinedExperiment")
         # Activate tracking of pypads
         from pypads.base import PyPads
-        PyPads()
+        tracker = PyPads()
         from sklearn import datasets, metrics
         from sklearn.tree import DecisionTreeClassifier
 
