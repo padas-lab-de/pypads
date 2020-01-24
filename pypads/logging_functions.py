@@ -106,3 +106,4 @@ def input(self, *args, write_format=WriteFormats.pickle, pypads_wrappe, pypads_p
 def cpu(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_stack, **kwargs):
     import platform
     mlflow.set_tag("pypads.processor", platform.processor())
+    return pypads_fn_stack.pop()(*args, **kwargs)

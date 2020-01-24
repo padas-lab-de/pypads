@@ -5,17 +5,15 @@
             "fit_generator"
         ]
     },
-  "base_classes": [
+  "algorithms": [
         {
-            "name": "keras algorithm",
+          "name": "base keras model",
             "other_names": [],
-            "visitor": "BaseClassVisitor",
             "implementation": {
                 "keras": "keras.engine.training.Model"
             }
         }
     ],
-  "algorithms": [],
     "metadata": {
         "author": "Thomas Weißgerber",
         "library": "keras",

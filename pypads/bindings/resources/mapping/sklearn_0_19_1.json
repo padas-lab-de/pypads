@@ -17,6 +17,20 @@
   },
   "algorithms": [
     {
+      "name": "base sklearn estimator",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.base.BaseEstimator"
+      }
+    },
+    {
+      "name": "base decision tree",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.tree.tree.BaseDecisionTree"
+      }
+    },
+    {
       "name": "linear regression",
       "wikidata_id": "Q10861030",
       "other_names": [],
