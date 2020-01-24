@@ -7,7 +7,7 @@ import operator
 import os
 import sys
 import types
-from importlib._bootstrap_external import PathFinder, SourceFileLoader
+from importlib._bootstrap_external import PathFinder, _LoaderBasics
 from inspect import isclass
 from itertools import chain
 from logging import warning, info, debug
@@ -51,36 +51,39 @@ def get_sub_classes():
         yield package, library, alg, content, file
 
 
-class PyPadsLoader(SourceFileLoader):
+class PyPadsLoader(_LoaderBasics):
+
+    def __init__(self, spec):
+        self.spec = spec
 
     def load_module(self, fullname):
-        module = super().load_module(fullname)
+        module = self.spec.loader.load_module(fullname)
         return module
 
     def create_module(self, spec):
-        module = super().create_module(spec)
+        module = self.spec.loader.create_module(spec)
         return module
 
     def exec_module(self, module):
-        out = super().exec_module(module)
-
-        punched_modules.add(module.__name__)
-
+        out = self.spec.loader.exec_module(module)
         for name in dir(module):
             reference = getattr(module, name)
-            if hasattr(reference, "mro"):
+            if inspect.isclass(reference) and hasattr(reference, "mro"):
                 try:
-                    overlap = set(reference.mro()) & punched_classes
+                    overlap = set(reference.mro()[1:]) & punched_classes
                     if bool(overlap):
                         # TODO maybe only for the first one
                         for o in overlap:
-                            sub_classes.append((reference.__module__ + "." + reference.__qualname__, o.pypads_library,
-                                                o.pypads_alg, o.pypads_content, o.pypads_file))
+                            if reference not in punched_classes:
+                                sub_classes.append(
+                                    (reference.__module__ + "." + reference.__qualname__, o.pypads_library,
+                                     o.pypads_alg, o.pypads_content, o.pypads_file))
                 except Exception as e:
-                    debug("Skipping superclasses of " + str(reference))
+                    debug("Skipping superclasses of " + str(reference) + ". " + str(e))
 
         for package, library, alg, content, file in chain(get_implementations(), get_sub_classes()):
             if package.rsplit('.', 1)[0] == module.__name__:
+                punched_modules.add(module.__name__)
                 reference_name = package.rsplit('.', 1)[-1]
                 if hasattr(module, reference_name):
                     setattr(module, reference_name, _wrap(getattr(module, reference_name), package, library, alg,
@@ -88,7 +91,6 @@ class PyPadsLoader(SourceFileLoader):
                 else:
                     warning(str(reference_name) + " not found on " + str(
                         module) + ". Your mapping might not be compatible with the used version of the library.")
-
         return out
 
 
@@ -98,27 +100,22 @@ class PyPadsFinder(PathFinder):
     """
 
     def find_spec(cls, fullname, path=None, target=None):
-        try:
-            # Search and skip if not found
-            next(i for i, _, _, _, _ in chain(get_sub_classes(), get_implementations()) if
-                 i.rsplit('.', 1)[0] == fullname)
-            if fullname not in sys.modules:
-                path_ = sys.meta_path[1:]
-                i = iter(path_)
-                spec = None
-                try:
-                    while not spec:
-                        importer = next(i)
-                        if hasattr(importer, "find_spec"):
-                            spec = importer.find_spec(fullname, path)
-                except StopIteration:
-                    pass
-                if spec:
-                    spec.loader = PyPadsLoader(fullname, spec.loader.path)
+        if fullname not in sys.modules:
+            path_ = sys.meta_path[
+                    [i for i in range(len(sys.meta_path)) if isinstance(sys.meta_path[i], PyPadsFinder)].pop() + 1:]
+            i = iter(path_)
+            spec = None
+            try:
+                importer = None
+                while not spec:
+                    importer = next(i)
+                    if hasattr(importer, "find_spec"):
+                        spec = importer.find_spec(fullname, path)
+                if spec and importer:
+                    spec.loader = PyPadsLoader(importer.find_spec(fullname, path))
                     return spec
-
-        except StopIteration:
-            pass
+            except StopIteration:
+                pass
 
 
 def new_method_proxy(func):
@@ -152,18 +149,19 @@ def _wrap(wrappee, package, library, alg, content, file):
     if isclass(wrappee):
 
         # TODO what about classes deriving from other slots?
-        for clazz in all_subclasses(wrappee):
-            # duck_punch all subclasses if not already defined in implementations
-            # todo visitors on estimators which have subclasses
-            sub_classes.append((clazz.__module__ + "." + clazz.__qualname__, library, alg, content, file))
+        # for clazz in all_subclasses(wrappee):
+        #     # duck_punch all subclasses if not already defined in implementations
+        #     # todo visitors on estimators which have subclasses
+        #     sub_classes.append((clazz.__module__ + "." + clazz.__qualname__, library, alg, content, file))
 
         # Already tracked base_classes should be skipped and we link directly to the wrapped class
-        stop = False
-        while not stop:
-            try:
-                wrappee = wrappee.pypads_wrappee
-            except AttributeError:
-                stop = True
+        if "ClassWrapper" in str(wrappee):
+            stop = False
+            while not stop:
+                try:
+                    wrappee = wrappee.pypads_wrappee
+                except AttributeError:
+                    stop = True
 
         # TODO does this work with slot wrappers?
         if hasattr(wrappee.__init__, "__module__"):
@@ -181,7 +179,7 @@ def _wrap(wrappee, package, library, alg, content, file):
                     print("Pypads tracked class " + str(wrappee) + " initialized.")
                     wrappee_instance = wrappee(*args, **kwargs)
                     self.__dict__ = wrappee_instance.__dict__
-                    self._pads_wrapped_instance = wrappee_instance
+                    object.__setattr__(self, "_pads_wrapped_instance", wrappee_instance)
 
                 def __getattribute__(self, item):
                     # print("__getattribute__ on class of " + str(wrappee) + " with name " + item)
@@ -260,7 +258,6 @@ def _wrap(wrappee, package, library, alg, content, file):
 
             out = ClassWrapper
             debug("Success wrapping: " + str(wrappee))
-            punched_classes.add(wrappee)
             punched_classes.add(out)
         else:
             debug("Can't wrap constructor. Skipping for now subclasses have to be duck punched.")
@@ -271,7 +268,6 @@ def _wrap(wrappee, package, library, alg, content, file):
                 setattr(wrappee, "pypads_alg", alg)
                 setattr(wrappee, "pypads_content", content)
                 setattr(wrappee, "pypads_file", file)
-                punched_classes.add(wrappee)
                 punched_classes.add(out)
             except TypeError as e:
                 debug("Can't modify class for pypads references: " + str(e))
@@ -294,7 +290,9 @@ def extend_import_module():
     Function to add the custom import logic to the python importlib execution
     :return:
     """
-    sys.meta_path.insert(0, PyPadsFinder())
+    path_finder = [i for i in range(len(sys.meta_path)) if
+                   "_frozen_importlib_external.PathFinder" in str(sys.meta_path[i])]
+    sys.meta_path.insert(path_finder.pop(), PyPadsFinder())
 
 
 def activate_tracking(mod_globals=None):
