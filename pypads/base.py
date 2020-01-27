@@ -62,8 +62,9 @@ def parameters(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_f
 
     for k, v in visitor[0]["steps"][0]["hyper_parameters"]["model_parameters"].items():
         try_mlflow_log(mlflow.log_param, pypads_package + "." + str(id(self)) + "." + get_now() + "." + k, v)
-    if result is self._pads_wrapped_instance:
-        return self
+    if self is not None:
+        if result is self._pads_wrapped_instance:
+            return self
     return result
 
 
@@ -82,8 +83,9 @@ def output(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_st
     result = pypads_fn_stack.pop()(*args, **kwargs)
     name = pypads_wrappe.__name__ + "." + str(id(self)) + "." + get_now() + "." + pypads_item + "_output"
     try_write_artifact(name, result)
-    if result is self._pads_wrapped_instance:
-        return self
+    if self is not None:
+        if result is self._pads_wrapped_instance:
+            return self
     return result
 
 
@@ -111,13 +113,15 @@ def input(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_sta
         try_write_artifact(name, v)
 
     result = pypads_fn_stack.pop()(*args, **kwargs)
-    if result is self._pads_wrapped_instance:
-        return self
+    if self is not None:
+        if result is self._pads_wrapped_instance:
+            return self
     return result
+
 
 def metric(self,*args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_stack, **kwargs):
     """
-    Function logging the parameters of the current pipeline object function call.
+    Function logging the wrapped metric function
     :param self: Wrapper library object
     :param args: Input args to the real library call
     :param pypads_wrappe: pypads provided - wrapped library object
@@ -129,7 +133,9 @@ def metric(self,*args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_sta
     """
     result = pypads_fn_stack.pop()(*args, **kwargs)
     try_mlflow_log(mlflow.log_metric, pypads_item, result)
-
+    if self is not None:
+        if result is self._pads_wrapped_instance:
+            return self
     return result
 
 # Default mappings. We allow to log parameters, output or input

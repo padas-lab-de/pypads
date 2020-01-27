@@ -9,7 +9,7 @@ class PadreAppTest(unittest.TestCase):
         from pypads.base import PyPads
         tracker = PyPads()
         from sklearn import datasets
-        from sklearn.metrics.classification import classification_report
+        from sklearn.metrics.classification import f1_score
         # from sklearn.metrics import classification
         from sklearn.tree import DecisionTreeClassifier
         # load the iris datasets
@@ -22,7 +22,7 @@ class PadreAppTest(unittest.TestCase):
         expected = dataset.target
         predicted = model.predict(dataset.data)
         # summarize the fit of the model
-        print(classification_report(expected, predicted, sample_weight=None))
+        print(f1_score(expected, predicted, average="macro"))
         # print(metrics.confusion_matrix(expected, predicted))
 
         # assert statements
@@ -30,8 +30,8 @@ class PadreAppTest(unittest.TestCase):
         run = mlflow.active_run()
         assert tracker._run.info.run_id == run.info.run_id
 
-        n_inputs = 5  # number of inputs of DecisionTreeClassifier.fit
-        n_outputs = 1 + 1  # number of outputs of fit and predict and score
+        n_inputs = 5 + 6 # number of inputs of DecisionTreeClassifier.fit and f1_score
+        n_outputs = 1 + 1 + 1 # number of outputs of fit and predict and score and f1_score
         assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
 
         import urllib
