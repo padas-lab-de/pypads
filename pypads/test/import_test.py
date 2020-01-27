@@ -8,9 +8,10 @@ class PadreAppTest(unittest.TestCase):
         # Activate tracking of pypads
         from pypads.base import PyPads
         tracker = PyPads()
-        from sklearn import datasets, metrics
+        from sklearn import datasets
+        from sklearn.metrics.classification import classification_report
+        # from sklearn.metrics import classification
         from sklearn.tree import DecisionTreeClassifier
-
         # load the iris datasets
         dataset = datasets.load_iris()
 
@@ -21,8 +22,8 @@ class PadreAppTest(unittest.TestCase):
         expected = dataset.target
         predicted = model.predict(dataset.data)
         # summarize the fit of the model
-        print(metrics.classification_report(expected, predicted))
-        print(metrics.confusion_matrix(expected, predicted))
+        print(classification_report(expected, predicted, sample_weight=None))
+        # print(metrics.confusion_matrix(expected, predicted))
 
         # assert statements
         import mlflow

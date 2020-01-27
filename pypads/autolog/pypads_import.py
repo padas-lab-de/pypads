@@ -190,13 +190,46 @@ def _wrap(wrappee, package, mapping, m_file):
         else:
             out = wrappee
     elif isinstance(wrappee, Callable):
-        def wrapper(*args, **kwargs):
-            # print("Wrapped function " + str(wrappee))
-            out = wrappee(*args, **kwargs)
-            # print("Output: " + str(out))
-            return out
+        class FunctionWrapper:
 
-        out = wrapper
+            def __init__(self,):
+                self.__code__ = wrappee.__code__
+                self.__globals__ = wrappee.__globals__
+                self._pads_wrapped_instance = None
+
+            @wraps(wrappee)
+            def __call__(self, *args, **kwargs):
+                print("Pypads wrapped function " + str(wrappee) + "created.")
+                pypads_fn = [k for k, v in mapping["hook_fns"].items() if wrappee.__name__ in v]
+
+                from pypads.base import get_current_pads
+                pads = get_current_pads()
+
+                # Get logging config
+                run = pads.mlf.get_run(mlflow.active_run().info.run_id)
+                fn_stack = [wrappee]
+                from pypads.base import CONFIG_NAME
+                if CONFIG_NAME in run.data.tags:
+                    config = ast.literal_eval(run.data.tags[CONFIG_NAME])
+                    for log_event, hook_fns in config["events"].items():
+                        if set(hook_fns) & set(pypads_fn):
+                            fn = pads.function_registry.find_function(log_event)
+                            if fn:
+                                # hooked = types.FunctionType(fn.__code__, globals())
+
+                                def ctx_setter(*args, pypads_hooked_fn=fn, **kwargs):
+                                    return pypads_hooked_fn(self,pypads_wrappe=wrappee, pypads_package=package,
+                                                            pypads_item=wrappee.__name__, pypads_fn_stack=fn_stack,
+                                                            *args,
+                                                            **kwargs)
+
+                                fn_stack.append(ctx_setter)
+                while fn_stack:
+                    out = fn_stack.pop()(*args, **kwargs)
+                print("Output: " + str(out))
+                return out
+
+        out = FunctionWrapper()
     else:
         # print("Wrapped variable " + str(wrappee))
         out = wrappee

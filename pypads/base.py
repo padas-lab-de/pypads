@@ -115,12 +115,29 @@ def input(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_sta
         return self
     return result
 
+def metric(self,*args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_stack, **kwargs):
+    """
+    Function logging the parameters of the current pipeline object function call.
+    :param self: Wrapper library object
+    :param args: Input args to the real library call
+    :param pypads_wrappe: pypads provided - wrapped library object
+    :param pypads_package: pypads provided - wrapped library package
+    :param pypads_item: pypads provided - wrapped function name
+    :param pypads_fn_stack: pypads provided - stack of all the next functions to execute
+    :param kwargs: Input kwargs to the real library call
+    :return:
+    """
+    result = pypads_fn_stack.pop()(*args, **kwargs)
+    try_mlflow_log(mlflow.log_metric, pypads_item, result)
+
+    return result
 
 # Default mappings. We allow to log parameters, output or input
 DEFAULT_MAPPING = {
     "parameters": parameters,
     "output": output,
-    "input": input
+    "input": input,
+    "metric": metric
 }
 
 # Default config.
@@ -130,8 +147,9 @@ DEFAULT_MAPPING = {
 DEFAULT_CONFIG = {"events": {
     "parameters": ["pypads_fit"],
     "cpu": [],
-    "output": ["pypads_fit", "pypads_predict"],
-    "input": ["pypads_fit"]
+    "output": ["pypads_fit", "pypads_predict","pypads_metric"],
+    "input": ["pypads_fit","pypads_metric"],
+    "metric": ["pypads_metric"]
 }}
 
 # Tag name to save the config to in mlflow context.
