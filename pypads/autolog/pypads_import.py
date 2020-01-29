@@ -8,7 +8,7 @@ import sys
 import types
 from importlib._bootstrap_external import PathFinder, _LoaderBasics
 from itertools import chain
-from logging import warning, info
+from logging import warning, info, debug
 from os.path import expanduser
 from types import ModuleType
 
@@ -16,6 +16,7 @@ import mlflow
 from boltons.funcutils import wraps
 
 punched_module = set()
+punched_classes = set()
 mapping_files = glob.glob(expanduser("~") + ".pypads/bindings/**.json")
 mapping_files.extend(
     glob.glob(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) + "/bindings/resources/mapping/**.json"))
@@ -103,20 +104,24 @@ class PyPadsLoader(_LoaderBasics):
 
     def exec_module(self, module):
         out = self.spec.loader.exec_module(module)
-        # for name in dir(module):
-        #     reference = getattr(module, name)
-        #     if inspect.isclass(reference) and hasattr(reference, "mro"):
-        #         try:
-        #             overlap = set(reference.mro()[1:]) & punched_classes
-        #             if bool(overlap):
-        #                 # TODO maybe only for the first one
-        #                 for o in overlap:
-        #                     if reference not in punched_classes:
-        #                         sub_classes.append(
-        #                             (reference.__module__ + "." + reference.__qualname__, o.pypads_library,
-        #                              o.pypads_alg, o.pypads_content, o.pypads_file))
-        #         except Exception as e:
-        #             debug("Skipping superclasses of " + str(reference) + ". " + str(e))
+
+        for name in dir(module):
+            reference = getattr(module, name)
+            if inspect.isclass(reference) and hasattr(reference, "mro"):
+                try:
+                    overlap = set(reference.mro()[1:]) & punched_classes
+                    if bool(overlap):
+                        # TODO maybe only for the first one
+                        for o in overlap:
+                            if reference not in punched_classes:
+                                found_classes[reference.__module__ + "." + reference.__qualname__] = Mapping(
+                                    reference.__module__ + "." + reference.__qualname__,
+                                    o._pypads_mapping.library,
+                                    o._pypads_mapping.algorithm,
+                                    o._pypads_mapping.file,
+                                    o._pypads_mapping.hooks)
+                except Exception as e:
+                    debug("Skipping superclasses of " + str(reference) + ". " + str(e))
 
         for mapping in get_relevant_mappings():
             if mapping.reference.startswith(module.__name__):
@@ -290,14 +295,16 @@ def _wrap_class(clazz, ctx, mapping):
             except Exception as e:
                 warning(str(e))
 
-        for k, v in mapping.hooks.items():
-            for fn_name in v:
-                _wrap_function(fn_name, clazz, mapping)
+        if mapping.hooks:
+            for k, v in mapping.hooks.items():
+                for fn_name in v:
+                    _wrap_function(fn_name, clazz, mapping)
 
         reference_name = mapping.reference.rsplit('.', 1)[-1]
         setattr(clazz, "_pypads_mapping", mapping)
         setattr(clazz, "_pypads_wrapped", clazz)
         setattr(ctx, reference_name, clazz)
+        punched_classes.add(clazz)
 
 
 def get_class_that_defined_method(method):

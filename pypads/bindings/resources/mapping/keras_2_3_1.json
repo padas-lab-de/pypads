@@ -1,23 +1,35 @@
 {
-    "hook_fns": {
-        "pypads_fit": [
-            "fit",
-            "fit_generator"
-        ]
+  "default_hooks": {
+    "modules": {
+      "fns": {}
     },
-  "algorithms": [
-        {
-          "name": "base keras model",
-            "other_names": [],
-            "implementation": {
-                "keras": "keras.engine.training.Model"
-            }
-        }
-    ],
-    "metadata": {
-        "author": "Thomas Weißgerber",
-        "library": "keras",
-        "library_version": "2.3.1",
-        "mapping_version": "0.1"
+    "classes": {
+      "fns": {
+        "pypads_fit": [
+          "fit",
+          "fit_generator"
+        ]
+      }
+    },
+    "fns": {
+      "pypads_metric": [
+        "f1_score"
+      ]
     }
+  },
+  "algorithms": [
+    {
+      "name": "base keras model",
+      "other_names": [],
+      "implementation": {
+        "keras": "keras.engine.training.Model"
+      }
+    }
+  ],
+  "metadata": {
+    "author": "Thomas Weißgerber",
+    "library": "keras",
+    "library_version": "2.3.1",
+    "mapping_version": "0.1"
+  }
 }
