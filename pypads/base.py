@@ -114,7 +114,8 @@ class PyPads:
             run = mlflow.start_run(experiment_id=experiment_id)
         self._mlf = MlflowClient(self._uri)
         self._function_registry = FunctionRegistry(mapping or DEFAULT_MAPPING)
-        self._experiment = self.mlf.get_experiment_by_name(name)
+        self._experiment = self.mlf.get_experiment_by_name(name) if name else self.mlf.get_experiment(
+            run.info.experiment_id)
         self.config = config or DEFAULT_CONFIG
 
         # override active run if used
