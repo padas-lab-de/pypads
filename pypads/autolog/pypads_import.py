@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import types
+from copy import deepcopy
 from importlib._bootstrap_external import PathFinder, _LoaderBasics
 from itertools import chain
 from logging import warning, info, debug
@@ -386,7 +387,8 @@ def _wrap_method_helper(fn, hook, params, stack, mapping, ctx, fn_type=None, las
     if not fn_type or "staticmethod" in str(fn_type):
         @wraps(fn)
         def ctx_setter(*args, pypads_hooked_fn=hook,
-                       pypads_hook_params=params, _pypads_mapped_by=mapping, _pypads_current_mapping=mapping, **kwargs):
+                       pypads_hook_params=params, _pypads_stack=deepcopy(stack), _pypads_mapped_by=mapping,
+                       _pypads_current_mapping=mapping, **kwargs):
             debug("Static method or function " + str(ctx) + str(fn) + str(hook))
 
             # check for name collision
@@ -400,7 +402,8 @@ def _wrap_method_helper(fn, hook, params, stack, mapping, ctx, fn_type=None, las
                 entry = True
                 call_cache.add(id(fn), pypads_hooked_fn.__name__)
                 out = pypads_hooked_fn(None, _pypads_wrappe=fn, _pypads_context=ctx,
-                                       _pypads_item=fn.__name__, _pypads_fn_stack=stack, _pypads_mapped_by=mapping,
+                                       _pypads_item=fn.__name__, _pypads_fn_stack=_pypads_stack,
+                                       _pypads_mapped_by=mapping,
                                        *args,
                                        **{**kwargs, **pypads_hook_params})
             else:
@@ -411,15 +414,16 @@ def _wrap_method_helper(fn, hook, params, stack, mapping, ctx, fn_type=None, las
     elif "function" in str(fn_type):
         @wraps(fn)
         def ctx_setter(self, *args, pypads_hooked_fn=hook,
-                       pypads_hook_params=params, _pypads_mapped_by=mapping, _pypads_current_mapping=mapping, **kwargs):
+                       pypads_hook_params=params, _pypads_mapped_by=mapping, _pypads_stack=deepcopy(stack),
+                       _pypads_current_mapping=mapping, **kwargs):
             debug("Method " + str(ctx) + str(fn) + str(hook))
 
-            if self is not None and not len(stack) is 0 and not inspect.ismethod(stack[0]):
+            if self is not None and not len(_pypads_stack) is 0 and not inspect.ismethod(_pypads_stack[0]):
                 methods = []
-                for callback in stack:
+                for callback in _pypads_stack:
                     methods.append(types.MethodType(callback, self))
-                stack.clear()
-                stack.extend(methods)
+                _pypads_stack.clear()
+                _pypads_stack.extend(methods)
 
             # check for name collision
             if set([k for k, v in kwargs.items()]) & set(
@@ -432,19 +436,28 @@ def _wrap_method_helper(fn, hook, params, stack, mapping, ctx, fn_type=None, las
                 entry = True
                 call_cache.add(id(self), pypads_hooked_fn.__name__)
                 out = pypads_hooked_fn(self, _pypads_wrappe=fn, _pypads_context=ctx,
-                                       _pypads_item=fn.__name__, _pypads_fn_stack=stack, _pypads_mapped_by=mapping,
+                                       _pypads_item=fn.__name__, _pypads_fn_stack=_pypads_stack,
+                                       _pypads_mapped_by=mapping,
                                        *args,
                                        **{**kwargs, **pypads_hook_params})
             else:
-                out = stack.pop()(*args, **kwargs)
+                out = _pypads_stack.pop()(*args, **kwargs)
             if entry:
                 call_cache.delete(id(self), pypads_hooked_fn.__name__)
             return out
     else:
         @wraps(fn)
         def ctx_setter(cls, *args, pypads_hooked_fn=hook,
-                       pypads_hook_params=params, _pypads_mapped_by=mapping, _pypads_current_mapping=mapping, **kwargs):
+                       pypads_hook_params=params, _pypads_mapped_by=mapping, _pypads_stack=deepcopy(stack),
+                       _pypads_current_mapping=mapping, **kwargs):
             debug("Class method " + str(ctx) + str(fn) + str(hook))
+
+            if cls is not None and not len(_pypads_stack) is 0 and not inspect.ismethod(stack[0]):
+                methods = []
+                for callback in _pypads_stack:
+                    methods.append(types.MethodType(callback, cls))
+                _pypads_stack.clear()
+                _pypads_stack.extend(methods)
 
             # check for name collision
             if set([k for k, v in kwargs.items()]) & set(
@@ -456,20 +469,18 @@ def _wrap_method_helper(fn, hook, params, stack, mapping, ctx, fn_type=None, las
             if not call_cache.has(id(cls), pypads_hooked_fn.__name__):
                 entry = True
                 call_cache.add(id(cls), pypads_hooked_fn.__name__)
-                out = pypads_hooked_fn(_pypads_wrappe=fn, _pypads_context=ctx,
-                                       _pypads_item=fn.__name__, _pypads_fn_stack=stack, _pypads_mapped_by=mapping,
+                out = pypads_hooked_fn(cls, _pypads_wrappe=fn, _pypads_context=ctx,
+                                       _pypads_item=fn.__name__, _pypads_fn_stack=_pypads_stack,
+                                       _pypads_mapped_by=mapping,
                                        *args,
                                        **{**kwargs, **pypads_hook_params})
             else:
-                out = stack.pop()(*args, **kwargs)
+                out = _pypads_stack.pop()(*args, **kwargs)
             if entry:
                 call_cache.delete(id(cls), pypads_hooked_fn.__name__)
             return out
 
-    if hasattr(fn, "__self__"):
-        stack.append(types.MethodType(ctx_setter, fn.__self__))
-    else:
-        stack.append(ctx_setter)
+    stack.append(ctx_setter)
     if last_element:
         setattr(ctx, "_pypads_mapping_" + fn.__name__, mapping)
         setattr(ctx, "_pypads_original_" + fn.__name__, fn)
@@ -498,10 +509,17 @@ def _wrap_function(fn_name, ctx, mapping):
 
         if defining_class:
 
+            fn = None
             if hasattr(defining_class, "_pypads_original_" + fn_name):
                 fn = getattr(defining_class, "_pypads_original_" + fn_name)
             else:
-                fn = getattr(defining_class, fn_name)
+                try:
+                    fn = getattr(defining_class, fn_name)
+                except Exception as e:
+                    warning(str(e))
+
+            if not fn:
+                return
 
             if isinstance(fn, property):
                 fn = fn.fget
@@ -556,7 +574,7 @@ def activate_tracking(mod_globals=None):
                  mapping.reference.rsplit('.', 1)[0] in sys.modules
                  and mapping.reference.rsplit('.', 1)[0] not in punched_module):
         spec = importlib.util.find_spec(i)
-        loader = PyPadsLoader(spec.name, spec.origin)
+        loader = PyPadsLoader(spec)
         module = loader.load_module(i)
         loader.exec_module(module)
         sys.modules[i] = module

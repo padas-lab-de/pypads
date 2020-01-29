@@ -1,3 +1,4 @@
+import random
 import unittest
 
 
@@ -30,8 +31,8 @@ class PadreAppTest(unittest.TestCase):
         run = mlflow.active_run()
         assert tracker._run.info.run_id == run.info.run_id
 
-        n_inputs = 5 + 1 + 6  # number of inputs of DecisionTreeClassifier.fit, LabelEncoder.fit and f1_score
-        n_outputs = 1 + 1 + 1 + 1  # number of outputs of fit and predict and score and f1_score
+        n_inputs = 5 + 6  # number of inputs of DecisionTreeClassifier.fit, LabelEncoder.fit and f1_score
+        n_outputs = 1 + 1  # number of outputs of fit and predict and score and f1_score
         assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
 
         import urllib
@@ -97,7 +98,7 @@ class PadreAppTest(unittest.TestCase):
     def test_simple_parameter_mapping(self):
         # Activate tracking of pypads
         from pypads.base import PyPads
-        tracker = PyPads(config={"events": {"parameters": ["pypads_fit"]}})
+        tracker = PyPads(config={"events": {"parameters": {"on": ["pypads_fit"]}}})
         from sklearn import datasets, metrics
         from sklearn.tree import DecisionTreeClassifier
 
@@ -146,7 +147,7 @@ class PadreAppTest(unittest.TestCase):
 
     def test_predefined_experiment(self):
         import mlflow
-        mlflow.create_experiment("PredefinedExperiment")
+        mlflow.create_experiment("PredefinedExperiment" + str(random.randint()))
         # Activate tracking of pypads
         from pypads.base import PyPads
         tracker = PyPads()
