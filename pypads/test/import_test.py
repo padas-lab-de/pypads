@@ -1,4 +1,4 @@
-import random
+import datetime
 import unittest
 
 
@@ -147,7 +147,7 @@ class PadreAppTest(unittest.TestCase):
 
     def test_predefined_experiment(self):
         import mlflow
-        mlflow.create_experiment("PredefinedExperiment" + str(random.randint()))
+        mlflow.create_experiment("PredefinedExperiment" + str(datetime.datetime.now().strftime("%d_%b_%Y_%H-%M-%S.%f")))
         # Activate tracking of pypads
         from pypads.base import PyPads
         tracker = PyPads()

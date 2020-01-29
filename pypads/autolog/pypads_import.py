@@ -407,7 +407,7 @@ def _wrap_method_helper(fn, hook, params, stack, mapping, ctx, fn_type=None, las
                                        *args,
                                        **{**kwargs, **pypads_hook_params})
             else:
-                out = stack.pop()(*args, **kwargs)
+                out = _pypads_stack.pop()(*args, **kwargs)
             if entry:
                 call_cache.delete(id(fn), pypads_hooked_fn.__name__)
             return out
@@ -452,7 +452,7 @@ def _wrap_method_helper(fn, hook, params, stack, mapping, ctx, fn_type=None, las
                        _pypads_current_mapping=mapping, **kwargs):
             debug("Class method " + str(ctx) + str(fn) + str(hook))
 
-            if cls is not None and not len(_pypads_stack) is 0 and not inspect.ismethod(stack[0]):
+            if cls is not None and not len(_pypads_stack) is 0 and not inspect.ismethod(_pypads_stack[0]):
                 methods = []
                 for callback in _pypads_stack:
                     methods.append(types.MethodType(callback, cls))
