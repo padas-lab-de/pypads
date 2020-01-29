@@ -70,6 +70,30 @@ class PadreAppTest(unittest.TestCase):
         print(metrics.classification_report(expected, predicted))
         print(metrics.confusion_matrix(expected, predicted))
 
+    def test_parameter_logging_in_pipelines(self):
+
+        # Activate tracking of pypads
+        from pypads.base import PyPads
+        PyPads()
+        from sklearn import datasets, metrics
+        from sklearn.decomposition import PCA
+        from sklearn.svm import SVC
+        from sklearn.pipeline import Pipeline
+
+        # load the iris dataset
+        dataset = datasets.load_iris()
+
+        # define the pipeline
+        model = Pipeline([('PCA', PCA()),('SVC', SVC())])
+        model.fit(dataset.data, dataset.target)
+
+        #make predictions
+        expected = dataset.target
+        predicted = model.predict(dataset.data)
+        # summarize the fit of the model
+        print(metrics.classification_report(expected, predicted))
+        print(metrics.confusion_matrix(expected, predicted))
+
     def test_simple_parameter_mapping(self):
         # Activate tracking of pypads
         from pypads.base import PyPads
