@@ -277,16 +277,16 @@ def _wrap_class(clazz, ctx, mapping):
                         mapping.hooks = content["default_hooks"]["classes"]["fns"]
 
         if hasattr(clazz.__init__, "__module__"):
-            original_init = object.__getattribute__(clazz, "__init__")
+            original_init = getattr(clazz, "__init__")
 
             @wraps(clazz.__init__)
-            def __init__(self, *args, **kwargs):
+            def __init__(self, *args, _pypads_original_init=original_init, **kwargs):
                 entry = False
                 if not call_cache.has(id(self), __init__.__name__):
                     call_cache.add(id(self), __init__.__name__)
                     entry = True
                     print("Pypads tracked class " + str(clazz) + " initialized.")
-                original_init(self, *args, **kwargs)
+                _pypads_original_init(self, *args, **kwargs)
                 if entry:
                     call_cache.delete(id(self), __init__.__name__)
 
