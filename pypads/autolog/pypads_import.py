@@ -29,6 +29,9 @@ for m in mapping_files:
 
 
 class Mapping:
+    """
+    Mapping for an algorithm defined by a pypads mapping file
+    """
 
     def __init__(self, reference, library, algorithm, file, hooks):
         self._hooks = hooks
@@ -63,6 +66,10 @@ class Mapping:
 
 
 def get_implementations():
+    """
+    Get all mappings defined in all mapping files.
+    :return:
+    """
     for file, content in mappings.items():
         from pypads.base import get_current_pads
         if not get_current_pads().filter_mapping_files or file in get_current_pads():
@@ -86,6 +93,10 @@ def get_found(cache):
 
 
 def get_relevant_mappings():
+    """
+    Function to find all relevant mappings. This produces a generator getting extended with found subclasses
+    :return:
+    """
     return chain(get_implementations(), get_found(found_classes), get_found(found_fns))
 
 
@@ -174,36 +185,11 @@ class PyPadsFinder(PathFinder):
                 pass
 
 
-def new_method_proxy(func):
+def get_pypads_config():
     """
-    Proxy method for calling the non-punched function.
-    :param func:
+    Get configuration defined in the current mlflow run
     :return:
     """
-
-    def inner(self, *args):
-        return func(self._pads_wrapped_instance, *args)
-
-    return inner
-
-
-def all_subclasses(cls):
-    return set(cls.__subclasses__()).union(
-        [s for c in cls.__subclasses__() for s in all_subclasses(c)])
-
-
-def to_method_type(cls, self, original_method, wrapped_method):
-    if inspect.ismethod(original_method):
-        if hasattr(original_method, "__self__") and original_method.__self__ is cls:
-            out = wrapped_method
-        else:
-            out = wrapped_method
-    else:
-        out = types.MethodType(wrapped_method, self)
-    return out
-
-
-def get_pypads_config():
     from pypads.base import get_current_pads
     from pypads.base import CONFIG_NAME
     pads = get_current_pads()
@@ -214,6 +200,13 @@ def get_pypads_config():
 
 
 def _wrap(wrappee, *args, **kwargs):
+    """
+    Wrap given object with pypads functionality
+    :param wrappee:
+    :param args:
+    :param kwargs:
+    :return:
+    """
     if inspect.isclass(wrappee):
         _wrap_class(*args, **kwargs)
 
@@ -222,6 +215,12 @@ def _wrap(wrappee, *args, **kwargs):
 
 
 def _wrap_module(module, mapping):
+    """
+    Function to wrap modules with pypads functionality
+    :param module:
+    :param mapping:
+    :return:
+    """
     if not hasattr(module, "_pypads_wrapped"):
         punched_module.add(module)
         if not mapping.hooks:
@@ -244,6 +243,9 @@ def _wrap_module(module, mapping):
 
 
 class CallCache:
+    """
+    Cache used to stop multiple calls if sub and superclass are punched.
+    """
 
     def __init__(self):
         self.cache = {}
@@ -267,6 +269,13 @@ call_cache = CallCache()
 
 
 def _wrap_class(clazz, ctx, mapping):
+    """
+    Wrap a class in given ctx with pypads functionality
+    :param clazz:
+    :param ctx:
+    :param mapping:
+    :return:
+    """
     if not hasattr(clazz, "_pypads_wrapped") or (
             clazz is not getattr(clazz, "_pypads_wrapped") and issubclass(clazz, getattr(clazz, "_pypads_wrapped"))):
         if not mapping.hooks:
@@ -308,6 +317,11 @@ def _wrap_class(clazz, ctx, mapping):
 
 
 def get_class_that_defined_method(method):
+    """
+    Find the first class in the mro defining the given method
+    :param method:
+    :return:
+    """
     if inspect.ismethod(method):
         for cls in inspect.getmro(method.__self__.__class__):
             if cls.__dict__.get(method.__name__) is method:
@@ -322,6 +336,12 @@ def get_class_that_defined_method(method):
 
 
 def get_hooked_fns(fn, mapping):
+    """
+    For a given fn find the hook functions defined in a mapping.
+    :param fn:
+    :param mapping:
+    :return:
+    """
     if not mapping.hooks:
         content = mappings[mapping.file]
         if "default_hooks" in content:
@@ -351,6 +371,18 @@ NONE_OBJECT = object()
 
 
 def _wrap_method_helper(fn, hook, params, stack, mapping, ctx, fn_type=None, last_element=False):
+    """
+    Helper to differentiate between functions, classmethods, static methods and wrap them
+    :param fn:
+    :param hook:
+    :param params:
+    :param stack:
+    :param mapping:
+    :param ctx:
+    :param fn_type:
+    :param last_element:
+    :return:
+    """
     if not fn_type or "staticmethod" in str(fn_type):
         @wraps(fn)
         def ctx_setter(*args, pypads_hooked_fn=hook,
@@ -445,6 +477,13 @@ def _wrap_method_helper(fn, hook, params, stack, mapping, ctx, fn_type=None, las
 
 
 def _wrap_function(fn_name, ctx, mapping):
+    """
+    Function to wrap the given fn_name on the ctx object with pypads function calls
+    :param fn_name:
+    :param ctx:
+    :param mapping:
+    :return:
+    """
     if inspect.isclass(ctx):
         defining_class = None
         if not hasattr(ctx, "__dict__") or fn_name not in ctx.__dict__:
