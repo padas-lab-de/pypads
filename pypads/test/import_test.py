@@ -30,8 +30,8 @@ class PadreAppTest(unittest.TestCase):
         run = mlflow.active_run()
         assert tracker._run.info.run_id == run.info.run_id
 
-        n_inputs = 5 + 6  # number of inputs of DecisionTreeClassifier.fit and f1_score
-        n_outputs = 1 + 1 + 1  # number of outputs of fit and predict and score and f1_score
+        n_inputs = 5 + 1 + 6  # number of inputs of DecisionTreeClassifier.fit, LabelEncoder.fit and f1_score
+        n_outputs = 1 + 1 + 1 + 1  # number of outputs of fit and predict and score and f1_score
         assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
 
         import urllib
