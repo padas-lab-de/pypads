@@ -3,33 +3,62 @@ import glob
 import importlib
 import inspect
 import json
-import operator
 import os
 import sys
 import types
 from importlib._bootstrap_external import PathFinder, _LoaderBasics
-from inspect import isclass
 from itertools import chain
-from logging import warning, info, debug
+from logging import warning, info
 from os.path import expanduser
 from types import ModuleType
-from typing import Callable
 
 import mlflow
 from boltons.funcutils import wraps
 
-punched_modules = set()
-punched_classes = set()
-wrapped_classes = []
+punched_module = set()
 mapping_files = glob.glob(expanduser("~") + ".pypads/bindings/**.json")
 mapping_files.extend(
     glob.glob(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) + "/bindings/resources/mapping/**.json"))
 
 mappings = {}
-for mapping in mapping_files:
-    with open(mapping) as json_file:
+for m in mapping_files:
+    with open(m) as json_file:
         name = os.path.basename(json_file.name)
         mappings[name] = json.load(json_file)
+
+
+class Mapping:
+
+    def __init__(self, reference, library, algorithm, file, hooks):
+        self._hooks = hooks
+        self._algorithm = algorithm
+        self._library = library
+        self._reference = reference
+        self._file = file
+
+    @property
+    def file(self):
+        return self._file
+
+    @property
+    def reference(self):
+        return self._reference
+
+    @property
+    def library(self):
+        return self._library
+
+    @property
+    def algorithm(self):
+        return self._algorithm
+
+    @property
+    def hooks(self):
+        return self._hooks
+
+    @hooks.setter
+    def hooks(self, value):
+        self._hooks = value
 
 
 def get_implementations():
@@ -38,17 +67,25 @@ def get_implementations():
         if not get_current_pads().filter_mapping_files or file in get_current_pads():
             if "algorithms" in content:
                 for alg in content["algorithms"]:
+                    hooks = None
+                    if "hooks" in alg:
+                        hooks = alg["hooks"]
                     if alg["implementation"] and len(alg["implementation"]) > 0:
-                        for library, package in alg["implementation"].items():
-                            yield package, library, alg, content, file
+                        for library, reference in alg["implementation"].items():
+                            yield Mapping(reference, library, alg, file, hooks)
 
 
-sub_classes = []
+found_classes = {}
+found_fns = {}
 
 
-def get_sub_classes():
-    for (package, library, alg, content, file) in sub_classes:
-        yield package, library, alg, content, file
+def get_found(cache):
+    for i, mapping in cache.items():
+        yield mapping
+
+
+def get_relevant_mappings():
+    return chain(get_implementations(), get_found(found_classes), get_found(found_fns))
 
 
 class PyPadsLoader(_LoaderBasics):
@@ -66,31 +103,45 @@ class PyPadsLoader(_LoaderBasics):
 
     def exec_module(self, module):
         out = self.spec.loader.exec_module(module)
-        for name in dir(module):
-            reference = getattr(module, name)
-            if inspect.isclass(reference) and hasattr(reference, "mro"):
-                try:
-                    overlap = set(reference.mro()[1:]) & punched_classes
-                    if bool(overlap):
-                        # TODO maybe only for the first one
-                        for o in overlap:
-                            if reference not in punched_classes:
-                                sub_classes.append(
-                                    (reference.__module__ + "." + reference.__qualname__, o.pypads_library,
-                                     o.pypads_alg, o.pypads_content, o.pypads_file))
-                except Exception as e:
-                    debug("Skipping superclasses of " + str(reference) + ". " + str(e))
+        # for name in dir(module):
+        #     reference = getattr(module, name)
+        #     if inspect.isclass(reference) and hasattr(reference, "mro"):
+        #         try:
+        #             overlap = set(reference.mro()[1:]) & punched_classes
+        #             if bool(overlap):
+        #                 # TODO maybe only for the first one
+        #                 for o in overlap:
+        #                     if reference not in punched_classes:
+        #                         sub_classes.append(
+        #                             (reference.__module__ + "." + reference.__qualname__, o.pypads_library,
+        #                              o.pypads_alg, o.pypads_content, o.pypads_file))
+        #         except Exception as e:
+        #             debug("Skipping superclasses of " + str(reference) + ". " + str(e))
 
-        for package, library, alg, content, file in chain(get_implementations(), get_sub_classes()):
-            if package.rsplit('.', 1)[0] == module.__name__:
-                punched_modules.add(module.__name__)
-                reference_name = package.rsplit('.', 1)[-1]
-                if hasattr(module, reference_name):
-                    setattr(module, reference_name, _wrap(getattr(module, reference_name), package, library, alg,
-                                                          content, file))
+        for mapping in get_relevant_mappings():
+            if mapping.reference.startswith(module.__name__):
+                if mapping.reference == module.__name__:
+                    _wrap_module(module, mapping)
                 else:
-                    warning(str(reference_name) + " not found on " + str(
-                        module) + ". Your mapping might not be compatible with the used version of the library.")
+                    ref = mapping.reference
+                    path = ref[len(module.__name__) + 1:].rsplit(".")
+                    obj = module
+                    ctx = obj
+                    for seg in path:
+                        try:
+                            ctx = obj
+                            obj = getattr(obj, seg)
+                        except AttributeError:
+                            obj = None
+                            break
+
+                    if obj:
+                        if inspect.isclass(obj):
+                            if mapping.reference == obj.__module__ + "." + obj.__name__:
+                                _wrap_class(obj, ctx, mapping)
+
+                        elif inspect.isfunction(obj):
+                            _wrap_function(obj.__name__, ctx, mapping)
         return out
 
 
@@ -136,153 +187,305 @@ def all_subclasses(cls):
         [s for c in cls.__subclasses__() for s in all_subclasses(c)])
 
 
-def _wrap(wrappee, package, library, alg, content, file):
-    """
-    Wrapping function for duck punching all objects.
-    :param wrappee: object to wrap
-    :param package: package of the object to wrap
-    :param content: related mapping in the mapping file
-    :param file: mapping file
-    :return: duck punched / wrapped object
-    """
-    debug("Wrapping: " + str(wrappee))
-    if isclass(wrappee):
-
-        # TODO what about classes deriving from other slots?
-        # for clazz in all_subclasses(wrappee):
-        #     # duck_punch all subclasses if not already defined in implementations
-        #     # todo visitors on estimators which have subclasses
-        #     sub_classes.append((clazz.__module__ + "." + clazz.__qualname__, library, alg, content, file))
-
-        # Already tracked base_classes should be skipped and we link directly to the wrapped class
-        if "ClassWrapper" in str(wrappee):
-            stop = False
-            while not stop:
-                try:
-                    wrappee = wrappee.pypads_wrappee
-                except AttributeError:
-                    stop = True
-
-        # TODO does this work with slot wrappers?
-        if hasattr(wrappee.__init__, "__module__"):
-            class ClassWrapper(wrappee):
-
-                pypads_wrappee = wrappee
-                pypads_package = package
-                pypads_library = library
-                pypads_alg = alg
-                pypads_content = content
-                pypads_file = file
-
-                @wraps(wrappee.__init__)
-                def __init__(self, *args, **kwargs):
-                    print("Pypads tracked class " + str(wrappee) + " initialized.")
-                    wrappee_instance = wrappee(*args, **kwargs)
-                    self.__dict__ = wrappee_instance.__dict__
-                    object.__setattr__(self, "_pads_wrapped_instance", wrappee_instance)
-
-                def __getattribute__(self, item):
-                    # print("__getattribute__ on class of " + str(wrappee) + " with name " + item)
-                    # if we try to get the wrapped instance give it
-                    if item == "_pads_wrapped_instance":
-                        return object.__getattribute__(self, item)
-
-                    orig_attr = getattr(self._pads_wrapped_instance, item)
-
-                    if callable(orig_attr):
-
-                        pypads_fn = [k for k, v in content["hook_fns"].items() if item in v]
-
-                        from pypads.base import get_current_pads
-                        pads = get_current_pads()
-
-                        # Get logging config
-                        run = pads.mlf.get_run(mlflow.active_run().info.run_id)
-
-                        fn_stack = [orig_attr]
-
-                        from pypads.base import CONFIG_NAME
-                        if CONFIG_NAME in run.data.tags:
-                            config = ast.literal_eval(run.data.tags[CONFIG_NAME])
-                            for log_event, event_config in config["events"].items():
-
-                                hook_fns = event_config["on"]
-                                if "with" in event_config:
-                                    hook_params = event_config["with"]
-                                else:
-                                    hook_params = {}
-
-                                # If one hook_fns is in this config.
-                                if set(hook_fns) & set(pypads_fn):
-
-                                    fn = pads.function_registry.find_function(log_event)
-                                    if fn:
-                                        hooked = types.MethodType(fn, self)
-
-                                        @wraps(orig_attr)
-                                        def ctx_setter(self, *args, pypads_hooked_fn=hooked,
-                                                       pypads_hook_params=hook_params, **kwargs):
-
-                                            # check for name collision
-                                            if set([k for k, v in kwargs.items()]) & set(
-                                                    [k for k, v in pypads_hook_params.items()]):
-                                                warning("Hook parameter is overwriting a parameter in the standard "
-                                                        "model call. This most likely will produce side effects.")
-
-                                            return pypads_hooked_fn(pypads_wrappe=wrappee, pypads_package=package,
-                                                                    pypads_item=item, pypads_fn_stack=fn_stack, *args,
-                                                                    **{**kwargs, **pypads_hook_params})
-
-                                        # Overwrite fn call structure
-                                        fn_stack.append(types.MethodType(ctx_setter, self))
-                        return fn_stack.pop()
-                    return orig_attr
-
-                # Need to pretend to be the wrapped class, for the sake of objects that
-                # care about this (especially in equality tests)
-                # __class__ = property(new_method_proxy(operator.attrgetter("__class__")))
-                __eq__ = new_method_proxy(operator.eq)
-                __lt__ = new_method_proxy(operator.lt)
-                __gt__ = new_method_proxy(operator.gt)
-                __ne__ = new_method_proxy(operator.ne)
-                __hash__ = new_method_proxy(hash)
-
-                # List/Tuple/Dictionary methods support
-                __getitem__ = new_method_proxy(operator.getitem)
-                __setitem__ = new_method_proxy(operator.setitem)
-                __delitem__ = new_method_proxy(operator.delitem)
-                __iter__ = new_method_proxy(iter)
-                __len__ = new_method_proxy(len)
-                __contains__ = new_method_proxy(operator.contains)
-                __instancecheck__ = new_method_proxy(operator.attrgetter("__instancecheck__"))
-
-            out = ClassWrapper
-            debug("Success wrapping: " + str(wrappee))
-            punched_classes.add(out)
+def to_method_type(cls, self, original_method, wrapped_method):
+    if inspect.ismethod(original_method):
+        if hasattr(original_method, "__self__") and original_method.__self__ is cls:
+            out = wrapped_method
         else:
-            debug("Can't wrap constructor. Skipping for now subclasses have to be duck punched.")
-            out = wrappee
+            out = wrapped_method
+    else:
+        out = types.MethodType(wrapped_method, self)
+    return out
+
+
+def get_pypads_config():
+    from pypads.base import get_current_pads
+    from pypads.base import CONFIG_NAME
+    pads = get_current_pads()
+    run = pads.mlf.get_run(mlflow.active_run().info.run_id)
+    if CONFIG_NAME in run.data.tags:
+        return ast.literal_eval(run.data.tags[CONFIG_NAME])
+    return {"events": {}}
+
+
+def _wrap(wrappee, *args, **kwargs):
+    if inspect.isclass(wrappee):
+        _wrap_class(*args, **kwargs)
+
+    elif inspect.isfunction(wrappee):
+        _wrap_function(wrappee.__name__, *args, **kwargs)
+
+
+def _wrap_module(module, mapping):
+    if not hasattr(module, "_pypads_wrapped"):
+        punched_module.add(module)
+        if not mapping.hooks:
+            content = mappings[mapping.file]
+            if "default_hooks" in content:
+                if "modules" in content["default_hooks"]:
+                    if "fns" in content["default_hooks"]["modules"]:
+                        mapping.hooks = content["default_hooks"]["fns"]
+
+        for _name in dir(module):
+            _wrap(getattr(module, _name), module, mapping)
+
+        for k, v in mapping.hooks.items():
+            for fn_name in v:
+                found_classes[mapping.reference + "." + fn_name] = Mapping(mapping.reference + "." + fn_name,
+                                                                           mapping.library, mapping.algorithm,
+                                                                           mapping.file, mapping.hooks)
+
+        setattr(module, "_pypads_wrapped", module)
+
+
+class CallCache:
+
+    def __init__(self):
+        self.cache = {}
+
+    def add(self, identifier, reference):
+        if identifier not in self.cache:
+            self.cache[identifier] = set()
+        self.cache[identifier].add(reference)
+
+    def has(self, identifier, reference):
+        return identifier in self.cache and reference in self.cache[identifier]
+
+    def delete(self, identifier, reference):
+        if identifier in self.cache:
+            self.cache[identifier].remove(reference)
+            if len(self.cache[identifier]):
+                del self.cache[identifier]
+
+
+call_cache = CallCache()
+
+
+def _wrap_class(clazz, ctx, mapping):
+    if not hasattr(clazz, "_pypads_wrapped") or (
+            clazz is not getattr(clazz, "_pypads_wrapped") and issubclass(clazz, getattr(clazz, "_pypads_wrapped"))):
+        if not mapping.hooks:
+            content = mappings[mapping.file]
+            if "default_hooks" in content:
+                if "classes" in content["default_hooks"]:
+                    if "fns" in content["default_hooks"]["classes"]:
+                        mapping.hooks = content["default_hooks"]["classes"]["fns"]
+
+        if hasattr(clazz.__init__, "__module__"):
+            original_init = object.__getattribute__(clazz, "__init__")
+
+            @wraps(clazz.__init__)
+            def __init__(self, *args, **kwargs):
+                entry = False
+                if not call_cache.has(id(self), __init__.__name__):
+                    call_cache.add(id(self), __init__.__name__)
+                    entry = True
+                    print("Pypads tracked class " + str(clazz) + " initialized.")
+                original_init(self, *args, **kwargs)
+                if entry:
+                    call_cache.delete(id(self), __init__.__name__)
+
             try:
-                setattr(wrappee, "pypads_package", package)
-                setattr(wrappee, "pypads_library", library)
-                setattr(wrappee, "pypads_alg", alg)
-                setattr(wrappee, "pypads_content", content)
-                setattr(wrappee, "pypads_file", file)
-                punched_classes.add(out)
-            except TypeError as e:
-                debug("Can't modify class for pypads references: " + str(e))
-    elif isinstance(wrappee, Callable):
-        def wrapper(*args, **kwargs):
-            # print("Wrapped function " + str(wrappee))
-            out = wrappee(*args, **kwargs)
-            # print("Output: " + str(out))
+                setattr(clazz, "__init__", __init__)
+            except Exception as e:
+                warning(str(e))
+
+        for k, v in mapping.hooks.items():
+            for fn_name in v:
+                _wrap_function(fn_name, clazz, mapping)
+
+        reference_name = mapping.reference.rsplit('.', 1)[-1]
+        setattr(clazz, "_pypads_mapping", mapping)
+        setattr(clazz, "_pypads_wrapped", clazz)
+        setattr(ctx, reference_name, clazz)
+
+
+def get_class_that_defined_method(method):
+    if inspect.ismethod(method):
+        for cls in inspect.getmro(method.__self__.__class__):
+            if cls.__dict__.get(method.__name__) is method:
+                return cls
+        method = method.__func__  # fallback to __qualname__ parsing
+    if inspect.isfunction(method):
+        cls = getattr(inspect.getmodule(method),
+                      method.__qualname__.split('.<locals>', 1)[0].rsplit('.', 1)[0])
+        if isinstance(cls, type):
+            return cls
+    return getattr(method, '__objclass__', None)  # handle special descriptor objects
+
+
+def get_hooked_fns(fn, mapping):
+    if not mapping.hooks:
+        content = mappings[mapping.file]
+        if "default_hooks" in content:
+            if "fns" in content["default_hooks"]:
+                mapping.hooks = content["default_hooks"]["fns"]
+
+    pypads_fn = [k for k, v in mapping.hooks.items() if fn.__name__ in v]
+    output = []
+    config = get_pypads_config()
+    for log_event, event_config in config["events"].items():
+        hook_fns = event_config["on"]
+        if "with" in event_config:
+            hook_params = event_config["with"]
+        else:
+            hook_params = {}
+
+        # If one hook_fns is in this config.
+        if set(hook_fns) & set(pypads_fn):
+            from pypads.base import get_current_pads
+            pads = get_current_pads()
+            fn = pads.function_registry.find_function(log_event)
+            output.append((fn, hook_params))
+    return output
+
+
+NONE_OBJECT = object()
+
+
+def _wrap_method_helper(fn, hook, params, stack, mapping, ctx, fn_type=None, last_element=False):
+    if not fn_type or "staticmethod" in str(fn_type):
+        @wraps(fn)
+        def ctx_setter(*args, pypads_hooked_fn=hook,
+                       pypads_hook_params=params, _pypads_mapped_by=mapping, _pypads_current_mapping=mapping, **kwargs):
+            print("Static method or function " + str(ctx) + str(fn) + str(hook))
+
+            # check for name collision
+            if set([k for k, v in kwargs.items()]) & set(
+                    [k for k, v in pypads_hook_params.items()]):
+                warning("Hook parameter is overwriting a parameter in the standard "
+                        "model call. This most likely will produce side effects.")
+
+            entry = False
+            if not call_cache.has(id(fn), pypads_hooked_fn.__name__):
+                entry = True
+                call_cache.add(id(fn), pypads_hooked_fn.__name__)
+                out = pypads_hooked_fn(None, _pypads_wrappe=fn, _pypads_context=ctx,
+                                       _pypads_item=fn.__name__, _pypads_fn_stack=stack, _pypads_mapped_by=mapping,
+                                       *args,
+                                       **{**kwargs, **pypads_hook_params})
+            else:
+                out = stack.pop()(*args, **kwargs)
+            if entry:
+                call_cache.delete(id(fn), pypads_hooked_fn.__name__)
+            return out
+    elif "function" in str(fn_type):
+        @wraps(fn)
+        def ctx_setter(self, *args, pypads_hooked_fn=hook,
+                       pypads_hook_params=params, _pypads_mapped_by=mapping, _pypads_current_mapping=mapping, **kwargs):
+            print("Method " + str(ctx) + str(fn) + str(hook))
+
+            if self is not None and not len(stack) is 0 and not inspect.ismethod(stack[0]):
+                methods = []
+                for callback in stack:
+                    methods.append(types.MethodType(callback, self))
+                stack.clear()
+                stack.extend(methods)
+
+            # check for name collision
+            if set([k for k, v in kwargs.items()]) & set(
+                    [k for k, v in pypads_hook_params.items()]):
+                warning("Hook parameter is overwriting a parameter in the standard "
+                        "model call. This most likely will produce side effects.")
+
+            entry = False
+            if not call_cache.has(id(self), pypads_hooked_fn.__name__):
+                entry = True
+                call_cache.add(id(self), pypads_hooked_fn.__name__)
+                out = pypads_hooked_fn(self, _pypads_wrappe=fn, _pypads_context=ctx,
+                                       _pypads_item=fn.__name__, _pypads_fn_stack=stack, _pypads_mapped_by=mapping,
+                                       *args,
+                                       **{**kwargs, **pypads_hook_params})
+            else:
+                out = stack.pop()(*args, **kwargs)
+            if entry:
+                call_cache.delete(id(self), pypads_hooked_fn.__name__)
+            return out
+    else:
+        @wraps(fn)
+        def ctx_setter(cls, *args, pypads_hooked_fn=hook,
+                       pypads_hook_params=params, _pypads_mapped_by=mapping, _pypads_current_mapping=mapping, **kwargs):
+            print("Class method " + str(ctx) + str(fn) + str(hook))
+
+            # check for name collision
+            if set([k for k, v in kwargs.items()]) & set(
+                    [k for k, v in pypads_hook_params.items()]):
+                warning("Hook parameter is overwriting a parameter in the standard "
+                        "model call. This most likely will produce side effects.")
+
+            entry = False
+            if not call_cache.has(id(cls), pypads_hooked_fn.__name__):
+                entry = True
+                call_cache.add(id(cls), pypads_hooked_fn.__name__)
+                out = pypads_hooked_fn(_pypads_wrappe=fn, _pypads_context=ctx,
+                                       _pypads_item=fn.__name__, _pypads_fn_stack=stack, _pypads_mapped_by=mapping,
+                                       *args,
+                                       **{**kwargs, **pypads_hook_params})
+            else:
+                out = stack.pop()(*args, **kwargs)
+            if entry:
+                call_cache.delete(id(cls), pypads_hooked_fn.__name__)
             return out
 
-        out = wrapper
+    if hasattr(fn, "__self__"):
+        stack.append(types.MethodType(ctx_setter, fn.__self__))
     else:
-        # print("Wrapped variable " + str(wrappee))
-        out = wrappee
-    return out
+        stack.append(ctx_setter)
+    if last_element:
+        setattr(ctx, "_pypads_mapping_" + fn.__name__, mapping)
+        setattr(ctx, "_pypads_original_" + fn.__name__, fn)
+        setattr(ctx, fn.__name__, stack.pop())
+
+
+def _wrap_function(fn_name, ctx, mapping):
+    if inspect.isclass(ctx):
+        defining_class = None
+        if not hasattr(ctx, "__dict__") or fn_name not in ctx.__dict__:
+            mro = ctx.mro()
+            for c in mro[1:]:
+                defining_class = ctx
+                if hasattr(ctx, "__dict__") and fn_name in defining_class.__dict__:
+                    break
+                defining_class = None
+        else:
+            defining_class = ctx
+
+        if defining_class:
+
+            if hasattr(defining_class, "_pypads_original_" + fn_name):
+                fn = getattr(defining_class, "_pypads_original_" + fn_name)
+            else:
+                fn = getattr(defining_class, fn_name)
+
+            if isinstance(fn, property):
+                fn = fn.fget
+
+            fn_stack = [fn]
+            hooks = get_hooked_fns(fn, mapping)
+            if len(hooks) > 0:
+                for (hook, params) in hooks[:-1]:
+                    _wrap_method_helper(fn=fn, hook=hook, params=params, stack=fn_stack, mapping=mapping, ctx=ctx,
+                                        fn_type=type(defining_class.__dict__[fn.__name__]))
+
+                (hook, params) = hooks[-1]
+                _wrap_method_helper(fn=fn, hook=hook, params=params, stack=fn_stack, mapping=mapping, ctx=ctx,
+                                    fn_type=type(defining_class.__dict__[fn.__name__]), last_element=True)
+    elif hasattr(ctx, fn_name):
+        if hasattr(ctx, "_pypads_original_" + fn_name):
+            fn = getattr(ctx, "_pypads_original_" + fn_name)
+        else:
+            fn = getattr(ctx, fn_name)
+        fn_stack = [fn]
+        hooks = get_hooked_fns(fn, mapping)
+        if len(hooks) > 0:
+            for (hook, params) in hooks[:-1]:
+                _wrap_method_helper(fn=fn, hook=hook, params=params, stack=fn_stack, mapping=mapping, ctx=ctx)
+
+            (hook, params) = hooks[-1]
+            _wrap_method_helper(fn=fn, hook=hook, params=params, stack=fn_stack, mapping=mapping, ctx=ctx,
+                                last_element=True)
+    else:
+        warning(ctx + " is no class or module. Couldn't access " + fn_name + " on it.")
 
 
 def extend_import_module():
@@ -303,8 +506,9 @@ def activate_tracking(mod_globals=None):
     :return:
     """
     extend_import_module()
-    for i in set(i.rsplit('.', 1)[0] for i, _, _, _, _ in get_implementations() if
-                 i.rsplit('.', 1)[0] in sys.modules and i.rsplit('.', 1)[0] not in punched_modules):
+    for i in set(mapping.reference.rsplit('.', 1)[0] for mapping in get_implementations() if
+                 mapping.reference.rsplit('.', 1)[0] in sys.modules
+                 and mapping.reference.rsplit('.', 1)[0] not in punched_module):
         spec = importlib.util.find_spec(i)
         loader = PyPadsLoader(spec.name, spec.origin)
         module = loader.load_module(i)

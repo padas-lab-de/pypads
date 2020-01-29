@@ -16,67 +16,100 @@ def get_now():
     return datetime.datetime.now().strftime("%d_%b_%Y_%H-%M-%S.%f")
 
 
-def parameters(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_stack, **kwargs):
+def parameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_item, _pypads_fn_stack,
+               **kwargs):
     """
     Function logging the parameters of the current pipeline object function call.
     :param self: Wrapper library object
     :param args: Input args to the real library call
-    :param pypads_wrappe: pypads provided - wrapped library object
-    :param pypads_package: pypads provided - wrapped library package
-    :param pypads_item: pypads provided - wrapped function name
-    :param pypads_fn_stack: pypads provided - stack of all the next functions to execute
+    :param _pypads_wrappe: _pypads provided - wrapped library object
+    :param _pypads_mapped_by: _pypads provided - wrapped library package
+    :param _pypads_item: _pypads provided - wrapped function name
+    :param _pypads_fn_stack: _pypads provided - stack of all the next functions to execute
     :param kwargs: Input kwargs to the real library call
     :return:
     """
-    result = pypads_fn_stack.pop()(*args, **kwargs)
+    result = _pypads_fn_stack.pop()(*args, **kwargs)
 
     try:
         # prevent wrapped_class from becoming unwrapped
         visitor = default_visitor(self)
 
         for k, v in visitor[0]["steps"][0]["hyper_parameters"]["model_parameters"].items():
-            try_mlflow_log(mlflow.log_param, pypads_package + "." + str(id(self)) + "." + get_now() + "." + k, v)
-    except ValueError as e:
+            try_mlflow_log(mlflow.log_param,
+                           _pypads_mapped_by.reference + "." + str(id(self)) + "." + get_now() + "." + k, v)
+    except Exception as e:
         warning("Couldn't use visitor for parameter extraction. " + str(e) + " Omit logging for now.")
         # for i in range(len(args)):
         #    arg = args[i]
-        #    try_mlflow_log(mlflow.log_param, pypads_package + "." + str(id(self)) + "." + get_now() + ".args." + str(i), str(arg))
+        #    try_mlflow_log(mlflow.log_param, _pypads_mapped_by + "." + str(id(self)) + "." + get_now() + ".args." + str(i), str(arg))
         #
         # for (k, v) in kwargs.items():
-        #    try_mlflow_log(mlflow.log_param, pypads_package + "." + str(id(self)) + "." + get_now() + ".kwargs." + str(k), str(v))
+        #    try_mlflow_log(mlflow.log_param, _pypads_mapped_by + "." + str(id(self)) + "." + get_now() + ".kwargs." + str(k), str(v))
 
-    if result is self._pads_wrapped_instance:
-        return self
     return result
 
 
-def output(self, *args, write_format=WriteFormats.pickle, pypads_wrappe, pypads_package, pypads_item, pypads_fn_stack,
+def output(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
+           _pypads_item, _pypads_fn_stack,
            **kwargs):
     """
     Function logging the output of the current pipeline object function call.
     :param write_format: Format the artifact should write to
     :param self: Wrapper library object
     :param args: Input args to the real library call
-    :param pypads_wrappe: pypads provided - wrapped library object
-    :param pypads_package: pypads provided - wrapped library package
-    :param pypads_item: pypads provided - wrapped function name
-    :param pypads_fn_stack: pypads provided - stack of all the next functions to execute
+    :param _pypads_wrappe: _pypads provided - wrapped library object
+    :param _pypads_mapped_by: _pypads provided - wrapped library package
+    :param _pypads_item: _pypads provided - wrapped function name
+    :param _pypads_fn_stack: _pypads provided - stack of all the next functions to execute
     :param kwargs: Input kwargs to the real library call
     :return:
     """
-    result = pypads_fn_stack.pop()(*args, **kwargs)
-    name = pypads_wrappe.__name__ + "." + str(id(self)) + "." + get_now() + "." + pypads_item + ".return"
+    result = _pypads_fn_stack.pop()(*args, **kwargs)
+    name = _pypads_wrappe.__name__ + "." + str(id(self)) + "." + get_now() + "." + _pypads_item + ".return"
     try_write_artifact(name, result, write_format)
-    if result is self._pads_wrapped_instance:
-        return self
     return result
 
 
-def input(self, *args, write_format=WriteFormats.pickle, pypads_wrappe, pypads_package, pypads_item, pypads_fn_stack,
+def input(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
+          _pypads_item, _pypads_fn_stack,
           **kwargs):
     """
     Function logging the input parameters of the current pipeline object function call.
     :param write_format: Format the artifact should write to
+    :param self: Wrapper library object
+    :param args: Input args to the real library call
+    :param _pypads_wrappe: _pypads provided - wrapped library object
+    :param _pypads_mapped_by: _pypads provided - wrapped library package
+    :param _pypads_item: _pypads provided - wrapped function name
+    :param _pypads_fn_stack: _pypads provided - stack of all the next functions to execute
+    :param kwargs: Input kwargs to the real library call
+    :return:
+    """
+    for i in range(len(args)):
+        arg = args[i]
+        name = _pypads_wrappe.__name__ + "." + str(id(self)) + "." + get_now() + "." + _pypads_item + ".args." + str(
+            i)
+        try_write_artifact(name, arg, write_format)
+
+    for (k, v) in kwargs.items():
+        name = _pypads_wrappe.__name__ + "." + str(
+            id(self)) + "." + get_now() + "." + _pypads_item + ".kwargs." + k
+        try_write_artifact(name, v, write_format)
+
+    result = _pypads_fn_stack.pop()(*args, **kwargs)
+    return result
+
+
+def cpu(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_item, _pypads_fn_stack, **kwargs):
+    import platform
+    mlflow.set_tag("pypads.processor", platform.processor())
+    return _pypads_fn_stack.pop()(*args, **kwargs)
+
+
+def metric(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_item, _pypads_fn_stack, **kwargs):
+    """
+    Function logging the wrapped metric function
     :param self: Wrapper library object
     :param args: Input args to the real library call
     :param pypads_wrappe: pypads provided - wrapped library object
@@ -86,24 +119,9 @@ def input(self, *args, write_format=WriteFormats.pickle, pypads_wrappe, pypads_p
     :param kwargs: Input kwargs to the real library call
     :return:
     """
-    for i in range(len(args)):
-        arg = args[i]
-        name = pypads_wrappe.__name__ + "." + str(id(self)) + "." + get_now() + "." + pypads_item + ".args." + str(
-            i)
-        try_write_artifact(name, arg, write_format)
-
-    for (k, v) in kwargs.items():
-        name = pypads_wrappe.__name__ + "." + str(
-            id(self)) + "." + get_now() + "." + pypads_item + ".kwargs." + k
-        try_write_artifact(name, v, write_format)
-
-    result = pypads_fn_stack.pop()(*args, **kwargs)
-    if result is self._pads_wrapped_instance:
-        return self
+    result = _pypads_fn_stack.pop()(*args, **kwargs)
+    try_mlflow_log(mlflow.log_metric, _pypads_item, result)
+    if self is not None:
+        if result is self._pads_wrapped_instance:
+            return self
     return result
-
-
-def cpu(self, *args, pypads_wrappe, pypads_package, pypads_item, pypads_fn_stack, **kwargs):
-    import platform
-    mlflow.set_tag("pypads.processor", platform.processor())
-    return pypads_fn_stack.pop()(*args, **kwargs)

@@ -1,21 +1,41 @@
 {
-  "hook_fns": {
-    "pypads_fit": [
-      "fit",
-      "fit_predict",
-      "fit_transform"
-    ],
-    "pypads_predict": [
-      "fit_predict",
-      "predict",
-      "score"
-    ],
-    "pypads_transform": [
-      "fit_transform",
-      "transform"
-    ]
+  "default_hooks": {
+    "modules": {
+      "fns": {}
+    },
+    "classes": {
+      "fns": {
+        "pypads_fit": [
+          "fit",
+          "fit_predict",
+          "fit_transform"
+        ],
+        "pypads_predict": [
+          "fit_predict",
+          "predict",
+          "score"
+        ],
+        "pypads_transform": [
+          "fit_transform",
+          "transform"
+        ]
+      }
+    },
+    "fns": {
+      "pypads_metric": [
+        "f1_score"
+      ]
+    }
   },
   "algorithms": [
+    {
+      "name": "f1_score",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.metrics.classification.f1_score"
+      },
+      "type": "Metric"
+    },
     {
       "name": "base sklearn estimator",
       "other_names": [],

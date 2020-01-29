@@ -5,7 +5,7 @@ from types import FunctionType
 import mlflow
 from mlflow.tracking import MlflowClient
 
-from pypads.logging_functions import parameters, output, input, cpu
+from pypads.logging_functions import parameters, output, input, cpu, metric
 from pypads.logging_util import WriteFormats
 
 
@@ -41,7 +41,8 @@ DEFAULT_MAPPING = {
     "parameters": parameters,
     "output": output,
     "input": input,
-    "cpu": cpu
+    "cpu": cpu,
+    "metric": metric
 }
 
 # Default config.
@@ -51,8 +52,10 @@ DEFAULT_MAPPING = {
 DEFAULT_CONFIG = {"events": {
     "parameters": {"on": ["pypads_fit"]},
     "cpu": {"on": ["pypads_fit"]},
-    "output": {"on": ["pypads_fit", "pypads_predict"], "with": {"write_format": WriteFormats.pickle.name}},
-    "input": {"on": ["pypads_fit"], "with": {"write_format": WriteFormats.pickle.name}}
+    "output": {"on": ["pypads_fit", "pypads_predict", "pypads_metric"],
+               "with": {"write_format": WriteFormats.pickle.name}},
+    "input": {"on": ["pypads_fit", "pypads_metric"], "with": {"write_format": WriteFormats.pickle.name}},
+    "metric": {"on": ["pypads_metric"]}
 }}
 
 # Tag name to save the config to in mlflow context.
