@@ -28,11 +28,11 @@ A simple example looks like the following,
 from pypads.base import PyPads
 # define the configuration, in this case we want to track the parameters, 
 # outputs and the inputs of each called function included in the hooks (pypads_fit, pypads_predict)
-config = {'events': {
-            "parameters" : ['pypads_fit'],
-            "outputs" : ['pypads_predict', 'pypads_fit'],
-            "inputs" : ['pypads_fit']
-            }}
+config = {"events": {
+    "parameters": {"on": ["pypads_fit"]},
+    "output": {"on": ["pypads_fit", "pypads_predict"]},
+    "input": {"on": ["pypads_fit"]}
+}}
 # A simple initialization of the class will activate the tracking
 PyPads(config=config)
 
@@ -53,17 +53,35 @@ predicted = model.predict(dataset.data) # pypads will track only the output of t
 The used hooks for each event are defined in the mapping json file where each event includes the functions to listen to.
 In the example of sklearn mapping json file, we have:
 
-    "hook_fns": {
-        "pypads_fit": [
-            "fit", "fit_predict", "fit_transform"
-        ],
-        "pypads_predict": [
-            "fit_predict", "predict", "score"
-        ],
-        "pypads_transform": [
-            "fit_transform", "transform"
-        ]
-    }
+    "default_hooks": {
+        "modules": {
+          "fns": {}
+        },
+        "classes": {
+          "fns": {
+            "pypads_fit": [
+              "fit",
+              "fit_predict",
+              "fit_transform"
+            ],
+            "pypads_predict": [
+              "fit_predict",
+              "predict",
+              "score"
+            ],
+            "pypads_transform": [
+              "fit_transform",
+              "transform"
+            ]
+          }
+        },
+        "fns": {
+          "pypads_metric": [
+            "f1_score"
+          ]
+        }
+      }
+
 For example, "pypads_fit" is an event listener on any fit, fit_predict and fit_transform call made by the tracked model class.
 ### PyPads class
 As we have seen, a simple initialization of the class at the top of your code activate the tracking for libraries that has a mapping file defining the algorithms to track.
