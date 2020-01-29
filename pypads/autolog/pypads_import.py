@@ -387,7 +387,7 @@ def _wrap_method_helper(fn, hook, params, stack, mapping, ctx, fn_type=None, las
         @wraps(fn)
         def ctx_setter(*args, pypads_hooked_fn=hook,
                        pypads_hook_params=params, _pypads_mapped_by=mapping, _pypads_current_mapping=mapping, **kwargs):
-            print("Static method or function " + str(ctx) + str(fn) + str(hook))
+            debug("Static method or function " + str(ctx) + str(fn) + str(hook))
 
             # check for name collision
             if set([k for k, v in kwargs.items()]) & set(
@@ -412,7 +412,7 @@ def _wrap_method_helper(fn, hook, params, stack, mapping, ctx, fn_type=None, las
         @wraps(fn)
         def ctx_setter(self, *args, pypads_hooked_fn=hook,
                        pypads_hook_params=params, _pypads_mapped_by=mapping, _pypads_current_mapping=mapping, **kwargs):
-            print("Method " + str(ctx) + str(fn) + str(hook))
+            debug("Method " + str(ctx) + str(fn) + str(hook))
 
             if self is not None and not len(stack) is 0 and not inspect.ismethod(stack[0]):
                 methods = []
@@ -444,7 +444,7 @@ def _wrap_method_helper(fn, hook, params, stack, mapping, ctx, fn_type=None, las
         @wraps(fn)
         def ctx_setter(cls, *args, pypads_hooked_fn=hook,
                        pypads_hook_params=params, _pypads_mapped_by=mapping, _pypads_current_mapping=mapping, **kwargs):
-            print("Class method " + str(ctx) + str(fn) + str(hook))
+            debug("Class method " + str(ctx) + str(fn) + str(hook))
 
             # check for name collision
             if set([k for k, v in kwargs.items()]) & set(
