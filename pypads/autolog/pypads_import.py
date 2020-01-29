@@ -552,6 +552,9 @@ def _wrap_function(fn_name, ctx, mapping):
         warning(ctx + " is no class or module. Couldn't access " + fn_name + " on it.")
 
 
+active = False
+
+
 def extend_import_module():
     """
     Function to add the custom import logic to the python importlib execution
@@ -569,24 +572,28 @@ def activate_tracking(mod_globals=None):
     :param mod_globals: globals() object used to duckpunch already loaded classes
     :return:
     """
-    extend_import_module()
-    for i in set(mapping.reference.rsplit('.', 1)[0] for mapping in get_implementations() if
-                 mapping.reference.rsplit('.', 1)[0] in sys.modules
-                 and mapping.reference.rsplit('.', 1)[0] not in punched_module):
-        spec = importlib.util.find_spec(i)
-        loader = PyPadsLoader(spec)
-        module = loader.load_module(i)
-        loader.exec_module(module)
-        sys.modules[i] = module
-        warning(i + " was imported before PyPads. PyPads has to be imported before importing tracked libraries."
-                    " Otherwise it can only try to wrap classes on global level.")
-        if mod_globals:
-            for k, l in mod_globals.items():
-                if isinstance(l, ModuleType) and i in str(l):
-                    mod_globals[k] = module
-                elif inspect.isclass(l) and i in str(l) and hasattr(module, l.__name__):
-                    if k not in mod_globals:
-                        warning(i + " was imported before PyPads, but couldn't be modified on globals.")
-                    else:
-                        info("Modded " + i + " after importing it. This might fail.")
-                        mod_globals[k] = getattr(module, l.__name__)
+    global active
+    if not active:
+        active = True
+
+        extend_import_module()
+        for i in set(mapping.reference.rsplit('.', 1)[0] for mapping in get_implementations() if
+                     mapping.reference.rsplit('.', 1)[0] in sys.modules
+                     and mapping.reference.rsplit('.', 1)[0] not in punched_module):
+            spec = importlib.util.find_spec(i)
+            loader = PyPadsLoader(spec)
+            module = loader.load_module(i)
+            loader.exec_module(module)
+            sys.modules[i] = module
+            warning(i + " was imported before PyPads. PyPads has to be imported before importing tracked libraries."
+                        " Otherwise it can only try to wrap classes on global level.")
+            if mod_globals:
+                for k, l in mod_globals.items():
+                    if isinstance(l, ModuleType) and i in str(l):
+                        mod_globals[k] = module
+                    elif inspect.isclass(l) and i in str(l) and hasattr(module, l.__name__):
+                        if k not in mod_globals:
+                            warning(i + " was imported before PyPads, but couldn't be modified on globals.")
+                        else:
+                            info("Modded " + i + " after importing it. This might fail.")
+                            mod_globals[k] = getattr(module, l.__name__)
