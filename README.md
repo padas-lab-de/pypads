@@ -13,7 +13,6 @@ Logging results of machine learning workflows often shares similar structures an
 This tool requires those libraries to work:
 
     mlflow>=1.4.0
-    scikit-learn<0.22.0
     boltons>=19.3.0
 To install pypads from source, clone the source code repository and run
    
