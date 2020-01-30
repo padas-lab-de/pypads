@@ -6,7 +6,6 @@ import json
 import os
 import sys
 import types
-from copy import deepcopy
 from importlib._bootstrap_external import PathFinder, _LoaderBasics
 from itertools import chain
 from logging import warning, info, debug
@@ -15,6 +14,8 @@ from types import ModuleType
 
 import mlflow
 from boltons.funcutils import wraps
+
+from pypads.logging_functions import log_init
 
 punched_module = set()
 punched_classes = set()
@@ -243,32 +244,6 @@ def _wrap_module(module, mapping):
         setattr(module, "_pypads_wrapped", module)
 
 
-class CallCache:
-    """
-    Cache used to stop multiple calls if sub and superclass are punched.
-    """
-
-    def __init__(self):
-        self.cache = {}
-
-    def add(self, identifier, reference):
-        if identifier not in self.cache:
-            self.cache[identifier] = set()
-        self.cache[identifier].add(reference)
-
-    def has(self, identifier, reference):
-        return identifier in self.cache and reference in self.cache[identifier]
-
-    def delete(self, identifier, reference):
-        if identifier in self.cache:
-            self.cache[identifier].remove(reference)
-            if len(self.cache[identifier]):
-                del self.cache[identifier]
-
-
-call_cache = CallCache()
-
-
 def _wrap_class(clazz, ctx, mapping):
     """
     Wrap a class in given ctx with pypads functionality
@@ -277,8 +252,7 @@ def _wrap_class(clazz, ctx, mapping):
     :param mapping:
     :return:
     """
-    if not hasattr(clazz, "_pypads_wrapped") or (
-            clazz is not getattr(clazz, "_pypads_wrapped") and issubclass(clazz, getattr(clazz, "_pypads_wrapped"))):
+    if clazz not in punched_classes:
         if not mapping.hooks:
             content = mappings[mapping.file]
             if "default_hooks" in content:
@@ -288,22 +262,8 @@ def _wrap_class(clazz, ctx, mapping):
 
         if hasattr(clazz.__init__, "__module__"):
             original_init = getattr(clazz, "__init__")
-
-            @wraps(clazz.__init__)
-            def __init__(self, *args, _pypads_original_init=original_init, **kwargs):
-                entry = False
-                if not call_cache.has(id(self), __init__.__name__):
-                    call_cache.add(id(self), __init__.__name__)
-                    entry = True
-                    print("Pypads tracked class " + str(clazz) + " initialized.")
-                _pypads_original_init(self, *args, **kwargs)
-                if entry:
-                    call_cache.delete(id(self), __init__.__name__)
-
-            try:
-                setattr(clazz, "__init__", __init__)
-            except Exception as e:
-                warning(str(e))
+            _wrap_method_helper(fn=original_init, hooks=[(log_init, {})], mapping=mapping, ctx=clazz,
+                                fn_type="function")
 
         if mapping.hooks:
             for k, v in mapping.hooks.items():
@@ -315,25 +275,6 @@ def _wrap_class(clazz, ctx, mapping):
         setattr(clazz, "_pypads_wrapped", clazz)
         setattr(ctx, reference_name, clazz)
         punched_classes.add(clazz)
-
-
-def get_class_that_defined_method(method):
-    """
-    Find the first class in the mro defining the given method
-    :param method:
-    :return:
-    """
-    if inspect.ismethod(method):
-        for cls in inspect.getmro(method.__self__.__class__):
-            if cls.__dict__.get(method.__name__) is method:
-                return cls
-        method = method.__func__  # fallback to __qualname__ parsing
-    if inspect.isfunction(method):
-        cls = getattr(inspect.getmodule(method),
-                      method.__qualname__.split('.<locals>', 1)[0].rsplit('.', 1)[0])
-        if isinstance(cls, type):
-            return cls
-    return getattr(method, '__objclass__', None)  # handle special descriptor objects
 
 
 def get_hooked_fns(fn, mapping):
@@ -368,10 +309,56 @@ def get_hooked_fns(fn, mapping):
     return output
 
 
-NONE_OBJECT = object()
+def _wrapped_inner_function(ctx, *args, _pypads_hooked_fn, _pypads_hook_params, _pypads_wrappe, _pypads_context,
+                            _pypads_callback, _pypads_mapped_by, **kwargs):
+    """
+    Wrapped function logic.
+    :param ctx:
+    :param args:
+    :param _pypads_hooked_fn:
+    :param _pypads_hook_params:
+    :param _pypads_wrappe:
+    :param _pypads_context:
+    :param _pypads_item:
+    :param _pypads_fn_stack:
+    :param _pypads_mapped_by:
+    :param kwargs:
+    :return:
+    """
+    if ctx is not None:
+
+        # Track hook execution to stop multiple exections of the same hook
+        if not hasattr(ctx, "_pypads_active_calls"):
+            setattr(ctx, "_pypads_active_calls", set())
+        elif _pypads_hooked_fn in getattr(ctx, "_pypads_active_calls"):
+            return _pypads_callback(*args, **kwargs)
+        getattr(ctx, "_pypads_active_calls").add(_pypads_hooked_fn)
+
+    try:
+
+        # check for name collision
+        if set([k for k, v in kwargs.items()]) & set(
+                [k for k, v in _pypads_hook_params.items()]):
+            warning("Hook parameter is overwriting a parameter in the standard "
+                    "model call. This most likely will produce side effects.")
+
+        out = _pypads_hooked_fn(ctx, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
+                                _pypads_callback=_pypads_callback,
+                                _pypads_mapped_by=_pypads_mapped_by,
+                                *args,
+                                **{**kwargs, **_pypads_hook_params})
+
+        if ctx is not None:
+            getattr(ctx, "_pypads_active_calls").remove(_pypads_hooked_fn)
+        return out
+    except Exception as e:
+        debug("Cleared cache entry for " + str(_pypads_wrappe) + " because of exception: " + str(e))
+        if ctx is not None:
+            getattr(ctx, "_pypads_active_calls").remove(_pypads_hooked_fn)
+        raise e
 
 
-def _wrap_method_helper(fn, hook, params, stack, mapping, ctx, fn_type=None, last_element=False):
+def _wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
     """
     Helper to differentiate between functions, classmethods, static methods and wrap them
     :param fn:
@@ -384,107 +371,83 @@ def _wrap_method_helper(fn, hook, params, stack, mapping, ctx, fn_type=None, las
     :param last_element:
     :return:
     """
+
+    def get_wrapper(_pypads_hooked_fn, _pypads_hook_params, _pypads_wrappe,
+                    _pypads_context, _pypads_callback, _pypads_mapped_by):
+        if not fn_type or "staticmethod" in str(fn_type):
+            @wraps(fn)
+            def ctx_setter(*args, _pypads_hooked_fn=_pypads_hooked_fn, _pypads_callback=_pypads_callback,
+                           _pypads_hook_params=_pypads_hook_params, _pypads_mapped_by=_pypads_mapped_by, **kwargs):
+                debug("Static method hook " + str(ctx) + str(fn) + str(_pypads_hooked_fn))
+                return _wrapped_inner_function(None, *args, _pypads_hooked_fn=_pypads_hooked_fn,
+                                               _pypads_hook_params=_pypads_hook_params, _pypads_wrappe=_pypads_wrappe,
+                                               _pypads_context=_pypads_context,
+                                               _pypads_callback=_pypads_callback, _pypads_mapped_by=_pypads_mapped_by,
+                                               **kwargs)
+
+            return ctx_setter
+        elif "function" in str(fn_type):
+            @wraps(fn)
+            def ctx_setter(self, *args, _pypads_hooked_fn=_pypads_hooked_fn, _pypads_callback=_pypads_callback,
+                           _pypads_hook_params=_pypads_hook_params, _pypads_mapped_by=_pypads_mapped_by, **kwargs):
+                debug("Method hook " + str(ctx) + str(fn) + str(_pypads_hooked_fn))
+                return _wrapped_inner_function(self, *args, _pypads_hooked_fn=_pypads_hooked_fn,
+                                               _pypads_hook_params=_pypads_hook_params, _pypads_wrappe=_pypads_wrappe,
+                                               _pypads_context=_pypads_context,
+                                               _pypads_callback=_pypads_callback, _pypads_mapped_by=_pypads_mapped_by,
+                                               **kwargs)
+
+            return ctx_setter
+        else:
+            @wraps(fn)
+            def ctx_setter(cls, *args, _pypads_hooked_fn=_pypads_hooked_fn, _pypads_callback=_pypads_callback,
+                           _pypads_hook_params=_pypads_hook_params, _pypads_mapped_by=_pypads_mapped_by, **kwargs):
+                debug("Class method hook " + str(ctx) + str(fn) + str(_pypads_hooked_fn))
+                return _wrapped_inner_function(cls, *args, _pypads_hooked_fn=_pypads_hooked_fn,
+                                               _pypads_hook_params=_pypads_hook_params, _pypads_wrappe=_pypads_wrappe,
+                                               _pypads_context=_pypads_context,
+                                               _pypads_callback=_pypads_callback, _pypads_mapped_by=_pypads_mapped_by,
+                                               **kwargs)  #
+
+            return ctx_setter
+
+    setattr(ctx, "_pypads_mapping_" + fn.__name__, mapping)
+    setattr(ctx, "_pypads_original_" + fn.__name__, fn)
+
     if not fn_type or "staticmethod" in str(fn_type):
         @wraps(fn)
-        def ctx_setter(*args, pypads_hooked_fn=hook,
-                       pypads_hook_params=params, _pypads_stack=deepcopy(stack), _pypads_mapped_by=mapping,
-                       _pypads_current_mapping=mapping, **kwargs):
-            debug("Static method or function " + str(ctx) + str(fn) + str(hook))
-
-            # check for name collision
-            if set([k for k, v in kwargs.items()]) & set(
-                    [k for k, v in pypads_hook_params.items()]):
-                warning("Hook parameter is overwriting a parameter in the standard "
-                        "model call. This most likely will produce side effects.")
-
-            entry = False
-            if not call_cache.has(id(fn), pypads_hooked_fn.__name__):
-                entry = True
-                call_cache.add(id(fn), pypads_hooked_fn.__name__)
-                out = pypads_hooked_fn(None, _pypads_wrappe=fn, _pypads_context=ctx,
-                                       _pypads_item=fn.__name__, _pypads_fn_stack=_pypads_stack,
-                                       _pypads_mapped_by=mapping,
-                                       *args,
-                                       **{**kwargs, **pypads_hook_params})
-            else:
-                out = _pypads_stack.pop()(*args, **kwargs)
-            if entry:
-                call_cache.delete(id(fn), pypads_hooked_fn.__name__)
-            return out
+        def entry(*args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
+            print("Call to tracked static method or function " + str(fn))
+            callback = fn
+            for (hook, params) in hooks:
+                callback = get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
+                                       _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping)
+            return callback(*args, **kwargs)
     elif "function" in str(fn_type):
         @wraps(fn)
-        def ctx_setter(self, *args, pypads_hooked_fn=hook,
-                       pypads_hook_params=params, _pypads_mapped_by=mapping, _pypads_stack=deepcopy(stack),
-                       _pypads_current_mapping=mapping, **kwargs):
-            debug("Method " + str(ctx) + str(fn) + str(hook))
+        def entry(self, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
+            print("Call to tracked method " + str(fn))
+            callback = types.MethodType(fn, self)
+            for (hook, params) in hooks:
+                callback = types.MethodType(
+                    get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
+                                _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping), self)
 
-            if self is not None and not len(_pypads_stack) is 0 and not inspect.ismethod(_pypads_stack[0]):
-                methods = []
-                for callback in _pypads_stack:
-                    methods.append(types.MethodType(callback, self))
-                _pypads_stack.clear()
-                _pypads_stack.extend(methods)
+            return callback(*args, **kwargs)
 
-            # check for name collision
-            if set([k for k, v in kwargs.items()]) & set(
-                    [k for k, v in pypads_hook_params.items()]):
-                warning("Hook parameter is overwriting a parameter in the standard "
-                        "model call. This most likely will produce side effects.")
-
-            entry = False
-            if not call_cache.has(id(self), pypads_hooked_fn.__name__):
-                entry = True
-                call_cache.add(id(self), pypads_hooked_fn.__name__)
-                out = pypads_hooked_fn(self, _pypads_wrappe=fn, _pypads_context=ctx,
-                                       _pypads_item=fn.__name__, _pypads_fn_stack=_pypads_stack,
-                                       _pypads_mapped_by=mapping,
-                                       *args,
-                                       **{**kwargs, **pypads_hook_params})
-            else:
-                out = _pypads_stack.pop()(*args, **kwargs)
-            if entry:
-                call_cache.delete(id(self), pypads_hooked_fn.__name__)
-            return out
-    else:
+    elif "classmethod" in str(fn_type):
         @wraps(fn)
-        def ctx_setter(cls, *args, pypads_hooked_fn=hook,
-                       pypads_hook_params=params, _pypads_mapped_by=mapping, _pypads_stack=deepcopy(stack),
-                       _pypads_current_mapping=mapping, **kwargs):
-            debug("Class method " + str(ctx) + str(fn) + str(hook))
-
-            if cls is not None and not len(_pypads_stack) is 0 and not inspect.ismethod(_pypads_stack[0]):
-                methods = []
-                for callback in _pypads_stack:
-                    methods.append(types.MethodType(callback, cls))
-                _pypads_stack.clear()
-                _pypads_stack.extend(methods)
-
-            # check for name collision
-            if set([k for k, v in kwargs.items()]) & set(
-                    [k for k, v in pypads_hook_params.items()]):
-                warning("Hook parameter is overwriting a parameter in the standard "
-                        "model call. This most likely will produce side effects.")
-
-            entry = False
-            if not call_cache.has(id(cls), pypads_hooked_fn.__name__):
-                entry = True
-                call_cache.add(id(cls), pypads_hooked_fn.__name__)
-                out = pypads_hooked_fn(cls, _pypads_wrappe=fn, _pypads_context=ctx,
-                                       _pypads_item=fn.__name__, _pypads_fn_stack=_pypads_stack,
-                                       _pypads_mapped_by=mapping,
-                                       *args,
-                                       **{**kwargs, **pypads_hook_params})
-            else:
-                out = _pypads_stack.pop()(*args, **kwargs)
-            if entry:
-                call_cache.delete(id(cls), pypads_hooked_fn.__name__)
-            return out
-
-    stack.append(ctx_setter)
-    if last_element:
-        setattr(ctx, "_pypads_mapping_" + fn.__name__, mapping)
-        setattr(ctx, "_pypads_original_" + fn.__name__, fn)
-        setattr(ctx, fn.__name__, stack.pop())
+        def entry(cls, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, fn_type=fn_type, **kwargs):
+            print("Call to tracked class method " + str(fn))
+            callback = types.MethodType(fn, cls)
+            for (hook, params) in hooks:
+                callback = types.MethodType(
+                    get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
+                                _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping), cls)
+            return callback(*args, **kwargs)
+    else:
+        return
+    setattr(ctx, fn.__name__, entry)
 
 
 def _wrap_function(fn_name, ctx, mapping):
@@ -501,7 +464,8 @@ def _wrap_function(fn_name, ctx, mapping):
             mro = ctx.mro()
             for c in mro[1:]:
                 defining_class = ctx
-                if hasattr(ctx, "__dict__") and fn_name in defining_class.__dict__:
+                if hasattr(ctx, "__dict__") and fn_name in defining_class.__dict__ and callable(
+                        defining_class.__dict__[fn_name]):
                     break
                 defining_class = None
         else:
@@ -518,36 +482,25 @@ def _wrap_function(fn_name, ctx, mapping):
                 except Exception as e:
                     warning(str(e))
 
-            if not fn:
+            # skip wrong extractions TODO fix for structure like <class 'sklearn.utils.metaestimators._IffHasAttrDescriptor'>
+            if not fn or not callable(fn):
                 return
 
             if isinstance(fn, property):
                 fn = fn.fget
 
-            fn_stack = [fn]
             hooks = get_hooked_fns(fn, mapping)
             if len(hooks) > 0:
-                for (hook, params) in hooks[:-1]:
-                    _wrap_method_helper(fn=fn, hook=hook, params=params, stack=fn_stack, mapping=mapping, ctx=ctx,
-                                        fn_type=type(defining_class.__dict__[fn.__name__]))
-
-                (hook, params) = hooks[-1]
-                _wrap_method_helper(fn=fn, hook=hook, params=params, stack=fn_stack, mapping=mapping, ctx=ctx,
-                                    fn_type=type(defining_class.__dict__[fn.__name__]), last_element=True)
+                _wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=ctx,
+                                    fn_type=type(defining_class.__dict__[fn.__name__]))
     elif hasattr(ctx, fn_name):
         if hasattr(ctx, "_pypads_original_" + fn_name):
             fn = getattr(ctx, "_pypads_original_" + fn_name)
         else:
             fn = getattr(ctx, fn_name)
-        fn_stack = [fn]
         hooks = get_hooked_fns(fn, mapping)
         if len(hooks) > 0:
-            for (hook, params) in hooks[:-1]:
-                _wrap_method_helper(fn=fn, hook=hook, params=params, stack=fn_stack, mapping=mapping, ctx=ctx)
-
-            (hook, params) = hooks[-1]
-            _wrap_method_helper(fn=fn, hook=hook, params=params, stack=fn_stack, mapping=mapping, ctx=ctx,
-                                last_element=True)
+            _wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=ctx)
     else:
         warning(ctx + " is no class or module. Couldn't access " + fn_name + " on it.")
 

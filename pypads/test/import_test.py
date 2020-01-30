@@ -31,8 +31,8 @@ class PadreAppTest(unittest.TestCase):
         run = mlflow.active_run()
         assert tracker._run.info.run_id == run.info.run_id
 
-        n_inputs = 5 + 6  # number of inputs of DecisionTreeClassifier.fit, LabelEncoder.fit and f1_score
-        n_outputs = 1 + 1  # number of outputs of fit and predict and score and f1_score
+        n_inputs = 5 + 1 + 6  # number of inputs of DecisionTreeClassifier.fit, LabelEncoder.fit and f1_score
+        n_outputs = 1 + 1 + 1 + 1  # number of outputs of fit and predict and score and f1_score
         assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
 
         import urllib
@@ -65,30 +65,6 @@ class PadreAppTest(unittest.TestCase):
         model.fit(dataset.data, dataset.target)
 
         # make predictions
-        expected = dataset.target
-        predicted = model.predict(dataset.data)
-        # summarize the fit of the model
-        print(metrics.classification_report(expected, predicted))
-        print(metrics.confusion_matrix(expected, predicted))
-
-    def test_parameter_logging_in_pipelines(self):
-
-        # Activate tracking of pypads
-        from pypads.base import PyPads
-        PyPads()
-        from sklearn import datasets, metrics
-        from sklearn.decomposition import PCA
-        from sklearn.svm import SVC
-        from sklearn.pipeline import Pipeline
-
-        # load the iris dataset
-        dataset = datasets.load_iris()
-
-        # define the pipeline
-        model = Pipeline([('PCA', PCA()),('SVC', SVC())])
-        model.fit(dataset.data, dataset.target)
-
-        #make predictions
         expected = dataset.target
         predicted = model.predict(dataset.data)
         # summarize the fit of the model

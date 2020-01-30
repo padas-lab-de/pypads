@@ -16,7 +16,13 @@ def get_now():
     return datetime.datetime.now().strftime("%d_%b_%Y_%H-%M-%S.%f")
 
 
-def parameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_item, _pypads_fn_stack,
+def log_init(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
+             **kwargs):
+    print("Pypads tracked class " + str(self.__class__) + " initialized.")
+    _pypads_callback(*args, **kwargs)
+
+
+def parameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
                **kwargs):
     """
     Function logging the parameters of the current pipeline object function call.
@@ -29,7 +35,7 @@ def parameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, 
     :param kwargs: Input kwargs to the real library call
     :return:
     """
-    result = _pypads_fn_stack.pop()(*args, **kwargs)
+    result = _pypads_callback(*args, **kwargs)
 
     try:
         # prevent wrapped_class from becoming unwrapped
@@ -51,7 +57,7 @@ def parameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, 
 
 
 def output(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
-           _pypads_item, _pypads_fn_stack,
+           _pypads_callback,
            **kwargs):
     """
     Function logging the output of the current pipeline object function call.
@@ -65,14 +71,14 @@ def output(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypad
     :param kwargs: Input kwargs to the real library call
     :return:
     """
-    result = _pypads_fn_stack.pop()(*args, **kwargs)
-    name = _pypads_wrappe.__name__ + "." + str(id(self)) + "." + get_now() + "." + _pypads_item + ".return"
+    result = _pypads_callback(*args, **kwargs)
+    name = _pypads_context.__name__ + "[" + str(id(self)) + "]." + _pypads_wrappe.__name__ + "(return)"
     try_write_artifact(name, result, write_format)
     return result
 
 
 def input(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
-          _pypads_item, _pypads_fn_stack,
+          _pypads_callback,
           **kwargs):
     """
     Function logging the input parameters of the current pipeline object function call.
@@ -88,26 +94,26 @@ def input(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypads
     """
     for i in range(len(args)):
         arg = args[i]
-        name = _pypads_wrappe.__name__ + "." + str(id(self)) + "." + get_now() + "." + _pypads_item + ".args." + str(
-            i)
+        name = _pypads_context.__name__ + "[" + str(id(self)) + "]." + _pypads_wrappe.__name__ + "(args[" + str(
+            i) + "])"
         try_write_artifact(name, arg, write_format)
 
     for (k, v) in kwargs.items():
-        name = _pypads_wrappe.__name__ + "." + str(
-            id(self)) + "." + get_now() + "." + _pypads_item + ".kwargs." + k
+        name = _pypads_context.__name__ + "[" + str(id(self)) + "]." + _pypads_wrappe.__name__ + "(kwargs[" + str(
+            k) + "])"
         try_write_artifact(name, v, write_format)
 
-    result = _pypads_fn_stack.pop()(*args, **kwargs)
+    result = _pypads_callback(*args, **kwargs)
     return result
 
 
-def cpu(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_item, _pypads_fn_stack, **kwargs):
+def cpu(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
     import platform
     mlflow.set_tag("pypads.processor", platform.processor())
-    return _pypads_fn_stack.pop()(*args, **kwargs)
+    return _pypads_callback(*args, **kwargs)
 
 
-def metric(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_item, _pypads_fn_stack, **kwargs):
+def metric(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
     """
     Function logging the wrapped metric function
     :param self: Wrapper library object
@@ -119,8 +125,8 @@ def metric(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pyp
     :param kwargs: Input kwargs to the real library call
     :return:
     """
-    result = _pypads_fn_stack.pop()(*args, **kwargs)
-    try_mlflow_log(mlflow.log_metric, _pypads_item, result)
+    result = _pypads_callback(*args, **kwargs)
+    try_mlflow_log(mlflow.log_metric, result)
     if self is not None:
         if result is self._pads_wrapped_instance:
             return self

@@ -53,8 +53,8 @@ DEFAULT_CONFIG = {"events": {
     "parameters": {"on": ["pypads_fit"]},
     "cpu": {"on": ["pypads_fit"]},
     "output": {"on": ["pypads_fit", "pypads_predict", "pypads_metric"],
-               "with": {"write_format": WriteFormats.pickle.name}},
-    "input": {"on": ["pypads_fit", "pypads_metric"], "with": {"write_format": WriteFormats.pickle.name}},
+               "with": {"write_format": WriteFormats.text.name}},
+    "input": {"on": ["pypads_fit", "pypads_metric"], "with": {"write_format": WriteFormats.text.name}},
     "metric": {"on": ["pypads_metric"]}
 }}
 
