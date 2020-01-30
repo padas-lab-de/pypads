@@ -13,7 +13,6 @@
     },
     "fns": {
       "pypads_metric": [
-        "f1_score"
       ]
     }
   },
