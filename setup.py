@@ -29,7 +29,11 @@ print('VERSION:{version}'.format(version=version))
 with open('requirements.txt', 'r') as f:
     required = f.read()
 
+with open('requirements-dev.txt', 'r') as f:
+    dev_required = f.read()
+
 install_requires = required
+dev_requires = dev_required
 
 setup(
     name=name,
@@ -50,6 +54,7 @@ setup(
        pypads=pypads.cli.pypads:pypads
    ''',
     install_requires=install_requires,
+    dev_requires=dev_requires,
     command_options={
         'build_sphinx': {
             'project': ('setup.py', name),

@@ -1,4 +1,4 @@
-# pypads
+# PyPads
 Building on the MLFlow toolset this project aims to extend the functionality for MLFlow, increase the automation and therefore reduce the workload for the user. The production of structured results is an additional goal of the extension.
 
 # Concept
@@ -9,11 +9,15 @@ Logging results of machine learning workflows often shares similar structures an
 - **Output standardization:** TODO
 - **Dataset management:** TODO
 
+# Use Cases
+- **Explorative logging**: TODO
+- **Pipeline extraction**: TODO
+- **Inter experiment comparision**: TODO
+
 # Getting started
 This tool requires those libraries to work:
 
     mlflow>=1.4.0
-    scikit-learn<0.22.0
     boltons>=19.3.0
 To install pypads from source, clone the source code repository and run
    
@@ -27,11 +31,11 @@ A simple example looks like the following,
 from pypads.base import PyPads
 # define the configuration, in this case we want to track the parameters, 
 # outputs and the inputs of each called function included in the hooks (pypads_fit, pypads_predict)
-config = {'events': {
-            "parameters" : ['pypads_fit'],
-            "outputs" : ['pypads_predict', 'pypads_fit'],
-            "inputs" : ['pypads_fit']
-            }}
+config = {"events": {
+    "parameters": {"on": ["pypads_fit"]},
+    "output": {"on": ["pypads_fit", "pypads_predict"]},
+    "input": {"on": ["pypads_fit"]}
+}}
 # A simple initialization of the class will activate the tracking
 PyPads(config=config)
 
@@ -52,17 +56,35 @@ predicted = model.predict(dataset.data) # pypads will track only the output of t
 The used hooks for each event are defined in the mapping json file where each event includes the functions to listen to.
 In the example of sklearn mapping json file, we have:
 
-    "hook_fns": {
-        "pypads_fit": [
-            "fit", "fit_predict", "fit_transform"
-        ],
-        "pypads_predict": [
-            "fit_predict", "predict", "score"
-        ],
-        "pypads_transform": [
-            "fit_transform", "transform"
-        ]
-    }
+    "default_hooks": {
+        "modules": {
+          "fns": {}
+        },
+        "classes": {
+          "fns": {
+            "pypads_fit": [
+              "fit",
+              "fit_predict",
+              "fit_transform"
+            ],
+            "pypads_predict": [
+              "fit_predict",
+              "predict",
+              "score"
+            ],
+            "pypads_transform": [
+              "fit_transform",
+              "transform"
+            ]
+          }
+        },
+        "fns": {
+          "pypads_metric": [
+            "f1_score"
+          ]
+        }
+      }
+
 For example, "pypads_fit" is an event listener on any fit, fit_predict and fit_transform call made by the tracked model class.
 ### PyPads class
 As we have seen, a simple initialization of the class at the top of your code activate the tracking for libraries that has a mapping file defining the algorithms to track.
@@ -82,6 +104,6 @@ class PyPads(uri=None, name=None, mapping=None, config=None, mod_globals=None)
 >
 > **config : dict, optional (default=None)** <br> A dictionary that maps the events defined in PyPads mapping files with the logging functions.
 >
-> **mod_globals: object, optional (default=None)** <br> globals() object used to 'duckpunch' already loaded classes.
+> **mod_globals : object, optional (default=None)** <br> globals() object used to 'duckpunch' already loaded classes.
 # Scientific work disclaimer
-If you want to use this tool or any of its resources in your scientific work include a citation.
+This was created in scope of scientific work of the Data Science Chair at the University of Passau. If you want to use this tool or any of its resources in your scientific work include a citation.
