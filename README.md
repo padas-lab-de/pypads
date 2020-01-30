@@ -101,4 +101,4 @@ class PyPads(uri=None, name=None, mapping=None, config=None, mod_globals=None)
 >
 > **mod_globals: object, optional (default=None) <br> globals() object used to 'duckpunch' already loaded classes.
 # Scientific work disclaimer
-If you want to use this tool or any of its resources in your scientific work include a citation.
+This was created in scope of scientific work of the Data Science Chair at the University of Passau. If you want to use this tool or any of its resources in your scientific work include a citation.
