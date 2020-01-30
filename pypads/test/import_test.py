@@ -108,7 +108,7 @@ class PadreAppTest(unittest.TestCase):
             run = mlflow.start_run(experiment_id=experiment_id)
         except Exception:
             # TODO broken when all tests are running. Other tests seem to leave run open
-            mlflow.end_run(mlflow.active_run())
+            mlflow.end_run()
             run = mlflow.start_run(experiment_id=experiment_id)
         # Activate tracking of pypads
         from pypads.base import PyPads
