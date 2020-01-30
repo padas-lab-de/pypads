@@ -1,18 +1,18 @@
 import datetime
 import unittest
-
+import os
+import shutil
 
 class PadreAppTest(unittest.TestCase):
 
-    def test_parameter_logging_extension(self):
-
+    def test_default_logging_extension(self):
         # Activate tracking of pypads
         from pypads.base import PyPads
         tracker = PyPads()
         from sklearn import datasets
         from sklearn.metrics.classification import f1_score
-        # from sklearn.metrics import classification
         from sklearn.tree import DecisionTreeClassifier
+
         # load the iris datasets
         dataset = datasets.load_iris()
 
@@ -24,7 +24,6 @@ class PadreAppTest(unittest.TestCase):
         predicted = model.predict(dataset.data)
         # summarize the fit of the model
         print("Score: " + str(f1_score(expected, predicted, average="macro")))
-        # print(metrics.confusion_matrix(expected, predicted))
 
         # assert statements
         import mlflow
@@ -35,41 +34,17 @@ class PadreAppTest(unittest.TestCase):
         n_outputs = 1 + 1 + 1 + 1  # number of outputs of fit and predict and score and f1_score
         assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
 
-        import urllib
-        import os
         parameters = tracker._mlf.list_artifacts(run.info.run_id, path='../params')
         assert len(parameters) != 0
         assert 'split_quality' in ''.join([p.path for p in parameters])
-        f = parameters[0]
-        path = urllib.parse.urlparse(os.path.join(run.info.artifact_uri, f.path)).path
-        if 'split_quality' in path:
-            with open(path, 'r') as p:
-                param = p.read()
-            assert model.criterion == param
 
-    def test_parameter_logging_in_pipelines(self):
+        metrics = tracker.mlf.list_artifacts(run.info.run_id, path='../metrics')
+        assert len(metrics) != 0
 
-        # Activate tracking of pypads
-        from pypads.base import PyPads
-        PyPads()
-        from sklearn import datasets, metrics
-        from sklearn.decomposition import PCA
-        from sklearn.svm import SVC
-        from sklearn.pipeline import Pipeline
+        assert 'f1_score' in ''.join([m.path for m in metrics])
 
-        # load the iris dataset
-        dataset = datasets.load_iris()
-
-        # define the pipeline
-        model = Pipeline([('PCA', PCA()), ('SVC', SVC())])
-        model.fit(dataset.data, dataset.target)
-
-        # make predictions
-        expected = dataset.target
-        predicted = model.predict(dataset.data)
-        # summarize the fit of the model
-        print(metrics.classification_report(expected, predicted))
-        print(metrics.confusion_matrix(expected, predicted))
+        tags = tracker.mlf.list_artifacts(run.info.run_id, path='../tags')
+        assert 'pypads.processor' in ''.join([m.path for m in tags])
 
     def test_simple_parameter_mapping(self):
         # Activate tracking of pypads
@@ -98,6 +73,9 @@ class PadreAppTest(unittest.TestCase):
 
         assert len(tracker.mlf.list_artifacts(run.info.run_id)) == 0
 
+        parameters = tracker._mlf.list_artifacts(run.info.run_id, path='../params')
+        assert len(parameters) != 0
+
     def test_experiment_configuration(self):
         # Activate tracking of pypads
         from pypads.base import PyPads
@@ -123,7 +101,10 @@ class PadreAppTest(unittest.TestCase):
 
     def test_predefined_experiment(self):
         import mlflow
-        mlflow.create_experiment("PredefinedExperiment" + str(datetime.datetime.now().strftime("%d_%b_%Y_%H-%M-%S.%f")))
+        name = "PredefinedExperiment" + str(datetime.datetime.now().strftime("%d_%b_%Y_%H-%M-%S.%f"))
+        mlflow.set_tracking_uri(os.path.expanduser('~/.mlruns/'))
+        experiment_id = mlflow.create_experiment(name)
+        run = mlflow.start_run(experiment_id=experiment_id)
         # Activate tracking of pypads
         from pypads.base import PyPads
         tracker = PyPads()
@@ -142,6 +123,10 @@ class PadreAppTest(unittest.TestCase):
         # summarize the fit of the model
         print(metrics.classification_report(expected, predicted))
         print(metrics.confusion_matrix(expected, predicted))
+
+        #assert statements
+        assert run == tracker._run
+        assert name == tracker._experiment.name
 
     def test_parameter_logging_extension_after_import(self):
         from sklearn import datasets, metrics
@@ -167,7 +152,7 @@ class PadreAppTest(unittest.TestCase):
     def test_multiple_fits(self):
         # Activate tracking of pypads
         from pypads.base import PyPads
-        PyPads()
+        tracker = PyPads()
         from sklearn import datasets, metrics
         from sklearn.tree import DecisionTreeClassifier
 
@@ -178,12 +163,12 @@ class PadreAppTest(unittest.TestCase):
         model = DecisionTreeClassifier()
         model.fit(dataset.data, dataset.target)
         model.fit(dataset.data, dataset.target)
-        # make predictions
-        expected = dataset.target
-        predicted = model.predict(dataset.data)
-        # summarize the fit of the model
-        print(metrics.classification_report(expected, predicted))
-        print(metrics.confusion_matrix(expected, predicted))
+
+        n_inputs = 5*2  # number of inputs of DecisionTreeClassifier.fit
+        n_outputs = 1*2  # number of outputs of fit
+        run = tracker._run
+        # TODO currently a function is only tracked on the first call.
+        assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
 
     def test_keras_base_class(self):
         # Activate tracking of pypads
