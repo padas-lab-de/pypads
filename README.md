@@ -9,6 +9,11 @@ Logging results of machine learning workflows often shares similar structures an
 - **Output standardization:** TODO
 - **Dataset management:** TODO
 
+# Use Cases
+- **Explorative logging**: TODO
+- **Pipeline extraction**: TODO
+- **Inter experiment comparision**: TODO
+
 # Getting started
 This tool requires those libraries to work:
 
