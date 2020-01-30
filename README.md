@@ -99,6 +99,6 @@ class PyPads(uri=None, name=None, mapping=None, config=None, mod_globals=None)
 >
 > **config : dict, optional (default=None)** <br> A dictionary that maps the events defined in PyPads mapping files with the logging functions.
 >
-> **mod_globals : object, optional (default=None) <br> globals() object used to 'duckpunch' already loaded classes.
+> **mod_globals : object, optional (default=None)** <br> globals() object used to 'duckpunch' already loaded classes.
 # Scientific work disclaimer
 This was created in scope of scientific work of the Data Science Chair at the University of Passau. If you want to use this tool or any of its resources in your scientific work include a citation.
