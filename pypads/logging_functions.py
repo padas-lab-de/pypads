@@ -57,6 +57,17 @@ def parameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, 
 
 
 def autologgers(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
+    """
+    Example for adding keras autologging code in a simple way
+    :param self:
+    :param args:
+    :param _pypads_wrappe:
+    :param _pypads_context:
+    :param _pypads_mapped_by:
+    :param _pypads_callback:
+    :param kwargs:
+    :return:
+    """
     import keras
 
     class __MLflowKerasCallback(keras.callbacks.Callback):
