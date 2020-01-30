@@ -119,9 +119,10 @@ class PyPads:
         self.config = config or DEFAULT_CONFIG
 
         # override active run if used
-        if name and run.info.experiment_id is not self.mlf.get_experiment_by_name(name).experiment_id:
+        if name and run.info.experiment_id is not self._experiment.experiment_id:
             warning("Active run doesn't match given input name " + name + ". Recreating new run.")
-            self._run = mlflow.start_run(experiment_id=self._experiment.info.experiment_id)
+            mlflow.end_run(run)
+            self._run = mlflow.start_run(experiment_id=self._experiment.experiment_id)
         else:
             self._run = run
         PyPads.current_pads = self

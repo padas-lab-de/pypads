@@ -126,7 +126,7 @@ def metric(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pyp
     :return:
     """
     result = _pypads_callback(*args, **kwargs)
-    try_mlflow_log(mlflow.log_metric, result)
+    try_mlflow_log(mlflow.log_metric, _pypads_wrappe.__name__, result)
     if self is not None:
         if result is self._pads_wrapped_instance:
             return self
