@@ -1,4 +1,4 @@
-# pypads
+# PyPads
 Building on the MLFlow toolset this project aims to extend the functionality for MLFlow, increase the automation and therefore reduce the workload for the user. The production of structured results is an additional goal of the extension.
 
 # Concept
@@ -8,6 +8,11 @@ Logging results of machine learning workflows often shares similar structures an
 - **Community driven mapping files:** A means to log data from python libaries like sklearn. Interfaces are not added directly to MLFlows, but derived from versioned mapping files of frameworks.
 - **Output standardization:** TODO
 - **Dataset management:** TODO
+
+# Use Cases
+- **Explorative logging**: TODO
+- **Pipeline extraction**: TODO
+- **Inter experiment comparision**: TODO
 
 # Getting started
 This tool requires those libraries to work:
