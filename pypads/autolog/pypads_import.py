@@ -23,6 +23,8 @@ mapping_files = glob.glob(expanduser("~") + ".pypads/bindings/**.json")
 mapping_files.extend(
     glob.glob(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) + "/bindings/resources/mapping/**.json"))
 
+# TODO only load mappings for installed libraries, check for versions and choose the best fitting one etc.
+
 mappings = {}
 for m in mapping_files:
     with open(m) as json_file:

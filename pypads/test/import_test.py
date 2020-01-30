@@ -2,6 +2,8 @@ import datetime
 import os
 import unittest
 
+import mlflow
+
 
 class PadreAppTest(unittest.TestCase):
 
@@ -45,6 +47,7 @@ class PadreAppTest(unittest.TestCase):
 
         tags = tracker.mlf.list_artifacts(run.info.run_id, path='../tags')
         assert 'pypads.processor' in ''.join([m.path for m in tags])
+        mlflow.end_run()
 
     def test_simple_parameter_mapping(self):
         # Activate tracking of pypads
@@ -75,6 +78,7 @@ class PadreAppTest(unittest.TestCase):
 
         parameters = tracker._mlf.list_artifacts(run.info.run_id, path='../params')
         assert len(parameters) != 0
+        mlflow.end_run()
 
     def test_experiment_configuration(self):
         # Activate tracking of pypads
@@ -98,6 +102,7 @@ class PadreAppTest(unittest.TestCase):
 
         # assert statements
         assert tracker._experiment.name == "ConfiguredExperiment"
+        mlflow.end_run()
 
     def test_predefined_experiment(self):
         import mlflow
@@ -132,6 +137,7 @@ class PadreAppTest(unittest.TestCase):
         #assert statements
         assert run == tracker._run
         assert name == tracker._experiment.name
+        mlflow.end_run()
 
     def test_parameter_logging_extension_after_import(self):
         from sklearn import datasets, metrics
@@ -153,6 +159,7 @@ class PadreAppTest(unittest.TestCase):
         # summarize the fit of the model
         print(metrics.classification_report(expected, predicted))
         print(metrics.confusion_matrix(expected, predicted))
+        mlflow.end_run()
 
     def test_multiple_fits(self):
         # Activate tracking of pypads
@@ -174,6 +181,7 @@ class PadreAppTest(unittest.TestCase):
         run = tracker._run
         # TODO currently a function is only tracked on the first call. Fixed
         # TODO assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
+        mlflow.end_run()
 
     def test_keras_base_class(self):
         # Activate tracking of pypads
@@ -205,3 +213,4 @@ class PadreAppTest(unittest.TestCase):
         # summarize the first 5 cases
         for i in range(5):
             print('%s => %d (expected %d)' % (X[i].tolist(), predictions[i], y[i]))
+        mlflow.end_run()

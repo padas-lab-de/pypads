@@ -43,7 +43,7 @@ def parameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, 
 
         for k, v in visitor[0]["steps"][0]["hyper_parameters"]["model_parameters"].items():
             try_mlflow_log(mlflow.log_param,
-                           _pypads_mapped_by.reference + "." + str(id(self)) + "." + get_now() + "." + k, v)
+                           _pypads_mapped_by.reference + "." + str(id(self)) + "." + get_now() + "." + k + ".txt", v)
     except Exception as e:
         warning("Couldn't use visitor for parameter extraction. " + str(e) + " Omit logging for now.")
         # for i in range(len(args)):
@@ -126,7 +126,7 @@ def metric(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pyp
     :return:
     """
     result = _pypads_callback(*args, **kwargs)
-    try_mlflow_log(mlflow.log_metric, _pypads_wrappe.__name__, result)
+    try_mlflow_log(mlflow.log_metric, _pypads_wrappe.__name__ + ".txt", result)
     if self is not None:
         if result is self._pads_wrapped_instance:
             return self
