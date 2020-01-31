@@ -34,7 +34,7 @@
       "implementation": {
         "scikit-learn": "sklearn.metrics.classification.f1_score"
       },
-      "type": "Metric"
+      "type": "metric"
     },
     {
       "name": "base sklearn estimator",

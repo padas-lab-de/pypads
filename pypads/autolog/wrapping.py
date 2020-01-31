@@ -102,6 +102,7 @@ def _get_hooked_fns(fn, mapping):
             if "fns" in content["default_hooks"]:
                 mapping.hooks = content["default_hooks"]["fns"]
 
+    # TODO filter for types, package name contains, etc. instead of only fn names
     pypads_fn = [k for k, v in mapping.hooks.items() if fn.__name__ in v]
     output = []
     config = _get_pypads_config()

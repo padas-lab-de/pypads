@@ -7,7 +7,7 @@ from logging import warning, info, debug
 from types import ModuleType
 
 from pypads.autolog.mapping import get_relevant_mappings, Mapping, found_classes, get_implementations
-from pypads.autolog.wrapping import wrap_module, wrap_class, wrap_function
+from pypads.autolog.wrapping import wrap_module, wrap_class, wrap_function, punched_classes
 
 
 class PyPadsLoader(_LoaderBasics):
