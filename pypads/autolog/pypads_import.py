@@ -7,6 +7,7 @@ import os
 import sys
 import types
 from importlib._bootstrap_external import PathFinder, _LoaderBasics
+from io import FileIO
 from itertools import chain
 from logging import warning, info, debug
 from os.path import expanduser
@@ -14,6 +15,7 @@ from types import ModuleType
 
 import mlflow
 from boltons.funcutils import wraps
+from pkg_resources import register_loader_type, DefaultProvider
 
 from pypads.logging_functions import log_init
 
@@ -163,6 +165,14 @@ class PyPadsLoader(_LoaderBasics):
                         elif inspect.isfunction(obj):
                             _wrap_function(obj.__name__, ctx, mapping)
         return out
+
+    def get_data(self, path):
+        """Return the data from path as raw bytes."""
+        with FileIO(path, 'r') as file:
+            return file.read()
+
+
+register_loader_type(PyPadsLoader, DefaultProvider)
 
 
 class PyPadsFinder(PathFinder):

@@ -1,0 +1,34 @@
+{
+  "default_hooks": {
+    "modules": {
+      "fns": {}
+    },
+    "classes": {
+      "fns": {
+        "pypads_load": [
+          "load"
+        ]
+      }
+    },
+    "fns": {
+      "pypads_metric": [
+        "f1_score"
+      ]
+    }
+  },
+  "algorithms": [
+    {
+      "name": "dataset numpy loader",
+      "other_names": [],
+      "implementation": {
+        "pypadre": "pypadre.pod.importing.dataset.dataset_import.NumpyLoader"
+      }
+    }
+  ],
+  "metadata": {
+    "author": "Thomas Weißgerber",
+    "library": "pypadre",
+    "library_version": "0.3.0",
+    "mapping_version": "0.1"
+  }
+}

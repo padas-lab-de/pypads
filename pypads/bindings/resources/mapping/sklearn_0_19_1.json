@@ -13,7 +13,9 @@
         "pypads_predict": [
           "fit_predict",
           "predict",
-          "score"
+          "score",
+          "predict_proba",
+          "_predict_proba"
         ],
         "pypads_transform": [
           "fit_transform",
