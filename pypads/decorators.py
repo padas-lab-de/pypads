@@ -35,14 +35,18 @@ def split_tracking(cache=None):
         @wraps(f_splitter)
         def wrapper(*args, **kwargs):
             splits = f_splitter(*args, **kwargs)
-            data = unpack(kwargs , "data")
+            data = args[0]
             if isinstance(splits, GeneratorType):
                 for num, train_idx, test_idx in splits:
-                    cache[str(num)] = {'train_indices': train_idx, 'test_indices': test_idx}
+                    cache.update({str(num):{'dataset': data.name,'train_indices': train_idx, 'test_indices': test_idx}})
+                    cache.get(str(num)).update(
+                        {'predictions': {str(sample): {'truth': data.targets()[sample][0]} for sample in test_idx}})
                     yield num, train_idx, test_idx
             else:
                 num, train_idx, test_idx = splits
-                cache[str(num)] = {'train_indices': train_idx, 'test_indices': test_idx}
+                cache.update({str(num):{'train_indices': train_idx, 'test_indices': test_idx}})
+                cache.get(str(num)).update(
+                    {'predictions': {str(sample): {'truth': data.targets()[sample][0]} for sample in test_idx}})
                 return num, train_idx, test_idx
 
         return wrapper
