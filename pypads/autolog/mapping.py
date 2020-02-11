@@ -16,6 +16,32 @@ for m in mapping_files:
         mappings[name] = json.load(json_file)
 
 
+class Hook:
+    """
+    This class defines a pypads hook. Hooks are injected into function calls to inject different functionality.
+    """
+
+    def __init__(self, event, type="qual_name"):
+        self._type = type
+        self._event = event
+
+    @property
+    def type(self):
+        """
+        Valid types are currently: "qual_name", "package_name"
+        :return:
+        """
+        return self._type
+
+    @property
+    def event(self):
+        """
+        Event to trigger on hook execution
+        :return:
+        """
+        return self._event
+
+
 class Mapping:
     """
     Mapping for an algorithm defined by a pypads mapping file
