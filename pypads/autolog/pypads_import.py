@@ -7,9 +7,9 @@ from itertools import chain
 from logging import warning, info, debug
 # noinspection PyUnresolvedReferences
 from types import ModuleType
-
+from pkg_resources import register_loader_type, DefaultProvider
 from pypads.autolog.mapping import get_relevant_mappings, Mapping, found_classes, get_implementations
-from pypads.autolog.wrapping import wrap_module, wrap_class, wrap_function, punched_classes
+from pypads.autolog.wrapping import wrap_module, wrap_class, wrap_function, punched_classes, punched_module
 
 
 class PyPadsLoader(_LoaderBasics):
