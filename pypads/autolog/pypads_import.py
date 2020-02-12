@@ -72,13 +72,13 @@ class PyPadsLoader(_LoaderBasics):
                             wrap_function(obj.__name__, ctx, mapping)
         return out
 
-    def get_data(self, path):
-        """Return the data from path as raw bytes."""
-        with FileIO(path, 'r') as file:
-            return file.read()
+    # def get_data(self, path):
+    #     """Return the data from path as raw bytes."""
+    #     with FileIO(path, 'r') as file:
+    #         return file.read()
 
 
-register_loader_type(PyPadsLoader, DefaultProvider)
+# register_loader_type(PyPadsLoader, DefaultProvider)
 
 
 class PyPadsFinder(PathFinder):

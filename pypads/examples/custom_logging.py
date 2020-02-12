@@ -2,8 +2,8 @@ import numpy as np
 from pathlib import Path
 
 from pypadre.core.model.dataset.dataset import Dataset
-
-from pypads.decorators import split_tracking
+import mlflow
+from pypads.decorators import split_tracking, grid_search_tracking
 from pypads.logging_util import WriteFormats, try_write_artifact
 
 cached_output = {}
@@ -28,6 +28,10 @@ def log_predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped
     name = _pypads_context.__name__ + "[" + str(
         id(self)) + "]." + _pypads_wrappe.__name__ + "_results.split_{}".format(num)
     try_write_artifact(name, cached_output.get(str(num)), write_format)
+
+    if hasattr(self, "get_params"):
+        params = self.get_params()
+        #TODO log parameters
     return result
 
 
@@ -125,13 +129,38 @@ dataset = loader.load(data, **{"name": "red_winequality",
                                "target_features": target})
 
 
-for num, train_idx, test_idx in cv(dataset, n_folds=5, seed=SEED):
-    model = SVC(probability=True)
+@grid_search_tracking()
+def grid_search(parameters: dict = None):
+    import itertools
+    master_list = []
+    params_list = []
+    for params in parameters:
+        param = parameters.get(params)
+        if not isinstance(param, list):
+            param = [param]
+        master_list.append(param)
+        params_list.append(params)
 
-    X_train, y_train = dataset.features()[train_idx], dataset.targets()[train_idx]
-    model.fit(X_train, y_train)
-    X_test = dataset.features()[test_idx]
-    predicted = model.predict(X_test)
-    # probabilites = model.predict_proba(X_test)
+    grid = itertools.product(*master_list)
+    return {'grid':grid, 'parameters': params_list}
+
+
+test = {'C': [0.5, 1.0, 1.5, 2.0], 'kernel': ['linear', 'rbf', 'poly', 'sigmoid'],
+                           'gamma': ['auto', 2],
+                           'random_state': [SEED]}
+new_run = False
+for params in grid_search(parameters=test):
+    new_run=True
+    for num, train_idx, test_idx in cv(dataset, n_folds=5, seed=SEED):
+        model = SVC(probability=True,**params)
+
+        X_train, y_train = dataset.features()[train_idx], dataset.targets()[train_idx]
+        model.fit(X_train, y_train)
+        X_test = dataset.features()[test_idx]
+        predicted = model.predict(X_test)
+        # probabilites = model.predict_proba(X_test)
+    if new_run:
+        mlflow.end_run()
+        mlflow.start_run(experiment_id=tracker._experiment.experiment_id)
 
 print(cached_output)
