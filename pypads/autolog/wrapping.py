@@ -84,7 +84,7 @@ def wrap_class(clazz, ctx, mapping):
 
 def _get_hooked_fns(fn, mapping):
     """
-    For a given fn find the hook functions defined in a mapping.
+    For a given fn find the hook functions defined in a mapping and configured in a configuration.
     :param fn:
     :param mapping:
     :return:
@@ -93,18 +93,18 @@ def _get_hooked_fns(fn, mapping):
         mapping.hooks = get_default_fn_hooks(mapping)
 
     # TODO filter for types, package name contains, etc. instead of only fn names
-    hook_events = [hook.event for hook in mapping.hooks if hook.is_applicable(mapping=mapping, fn=fn)]
+    hook_events_of_mapping = [hook.event for hook in mapping.hooks if hook.is_applicable(mapping=mapping, fn=fn)]
     output = []
     config = _get_pypads_config()
     for log_event, event_config in config["events"].items():
-        loggings_fns = event_config["on"]
+        configured_hook_events = event_config["on"]
         if "with" in event_config:
             hook_params = event_config["with"]
         else:
             hook_params = {}
 
-        # If one loggings_fns is in this config.
-        if set(loggings_fns) & set(hook_events):
+        # If one configured_hook_events is in this config.
+        if set(configured_hook_events) & set(hook_events_of_mapping):
             from pypads.base import get_current_pads
             pads = get_current_pads()
             fn = pads.function_registry.find_function(log_event)
@@ -220,7 +220,7 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
     if not fn_type or "staticmethod" in str(fn_type):
         @wraps(fn)
         def entry(*args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
-            print("Call to tracked static method or function " + str(fn))
+            debug("Call to tracked static method or function " + str(fn))
             callback = fn
             for (hook, params) in hooks:
                 callback = get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
@@ -229,7 +229,7 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
     elif "function" in str(fn_type):
         @wraps(fn)
         def entry(self, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
-            print("Call to tracked method " + str(fn))
+            debug("Call to tracked method " + str(fn))
             callback = types.MethodType(fn, self)
             for (hook, params) in hooks:
                 callback = types.MethodType(
@@ -241,7 +241,7 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
     elif "classmethod" in str(fn_type):
         @wraps(fn)
         def entry(cls, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, fn_type=fn_type, **kwargs):
-            print("Call to tracked class method " + str(fn))
+            debug("Call to tracked class method " + str(fn))
             callback = types.MethodType(fn, cls)
             for (hook, params) in hooks:
                 callback = types.MethodType(

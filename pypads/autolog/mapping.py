@@ -64,7 +64,7 @@ class QualNameHook(Hook):
         return self._name
 
     def is_applicable(self, *args, fn=None, **kwargs):
-        return fn is not None and fn.__name__ in self.name
+        return fn is not None and fn.__name__ == self.name
 
 
 class PackageNameHook(Hook):

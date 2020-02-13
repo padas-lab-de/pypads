@@ -1,5 +1,5 @@
 import datetime
-from logging import warning
+from logging import warning, info
 
 import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
@@ -18,7 +18,7 @@ def get_now():
 
 def log_init(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
              **kwargs):
-    print("Pypads tracked class " + str(self.__class__) + " initialized.")
+    info("Pypads tracked class " + str(self.__class__) + " initialized.")
     _pypads_callback(*args, **kwargs)
 
 
