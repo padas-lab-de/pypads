@@ -3,7 +3,8 @@ from pathlib import Path
 
 from pypadre.core.model.dataset.dataset import Dataset
 import mlflow
-from pypads.decorators import split_tracking, grid_search_tracking
+from pypads.decorators import split_tracking, grid_search_tracking, dataset
+from pypads.logging_functions import datasets
 from pypads.logging_util import WriteFormats, try_write_artifact
 
 cached_output = {}
@@ -31,14 +32,7 @@ def log_predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped
 
     if hasattr(self, "get_params"):
         params = self.get_params()
-        #TODO log parameters
-    return result
-
-
-def dataset_logging(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
-                    **kwargs):
-    result = _pypads_callback(*args, **kwargs)
-    # TODO manage datasets
+        # TODO log parameters
     return result
 
 
@@ -49,7 +43,7 @@ config = {"events": {
 
 mapping = {
     "predictions": log_predictions,
-    "dataset": dataset_logging
+    "dataset": datasets
 }
 from pypads.base import PyPads
 
@@ -74,8 +68,17 @@ columns_wine = [
 ]
 
 
+# @dataset()
+# def load_wine(type="red"):
+#     name = "winequality-{}".format(type)
+#     path = Path(__file__).parent / "{}.csv".format(name)
+#     data = np.loadtxt(path, delimiter=';', usecols=range(12))
+#     return {'name':name,'data':data}
+
+
 def load_wine(type="white"):
-    path = Path(__file__).parent / "winequality-{}.csv".format(type)
+    name = "winequality-{}".format(type)
+    path = Path(__file__).parent / "{}.csv".format(name)
     data = np.loadtxt(path, delimiter=';', usecols=range(12))
     return data, columns_wine, columns_wine[-1]
 
@@ -124,9 +127,9 @@ def cv(data: Dataset = None, n_folds=3, shuffle=True, seed=None):
 
 data, cols, target = load_wine(type='red')
 loader = NumpyLoader()
-dataset = loader.load(data, **{"name": "red_winequality",
-                               "columns": cols,
-                               "target_features": target})
+dataset_ = loader.load(data, **{"name": "red_winequality",
+                                "columns": cols,
+                                "target_features": target})
 
 
 @grid_search_tracking()
@@ -142,25 +145,26 @@ def grid_search(parameters: dict = None):
         params_list.append(params)
 
     grid = itertools.product(*master_list)
-    return {'grid':grid, 'parameters': params_list}
+    return {'grid': grid, 'parameters': params_list}
 
 
 test = {'C': [0.5, 1.0, 1.5, 2.0], 'kernel': ['linear', 'rbf', 'poly', 'sigmoid'],
-                           'gamma': ['auto', 2],
-                           'random_state': [SEED]}
-new_run = False
-for params in grid_search(parameters=test):
-    new_run=True
-    for num, train_idx, test_idx in cv(dataset, n_folds=5, seed=SEED):
-        model = SVC(probability=True,**params)
+        'gamma': ['auto', 2],
+        'random_state': [SEED]}
 
-        X_train, y_train = dataset.features()[train_idx], dataset.targets()[train_idx]
+
+for params in grid_search(parameters=test):
+    if not mlflow.active_run():
+        mlflow.start_run(experiment_id=tracker._experiment.experiment_id)
+    for num, train_idx, test_idx in cv(dataset_, n_folds=5, seed=SEED):
+        model = SVC(probability=True, **params)
+
+        X_train, y_train = dataset_.features()[train_idx], dataset_.targets()[train_idx]
         model.fit(X_train, y_train)
-        X_test = dataset.features()[test_idx]
+        X_test = dataset_.features()[test_idx]
         predicted = model.predict(X_test)
         # probabilites = model.predict_proba(X_test)
-    if new_run:
-        mlflow.end_run()
-        mlflow.start_run(experiment_id=tracker._experiment.experiment_id)
+    mlflow.end_run()
+    mlflow.start_run(experiment_id=tracker._experiment.experiment_id)
 
 print(cached_output)

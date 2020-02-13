@@ -1,12 +1,19 @@
 import datetime
+import os
+import tempfile
 from logging import warning
 
 import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 
 from pypads.bindings.generic_visitor import default_visitor
-from pypads.logging_util import try_write_artifact, WriteFormats
+from pypads.logging_util import try_write_artifact, WriteFormats, all_tags
 
+DATASETS = "datasets"
+TMP = os.path.join(os.path.expanduser("~") + "/.pypads_tmp")
+
+if not os.path.isdir(TMP):
+    os.mkdir(TMP)
 
 def get_now():
     """
@@ -53,6 +60,40 @@ def parameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, 
         # for (k, v) in kwargs.items():
         #    try_mlflow_log(mlflow.log_param, _pypads_mapped_by + "." + str(id(self)) + "." + get_now() + ".kwargs." + str(k), str(v))
 
+    return result
+
+
+def datasets(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
+                    **kwargs):
+    """
+        Function logging the loaded dataset.
+        :param self: Wrapper library object
+        :param args: Input args to the real library call
+        :param _pypads_wrappe: _pypads provided - wrapped library object
+        :param _pypads_mapped_by: _pypads provided - wrapped library package
+        :param _pypads_item: _pypads provided - wrapped function name
+        :param _pypads_fn_stack: _pypads provided - stack of all the next functions to execute
+        :param kwargs: Input kwargs to the real library call
+        :return:
+        """
+    result = _pypads_callback(*args,**kwargs)
+
+    repo = mlflow.get_experiment_by_name(DATASETS)
+    if repo is None:
+        repo = mlflow.get_experiment(mlflow.create_experiment(DATASETS))
+
+    # TODO standarize dataset object
+    # add data set if it is not already existing
+    if not any(t["name"] == result.name for t in all_tags(repo.experiment_id)):
+        if mlflow.active_run():
+            mlflow.end_run()
+        run = mlflow.start_run(experiment_id=repo.experiment_id)
+        mlflow.set_tag("name",result.name)
+        name = result.name + "_" + str(id(result)) + "_data"
+        try_write_artifact(name, result.data(), WriteFormats.pickle)
+        name = result.name + "_" + str(id(result)) + "metadata"
+        try_write_artifact(name, result.metadata, WriteFormats.text)
+        mlflow.end_run()
     return result
 
 
@@ -277,7 +318,4 @@ def metric(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pyp
     """
     result = _pypads_callback(*args, **kwargs)
     try_mlflow_log(mlflow.log_metric, _pypads_wrappe.__name__ + ".txt", result)
-    if self is not None:
-        if result is self._pads_wrapped_instance:
-            return self
     return result
