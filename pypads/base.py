@@ -59,6 +59,7 @@ DEFAULT_CONFIG = {"events": {
     "input": {"on": ["pypads_fit"], "with": {"write_format": WriteFormats.text.name}},
     "metric": {"on": ["pypads_metric"]}
 },
+    "recursion_identity": False,
     "recursion_depth": -1}
 
 # Tag name to save the config to in mlflow context.
