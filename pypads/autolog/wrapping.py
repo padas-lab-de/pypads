@@ -6,7 +6,7 @@ from logging import warning, debug
 import mlflow
 from boltons.funcutils import wraps
 
-from pypads.autolog.mapping import Mapping, found_classes, Hook, get_default_fn_hooks, \
+from pypads.autolog.mapping import Mapping, found_classes, get_default_fn_hooks, \
     get_default_module_hooks, get_default_class_hooks, QualNameHook
 from pypads.logging_functions import log_init
 
@@ -44,9 +44,9 @@ def wrap_module(module, mapping):
         for _name in dir(module):
             wrap(getattr(module, _name), module, mapping)
 
-        for k, v in mapping.hooks.items():
-            for fn_name in v:
-                found_classes[mapping.reference + "." + fn_name] = Mapping(mapping.reference + "." + fn_name,
+        for hook in mapping.hooks:
+            if isinstance(hook, QualNameHook):
+                found_classes[mapping.reference + "." + hook.name] = Mapping(mapping.reference + "." + hook.name,
                                                                            mapping.library, mapping.algorithm,
                                                                            mapping.file, mapping.hooks)
 
@@ -110,15 +110,6 @@ def _get_hooked_fns(fn, mapping):
             fn = pads.function_registry.find_function(log_event)
             output.append((fn, hook_params))
     return output
-
-
-def _is_hook_active(mapping: Mapping, fn, hook: Hook):
-    if hook.type == "qual_name":
-        return fn.__name__ in hook.event
-    elif hook.type == "package_name":
-        return mapping.reference == hook.value
-
-    return fn.__name__ in hook.event
 
 
 def _wrapped_inner_function(ctx, *args, _pypads_hooked_fn, _pypads_hook_params, _pypads_wrappe, _pypads_context,
