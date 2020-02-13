@@ -35,6 +35,16 @@
       }
     },
     {
+      "name": "datasets",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.datasets"
+      },
+      "hooks": {
+        "pypads_dataset": "always"
+      }
+    },
+    {
       "name": "base sklearn estimator",
       "other_names": [],
       "implementation": {

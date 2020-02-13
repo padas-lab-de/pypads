@@ -56,7 +56,8 @@ DEFAULT_CONFIG = {"events": {
     "output": {"on": ["pypads_fit", "pypads_predict"],
                "with": {"write_format": WriteFormats.text.name}},
     "input": {"on": ["pypads_fit"], "with": {"write_format": WriteFormats.text.name}},
-    "metric": {"on": ["pypads_metric"]}
+    "metric": {"on": ["pypads_metric"]},
+    "dataset": {"on": ["pypads_dataset"]}
 }}
 
 # Tag name to save the config to in mlflow context.

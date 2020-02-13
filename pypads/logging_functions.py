@@ -9,6 +9,7 @@ from pypads.logging_util import try_write_artifact, WriteFormats, all_tags
 
 DATASETS = "datasets"
 
+
 def get_now():
     """
     Function for providing a current human readable timestamp.
@@ -57,8 +58,8 @@ def parameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, 
     return result
 
 
-def datasets(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
-                    **kwargs):
+def datasets(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
+             _pypads_callback, **kwargs):
     """
         Function logging the loaded dataset.
         :param self: Wrapper library object
@@ -70,23 +71,21 @@ def datasets(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _p
         :param kwargs: Input kwargs to the real library call
         :return:
         """
-    result = _pypads_callback(*args,**kwargs)
+    result = _pypads_callback(*args, **kwargs)
 
     repo = mlflow.get_experiment_by_name(DATASETS)
     if repo is None:
         repo = mlflow.get_experiment(mlflow.create_experiment(DATASETS))
 
-    # TODO standarize dataset object
+    # TODO standarize dataset object, for now pickle the returned object either way
     # add data set if it is not already existing
     if not any(t["name"] == result.name for t in all_tags(repo.experiment_id)):
         if mlflow.active_run():
             mlflow.end_run()
         run = mlflow.start_run(experiment_id=repo.experiment_id)
-        mlflow.set_tag("name",result.name)
-        name = result.name + "_" + str(id(result)) + "_data"
-        try_write_artifact(name, result.data(), WriteFormats.pickle)
-        name = result.name + "_" + str(id(result)) + "metadata"
-        try_write_artifact(name, result.metadata, WriteFormats.text)
+        mlflow.set_tag("name", result.name)
+        name = _pypads_context.__name__ + "[" + str(id(result)) + "]." + _pypads_wrappe.__name__ + "_data"
+        try_write_artifact(name, result, write_format)
         mlflow.end_run()
     return result
 

@@ -15,30 +15,27 @@ def log_predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped
                     write_format=WriteFormats.text,
                     **kwargs):
     result = _pypads_callback(*args, **kwargs)
+    run = mlflow.active_run().info.run_id
+    for i, sample in enumerate(cached_output.get(run).get(str(num)).get('test_indices')):
+        cached_output.get(run).get(str(num)).get('predictions').get(str(sample)).update({'predicted': result[i]})
 
-    for i, sample in enumerate(cached_output.get(str(num)).get('test_indices')):
-        cached_output.get(str(num)).get('predictions').get(str(sample)).update({'predicted': result[i]})
-
-    probabilites = None
+    probabilities = None
     if hasattr(self, "predict_proba") or hasattr(self, "_predict_proba"):
-        probabilites = self.predict_proba(*args,**kwargs)
-    if probabilites is not None:
-        for i, sample in enumerate(cached_output.get(str(num)).get('test_indices')):
-            cached_output.get(str(num)).get('predictions').get(str(sample)).update({'probabilities': probabilites[i]})
+        probabilities = self.predict_proba(*args,**kwargs)
+    if probabilities is not None:
+        for i, sample in enumerate(cached_output.get(run).get(str(num)).get('test_indices')):
+            cached_output.get(run).get(str(num)).get('predictions').get(str(sample)).update({'probabilities': probabilities[i]})
 
     name = _pypads_context.__name__ + "[" + str(
         id(self)) + "]." + _pypads_wrappe.__name__ + "_results.split_{}".format(num)
-    try_write_artifact(name, cached_output.get(str(num)), write_format)
+    try_write_artifact(name, cached_output.get(run).get(str(num)), write_format)
 
-    if hasattr(self, "get_params"):
-        params = self.get_params()
-        # TODO log parameters
     return result
 
 
 config = {"events": {
     "predictions": {"on": ["pypads_predict"], "with": {"write_format": WriteFormats.text.name}},
-    "dataset": {"on": ["pypads_load"], "with": {"write_format": WriteFormats.pickle.name}}
+    "dataset": {"on": ["pypads_load","pypads_dataset"], "with": {"write_format": WriteFormats.pickle.name}}
 }}
 
 mapping = {
@@ -46,9 +43,8 @@ mapping = {
     "dataset": datasets
 }
 from pypads.base import PyPads
-
 tracker = PyPads(name="SVC", config=config, mapping=mapping)
-
+from sklearn import datasets
 from pypadre.pod.importing.dataset.dataset_import import NumpyLoader
 from sklearn.svm import SVC
 
@@ -152,10 +148,10 @@ test = {'C': [0.5, 1.0, 1.5, 2.0], 'kernel': ['linear', 'rbf', 'poly', 'sigmoid'
         'gamma': ['auto', 2],
         'random_state': [SEED]}
 
+if not mlflow.active_run():
+    mlflow.start_run(experiment_id=tracker._experiment.experiment_id)
 
 for params in grid_search(parameters=test):
-    if not mlflow.active_run():
-        mlflow.start_run(experiment_id=tracker._experiment.experiment_id)
     for num, train_idx, test_idx in cv(dataset_, n_folds=5, seed=SEED):
         model = SVC(probability=True, **params)
 
@@ -164,6 +160,8 @@ for params in grid_search(parameters=test):
         X_test = dataset_.features()[test_idx]
         predicted = model.predict(X_test)
         # probabilites = model.predict_proba(X_test)
+    run = mlflow.active_run().info.run_id
+    cached_output.pop(run,None)
     mlflow.end_run()
     mlflow.start_run(experiment_id=tracker._experiment.experiment_id)
 

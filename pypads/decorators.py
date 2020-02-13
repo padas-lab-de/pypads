@@ -1,12 +1,11 @@
-import os
-import tempfile
 from functools import wraps
 from types import GeneratorType
 from typing import Tuple
 import mlflow
 from pypads.logging_functions import get_now
-
 from pypads.logging_util import try_write_artifact, WriteFormats, all_tags
+
+DATASETS = "datasets"
 
 
 def unpack(kwargs_obj: dict, *args):
@@ -34,20 +33,19 @@ def unpack(kwargs_obj: dict, *args):
 
 
 def split_tracking(cache=None):
-    run = mlflow.active_run()
     if cache is None:
-        cache = {run.id: dict()}
-
+        cache = dict()
     def decorator(f_splitter):
         @wraps(f_splitter)
         def wrapper(*args, **kwargs):
             splits = f_splitter(*args, **kwargs)
             data = args[0]
+            run = mlflow.active_run().info.run_id
             if isinstance(splits, GeneratorType):
                 for num, train_idx, test_idx in splits:
-                    cache[run.id].update(
-                        {str(num): {'dataset': data.name, 'train_indices': train_idx, 'test_indices': test_idx}})
-                    cache.get(str(num)).update(
+                    cache.update({run: {
+                        str(num): {'dataset': data.name, 'train_indices': train_idx, 'test_indices': test_idx}}})
+                    cache.get(run).get(str(num)).update(
                         {'predictions': {str(sample): {'truth': data.targets()[sample][0]} for sample in test_idx}})
                     name = 'Split_{}_{}_information.txt'.format(num, get_now())
                     try_write_artifact(name,
@@ -56,8 +54,8 @@ def split_tracking(cache=None):
                     yield num, train_idx, test_idx
             else:
                 num, train_idx, test_idx = splits
-                cache.update({str(num): {'train_indices': train_idx, 'test_indices': test_idx}})
-                cache.get(str(num)).update(
+                cache.update({ run : {str(num): {'train_indices': train_idx, 'test_indices': test_idx}}})
+                cache.get(run).get(str(num)).update(
                     {'predictions': {str(sample): {'truth': data.targets()[sample][0]} for sample in test_idx}})
                 name = 'Split_{}_{}_information'.format(num, get_now())
                 try_write_artifact(name,
@@ -90,7 +88,6 @@ def grid_search_tracking():
 
 
 # TODO work on the datasets tracking
-DATASETS = "datasets"
 
 
 def dataset(name=None, metadata=None):
@@ -109,11 +106,11 @@ def dataset(name=None, metadata=None):
                 if mlflow.active_run():
                     mlflow.end_run()
                 run = mlflow.start_run(experiment_id=repo.experiment_id)
-                mlflow.set_tag("name", dataset['name'])
-                name_ = name + "_" + str(id(dataset)) + "_data"
-                try_write_artifact(name_, dataset['data'], WriteFormats.pickle)
+                mlflow.set_tag("name", name)
+                name_ = f_create_dataset.__qualname__ + "[" + str(id(dataset)) + "]." + name + "_data"
+                try_write_artifact(name_, dataset, WriteFormats.pickle)
                 if metadata:
-                    name_ = name + "_" + str(id(dataset)) + "metadata"
+                    name_ = f_create_dataset.__qualname__ + "[" + str(id(dataset)) + "]." + name + "_metadata"
                     try_write_artifact(name_, metadata, WriteFormats.text)
                 mlflow.end_run()
 
