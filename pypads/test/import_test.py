@@ -31,15 +31,16 @@ class PadreAppTest(unittest.TestCase):
 
         import timeit
         t = timeit.Timer(experiment)
-        print(t.timeit(10))
+        print(t.timeit(1))
 
         # assert statements
         import mlflow
         run = mlflow.active_run()
         assert tracker._run.info.run_id == run.info.run_id
 
-        n_inputs = 5 + 1 + 6  # number of inputs of DecisionTreeClassifier.fit, LabelEncoder.fit and f1_score
-        n_outputs = 1 + 1 + 1 + 1  # number of outputs of fit and predict and score and f1_score
+        # number of inputs of DecisionTreeClassifier.fit, BaseDecisionTree.predict, LabelEncoder.fit
+        n_inputs = 6 + 1 + 2
+        n_outputs = 1 + 1 + 1  # number of outputs of fit and predict and score and f1_score
         assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
 
         parameters = tracker._mlf.list_artifacts(run.info.run_id, path='../params')
@@ -183,7 +184,7 @@ class PadreAppTest(unittest.TestCase):
         print(metrics.classification_report(expected, predicted))
         print(metrics.confusion_matrix(expected, predicted))
 
-        #assert statements
+        # assert statements
         assert run == tracker._run
         assert name == tracker._experiment.name
         mlflow.end_run()
@@ -225,8 +226,8 @@ class PadreAppTest(unittest.TestCase):
         model.fit(dataset.data, dataset.target)
         model.fit(dataset.data, dataset.target)
 
-        n_inputs = 5*2  # number of inputs of DecisionTreeClassifier.fit
-        n_outputs = 1*2  # number of outputs of fit
+        n_inputs = 5 * 2  # number of inputs of DecisionTreeClassifier.fit
+        n_outputs = 1 * 2  # number of outputs of fit
         run = tracker._run
         # TODO currently a function is only tracked on the first call. Fixed
         # TODO assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
