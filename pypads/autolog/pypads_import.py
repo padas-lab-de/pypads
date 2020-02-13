@@ -106,6 +106,7 @@ class PyPadsFinder(PathFinder):
 
 
 active = False
+is_recursive = False
 
 
 def extend_import_module():
@@ -118,13 +119,16 @@ def extend_import_module():
     sys.meta_path.insert(path_finder.pop(), PyPadsFinder())
 
 
-def activate_tracking(mod_globals=None):
+def activate_tracking(mod_globals=None, recursive=None):
     """
     Function to duck punch all objects defined in the mapping files. This should at best be called before importing
     any libraries.
+    :param recursive: Recursively track functions
     :param mod_globals: globals() object used to duckpunch already loaded classes
     :return:
     """
+    global is_recursive
+    is_recursive = recursive
     global active
     if not active:
         active = True

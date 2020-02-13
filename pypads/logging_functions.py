@@ -1,7 +1,5 @@
 import datetime
-import os
-import tempfile
-from logging import warning
+from logging import warning, info
 
 import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
@@ -10,10 +8,6 @@ from pypads.bindings.generic_visitor import default_visitor
 from pypads.logging_util import try_write_artifact, WriteFormats, all_tags
 
 DATASETS = "datasets"
-TMP = os.path.join(os.path.expanduser("~") + "/.pypads_tmp")
-
-if not os.path.isdir(TMP):
-    os.mkdir(TMP)
 
 def get_now():
     """
@@ -25,7 +19,7 @@ def get_now():
 
 def log_init(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
              **kwargs):
-    print("Pypads tracked class " + str(self.__class__) + " initialized.")
+    info("Pypads tracked class " + str(self.__class__) + " initialized.")
     _pypads_callback(*args, **kwargs)
 
 
@@ -304,7 +298,8 @@ def cpu(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads
     return _pypads_callback(*args, **kwargs)
 
 
-def metric(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
+def metric(self, *args, _pypads_wrappe, artifact_fallback=False, _pypads_context, _pypads_mapped_by, _pypads_callback,
+           **kwargs):
     """
     Function logging the wrapped metric function
     :param self: Wrapper library object
@@ -317,5 +312,20 @@ def metric(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pyp
     :return:
     """
     result = _pypads_callback(*args, **kwargs)
-    try_mlflow_log(mlflow.log_metric, _pypads_wrappe.__name__ + ".txt", result)
+
+    if result is not None:
+        if isinstance(result, float):
+            try_mlflow_log(mlflow.log_metric, _pypads_wrappe.__name__ + ".txt", result)
+        else:
+            warning("Mlflow metrics have to be doubles. Could log the return value '" + str(
+                result) + "' of '" + _pypads_wrappe.__name__ + "' as artifact instead.")
+
+            # TODO search callstack for already logged functions and ignore?
+            if artifact_fallback:
+                info("Logging result if '" + _pypads_wrappe.__name__ + "' as artifact.")
+                try_write_artifact(_pypads_wrappe.__name__, str(result), WriteFormats.text)
+
+    if self is not None:
+        if result is self._pads_wrapped_instance:
+            return self
     return result
