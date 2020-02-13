@@ -2,9 +2,10 @@ import glob
 import json
 import os
 from itertools import chain
-from logging import warning
 from os.path import expanduser
 from typing import List
+
+from pypads.autolog.hook import get_hooks
 
 mapping_files = glob.glob(expanduser("~") + ".pypads/bindings/**.json")
 mapping_files.extend(
@@ -16,78 +17,6 @@ for m in mapping_files:
     with open(m) as json_file:
         name = os.path.basename(json_file.name)
         mappings[name] = json.load(json_file)
-
-
-class Hook:
-    """
-    This class defines a pypads hook. Hooks are injected into function calls to inject different functionality.
-    """
-
-    type = "always"
-
-    def __init__(self, event):
-        self._event = event
-
-    @property
-    def event(self):
-        """
-        Event to trigger on hook execution
-        :return:
-        """
-        return self._event
-
-    @classmethod
-    def has_type_name(cls, type):
-        return cls.type == type
-
-    def is_applicable(self, *args, **kwargs):
-        return True
-
-
-class QualNameHook(Hook):
-    """
-    This class defines a pypads hook. Hooks are injected into function calls to inject different functionality.
-    """
-
-    type = "qual_name"
-
-    def __init__(self, event, name):
-        super().__init__(event)
-        self._name = name
-
-    @property
-    def name(self):
-        """
-        Function name to hook to
-        :return:
-        """
-        return self._name
-
-    def is_applicable(self, *args, fn=None, **kwargs):
-        return fn is not None and fn.__name__ == self.name
-
-
-class PackageNameHook(Hook):
-    """
-    This class defines a pypads hook. Hooks are injected into function calls to inject different functionality.
-    """
-
-    type = "package_name"
-
-    def __init__(self, event, name):
-        super().__init__(event)
-        self._name = name
-
-    @property
-    def name(self):
-        """
-        Package name to hook to
-        :return:
-        """
-        return self._name
-
-    def is_applicable(self, *args, mapping=None, **kwargs):
-        return mapping is not None and self.name in mapping.reference
 
 
 class Mapping:
@@ -149,26 +78,26 @@ def get_implementations():
                             yield Mapping(reference, library, alg, file, hooks)
 
 
-def get_hooks(hook_map):
-    hooks = []
-    for event, hook_serialization in hook_map.items():
-        if Hook.has_type_name(hook_serialization):
-            hooks.append(Hook(event))
-        else:
-            for hook in hook_serialization:
-                if isinstance(hook, Hook):
-                    hooks.append(hook)
-                elif hasattr(hook, 'type'):
-                    if QualNameHook.has_type_name(hook['type']):
-                        hooks.append(QualNameHook(event, hook['name']))
+found_classes = {}
+found_fns = {}
 
-                    elif PackageNameHook.has_type_name(hook['type']):
-                        hooks.append(PackageNameHook(event, hook['name']))
-                    else:
-                        warning("Type " + str(hook['type']) + " of hook " + str(hook) + " unknown.")
-                else:
-                    hooks.append(QualNameHook(event, hook))
-    return hooks
+
+def iter_found_classes():
+    for i, mapping in found_classes.items():
+        yield mapping
+
+
+def iter_found_fns():
+    for i, mapping in found_fns.items():
+        yield mapping
+
+
+def get_relevant_mappings():
+    """
+    Function to find all relevant mappings. This produces a generator getting extended with found subclasses
+    :return:
+    """
+    return chain(get_implementations(), iter_found_classes(), iter_found_fns())
 
 
 def get_default_module_hooks(mapping):
@@ -192,25 +121,3 @@ def get_default_fn_hooks(mapping):
     if "default_hooks" in content:
         if "fns" in content["default_hooks"]:
             return get_hooks(content["default_hooks"]["fns"])
-
-
-found_classes = {}
-found_fns = {}
-
-
-def iter_found_classes():
-    for i, mapping in found_classes.items():
-        yield mapping
-
-
-def iter_found_fns():
-    for i, mapping in found_fns.items():
-        yield mapping
-
-
-def get_relevant_mappings():
-    """
-    Function to find all relevant mappings. This produces a generator getting extended with found subclasses
-    :return:
-    """
-    return chain(get_implementations(), iter_found_classes(), iter_found_fns())

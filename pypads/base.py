@@ -53,9 +53,9 @@ DEFAULT_MAPPING = {
 DEFAULT_CONFIG = {"events": {
     "parameters": {"on": ["pypads_fit"]},
     "cpu": {"on": ["pypads_fit"]},
-    "output": {"on": ["pypads_fit", "pypads_predict", "pypads_metric"],
+    "output": {"on": ["pypads_fit", "pypads_predict"],
                "with": {"write_format": WriteFormats.text.name}},
-    "input": {"on": ["pypads_fit", "pypads_metric"], "with": {"write_format": WriteFormats.text.name}},
+    "input": {"on": ["pypads_fit"], "with": {"write_format": WriteFormats.text.name}},
     "metric": {"on": ["pypads_metric"]}
 }}
 
@@ -91,13 +91,15 @@ class PyPads:
     """
     current_pads = None
 
-    def __init__(self, uri=None, name=None, filter_mapping_files=None, mapping=None, config=None, mod_globals=None):
+    def __init__(self, uri=None, name=None, filter_mapping_files=None, mapping=None, config=None, recursive=True,
+                 mod_globals=None):
         """
         TODO
         :param uri:
         :param name:
         :param mapping:
         :param config:
+        :param recursive: If this is activated we track calls to tracked functions of tracked functions
         :param mod_globals:
         """
         if filter_mapping_files is None:
@@ -132,7 +134,7 @@ class PyPads:
         PyPads.current_pads = self
 
         from pypads.autolog.pypads_import import activate_tracking
-        activate_tracking(mod_globals=mod_globals)
+        activate_tracking(mod_globals=mod_globals, recursive=recursive)
 
     @property
     def mlf(self) -> MlflowClient:

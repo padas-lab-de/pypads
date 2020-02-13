@@ -6,8 +6,9 @@ from logging import warning, debug
 import mlflow
 from boltons.funcutils import wraps
 
-from pypads.autolog.mapping import Mapping, found_classes, get_default_fn_hooks, \
-    get_default_module_hooks, get_default_class_hooks, QualNameHook
+from pypads.autolog.hook import QualNameHook
+from pypads.autolog.mapping import Mapping, found_classes, get_default_module_hooks, get_default_class_hooks, \
+    get_default_fn_hooks
 from pypads.logging_functions import log_init
 
 punched_module = set()
@@ -23,7 +24,7 @@ def wrap(wrappee, *args, **kwargs):
     :return:
     """
     if inspect.isclass(wrappee):
-        wrap_class(*args, **kwargs)
+        wrap_class(wrappee, *args, **kwargs)
 
     elif inspect.isfunction(wrappee):
         wrap_function(wrappee.__name__, *args, **kwargs)
