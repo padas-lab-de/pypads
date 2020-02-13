@@ -6,7 +6,8 @@ from logging import warning, debug
 import mlflow
 from boltons.funcutils import wraps
 
-from pypads.autolog.mapping import mappings, Mapping, found_classes
+from pypads.autolog.mapping import Mapping, found_classes, Hook, get_default_fn_hooks, \
+    get_default_module_hooks, get_default_class_hooks, QualNameHook
 from pypads.logging_functions import log_init
 
 punched_module = set()
@@ -38,11 +39,7 @@ def wrap_module(module, mapping):
     if not hasattr(module, "_pypads_wrapped"):
         punched_module.add(module)
         if not mapping.hooks:
-            content = mappings[mapping.file]
-            if "default_hooks" in content:
-                if "modules" in content["default_hooks"]:
-                    if "fns" in content["default_hooks"]["modules"]:
-                        mapping.hooks = content["default_hooks"]["fns"]
+            mapping.hooks = get_default_module_hooks(mapping)
 
         for _name in dir(module):
             wrap(getattr(module, _name), module, mapping)
@@ -66,11 +63,7 @@ def wrap_class(clazz, ctx, mapping):
     """
     if clazz not in punched_classes:
         if not mapping.hooks:
-            content = mappings[mapping.file]
-            if "default_hooks" in content:
-                if "classes" in content["default_hooks"]:
-                    if "fns" in content["default_hooks"]["classes"]:
-                        mapping.hooks = content["default_hooks"]["classes"]["fns"]
+            mapping.hooks = get_default_class_hooks(mapping)
 
         if hasattr(clazz.__init__, "__module__"):
             original_init = getattr(clazz, "__init__")
@@ -78,9 +71,9 @@ def wrap_class(clazz, ctx, mapping):
                                fn_type="function")
 
         if mapping.hooks:
-            for k, v in mapping.hooks.items():
-                for fn_name in v:
-                    wrap_function(fn_name, clazz, mapping)
+            for hook in mapping.hooks:
+                if isinstance(hook, QualNameHook):
+                    wrap_function(hook.name, clazz, mapping)
 
         reference_name = mapping.reference.rsplit('.', 1)[-1]
         setattr(clazz, "_pypads_mapping", mapping)
@@ -97,29 +90,35 @@ def _get_hooked_fns(fn, mapping):
     :return:
     """
     if not mapping.hooks:
-        content = mappings[mapping.file]
-        if "default_hooks" in content:
-            if "fns" in content["default_hooks"]:
-                mapping.hooks = content["default_hooks"]["fns"]
+        mapping.hooks = get_default_fn_hooks(mapping)
 
     # TODO filter for types, package name contains, etc. instead of only fn names
-    pypads_fn = [k for k, v in mapping.hooks.items() if fn.__name__ in v]
+    hook_events = [hook.event for hook in mapping.hooks if hook.is_applicable(mapping=mapping, fn=fn)]
     output = []
     config = _get_pypads_config()
     for log_event, event_config in config["events"].items():
-        hook_fns = event_config["on"]
+        loggings_fns = event_config["on"]
         if "with" in event_config:
             hook_params = event_config["with"]
         else:
             hook_params = {}
 
-        # If one hook_fns is in this config.
-        if set(hook_fns) & set(pypads_fn):
+        # If one loggings_fns is in this config.
+        if set(loggings_fns) & set(hook_events):
             from pypads.base import get_current_pads
             pads = get_current_pads()
             fn = pads.function_registry.find_function(log_event)
             output.append((fn, hook_params))
     return output
+
+
+def _is_hook_active(mapping: Mapping, fn, hook: Hook):
+    if hook.type == "qual_name":
+        return fn.__name__ in hook.event
+    elif hook.type == "package_name":
+        return mapping.reference == hook.value
+
+    return fn.__name__ in hook.event
 
 
 def _wrapped_inner_function(ctx, *args, _pypads_hooked_fn, _pypads_hook_params, _pypads_wrappe, _pypads_context,

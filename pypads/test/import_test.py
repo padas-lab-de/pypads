@@ -34,7 +34,7 @@ class PadreAppTest(unittest.TestCase):
 
         n_inputs = 5 + 1 + 6  # number of inputs of DecisionTreeClassifier.fit, LabelEncoder.fit and f1_score
         n_outputs = 1 + 1 + 1 + 1  # number of outputs of fit and predict and score and f1_score
-        assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
+        assert n_inputs + n_outputs == len(tracker._mlf.ligst_artifacts(run.info.run_id))
 
         parameters = tracker._mlf.list_artifacts(run.info.run_id, path='../params')
         assert len(parameters) != 0

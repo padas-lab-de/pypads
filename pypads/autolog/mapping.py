@@ -2,7 +2,9 @@ import glob
 import json
 import os
 from itertools import chain
+from logging import warning
 from os.path import expanduser
+from typing import List
 
 mapping_files = glob.glob(expanduser("~") + ".pypads/bindings/**.json")
 mapping_files.extend(
@@ -21,17 +23,10 @@ class Hook:
     This class defines a pypads hook. Hooks are injected into function calls to inject different functionality.
     """
 
-    def __init__(self, event, type="qual_name"):
-        self._type = type
-        self._event = event
+    type = "always"
 
-    @property
-    def type(self):
-        """
-        Valid types are currently: "qual_name", "package_name"
-        :return:
-        """
-        return self._type
+    def __init__(self, event):
+        self._event = event
 
     @property
     def event(self):
@@ -40,6 +35,59 @@ class Hook:
         :return:
         """
         return self._event
+
+    @classmethod
+    def has_type_name(cls, type):
+        return cls.type == type
+
+    def is_applicable(self, *args, **kwargs):
+        return True
+
+
+class QualNameHook(Hook):
+    """
+    This class defines a pypads hook. Hooks are injected into function calls to inject different functionality.
+    """
+
+    type = "qual_name"
+
+    def __init__(self, event, name):
+        super().__init__(event)
+        self._name = name
+
+    @property
+    def name(self):
+        """
+        Function name to hook to
+        :return:
+        """
+        return self._name
+
+    def is_applicable(self, *args, fn=None, **kwargs):
+        return fn is not None and fn.__name__ in self.name
+
+
+class PackageNameHook(Hook):
+    """
+    This class defines a pypads hook. Hooks are injected into function calls to inject different functionality.
+    """
+
+    type = "package_name"
+
+    def __init__(self, event, name):
+        super().__init__(event)
+        self._name = name
+
+    @property
+    def name(self):
+        """
+        Package name to hook to
+        :return:
+        """
+        return self._name
+
+    def is_applicable(self, *args, mapping=None, **kwargs):
+        return mapping is not None and self.name in mapping.reference
 
 
 class Mapping:
@@ -76,7 +124,10 @@ class Mapping:
 
     @hooks.setter
     def hooks(self, value):
-        self._hooks = value
+        if not isinstance(value, List):
+            self._hooks = get_hooks(value)
+        else:
+            self._hooks = value
 
 
 def get_implementations():
@@ -91,10 +142,56 @@ def get_implementations():
                 for alg in content["algorithms"]:
                     hooks = None
                     if "hooks" in alg:
-                        hooks = alg["hooks"]
+                        hooks = get_hooks(alg["hooks"])
+
                     if alg["implementation"] and len(alg["implementation"]) > 0:
                         for library, reference in alg["implementation"].items():
                             yield Mapping(reference, library, alg, file, hooks)
+
+
+def get_hooks(hook_map):
+    hooks = []
+    for event, hook_serialization in hook_map.items():
+        if Hook.has_type_name(hook_serialization):
+            hooks.append(Hook(event))
+        else:
+            for hook in hook_serialization:
+                if isinstance(hook, Hook):
+                    hooks.append(hook)
+                elif hasattr(hook, 'type'):
+                    if QualNameHook.has_type_name(hook['type']):
+                        hooks.append(QualNameHook(event, hook['name']))
+
+                    elif PackageNameHook.has_type_name(hook['type']):
+                        hooks.append(PackageNameHook(event, hook['name']))
+                    else:
+                        warning("Type " + str(hook['type']) + " of hook " + str(hook) + " unknown.")
+                else:
+                    hooks.append(QualNameHook(event, hook))
+    return hooks
+
+
+def get_default_module_hooks(mapping):
+    content = mappings[mapping.file]
+    if "default_hooks" in content:
+        if "modules" in content["default_hooks"]:
+            if "fns" in content["default_hooks"]["modules"]:
+                return get_hooks(content["default_hooks"]["modules"]["fns"])
+
+
+def get_default_class_hooks(mapping):
+    content = mappings[mapping.file]
+    if "default_hooks" in content:
+        if "classes" in content["default_hooks"]:
+            if "fns" in content["default_hooks"]["classes"]:
+                return get_hooks(content["default_hooks"]["classes"]["fns"])
+
+
+def get_default_fn_hooks(mapping):
+    content = mappings[mapping.file]
+    if "default_hooks" in content:
+        if "fns" in content["default_hooks"]:
+            return get_hooks(content["default_hooks"]["fns"])
 
 
 found_classes = {}
