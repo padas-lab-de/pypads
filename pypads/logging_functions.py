@@ -282,8 +282,8 @@ def metric(self, *args, _pypads_wrappe, artifact_fallback=False, _pypads_context
         if isinstance(result, float):
             try_mlflow_log(mlflow.log_metric, _pypads_wrappe.__name__ + ".txt", result)
         else:
-            warning("Mlflow metrics have to be doubles. Could log the return value '" + str(
-                result) + "' of '" + _pypads_wrappe.__name__ + "' as artifact instead.")
+            warning("Mlflow metrics have to be doubles. Could log the return value of type '" + str(
+                type(result)) + "' of '" + _pypads_wrappe.__name__ + "' as artifact instead.")
 
             # TODO search callstack for already logged functions and ignore?
             if artifact_fallback:

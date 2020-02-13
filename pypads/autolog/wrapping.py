@@ -1,7 +1,7 @@
 import ast
 import inspect
 import types
-from logging import warning, debug
+from logging import warning, debug, info
 
 import mlflow
 from boltons.funcutils import wraps
@@ -48,8 +48,8 @@ def wrap_module(module, mapping):
         for hook in mapping.hooks:
             if isinstance(hook, QualNameHook):
                 found_classes[mapping.reference + "." + hook.name] = Mapping(mapping.reference + "." + hook.name,
-                                                                           mapping.library, mapping.algorithm,
-                                                                           mapping.file, mapping.hooks)
+                                                                             mapping.library, mapping.algorithm,
+                                                                             mapping.file, mapping.hooks)
 
         setattr(module, "_pypads_wrapped", module)
 
@@ -223,19 +223,29 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
         def entry(*args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
             debug("Call to tracked static method or function " + str(fn))
             callback = fn
-            for (hook, params) in hooks:
-                callback = get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
-                                       _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping)
+            if hooks:
+                if _is_skip_recursion():
+                    info("Already tracked " + str(ctx.__name__) + "." + str(fn.__name__))
+                    return callback(*args, **kwargs)
+
+                for (hook, params) in hooks:
+                    callback = get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
+                                           _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping)
             return callback(*args, **kwargs)
     elif "function" in str(fn_type):
         @wraps(fn)
         def entry(self, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
             debug("Call to tracked method " + str(fn))
             callback = types.MethodType(fn, self)
-            for (hook, params) in hooks:
-                callback = types.MethodType(
-                    get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
-                                _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping), self)
+            if hooks:
+                if _is_skip_recursion():
+                    info("Already tracked " + str(ctx.__name__) + ": " + str(fn.__name__))
+                    return callback(*args, **kwargs)
+
+                for (hook, params) in hooks:
+                    callback = types.MethodType(
+                        get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
+                                    _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping), self)
 
             return callback(*args, **kwargs)
 
@@ -244,14 +254,42 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
         def entry(cls, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, fn_type=fn_type, **kwargs):
             debug("Call to tracked class method " + str(fn))
             callback = types.MethodType(fn, cls)
-            for (hook, params) in hooks:
-                callback = types.MethodType(
-                    get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
-                                _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping), cls)
+            if hooks:
+                if _is_skip_recursion():
+                    info("Already tracked " + str(ctx.__name__) + ": " + str(fn.__name__))
+                    return callback(*args, **kwargs)
+
+                for (hook, params) in hooks:
+                    callback = types.MethodType(
+                        get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
+                                    _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping), cls)
             return callback(*args, **kwargs)
     else:
         return
     setattr(ctx, fn.__name__, entry)
+
+
+def _is_skip_recursion():
+    config = _get_pypads_config()
+    if 'recursion_depth' in config and config['recursion_depth'] is not -1:
+        found_entries = set()
+        for frame, filename, line_number, function_name, lines, index in inspect.stack():
+            if "entry" in str(frame) and '_pypads_mapped_by' in frame.f_locals:
+                mapped_by = frame.f_locals['_pypads_mapped_by']
+                if len(found_entries) > config['recursion_depth']:
+                    return True
+                else:
+                    found_entries.add(mapped_by)
+    if 'recursion_identity' in config and config['recursion_identity']:
+        found_entries = set()
+        for frame, filename, line_number, function_name, lines, index in inspect.stack():
+            if "entry" in str(frame) and '_pypads_mapped_by' in frame.f_locals:
+                mapped_by = frame.f_locals['_pypads_mapped_by']
+                if mapped_by in found_entries:
+                    return True
+                else:
+                    found_entries.add(mapped_by)
+    return False
 
 
 def wrap_function(fn_name, ctx, mapping):
@@ -309,15 +347,25 @@ def wrap_function(fn_name, ctx, mapping):
         warning(ctx + " is no class or module. Couldn't access " + fn_name + " on it.")
 
 
+# TODO clear configs cache as soon as run is closed
+# Cache configs for runs. Each run could is for now static in it's config.
+configs = {}
+
+
 def _get_pypads_config():
     """
     Get configuration defined in the current mlflow run
     :return:
     """
+    global configs
+    active_run = mlflow.active_run()
+    if active_run in configs.keys():
+        return configs[active_run]
     from pypads.base import get_current_pads
     from pypads.base import CONFIG_NAME
     pads = get_current_pads()
-    run = pads.mlf.get_run(mlflow.active_run().info.run_id)
+    run = pads.mlf.get_run(active_run.info.run_id)
     if CONFIG_NAME in run.data.tags:
-        return ast.literal_eval(run.data.tags[CONFIG_NAME])
-    return {"events": {}}
+        configs[active_run] = ast.literal_eval(run.data.tags[CONFIG_NAME])
+        return configs[active_run]
+    return {"events": {}, "recursive": True}
