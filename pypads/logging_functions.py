@@ -58,7 +58,7 @@ def parameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, 
     return result
 
 
-def datasets(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
+def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
              _pypads_callback, **kwargs):
     """
         Function logging the loaded dataset.
@@ -79,13 +79,32 @@ def datasets(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pyp
 
     # TODO standarize dataset object, for now pickle the returned object either way
     # add data set if it is not already existing
-    if not any(t["name"] == result.name for t in all_tags(repo.experiment_id)):
+    if "name" in kwargs:
+        ds_name = kwargs.get("name")
+    elif hasattr(result, "name"):
+        ds_name = result.name
+    else:
+        ds_name = _pypads_context.__name__ + "." + _pypads_wrappe.__name__
+    if not any(t["name"] == ds_name for t in all_tags(repo.experiment_id)):
         if mlflow.active_run():
             mlflow.end_run()
         run = mlflow.start_run(experiment_id=repo.experiment_id)
-        mlflow.set_tag("name", result.name)
+        mlflow.set_tag("name", ds_name)
         name = _pypads_context.__name__ + "[" + str(id(result)) + "]." + _pypads_wrappe.__name__ + "_data"
-        try_write_artifact(name, result, write_format)
+        try:
+            try_write_artifact(name, result, write_format)
+        except Exception as e:
+            if hasattr(result, "data"):
+                if hasattr(result.data, "__self__") or hasattr(result.data, "__func__"):
+                    try_write_artifact(name, result.data(), write_format)
+                else:
+                    try_write_artifact(name, result.data, write_format)
+        if hasattr(result, "metadata"):
+            name = _pypads_context.__name__ + "[" + str(id(result)) + "]." + _pypads_wrappe.__name__ + "_metadata"
+            if hasattr(result.metadata, "__self__") or hasattr(result.metadata, "__func__"):
+                try_write_artifact(name, result.metadata(), WriteFormats.text)
+            else:
+                try_write_artifact(name, result.metadata, WriteFormats.text)
         mlflow.end_run()
     return result
 

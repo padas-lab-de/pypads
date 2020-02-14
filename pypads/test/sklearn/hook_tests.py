@@ -76,7 +76,8 @@ class PypadsHookTest(unittest.TestCase):
             "output": {"on": ["pypads_fit", "pypads_predict"],
                        "with": {"write_format": WriteFormats.text.name}},
             "input": {"on": ["pypads_fit"], "with": {"write_format": WriteFormats.text.name}},
-            "metric": {"on": ["pypads_metric"]}
+            "metric": {"on": ["pypads_metric"]},
+            "dataset" : {"on": ["pypads_dataset"], "with": {"write_format": WriteFormats.pickle.name}}
         },
             "recursion_depth": 0})
 

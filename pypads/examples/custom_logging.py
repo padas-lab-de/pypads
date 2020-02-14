@@ -3,8 +3,8 @@ from pathlib import Path
 
 from pypadre.core.model.dataset.dataset import Dataset
 import mlflow
-from pypads.decorators import split_tracking, grid_search_tracking, dataset
-from pypads.logging_functions import datasets
+from pypads.decorators import split_tracking, grid_search_tracking, dataset_tracking
+from pypads.logging_functions import dataset
 from pypads.logging_util import WriteFormats, try_write_artifact
 
 cached_output = {}
@@ -15,16 +15,18 @@ def log_predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped
                     write_format=WriteFormats.text,
                     **kwargs):
     result = _pypads_callback(*args, **kwargs)
+
     run = mlflow.active_run().info.run_id
     for i, sample in enumerate(cached_output.get(run).get(str(num)).get('test_indices')):
         cached_output.get(run).get(str(num)).get('predictions').get(str(sample)).update({'predicted': result[i]})
 
     probabilities = None
     if hasattr(self, "predict_proba") or hasattr(self, "_predict_proba"):
-        probabilities = self.predict_proba(*args,**kwargs)
+        probabilities = self.predict_proba(*args, **kwargs)
     if probabilities is not None:
         for i, sample in enumerate(cached_output.get(run).get(str(num)).get('test_indices')):
-            cached_output.get(run).get(str(num)).get('predictions').get(str(sample)).update({'probabilities': probabilities[i]})
+            cached_output.get(run).get(str(num)).get('predictions').get(str(sample)).update(
+                {'probabilities': probabilities[i]})
 
     name = _pypads_context.__name__ + "[" + str(
         id(self)) + "]." + _pypads_wrappe.__name__ + "_results.split_{}".format(num)
@@ -35,14 +37,15 @@ def log_predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped
 
 config = {"events": {
     "predictions": {"on": ["pypads_predict"], "with": {"write_format": WriteFormats.text.name}},
-    "dataset": {"on": ["pypads_load","pypads_dataset"], "with": {"write_format": WriteFormats.pickle.name}}
+    "dataset": {"on": ["pypads_load", "pypads_dataset"], "with": {"write_format": WriteFormats.pickle.name}}
 }}
 
 mapping = {
     "predictions": log_predictions,
-    "dataset": datasets
+    "dataset": dataset
 }
 from pypads.base import PyPads
+
 tracker = PyPads(name="SVC", config=config, mapping=mapping)
 from sklearn import datasets
 from pypadre.pod.importing.dataset.dataset_import import NumpyLoader
@@ -64,7 +67,7 @@ columns_wine = [
 ]
 
 
-# @dataset()
+# @dataset_tracking()
 # def load_wine(type="red"):
 #     name = "winequality-{}".format(type)
 #     path = Path(__file__).parent / "{}.csv".format(name)
@@ -121,11 +124,13 @@ def cv(data: Dataset = None, n_folds=3, shuffle=True, seed=None):
     return splitting_iterator()
 
 
-data, cols, target = load_wine(type='red')
-loader = NumpyLoader()
-dataset_ = loader.load(data, **{"name": "red_winequality",
-                                "columns": cols,
-                                "target_features": target})
+# data, cols, target = load_wine(type='red')
+# loader = NumpyLoader()
+# dataset_ = loader.load(data, **{"name": "red_winequality",
+#                                 "columns": cols,
+#                                 "target_features": target})
+
+dataset_ = datasets.load_iris()
 
 
 @grid_search_tracking()
@@ -161,7 +166,7 @@ for params in grid_search(parameters=test):
         predicted = model.predict(X_test)
         # probabilites = model.predict_proba(X_test)
     run = mlflow.active_run().info.run_id
-    cached_output.pop(run,None)
+    cached_output.pop(run, None)
     mlflow.end_run()
     mlflow.start_run(experiment_id=tracker._experiment.experiment_id)
 

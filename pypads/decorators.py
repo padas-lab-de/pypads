@@ -90,7 +90,7 @@ def grid_search_tracking():
 # TODO work on the datasets tracking
 
 
-def dataset(name=None, metadata=None):
+def dataset_tracking(name=None, metadata=None):
     def dataset_decorator(f_create_dataset):
         @wraps(f_create_dataset)
         def wrap_dataset(*args, **kwargs):
