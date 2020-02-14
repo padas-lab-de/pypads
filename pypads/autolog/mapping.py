@@ -58,6 +58,9 @@ class Mapping:
         else:
             self._hooks = value
 
+    def __str__(self):
+        return str(self.file) + str(self.reference) + str(self.library) + str(self.algorithm) + str(self.hooks)
+
 
 def get_implementations():
     """

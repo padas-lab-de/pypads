@@ -7,97 +7,6 @@ import mlflow
 
 class PadreAppTest(unittest.TestCase):
 
-    def test_timed_default_logging_extension(self):
-
-        # Activate tracking of pypads
-        from pypads.base import PyPads
-        tracker = PyPads()
-        from sklearn import datasets
-        from sklearn.metrics.classification import f1_score
-        from sklearn.tree import DecisionTreeClassifier
-
-        def experiment():
-            # load the iris datasets
-            dataset = datasets.load_iris()
-
-            # fit a model to the data
-            model = DecisionTreeClassifier()
-            model.fit(dataset.data, dataset.target)
-            # make predictions
-            expected = dataset.target
-            predicted = model.predict(dataset.data)
-            # summarize the fit of the model
-            print("Score: " + str(f1_score(expected, predicted, average="macro")))
-
-        import timeit
-        t = timeit.Timer(experiment)
-        print(t.timeit(10))
-
-        # assert statements
-        import mlflow
-        run = mlflow.active_run()
-        assert tracker._run.info.run_id == run.info.run_id
-
-        n_inputs = 5 + 1 + 6  # number of inputs of DecisionTreeClassifier.fit, LabelEncoder.fit and f1_score
-        n_outputs = 1 + 1 + 1 + 1  # number of outputs of fit and predict and score and f1_score
-        assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
-
-        parameters = tracker._mlf.list_artifacts(run.info.run_id, path='../params')
-        assert len(parameters) != 0
-        assert 'split_quality' in ''.join([p.path for p in parameters])
-
-        metrics = tracker.mlf.list_artifacts(run.info.run_id, path='../metrics')
-        assert len(metrics) != 0
-
-        assert 'f1_score' in ''.join([m.path for m in metrics])
-
-        tags = tracker.mlf.list_artifacts(run.info.run_id, path='../tags')
-        assert 'pypads.processor' in ''.join([m.path for m in tags])
-        mlflow.end_run()
-
-    def test_default_logging_extension(self):
-
-        # Activate tracking of pypads
-        from pypads.base import PyPads
-        tracker = PyPads()
-        from sklearn import datasets
-        from sklearn.metrics.classification import f1_score
-        from sklearn.tree import DecisionTreeClassifier
-
-        # load the iris datasets
-        dataset = datasets.load_iris()
-
-        # fit a model to the data
-        model = DecisionTreeClassifier()
-        model.fit(dataset.data, dataset.target)
-        # make predictions
-        expected = dataset.target
-        predicted = model.predict(dataset.data)
-        # summarize the fit of the model
-        print("Score: " + str(f1_score(expected, predicted, average="macro")))
-
-        # assert statements
-        import mlflow
-        run = mlflow.active_run()
-        assert tracker._run.info.run_id == run.info.run_id
-
-        n_inputs = 5 + 1 + 6  # number of inputs of DecisionTreeClassifier.fit, LabelEncoder.fit and f1_score
-        n_outputs = 1 + 1 + 1 + 1  # number of outputs of fit and predict and score and f1_score
-        assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
-
-        parameters = tracker._mlf.list_artifacts(run.info.run_id, path='../params')
-        assert len(parameters) != 0
-        assert 'split_quality' in ''.join([p.path for p in parameters])
-
-        metrics = tracker.mlf.list_artifacts(run.info.run_id, path='../metrics')
-        assert len(metrics) != 0
-
-        assert 'f1_score' in ''.join([m.path for m in metrics])
-
-        tags = tracker.mlf.list_artifacts(run.info.run_id, path='../tags')
-        assert 'pypads.processor' in ''.join([m.path for m in tags])
-        mlflow.end_run()
-
     def test_simple_parameter_mapping(self):
         # Activate tracking of pypads
         from pypads.base import PyPads
@@ -183,7 +92,7 @@ class PadreAppTest(unittest.TestCase):
         print(metrics.classification_report(expected, predicted))
         print(metrics.confusion_matrix(expected, predicted))
 
-        #assert statements
+        # assert statements
         assert run == tracker._run
         assert name == tracker._experiment.name
         mlflow.end_run()
@@ -225,8 +134,8 @@ class PadreAppTest(unittest.TestCase):
         model.fit(dataset.data, dataset.target)
         model.fit(dataset.data, dataset.target)
 
-        n_inputs = 5*2  # number of inputs of DecisionTreeClassifier.fit
-        n_outputs = 1*2  # number of outputs of fit
+        n_inputs = 5 * 2  # number of inputs of DecisionTreeClassifier.fit
+        n_outputs = 1 * 2  # number of outputs of fit
         run = tracker._run
         # TODO currently a function is only tracked on the first call. Fixed
         # TODO assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
