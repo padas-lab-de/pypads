@@ -1,21 +1,15 @@
+import unittest
+
 import mlflow
 
 
-def test_keras_autolog(self):
-    # Activate tracking of pypads
-    from pypads.base import PyPads
-    PyPads(config={"events": {
-        "autologgers": {"on": ["pypads_fit"]}}
-    })
+def keras_simple_sequential_experiment():
     # first neural network with keras make predictions
-    # from mlflow.keras import autolog
-    # autolog()
     from numpy import loadtxt
     from keras.models import Sequential
     from keras.layers import Dense
     # load the dataset
     import os
-
     cwd = os.getcwd()
     dataset = loadtxt(cwd + '/keras-diabetes-indians.csv', delimiter=',')
 
@@ -36,4 +30,38 @@ def test_keras_autolog(self):
     # summarize the first 5 cases
     for i in range(5):
         print('%s => %d (expected %d)' % (X[i].tolist(), predictions[i], y[i]))
-    mlflow.end_run()
+
+
+# noinspection PyMethodMayBeStatic
+class PypadsKerasTest(unittest.TestCase):
+
+    def test_keras_base_class(self):
+        # --------------------------- setup of the tracking ---------------------------
+        # Activate tracking of pypads
+        from pypads.base import PyPads
+        PyPads()
+
+        import timeit
+        t = timeit.Timer(keras_simple_sequential_experiment)
+        print(t.timeit(1))
+
+        # --------------------------- asserts ---------------------------
+        # TODO
+        # !-------------------------- asserts ---------------------------
+        mlflow.end_run()
+
+    def test_keras_autolog(self):
+        # Activate tracking of pypads
+        from pypads.base import PyPads
+        PyPads(config={"events": {
+            "autologgers": {"on": ["pypads_fit"]}}
+        })
+
+        import timeit
+        t = timeit.Timer(keras_simple_sequential_experiment)
+        print(t.timeit(1))
+
+        # --------------------------- asserts ---------------------------
+        # TODO
+        # !-------------------------- asserts ---------------------------
+        mlflow.end_run()
