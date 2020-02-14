@@ -19,7 +19,7 @@ def sklearn_simpled_decision_tree_experiment():
     print("Score: " + str(f1_score(expected, predicted, average="macro")))
 
 
-class PadreAppTest(unittest.TestCase):
+class PypadsHookTest(unittest.TestCase):
 
     def test_default_tracking(self):
         """
