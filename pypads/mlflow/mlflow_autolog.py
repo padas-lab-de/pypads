@@ -86,11 +86,14 @@ def autologgers(self, *args, _pypads_autologgers=None, _pypads_wrappe, _pypads_c
                     tmp_args[5] = []
                     args = tuple(tmp_args)
 
-                    def unbound(self, *args, **kwargs):
-                        return _pypads_callback(*args, **kwargs)
+                    def wrap_bound_function(cb):
+                        def unbound(self, *args, **kwargs):
+                            return cb(*args, **kwargs)
+
+                        return unbound
 
                     mlflow_autolog_callbacks.pop()
-                    mlflow_autolog_callbacks.append(unbound)
+                    mlflow_autolog_callbacks.append(wrap_bound_function(_pypads_callback))
 
                 return patch.obj(self, *args, **kwargs)
     return _pypads_callback(*args, **kwargs)

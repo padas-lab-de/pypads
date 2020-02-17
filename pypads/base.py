@@ -124,7 +124,10 @@ class PyPads:
         self._function_registry = FunctionRegistry(mapping or DEFAULT_MAPPING)
         self._experiment = self.mlf.get_experiment_by_name(name) if name else self.mlf.get_experiment(
             run.info.experiment_id)
-        self.config = config or DEFAULT_CONFIG
+        if config:
+            self.config = {**DEFAULT_CONFIG, **config}
+        else:
+            self.config = DEFAULT_CONFIG
 
         # override active run if used
         if name and run.info.experiment_id is not self._experiment.experiment_id:

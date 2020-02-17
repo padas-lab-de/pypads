@@ -26,7 +26,8 @@ original_end = mlflow.end_run
 
 def end_run(*args, **kwargs):
     folder = to_folder("")
-    shutil.rmtree(folder)
+    if os.path.exists(folder):
+        shutil.rmtree(folder)
     return original_end(*args, **kwargs)
 
 

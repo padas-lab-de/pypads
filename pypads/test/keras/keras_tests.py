@@ -105,7 +105,9 @@ class PypadsKerasTest(unittest.TestCase):
         # Activate tracking of pypads
         from pypads.base import PyPads
         PyPads(config={"events": {
-            "autologgers": {"on": ["pypads_fit"]}}
+            "autolog": {"on": ["pypads_fit"]},
+            "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform"]}
+        }
         })
 
         import timeit
