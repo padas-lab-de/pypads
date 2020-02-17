@@ -14,6 +14,9 @@ from pypads.logging_functions import log_init
 punched_module = set()
 punched_classes = set()
 
+# stack of calls to a tracked class
+current_tracking_stack = []
+
 
 def wrap(wrappee, *args, **kwargs):
     """
@@ -222,23 +225,27 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
         @wraps(fn)
         def entry(*args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
             debug("Call to tracked static method or function " + str(fn))
+            current_tracking_stack.append((_pypads_mapped_by, ctx, fn, None))
             callback = fn
             if hooks:
-                if _is_skip_recursion():
+                if _is_skip_recursion(None, _pypads_mapped_by):
                     info("Already tracked " + str(ctx.__name__) + "." + str(fn.__name__))
                     return callback(*args, **kwargs)
 
                 for (hook, params) in hooks:
                     callback = get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
                                            _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping)
-            return callback(*args, **kwargs)
+            out = callback(*args, **kwargs)
+            current_tracking_stack.pop()
+            return out
     elif "function" in str(fn_type):
         @wraps(fn)
         def entry(self, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
             debug("Call to tracked method " + str(fn))
+            current_tracking_stack.append((_pypads_mapped_by, ctx, fn, self))
             callback = types.MethodType(fn, self)
             if hooks:
-                if _is_skip_recursion():
+                if _is_skip_recursion(self, _pypads_mapped_by):
                     info("Already tracked " + str(ctx.__name__) + ": " + str(fn.__name__))
                     return callback(*args, **kwargs)
 
@@ -247,15 +254,18 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
                         get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
                                     _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping), self)
 
-            return callback(*args, **kwargs)
+            out = callback(*args, **kwargs)
+            current_tracking_stack.pop()
+            return out
 
     elif "classmethod" in str(fn_type):
         @wraps(fn)
         def entry(cls, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, fn_type=fn_type, **kwargs):
             debug("Call to tracked class method " + str(fn))
+            current_tracking_stack.append((_pypads_mapped_by, ctx, fn, cls))
             callback = types.MethodType(fn, cls)
             if hooks:
-                if _is_skip_recursion():
+                if _is_skip_recursion(cls, _pypads_mapped_by):
                     info("Already tracked " + str(ctx.__name__) + ": " + str(fn.__name__))
                     return callback(*args, **kwargs)
 
@@ -263,32 +273,39 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
                     callback = types.MethodType(
                         get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
                                     _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping), cls)
-            return callback(*args, **kwargs)
+            out = callback(*args, **kwargs)
+            current_tracking_stack.pop()
+            return out
     else:
         return
     setattr(ctx, fn.__name__, entry)
 
 
-def _is_skip_recursion():
+def _is_skip_recursion(ref, mapping):
     config = _get_pypads_config()
     if 'recursion_depth' in config and config['recursion_depth'] is not -1:
-        found_entries = set()
-        for frame, filename, line_number, function_name, lines, index in inspect.stack():
-            if "entry" in str(frame) and '_pypads_mapped_by' in frame.f_locals:
-                mapped_by = frame.f_locals['_pypads_mapped_by']
-                if len(found_entries) > config['recursion_depth']:
-                    return True
-                else:
-                    found_entries.add(mapped_by)
+        if len(current_tracking_stack) >= config['recursion_depth'] + 1:
+            return True
+        # found_entries = set()
+        # for frame, filename, line_number, function_name, lines, index in inspect.stack():
+        #     if "entry" in str(frame) and '_pypads_mapped_by' in frame.f_locals:
+        #         mapped_by = frame.f_locals['_pypads_mapped_by']
+        #         if len(found_entries) > config['recursion_depth']:
+        #             return True
+        #         else:
+        #             found_entries.add(mapped_by)
     if 'recursion_identity' in config and config['recursion_identity']:
-        found_entries = set()
-        for frame, filename, line_number, function_name, lines, index in inspect.stack():
-            if "entry" in str(frame) and '_pypads_mapped_by' in frame.f_locals:
-                mapped_by = frame.f_locals['_pypads_mapped_by']
-                if mapped_by in found_entries:
-                    return True
-                else:
-                    found_entries.add(mapped_by)
+        for mapping, ctx, fn, cref in current_tracking_stack:
+            if ref is not None and ref == cref:
+                return True
+        # found_entries = set()
+        # for frame, filename, line_number, function_name, lines, index in inspect.stack():
+        #     if "entry" in str(frame) and '_pypads_mapped_by' in frame.f_locals:
+        #         mapped_by = frame.f_locals['_pypads_mapped_by']
+        #         if mapped_by in found_entries:
+        #             return True
+        #         else:
+        #             found_entries.add(mapped_by)
     return False
 
 
@@ -347,10 +364,22 @@ def wrap_function(fn_name, ctx, mapping):
         warning(ctx + " is no class or module. Couldn't access " + fn_name + " on it.")
 
 
-# TODO clear configs cache as soon as run is closed
 # Cache configs for runs. Each run could is for now static in it's config.
 configs = {}
 
+# --- Clean cache after run ---
+original_end = mlflow.end_run
+
+
+def end_run(*args, **kwargs):
+    configs.clear()
+    return original_end(*args, **kwargs)
+
+
+mlflow.end_run = end_run
+
+
+# !--- Clean cache after run ---
 
 def _get_pypads_config():
     """

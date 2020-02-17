@@ -31,10 +31,21 @@ def _is_package_available(name):
     return spam_loader is not None
 
 
-# TODO cleanup
 @experimental
 def autologgers(self, *args, _pypads_autologgers=None, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
                 _pypads_callback, **kwargs):
+    """
+    Function used to enable autologgers. TODO
+    :param self:
+    :param args:
+    :param _pypads_autologgers:
+    :param _pypads_wrappe:
+    :param _pypads_context:
+    :param _pypads_mapped_by:
+    :param _pypads_callback:
+    :param kwargs:
+    :return:
+    """
     if _pypads_autologgers is None:
         _pypads_autologgers = ["keras", "tensorflow", "xgboost", "gluon", "spark"]
 

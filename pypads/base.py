@@ -8,6 +8,7 @@ from mlflow.tracking import MlflowClient
 from pypads.logging_functions import parameters, output, input, cpu, metric
 from pypads.logging_util import WriteFormats
 from pypads.mlflow.mlflow_autolog import autologgers
+from pypads.pipeline.pipeline_detection import pipeline
 
 
 class FunctionRegistry:
@@ -44,7 +45,8 @@ DEFAULT_MAPPING = {
     "input": input,
     "cpu": cpu,
     "metric": metric,
-    "autologgers": autologgers
+    "autologgers": autologgers,
+    "pipeline": pipeline
 }
 
 # Default config.
@@ -58,7 +60,8 @@ DEFAULT_CONFIG = {"events": {
     "output": {"on": ["pypads_fit", "pypads_predict"],
                "with": {"write_format": WriteFormats.text.name}},
     "input": {"on": ["pypads_fit"], "with": {"write_format": WriteFormats.text.name}},
-    "metric": {"on": ["pypads_metric"]}
+    "metric": {"on": ["pypads_metric"]},
+    "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform"]}
 },
     "recursion_identity": False,
     "recursion_depth": -1}

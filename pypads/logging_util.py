@@ -1,5 +1,6 @@
 import os
 import pickle
+import shutil
 from enum import Enum
 from logging import warning
 from os.path import expanduser
@@ -14,7 +15,25 @@ def to_folder(file_name):
     :param file_name:
     :return:
     """
-    return os.path.join(expanduser("~") + "/.pypads/" + mlflow.active_run().info.experiment_id + "/" + file_name)
+    run = mlflow.active_run()
+    return os.path.join(
+        expanduser("~") + "/.pypads/" + run.info.experiment_id + "/" + run.info.run_id + "/" + file_name)
+
+
+# --- Clean tmp files after run ---
+original_end = mlflow.end_run
+
+
+def end_run(*args, **kwargs):
+    folder = to_folder("")
+    shutil.rmtree(folder)
+    return original_end(*args, **kwargs)
+
+
+mlflow.end_run = end_run
+
+
+# !--- Clean tmp files after run ---
 
 
 class WriteFormats(Enum):
