@@ -156,7 +156,14 @@ class PyPads:
     def config(self, value: dict):
         mlflow.set_tag(CONFIG_NAME, value)
 
-    # TODO expose stop for run
+    @property
+    def run(self):
+        return self._run
+
+    @run.setter
+    def run(self, value):
+        self._run = value
+
 
 
 def get_current_pads() -> PyPads:

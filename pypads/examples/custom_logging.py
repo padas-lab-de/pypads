@@ -119,7 +119,7 @@ def cv(data: Dataset = None, n_folds=3, shuffle=True, seed=None):
             test_index = test_folds == i
             train_idx = idx[np.logical_not(test_index)]
             test_idx = idx[test_index]
-            yield num, train_idx, test_idx
+            yield num, train_idx, test_idx, y[test_idx]
 
     return splitting_iterator()
 
