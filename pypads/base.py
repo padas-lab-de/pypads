@@ -5,8 +5,9 @@ from types import FunctionType
 import mlflow
 from mlflow.tracking import MlflowClient
 
-from pypads.logging_functions import parameters, output, input, cpu, metric, autologgers, dataset
+from pypads.logging_functions import parameters, output, input, cpu, metric, dataset
 from pypads.logging_util import WriteFormats
+from pypads.mlflow.mlflow_autolog import autologgers
 
 
 class FunctionRegistry:
