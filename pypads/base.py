@@ -179,7 +179,6 @@ class PyPads:
         self._experiment = value
 
 
-
 def get_current_pads() -> PyPads:
     """
     Get the currently active pypads instance. All duck punched objects use this function for interacting with pypads.
