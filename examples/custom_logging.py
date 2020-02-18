@@ -2,10 +2,9 @@ from pathlib import Path
 
 import mlflow
 import numpy as np
-from pypadre.core.model.dataset.dataset import Dataset
-from pypads.decorators import PyPadsEXT
 
-from pypads.logging_functions import dataset
+from pypadre_ext.decorators import PyPadsEXT
+from pypadre_ext.logging_functions import dataset
 from pypads.logging_util import WriteFormats, try_write_artifact
 
 cached_output = {}
