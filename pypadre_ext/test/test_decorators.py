@@ -38,7 +38,7 @@ class PypadsEXT(unittest.TestCase):
         # --------------------------- asserts ---------------------------
         import mlflow
         datasets = mlflow.get_experiment_by_name("datasets")
-        
+
         # !-------------------------- asserts ---------------------------
         # End the mlflow run opened by PyPads
         mlflow.end_run()
