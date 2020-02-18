@@ -4,7 +4,8 @@ import unittest
 def autosklearn_digits():
     import autosklearn.classification
     import sklearn.metrics
-    X, y = sklearn.datasets.load_digits(return_X_y=True)
+    from sklearn import datasets
+    X, y = datasets.load_digits(return_X_y=True)
     X_train, X_test, y_train, y_test = \
         sklearn.model_selection.train_test_split(X, y, random_state=1)
     automl = autosklearn.classification.AutoSklearnClassifier()
@@ -22,8 +23,8 @@ class PypadsHookTest(unittest.TestCase):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
-        tracker = PyPads()
+        # from pypads.base import PyPads
+        # tracker = PyPads()
 
         import timeit
         t = timeit.Timer(autosklearn_digits)
