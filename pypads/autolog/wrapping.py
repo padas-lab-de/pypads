@@ -12,14 +12,10 @@ from pypads.autolog.mapping import Mapping, found_classes, get_default_module_ho
 from pypads.logging_functions import log_init
 
 punched_module = set()
-punched_classes = {}
+punched_classes = set()
 
 # stack of calls to a tracked class
 current_tracking_stack = []
-
-
-def wrap_unbound(wrappe, mapping):
-    return
 
 
 def wrap(wrappee, ctx, mapping):
@@ -86,10 +82,10 @@ def wrap_class(clazz, ctx, mapping):
         reference_name = mapping.reference.rsplit('.', 1)[-1]
         setattr(clazz, "_pypads_mapping", mapping)
         setattr(clazz, "_pypads_wrapped", clazz)
-        punched_classes[id(clazz)] = clazz
+        punched_classes.add(clazz)
         if ctx is not None:
             setattr(ctx, reference_name, clazz)
-    return punched_classes[id(clazz)]
+    return clazz
 
 
 def _get_hooked_fns(fn, mapping):
@@ -285,7 +281,7 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
             current_tracking_stack.pop()
             return out
     else:
-        return
+        return fn
     setattr(ctx, fn.__name__, entry)
     return entry
 
@@ -382,6 +378,7 @@ def wrap_function(fn, ctx, mapping):
 
         hooks = _get_hooked_fns(fn, mapping)
         return wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=DummyClass)
+    return fn
 
 
 # Cache configs for runs. Each run could is for now static in it's config.
