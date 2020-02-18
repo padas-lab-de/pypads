@@ -2,14 +2,12 @@ import importlib
 import inspect
 import sys
 from importlib._bootstrap_external import PathFinder, _LoaderBasics
-from io import FileIO
-from itertools import chain
 from logging import warning, info, debug
 # noinspection PyUnresolvedReferences
 from types import ModuleType
-from pkg_resources import register_loader_type, DefaultProvider
+
 from pypads.autolog.mapping import get_relevant_mappings, Mapping, found_classes, get_implementations
-from pypads.autolog.wrapping import wrap_module, wrap_class, wrap_function, punched_classes, punched_module
+from pypads.autolog.wrapping import wrap_module, wrap_class, wrap_function, punched_classes
 
 
 class PyPadsLoader(_LoaderBasics):
@@ -71,14 +69,6 @@ class PyPadsLoader(_LoaderBasics):
                         elif inspect.isfunction(obj):
                             wrap_function(obj.__name__, ctx, mapping)
         return out
-
-    # def get_data(self, path):
-    #     """Return the data from path as raw bytes."""
-    #     with FileIO(path, 'r') as file:
-    #         return file.read()
-
-
-# register_loader_type(PyPadsLoader, DefaultProvider)
 
 
 class PyPadsFinder(PathFinder):

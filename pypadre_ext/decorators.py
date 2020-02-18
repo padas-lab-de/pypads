@@ -4,10 +4,9 @@ from typing import Tuple
 
 import mlflow
 from boltons.funcutils import wraps
-from pypads.logging_functions import get_now
 
 from pypads.base import PyPads
-
+from pypads.logging_functions import get_now
 from pypads.logging_util import all_tags, try_write_artifact, WriteFormats
 
 DATASETS = "datasets"

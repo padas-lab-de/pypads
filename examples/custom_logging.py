@@ -1,9 +1,10 @@
-import numpy as np
 from pathlib import Path
 
-from pypadre.core.model.dataset.dataset import Dataset
 import mlflow
+import numpy as np
+from pypadre.core.model.dataset.dataset import Dataset
 from pypads.decorators import PyPadsEXT
+
 from pypads.logging_functions import dataset
 from pypads.logging_util import WriteFormats, try_write_artifact
 
@@ -46,7 +47,6 @@ mapping = {
 }
 
 tracker = PyPadsEXT(name="SVC", config=config, mapping=mapping)
-from sklearn import datasets
 from pypadre.pod.importing.dataset.dataset_import import NumpyLoader
 from sklearn.svm import SVC
 
