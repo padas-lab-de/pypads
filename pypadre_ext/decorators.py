@@ -4,18 +4,25 @@ from typing import Tuple
 
 import mlflow
 from boltons.funcutils import wraps
+from mlflow.utils.autologging_utils import try_mlflow_log
 
-from pypads.base import PyPads
+from pypadre_ext.logging_functions import dataset
+from pypads.base import PyPads, DEFAULT_MAPPING, DEFAULT_CONFIG
 from pypads.logging_functions import get_now
 from pypads.logging_util import all_tags, try_write_artifact, WriteFormats
 
 DATASETS = "datasets"
 
+EXT_MAPPING = DEFAULT_MAPPING["dataset"] = dataset
+EXT_CONFIG = DEFAULT_CONFIG["dataset"] = {"on": ["pypads_dataset"]}
+
 
 class PyPadsEXT(PyPads):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, config=None, mapping=None, **kwargs):
         self._cache = dict()
-        super().__init__(*args, **kwargs)
+        config = config or EXT_CONFIG
+        mapping = mapping or EXT_MAPPING
+        super().__init__(*args, config=config, mapping=mapping, **kwargs)
         PyPads.current_pads = self
 
     # ------------------------------------------- public API methods ------------------------
@@ -26,7 +33,7 @@ class PyPadsEXT(PyPads):
         return self.experiment.experiment_id
 
     def active_run(self):
-        return mlflow.active_run() and mlflow.active_run() == self.run
+        return mlflow.active_run() and mlflow.active_run().info.run_id == self.run_id()
 
     def start_run(self):
         if self.active_run():
@@ -42,10 +49,10 @@ class PyPadsEXT(PyPads):
 
     def resume_run(self):
         try:
-            mlflow.start_run(run_id=self.run_id)
+            mlflow.start_run(run_id=self.run_id())
         except Exception:
             mlflow.end_run()
-            mlflow.start_run(run_id=self.run_id)
+            mlflow.start_run(run_id=self.run_id())
 
     @property
     def cache(self):
@@ -124,7 +131,6 @@ class PyPadsEXT(PyPads):
                 run_id = self.run.info.run_id
                 if isinstance(splits, GeneratorType):
                     for num, train_idx, test_idx, targets in splits:
-
                         self.add(run_id, {
                             str(num): {'dataset': ds_name, 'dataset_id': ds_id, 'train_indices': train_idx,
                                        'test_indices': test_idx}})
@@ -134,15 +140,16 @@ class PyPadsEXT(PyPads):
                                 "Your splitter does not provide targets information, Truth values will be missing from "
                                 "the logged predictions")
                             self.cache.get(run_id).get(str(num)).update(
-                                {'predictions': {str(sample): {'truth': targets[sample]} for sample in test_idx}})
+                                {'predictions': {str(sample): {'truth': targets[i]} for i, sample in
+                                                 enumerate(test_idx)}})
                         name = 'Split_{}_{}_information.txt'.format(num, get_now())
                         try_write_artifact(name,
                                            {'dataset': ds_name, 'train_indices': train_idx, 'test_indices': test_idx},
                                            WriteFormats.text)
+                        self.cache.get(run_id).update({"curr_split": num})
                         yield num, train_idx, test_idx
                 else:
                     num, train_idx, test_idx, targets = splits
-
                     self.add(run_id, {
                         str(num): {'dataset': ds_name, 'dataset_id': ds_id, 'train_indices': train_idx,
                                    'test_indices': test_idx}})
@@ -152,12 +159,14 @@ class PyPadsEXT(PyPads):
                             "Your splitter does not provide targets information, Truth values will be missing from "
                             "the logged predictions")
                         self.cache.get(run_id).get(str(num)).update(
-                            {'predictions': {str(sample): {'truth': targets[sample]} for sample in test_idx}})
+                            {'predictions': {str(sample): {'truth': targets[i]} for i, sample in
+                                                 enumerate(test_idx)}})
                     name = 'Split_{}_{}_information'.format(num, get_now())
                     try_write_artifact(name,
                                        {'dataset': ds_name, 'dataset_id': ds_id, 'train_indices': train_idx,
                                         'test_indices': test_idx},
                                        WriteFormats.text)
+                    self.cache.get(run_id).update({"curr_split": num})
                     return num, train_idx, test_idx
 
             return wrapper
@@ -168,12 +177,25 @@ class PyPadsEXT(PyPads):
         def decorator(f_grid):
             @wraps(f_grid)
             def wrapper(*args, **kwargs):
-                grid = f_grid(*args, **kwargs)
+                parameters = f_grid(*args, **kwargs)
 
-                for element in grid['grid']:
+                import itertools
+                master_list = []
+                params_list = []
+                for params in parameters:
+                    param = parameters.get(params)
+                    if not isinstance(param, list):
+                        param = [param]
+                    master_list.append(param)
+                    params_list.append(params)
+
+                grid = itertools.product(*master_list)
+
+                for element in grid:
                     execution_params = dict()
-                    for param, idx in zip(grid['parameters'], range(0, len(grid['parameters']))):
+                    for param, idx in zip(params_list, range(0, len(params_list))):
                         execution_params[param] = element[idx]
+                        try_mlflow_log(mlflow.log_param, "Grid_params."+ param + ".txt", element[idx])
                     name = "Grid_params_{}".format(get_now())
                     try_write_artifact(name, execution_params, WriteFormats.text)
                     yield execution_params
@@ -181,29 +203,3 @@ class PyPadsEXT(PyPads):
             return wrapper
 
         return decorator
-
-
-def unpack(kwargs_obj: dict, *args):
-    """
-    Unpacks a dict object into a tuple. You can pass tuples for setting default values.
-    :param kwargs_obj:
-    :param args:
-    :return:
-    """
-    empty = object()
-    arg_list = []
-    for entry in args:
-        if isinstance(entry, str):
-            arg_list.append(kwargs_obj.get(entry))
-        elif isinstance(entry, Tuple):
-            key, *rest = entry
-            default = empty if len(rest) == 0 else rest[0]
-            if default is empty:
-                arg_list.append(kwargs_obj.get(key))
-            else:
-                arg_list.append(kwargs_obj.get(key, default))
-        else:
-            raise ValueError("Pass a tuple or string not: " + str(entry))
-    return tuple(arg_list)
-
-

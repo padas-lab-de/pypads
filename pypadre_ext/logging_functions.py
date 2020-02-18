@@ -59,3 +59,29 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
         pads.resume_run()
         mlflow.set_tag("dataset", dataset_id)
     return result
+
+
+def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
+                    write_format=WriteFormats.text,
+                    **kwargs):
+    result = _pypads_callback(*args, **kwargs)
+    from pypads.base import get_current_pads
+    pads = get_current_pads()
+    run = pads.run_id()
+    num = pads.cache.get(run).get("curr_split")
+    for i, sample in enumerate(pads.cache.get(run).get(str(num)).get('test_indices')):
+        pads.cache.get(run).get(str(num)).get('predictions').get(str(sample)).update({'predicted': result[i]})
+
+    probabilities = None
+    if hasattr(self, "predict_proba") or hasattr(self, "_predict_proba"):
+        probabilities = self.predict_proba(*args, **kwargs)
+    if probabilities is not None:
+        for i, sample in enumerate(pads.cache.get(run).get(str(num)).get('test_indices')):
+            pads.cache.get(run).get(str(num)).get('predictions').get(str(sample)).update(
+                {'probabilities': probabilities[i]})
+
+    name = _pypads_context.__name__ + "[" + str(
+        id(self)) + "]." + _pypads_wrappe.__name__ + "_results.split_{}".format(num)
+    try_write_artifact(name, pads.cache.get(run).get(str(num)), write_format)
+
+    return result
