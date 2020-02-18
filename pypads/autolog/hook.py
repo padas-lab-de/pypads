@@ -3,7 +3,7 @@ from logging import warning
 
 class Hook:
     """
-    This class defines a pypads hook. Hooks are injected into function calls to inject different functionality.
+    This class defines a pypads hook. This hook always triggers. Hooks are injected into function calls to inject different functionality.
     """
 
     type = "always"
@@ -29,7 +29,7 @@ class Hook:
 
 class QualNameHook(Hook):
     """
-    This class defines a pypads hook. Hooks are injected into function calls to inject different functionality.
+    This class defines a pypads hook triggering if the function name equals the given name.
     """
 
     type = "qual_name"
@@ -52,7 +52,7 @@ class QualNameHook(Hook):
 
 class PackageNameHook(Hook):
     """
-    This class defines a pypads hook. Hooks are injected into function calls to inject different functionality.
+    This class defines a pypads hook triggering if the package name includes given name.
     """
 
     type = "package_name"

@@ -18,7 +18,7 @@ punched_classes = set()
 current_tracking_stack = []
 
 
-def wrap(wrappee, *args, **kwargs):
+def wrap(wrappee, ctx, mapping):
     """
     Wrap given object with pypads functionality
     :param wrappee:
@@ -27,10 +27,10 @@ def wrap(wrappee, *args, **kwargs):
     :return:
     """
     if inspect.isclass(wrappee):
-        wrap_class(wrappee, *args, **kwargs)
+        return wrap_class(wrappee, ctx, mapping)
 
     elif inspect.isfunction(wrappee):
-        wrap_function(wrappee.__name__, *args, **kwargs)
+        return wrap_function(wrappee, ctx, mapping)
 
 
 def wrap_module(module, mapping):
@@ -82,8 +82,10 @@ def wrap_class(clazz, ctx, mapping):
         reference_name = mapping.reference.rsplit('.', 1)[-1]
         setattr(clazz, "_pypads_mapping", mapping)
         setattr(clazz, "_pypads_wrapped", clazz)
-        setattr(ctx, reference_name, clazz)
         punched_classes.add(clazz)
+        if ctx is not None:
+            setattr(ctx, reference_name, clazz)
+    return clazz
 
 
 def _get_hooked_fns(fn, mapping):
@@ -279,8 +281,9 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
             current_tracking_stack.pop()
             return out
     else:
-        return
+        return fn
     setattr(ctx, fn.__name__, entry)
+    return entry
 
 
 def _is_skip_recursion(ref, mapping):
@@ -311,59 +314,71 @@ def _is_skip_recursion(ref, mapping):
     return False
 
 
-def wrap_function(fn_name, ctx, mapping):
+def wrap_function(fn, ctx, mapping):
     """
     Function to wrap the given fn_name on the ctx object with pypads function calls
-    :param fn_name:
+    :param fn:
     :param ctx:
     :param mapping:
     :return:
     """
-    if inspect.isclass(ctx):
-        defining_class = None
-        if not hasattr(ctx, "__dict__") or fn_name not in ctx.__dict__:
-            mro = ctx.mro()
-            for c in mro[1:]:
-                defining_class = ctx
-                if hasattr(ctx, "__dict__") and fn_name in defining_class.__dict__ and callable(
-                        defining_class.__dict__[fn_name]):
-                    break
-                defining_class = None
-        else:
-            defining_class = ctx
-
-        if defining_class:
-
-            fn = None
-            if hasattr(defining_class, "_pypads_original_" + fn_name):
-                fn = getattr(defining_class, "_pypads_original_" + fn_name)
+    if callable(fn):
+        fn_name = fn.__name__
+    else:
+        fn_name = fn
+    if ctx is not None:
+        if inspect.isclass(ctx):
+            defining_class = None
+            if not hasattr(ctx, "__dict__") or fn_name not in ctx.__dict__:
+                mro = ctx.mro()
+                for c in mro[1:]:
+                    defining_class = ctx
+                    if hasattr(ctx, "__dict__") and fn_name in defining_class.__dict__ and callable(
+                            defining_class.__dict__[fn_name]):
+                        break
+                    defining_class = None
             else:
-                try:
-                    fn = getattr(defining_class, fn_name)
-                except Exception as e:
-                    warning(str(e))
+                defining_class = ctx
 
-            # skip wrong extractions TODO fix for structure like <class 'sklearn.utils.metaestimators._IffHasAttrDescriptor'>
-            if not fn or not callable(fn):
-                return
+            if defining_class:
 
-            if isinstance(fn, property):
-                fn = fn.fget
+                fn = None
+                if hasattr(defining_class, "_pypads_original_" + fn_name):
+                    fn = getattr(defining_class, "_pypads_original_" + fn_name)
+                else:
+                    try:
+                        fn = getattr(defining_class, fn_name)
+                    except Exception as e:
+                        warning(str(e))
 
+                # skip wrong extractions TODO fix for structure like <class 'sklearn.utils.metaestimators._IffHasAttrDescriptor'>
+                if not fn or not callable(fn):
+                    return
+
+                if isinstance(fn, property):
+                    fn = fn.fget
+
+                hooks = _get_hooked_fns(fn, mapping)
+                if len(hooks) > 0:
+                    return wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=ctx,
+                                              fn_type=type(defining_class.__dict__[fn.__name__]))
+        elif hasattr(ctx, fn_name):
+            if hasattr(ctx, "_pypads_original_" + fn_name):
+                fn = getattr(ctx, "_pypads_original_" + fn_name)
+            else:
+                fn = getattr(ctx, fn_name)
             hooks = _get_hooked_fns(fn, mapping)
             if len(hooks) > 0:
-                wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=ctx,
-                                   fn_type=type(defining_class.__dict__[fn.__name__]))
-    elif hasattr(ctx, fn_name):
-        if hasattr(ctx, "_pypads_original_" + fn_name):
-            fn = getattr(ctx, "_pypads_original_" + fn_name)
+                return wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=ctx)
         else:
-            fn = getattr(ctx, fn_name)
-        hooks = _get_hooked_fns(fn, mapping)
-        if len(hooks) > 0:
-            wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=ctx)
+            warning(ctx + " is no class or module. Couldn't access " + fn_name + " on it.")
     else:
-        warning(ctx + " is no class or module. Couldn't access " + fn_name + " on it.")
+        class DummyClass:
+            pass
+
+        hooks = _get_hooked_fns(fn, mapping)
+        return wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=DummyClass)
+    return fn
 
 
 # Cache configs for runs. Each run could is for now static in it's config.
