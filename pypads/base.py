@@ -1,4 +1,5 @@
 import os
+from enum import Enum
 from logging import warning
 from types import FunctionType
 
@@ -42,6 +43,16 @@ class FunctionRegistry:
 
 # --- Pypads App ---
 
+
+# noinspection PyPep8Naming
+class COMMON_EVENTS(Enum):
+    fit = "pypads_fit"
+    predict = "pypads_predict"
+    transform = "pypads_transform"
+    metric = "pypads_metric"
+    log = "pypads_log"
+
+
 # Default mappings. We allow to log parameters, output or input
 DEFAULT_MAPPING = {
     "parameters": parameters,
@@ -60,16 +71,16 @@ DEFAULT_MAPPING = {
 # This config defines such a listening structure.
 # {"recursive": track functions recursively. Otherwise check the callstack to only track the top level function.}
 DEFAULT_CONFIG = {"events": {
-    "parameters": {"on": ["pypads_fit"]},
-    "cpu": {"on": ["pypads_fit"]},
-    "output": {"on": ["pypads_fit", "pypads_predict"],
+    "parameters": {"on": [COMMON_EVENTS.fit.value]},
+    "cpu": {"on": [COMMON_EVENTS.fit.value]},
+    "output": {"on": [COMMON_EVENTS.fit.value, COMMON_EVENTS.predict.value],
                "with": {"write_format": WriteFormats.text.name}},
-    "input": {"on": ["pypads_fit"], "with": {"write_format": WriteFormats.text.name}},
-    "metric": {"on": ["pypads_metric"]},
-    "dataset": {"on": ["pypads_dataset"]},
-    "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"],
+    "input": {"on": [COMMON_EVENTS.fit.value], "with": {"write_format": WriteFormats.text.name}},
+    "metric": {"on": [COMMON_EVENTS.metric.value]},
+    "pipeline": {"on": [COMMON_EVENTS.fit.value, COMMON_EVENTS.predict.value, COMMON_EVENTS.transform.value,
+                        COMMON_EVENTS.metric.value],
                  "with": {"pipeline_type": "group"}},
-    "log": {"on": ["pypads_log"]}
+    "log": {"on": [COMMON_EVENTS.log.value]}
 },
     "recursion_identity": False,
     "recursion_depth": -1,

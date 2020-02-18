@@ -9,6 +9,7 @@ from boltons.funcutils import wraps
 from pypads.autolog.hook import QualNameHook
 from pypads.autolog.mapping import Mapping, found_classes, get_default_module_hooks, get_default_class_hooks, \
     get_default_fn_hooks
+from pypads.logging_functions import log_init
 
 punched_module = set()
 punched_classes = set()
@@ -70,8 +71,8 @@ def wrap_class(clazz, ctx, mapping):
 
         if hasattr(clazz.__init__, "__module__"):
             original_init = getattr(clazz, "__init__")
-            # wrap_method_helper(fn=original_init, hooks=[(log_init, {})], mapping=mapping, ctx=clazz,
-            #                    fn_type="function")
+            wrap_method_helper(fn=original_init, hooks=[(log_init, {})], mapping=mapping, ctx=clazz,
+                               fn_type="function")
 
         if mapping.hooks:
             for hook in mapping.hooks:

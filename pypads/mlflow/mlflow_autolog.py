@@ -1,3 +1,5 @@
+import sys
+
 import gorilla
 from mlflow.utils import experimental
 
@@ -49,33 +51,38 @@ def autologgers(self, *args, _pypads_autologgers=None, _pypads_wrappe, _pypads_c
     if _pypads_autologgers is None:
         _pypads_autologgers = ["keras", "tensorflow", "xgboost", "gluon", "spark", "lightgbm"]
 
-    if 'tensorflow' in _pypads_autologgers and 'tensorflow' not in added_autologs and _is_package_available(
+    if 'tensorflow' in _pypads_autologgers and 'tensorflow' in sys.modules and 'tensorflow' not in added_autologs and _is_package_available(
             'tensorflow'):
         added_autologs.add('tensorflow')
         from mlflow import tensorflow
         tensorflow.autolog()
 
-    if 'keras' in _pypads_autologgers and 'keras' not in added_autologs and _is_package_available('keras'):
+    if 'keras' in _pypads_autologgers and 'keras' in sys.modules and 'keras' not in added_autologs and _is_package_available(
+            'keras'):
         added_autologs.add('keras')
         from mlflow import keras
         keras.autolog()
 
-    if 'xgboost' in _pypads_autologgers and 'xgboost' not in added_autologs and _is_package_available('xgboost'):
+    if 'xgboost' in _pypads_autologgers and 'xgboost' in sys.modules and 'xgboost' not in added_autologs and _is_package_available(
+            'xgboost'):
         added_autologs.add('xgboost')
         from mlflow import xgboost
         xgboost.autolog()
 
-    if 'gluon' in _pypads_autologgers and 'gluon' not in added_autologs and _is_package_available('gluon'):
+    if 'gluon' in _pypads_autologgers and 'gluon' in sys.modules and 'gluon' not in added_autologs and _is_package_available(
+            'gluon'):
         added_autologs.add('gluon')
         from mlflow import gluon
         gluon.autolog()
 
-    if 'spark' in _pypads_autologgers and 'spark' not in added_autologs and _is_package_available('spark'):
+    if 'spark' in _pypads_autologgers and 'spark' in sys.modules and 'spark' not in added_autologs and _is_package_available(
+            'spark'):
         added_autologs.add('spark')
         from mlflow import spark
         spark.autolog()
 
-    if 'lightgbm' in _pypads_autologgers and 'lightgbm' not in added_autologs and _is_package_available('lightgbm'):
+    if 'lightgbm' in _pypads_autologgers and 'lightgbm' in sys.modules and 'lightgbm' not in added_autologs and _is_package_available(
+            'lightgbm'):
         added_autologs.add('lightgbm')
         from mlflow import spark
         spark.autolog()
