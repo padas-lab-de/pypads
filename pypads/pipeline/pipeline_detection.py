@@ -2,6 +2,7 @@ import os
 
 import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
+from networkx.drawing.nx_agraph import to_agraph
 
 from pypads.autolog.wrapping import current_tracking_stack
 from pypads.logging_util import WriteFormats, to_folder, try_write_artifact
@@ -80,14 +81,15 @@ def end_run(*args, **kwargs):
     if len(nodes) > 0:
         try_write_artifact("_pypads_pipeline", nodes, WriteFormats.pickle)
 
-        if _is_package_available("networkx") and _is_package_available("matplotlib"):
+        if _is_package_available("networkx"):
             import networkx as nx
             labels = {}
             edge_labels = {}
             graph = nx.DiGraph()
             for node in nodes:
-                graph.add_node(node.identity)
-                labels[node.identity] = node.ref
+                if not graph.has_node(node.identity):
+                    graph.add_node(node.identity)
+                    labels[node.identity] = node.ref
             for node in nodes:
                 if len(node.next) > 0:
                     for next in node.next:
@@ -112,7 +114,12 @@ def end_run(*args, **kwargs):
             folder = base_folder + "pipeline_graph.png"
             if not os.path.exists(base_folder):
                 os.mkdir(base_folder)
-            plt.savefig(folder)
+            if _is_package_available("agraph") and _is_package_available("graphviz"):
+                agraph = to_agraph(graph)
+                agraph.layout('dot')
+                agraph.draw(folder)
+            elif _is_package_available("matplotlib"):
+                plt.savefig(folder)
             try_mlflow_log(mlflow.log_artifact, folder)
 
     nodes.clear()
@@ -144,6 +151,7 @@ def pipeline(self, *args, _pypads_autologgers=None, _pypads_wrappe, _pypads_cont
         node = Node(wrappe=_pypads_wrappe, ctx=_pypads_context, ref=self)
         node.parent = last_pipeline_tracking
         last_pipeline_tracking.add_child(node)
+        nodes.append(node)
 
     last_pipeline_tracking = node
     return _pypads_callback(*args, **kwargs)
