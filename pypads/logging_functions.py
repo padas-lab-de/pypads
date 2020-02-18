@@ -72,40 +72,45 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
         :return:
         """
     result = _pypads_callback(*args, **kwargs)
+    from pypads.base import get_current_pads
+    pads = get_current_pads()
 
     repo = mlflow.get_experiment_by_name(DATASETS)
     if repo is None:
         repo = mlflow.get_experiment(mlflow.create_experiment(DATASETS))
 
-    # TODO standarize dataset object, for now pickle the returned object either way
     # add data set if it is not already existing
     if "name" in kwargs:
         ds_name = kwargs.get("name")
     elif hasattr(result, "name"):
         ds_name = result.name
     else:
-        ds_name = _pypads_context.__name__ + "." + _pypads_wrappe.__name__
+        ds_name = _pypads_wrappe.__name__
     if not any(t["name"] == ds_name for t in all_tags(repo.experiment_id)):
-        if mlflow.active_run():
-            mlflow.end_run()
+        pads.stop_run()
         run = mlflow.start_run(experiment_id=repo.experiment_id)
+        dataset_id = run.info.run_id
+        pads.add("dataset_id", dataset_id)
+        pads.add("dataset_name", ds_name)
         mlflow.set_tag("name", ds_name)
-        name = _pypads_context.__name__ + "[" + str(id(result)) + "]." + _pypads_wrappe.__name__ + "_data"
-        try:
+        name = _pypads_context.__name__ + "[" + str(id(result)) + "]." + ds_name + "_data"
+
+        if hasattr(result, "data"):
+            if hasattr(result.data, "__self__") or hasattr(result.data, "__func__"):
+                try_write_artifact(name, result.data(), write_format)
+            else:
+                try_write_artifact(name, result.data, write_format)
+        else:
             try_write_artifact(name, result, write_format)
-        except Exception as e:
-            if hasattr(result, "data"):
-                if hasattr(result.data, "__self__") or hasattr(result.data, "__func__"):
-                    try_write_artifact(name, result.data(), write_format)
-                else:
-                    try_write_artifact(name, result.data, write_format)
+
         if hasattr(result, "metadata"):
-            name = _pypads_context.__name__ + "[" + str(id(result)) + "]." + _pypads_wrappe.__name__ + "_metadata"
+            name = _pypads_context.__name__ + "[" + str(id(result)) + "]." + ds_name + "_metadata"
             if hasattr(result.metadata, "__self__") or hasattr(result.metadata, "__func__"):
                 try_write_artifact(name, result.metadata(), WriteFormats.text)
             else:
                 try_write_artifact(name, result.metadata, WriteFormats.text)
-        mlflow.end_run()
+        pads.resume_run()
+        mlflow.set_tag("dataset", dataset_id)
     return result
 
 

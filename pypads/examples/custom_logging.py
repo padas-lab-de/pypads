@@ -3,7 +3,7 @@ from pathlib import Path
 
 from pypadre.core.model.dataset.dataset import Dataset
 import mlflow
-from pypads.decorators import split_tracking, grid_search_tracking, dataset_tracking
+from pypads.decorators import PyPadsEXT
 from pypads.logging_functions import dataset
 from pypads.logging_util import WriteFormats, try_write_artifact
 
@@ -44,9 +44,8 @@ mapping = {
     "predictions": log_predictions,
     "dataset": dataset
 }
-from pypads.base import PyPads
 
-tracker = PyPads(name="SVC", config=config, mapping=mapping)
+tracker = PyPadsEXT(name="SVC", config=config, mapping=mapping)
 from sklearn import datasets
 from pypadre.pod.importing.dataset.dataset_import import NumpyLoader
 from sklearn.svm import SVC
@@ -67,13 +66,15 @@ columns_wine = [
 ]
 
 
-# @dataset_tracking()
+# @tracker.dataset(name="Winequality-red", metadata={"attributes": columns_wine,"target": columns_wine[-1]})
 # def load_wine(type="red"):
 #     name = "winequality-{}".format(type)
 #     path = Path(__file__).parent / "{}.csv".format(name)
 #     data = np.loadtxt(path, delimiter=';', usecols=range(12))
-#     return {'name':name,'data':data}
+#     return data
 
+
+# dataset_ = load_wine()
 
 def load_wine(type="white"):
     name = "winequality-{}".format(type)
@@ -82,7 +83,7 @@ def load_wine(type="white"):
     return data, columns_wine, columns_wine[-1]
 
 
-@split_tracking(cache=cached_output)
+@tracker.splitter()
 def cv(data: Dataset = None, n_folds=3, shuffle=True, seed=None):
     if seed is None:
         seed = 1
@@ -124,16 +125,16 @@ def cv(data: Dataset = None, n_folds=3, shuffle=True, seed=None):
     return splitting_iterator()
 
 
-# data, cols, target = load_wine(type='red')
-# loader = NumpyLoader()
-# dataset_ = loader.load(data, **{"name": "red_winequality",
-#                                 "columns": cols,
-#                                 "target_features": target})
+data, cols, target = load_wine(type='red')
+loader = NumpyLoader()
+dataset_ = loader.load(data, **{"name": "red_winequality",
+                                "columns": cols,
+                                "target_features": target})
 
-dataset_ = datasets.load_iris()
+# dataset_ = datasets.load_iris()
 
 
-@grid_search_tracking()
+@tracker.grid_search()
 def grid_search(parameters: dict = None):
     import itertools
     master_list = []
@@ -153,8 +154,8 @@ test = {'C': [0.5, 1.0, 1.5, 2.0], 'kernel': ['linear', 'rbf', 'poly', 'sigmoid'
         'gamma': ['auto', 2],
         'random_state': [SEED]}
 
-if not mlflow.active_run():
-    mlflow.start_run(experiment_id=tracker._experiment.experiment_id)
+if not tracker.active_run():
+    tracker.start_run()
 
 for params in grid_search(parameters=test):
     for num, train_idx, test_idx in cv(dataset_, n_folds=5, seed=SEED):
@@ -165,7 +166,7 @@ for params in grid_search(parameters=test):
         X_test = dataset_.features()[test_idx]
         predicted = model.predict(X_test)
         # probabilites = model.predict_proba(X_test)
-    run = mlflow.active_run().info.run_id
+    run = tracker.run_id()
     cached_output.pop(run, None)
     mlflow.end_run()
     mlflow.start_run(experiment_id=tracker._experiment.experiment_id)

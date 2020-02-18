@@ -63,7 +63,7 @@ DEFAULT_CONFIG = {"events": {
     "input": {"on": ["pypads_fit"], "with": {"write_format": WriteFormats.text.name}},
     "metric": {"on": ["pypads_metric"]},
     "dataset": {"on": ["pypads_dataset"]},
-"pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform"]}
+    "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform"]}
 },
     "recursion_identity": False,
     "recursion_depth": -1}
@@ -169,6 +169,14 @@ class PyPads:
     @run.setter
     def run(self, value):
         self._run = value
+
+    @property
+    def experiment(self):
+        return self._experiment
+
+    @experiment.setter
+    def experiment(self, value):
+        self._experiment = value
 
 
 

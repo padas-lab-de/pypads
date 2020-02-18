@@ -13,12 +13,19 @@ from pypads.logging_util import all_tags, try_write_artifact, WriteFormats
 DATASETS = "datasets"
 
 
-class PyPadsAPI(PyPads):
+class PyPadsEXT(PyPads):
     def __init__(self, *args, **kwargs):
         self._cache = dict()
         super().__init__(*args, **kwargs)
+        PyPads.current_pads = self
 
     # ------------------------------------------- public API methods ------------------------
+    def run_id(self):
+        return self.run.info.run_id
+
+    def experiment_id(self):
+        return self.experiment.experiment_id
+
     def active_run(self):
         return mlflow.active_run() and mlflow.active_run() == self.run
 
@@ -36,10 +43,10 @@ class PyPadsAPI(PyPads):
 
     def resume_run(self):
         try:
-            mlflow.start_run(run_id=self._run.info.id)
+            mlflow.start_run(run_id=self.run_id)
         except Exception:
             mlflow.end_run()
-            mlflow.start_run(run_id=self._run.info.id)
+            mlflow.start_run(run_id=self.run_id)
 
     @property
     def cache(self):
@@ -80,16 +87,16 @@ class PyPadsAPI(PyPads):
                     self.add("dataset_name", name)
                     mlflow.set_tag("name", name)
                     name_ = f_create_dataset.__qualname__ + "[" + str(id(dataset)) + "]." + name + "_data"
-                    try:
+                    if hasattr(dataset, "data"):
+                        if hasattr(dataset.data, "__self__") or hasattr(dataset.data, "__func__"):
+                            try_write_artifact(name_, dataset.data(), WriteFormats.pickle)
+                            self.add("data", dataset.data())
+                        else:
+                            try_write_artifact(name_, dataset.data, WriteFormats.pickle)
+                            self.add("data", dataset.data)
+                    else:
                         try_write_artifact(name_, dataset, WriteFormats.pickle)
-                    except Exception:
-                        if hasattr(dataset, "data"):
-                            if hasattr(dataset.data, "__self__") or hasattr(dataset.data, "__func__"):
-                                try_write_artifact(name_, dataset.data(), WriteFormats.pickle)
-                                self.add("data", dataset.data())
-                            else:
-                                try_write_artifact(name_, dataset.data, WriteFormats.pickle)
-                                self.add("data", dataset.data)
+
                     if metadata:
                         name_ = f_create_dataset.__qualname__ + "[" + str(id(dataset)) + "]." + name + "_metadata"
                         try_write_artifact(name_, metadata, WriteFormats.text)
@@ -118,10 +125,12 @@ class PyPadsAPI(PyPads):
                 run_id = self.run.info.run_id
                 if isinstance(splits, GeneratorType):
                     for num, train_idx, test_idx, targets in splits:
+
                         self.add(run_id, {
                             str(num): {'dataset': ds_name, 'dataset_id': ds_id, 'train_indices': train_idx,
                                        'test_indices': test_idx}})
-                        if targets:
+
+                        if targets is not None:
                             warning(
                                 "Your splitter does not provide targets information, Truth values will be missing from "
                                 "the logged predictions")
@@ -134,9 +143,11 @@ class PyPadsAPI(PyPads):
                         yield num, train_idx, test_idx
                 else:
                     num, train_idx, test_idx, targets = splits
+
                     self.add(run_id, {
                         str(num): {'dataset': ds_name, 'dataset_id': ds_id, 'train_indices': train_idx,
                                    'test_indices': test_idx}})
+
                     if targets:
                         warning(
                             "Your splitter does not provide targets information, Truth values will be missing from "
