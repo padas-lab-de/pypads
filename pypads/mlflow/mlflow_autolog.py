@@ -31,10 +31,21 @@ def _is_package_available(name):
     return spam_loader is not None
 
 
-# TODO cleanup
 @experimental
 def autologgers(self, *args, _pypads_autologgers=None, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
                 _pypads_callback, **kwargs):
+    """
+    Function used to enable autologgers. TODO
+    :param self:
+    :param args:
+    :param _pypads_autologgers:
+    :param _pypads_wrappe:
+    :param _pypads_context:
+    :param _pypads_mapped_by:
+    :param _pypads_callback:
+    :param kwargs:
+    :return:
+    """
     if _pypads_autologgers is None:
         _pypads_autologgers = ["keras", "tensorflow", "xgboost", "gluon", "spark"]
 
@@ -75,11 +86,14 @@ def autologgers(self, *args, _pypads_autologgers=None, _pypads_wrappe, _pypads_c
                     tmp_args[5] = []
                     args = tuple(tmp_args)
 
-                    def unbound(self, *args, **kwargs):
-                        return _pypads_callback(*args, **kwargs)
+                    def wrap_bound_function(cb):
+                        def unbound(self, *args, **kwargs):
+                            return cb(*args, **kwargs)
+
+                        return unbound
 
                     mlflow_autolog_callbacks.pop()
-                    mlflow_autolog_callbacks.append(unbound)
+                    mlflow_autolog_callbacks.append(wrap_bound_function(_pypads_callback))
 
                 return patch.obj(self, *args, **kwargs)
     return _pypads_callback(*args, **kwargs)

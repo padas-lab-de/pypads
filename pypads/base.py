@@ -8,6 +8,7 @@ from mlflow.tracking import MlflowClient
 from pypads.logging_functions import parameters, output, input, cpu, metric, dataset
 from pypads.logging_util import WriteFormats
 from pypads.mlflow.mlflow_autolog import autologgers
+from pypads.pipeline.pipeline_detection import pipeline
 
 
 class FunctionRegistry:
@@ -45,7 +46,8 @@ DEFAULT_MAPPING = {
     "cpu": cpu,
     "metric": metric,
     "dataset": dataset,
-    "autologgers": autologgers
+    "autologgers": autologgers,
+    "pipeline": pipeline
 }
 
 # Default config.
@@ -60,7 +62,8 @@ DEFAULT_CONFIG = {"events": {
                "with": {"write_format": WriteFormats.text.name}},
     "input": {"on": ["pypads_fit"], "with": {"write_format": WriteFormats.text.name}},
     "metric": {"on": ["pypads_metric"]},
-    "dataset": {"on": ["pypads_dataset"]}
+    "dataset": {"on": ["pypads_dataset"]},
+"pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform"]}
 },
     "recursion_identity": False,
     "recursion_depth": -1}
@@ -123,7 +126,10 @@ class PyPads:
         self._function_registry = FunctionRegistry(mapping or DEFAULT_MAPPING)
         self._experiment = self.mlf.get_experiment_by_name(name) if name else self.mlf.get_experiment(
             run.info.experiment_id)
-        self.config = config or DEFAULT_CONFIG
+        if config:
+            self.config = {**DEFAULT_CONFIG, **config}
+        else:
+            self.config = DEFAULT_CONFIG
 
         # override active run if used
         if name and run.info.experiment_id is not self._experiment.experiment_id:
