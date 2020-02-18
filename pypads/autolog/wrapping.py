@@ -149,12 +149,14 @@ def _wrapped_inner_function(ctx, *args, _pypads_hooked_fn, _pypads_hook_params, 
             warning("Hook parameter is overwriting a parameter in the standard "
                     "model call. This most likely will produce side effects.")
 
-        out = _pypads_hooked_fn(ctx, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
-                                _pypads_callback=_pypads_callback,
-                                _pypads_mapped_by=_pypads_mapped_by,
-                                *args,
-                                **{**kwargs, **_pypads_hook_params})
-
+        if _pypads_hooked_fn:
+            out = _pypads_hooked_fn(ctx, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
+                                    _pypads_callback=_pypads_callback,
+                                    _pypads_mapped_by=_pypads_mapped_by,
+                                    *args,
+                                    **{**kwargs, **_pypads_hook_params})
+        else:
+            out = _pypads_callback(*args, **kwargs)
         if ctx is not None:
             getattr(ctx, "_pypads_active_calls").remove(_pypads_hooked_fn)
         return out

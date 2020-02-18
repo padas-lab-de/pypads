@@ -106,7 +106,7 @@ class PypadsKerasTest(unittest.TestCase):
         from pypads.base import PyPads
         PyPads(config={"events": {
             "autolog": {"on": ["pypads_fit"]},
-            "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform"]}
+            "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metrics"]}
         }
         })
 
