@@ -16,8 +16,7 @@ def get_base_folder():
     :return:
     """
     run = mlflow.active_run()
-    return os.path.join(
-        expanduser("~") + "/.pypads/" + run.info.experiment_id + "/" + run.info.run_id + "/")
+    return os.path.join(expanduser("~"), ".pypads", run.info.experiment_id, run.info.run_id) + os.path.sep
 
 
 # --- Clean tmp files after run ---
@@ -95,9 +94,12 @@ def try_write_artifact(file_name, obj, write_format, preserve_folder=True):
             return
 
     path = options[write_format](path, obj)
-
     if preserve_folder:
+        in_folder = os.path.join(base_path, file_name.split(os.sep)[0])
         # Log artifact to mlflow
-        try_mlflow_log(mlflow.log_artifact, base_path)
+        if os.path.isdir(in_folder):
+            try_mlflow_log(mlflow.log_artifact, in_folder)
+        else:
+            try_mlflow_log(mlflow.log_artifact, path)
     else:
         try_mlflow_log(mlflow.log_artifact, path)
