@@ -123,55 +123,56 @@ class PyPadsEXT(PyPads):
 
         return dataset_decorator
 
-    def splitter(self, ):
+    def splitter(self, dataset=None):
         def decorator(f_splitter):
             @wraps(f_splitter)
             def wrapper(*args, **kwargs):
-                splits = f_splitter(*args, **kwargs)
-                ds_name = self.cache.get("dataset_name", None)
-                ds_id = self.cache.get("dataset_id", None)
-                run_id = self.run.info.run_id
-                if isinstance(splits, GeneratorType):
-                    for num, train_idx, test_idx, targets in splits:
-                        self.add(run_id, {
-                            str(num): {'dataset': ds_name, 'dataset_id': ds_id, 'train_indices': train_idx,
-                                       'test_indices': test_idx}})
-
-                        if targets is not None:
-                            warning(
-                                "Your splitter does not provide targets information, Truth values will be missing from "
-                                "the logged predictions")
-                            self.cache.get(run_id).get(str(num)).update(
-                                {'predictions': {str(sample): {'truth': targets[i]} for i, sample in
-                                                 enumerate(test_idx)}})
-                        name = 'Split_{}_{}_information.txt'.format(num, get_now())
-                        try_write_artifact(name,
-                                           {'dataset': ds_name, 'train_indices': train_idx, 'test_indices': test_idx},
-                                           WriteFormats.text)
-                        self.cache.get(run_id).update({"curr_split": num})
-                        yield num, train_idx, test_idx
-                else:
-                    num, train_idx, test_idx, targets = splits
+                return f_splitter(*args, **kwargs)
+            splits = wrapper()
+            ds_name = self.cache.get("dataset_name", dataset)
+            ds_id = self.cache.get("dataset_id", None)
+            run_id = self.run.info.run_id
+            def log_split():
+                pass
+            if isinstance(splits, GeneratorType):
+                for num, train_idx, test_idx, targets in splits:
                     self.add(run_id, {
                         str(num): {'dataset': ds_name, 'dataset_id': ds_id, 'train_indices': train_idx,
                                    'test_indices': test_idx}})
 
-                    if targets:
+                    if targets is not None:
                         warning(
                             "Your splitter does not provide targets information, Truth values will be missing from "
                             "the logged predictions")
                         self.cache.get(run_id).get(str(num)).update(
                             {'predictions': {str(sample): {'truth': targets[i]} for i, sample in
-                                                 enumerate(test_idx)}})
-                    name = 'Split_{}_{}_information'.format(num, get_now())
+                                             enumerate(test_idx)}})
+                    name = 'Split_{}_{}_information.txt'.format(num, get_now())
                     try_write_artifact(name,
-                                       {'dataset': ds_name, 'dataset_id': ds_id, 'train_indices': train_idx,
-                                        'test_indices': test_idx},
+                                       {'dataset': ds_name, 'train_indices': train_idx, 'test_indices': test_idx},
                                        WriteFormats.text)
                     self.cache.get(run_id).update({"curr_split": num})
-                    return num, train_idx, test_idx
+                    yield num, train_idx, test_idx
+            else:
+                num, train_idx, test_idx, targets = splits
+                self.add(run_id, {
+                    str(num): {'dataset': ds_name, 'dataset_id': ds_id, 'train_indices': train_idx,
+                               'test_indices': test_idx}})
 
-            return wrapper
+                if targets is not None:
+                    warning(
+                        "Your splitter does not provide targets information, Truth values will be missing from "
+                        "the logged predictions")
+                    self.cache.get(run_id).get(str(num)).update(
+                        {'predictions': {str(sample): {'truth': targets[i]} for i, sample in
+                                         enumerate(test_idx)}})
+                name = 'Split_{}_{}_information'.format(num, get_now())
+                try_write_artifact(name,
+                                   {'dataset': ds_name, 'dataset_id': ds_id, 'train_indices': train_idx,
+                                    'test_indices': test_idx},
+                                   WriteFormats.text)
+                self.cache.get(run_id).update({"curr_split": num})
+                return num, train_idx, test_idx
 
         return decorator
 

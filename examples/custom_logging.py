@@ -20,7 +20,7 @@ mapping = {
     "dataset": dataset
 }
 
-from pypadre_ext.decorators import PyPadsEXT
+from pypadre_ext.pypads_padre import PyPadsEXT
 tracker = PyPadsEXT(name="SVC", config=config, mapping=mapping)
 from sklearn.svm import SVC
 
