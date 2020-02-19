@@ -34,7 +34,7 @@ class FunctionRegistry:
         if name in self.fns:
             return self.fns[name]
         else:
-            warning("Function call with name " + name + " is not linked with any logging functionality.")
+            warning("Function call with name '" + name + "' is not linked with any logging functionality.")
 
     def add_function(self, name, fn: FunctionType):
         self.fns[name] = fn
@@ -49,7 +49,7 @@ DEFAULT_MAPPING = {
     "input": input,
     "cpu": cpu,
     "metric": metric,
-    "autologgers": autologgers,
+    "autolog": autologgers,
     "pipeline": pipeline,
     "log": log
 }
@@ -71,7 +71,8 @@ DEFAULT_CONFIG = {"events": {
     "log": {"on": ["pypads_log"]}
 },
     "recursion_identity": False,
-    "recursion_depth": -1}
+    "recursion_depth": -1,
+    "retry_on_fail": True}
 
 # Tag name to save the config to in mlflow context.
 CONFIG_NAME = "pypads.config"

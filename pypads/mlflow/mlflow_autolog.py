@@ -47,7 +47,7 @@ def autologgers(self, *args, _pypads_autologgers=None, _pypads_wrappe, _pypads_c
     :return:
     """
     if _pypads_autologgers is None:
-        _pypads_autologgers = ["keras", "tensorflow", "xgboost", "gluon", "spark"]
+        _pypads_autologgers = ["keras", "tensorflow", "xgboost", "gluon", "spark", "lightgbm"]
 
     if 'tensorflow' in _pypads_autologgers and 'tensorflow' not in added_autologs and _is_package_available(
             'tensorflow'):
@@ -72,6 +72,11 @@ def autologgers(self, *args, _pypads_autologgers=None, _pypads_wrappe, _pypads_c
 
     if 'spark' in _pypads_autologgers and 'spark' not in added_autologs and _is_package_available('spark'):
         added_autologs.add('spark')
+        from mlflow import spark
+        spark.autolog()
+
+    if 'lightgbm' in _pypads_autologgers and 'lightgbm' not in added_autologs and _is_package_available('lightgbm'):
+        added_autologs.add('lightgbm')
         from mlflow import spark
         spark.autolog()
 
