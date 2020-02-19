@@ -6,7 +6,7 @@ import mlflow
 from boltons.funcutils import wraps
 from mlflow.utils.autologging_utils import try_mlflow_log
 
-from pypadre_ext.logging_functions import dataset
+from pypadre_ext.logging_functions import dataset, predictions
 from pypads.base import PyPads, DEFAULT_MAPPING, DEFAULT_CONFIG
 from pypads.logging_functions import get_now
 from pypads.logging_util import all_tags, try_write_artifact, WriteFormats
@@ -15,7 +15,10 @@ DATASETS = "datasets"
 
 EXT_MAPPING = DEFAULT_MAPPING
 EXT_MAPPING["dataset"] = dataset
+EXT_MAPPING["predictions"] = predictions
+
 EXT_CONFIG = DEFAULT_CONFIG
+EXT_CONFIG["predictions"] = {"on": ["pypads_predict"], "with": {"write_format": WriteFormats.text.name}}
 EXT_CONFIG["dataset"] = {"on": ["pypads_dataset"]}
 
 
@@ -132,29 +135,8 @@ class PyPadsEXT(PyPads):
             ds_name = self.cache.get("dataset_name", dataset)
             ds_id = self.cache.get("dataset_id", None)
             run_id = self.run.info.run_id
-            def log_split():
-                pass
-            if isinstance(splits, GeneratorType):
-                for num, train_idx, test_idx, targets in splits:
-                    self.add(run_id, {
-                        str(num): {'dataset': ds_name, 'dataset_id': ds_id, 'train_indices': train_idx,
-                                   'test_indices': test_idx}})
 
-                    if targets is not None:
-                        warning(
-                            "Your splitter does not provide targets information, Truth values will be missing from "
-                            "the logged predictions")
-                        self.cache.get(run_id).get(str(num)).update(
-                            {'predictions': {str(sample): {'truth': targets[i]} for i, sample in
-                                             enumerate(test_idx)}})
-                    name = 'Split_{}_{}_information.txt'.format(num, get_now())
-                    try_write_artifact(name,
-                                       {'dataset': ds_name, 'train_indices': train_idx, 'test_indices': test_idx},
-                                       WriteFormats.text)
-                    self.cache.get(run_id).update({"curr_split": num})
-                    yield num, train_idx, test_idx
-            else:
-                num, train_idx, test_idx, targets = splits
+            def log_split(num, train_idx, test_idx, targets=None):
                 self.add(run_id, {
                     str(num): {'dataset': ds_name, 'dataset_id': ds_id, 'train_indices': train_idx,
                                'test_indices': test_idx}})
@@ -166,12 +148,18 @@ class PyPadsEXT(PyPads):
                     self.cache.get(run_id).get(str(num)).update(
                         {'predictions': {str(sample): {'truth': targets[i]} for i, sample in
                                          enumerate(test_idx)}})
-                name = 'Split_{}_{}_information'.format(num, get_now())
+                name = 'Split_{}_{}_information.txt'.format(num, get_now())
                 try_write_artifact(name,
-                                   {'dataset': ds_name, 'dataset_id': ds_id, 'train_indices': train_idx,
-                                    'test_indices': test_idx},
+                                   {'dataset': ds_name, 'train_indices': train_idx, 'test_indices': test_idx},
                                    WriteFormats.text)
                 self.cache.get(run_id).update({"curr_split": num})
+            if isinstance(splits, GeneratorType):
+                for num, train_idx, test_idx, targets in splits:
+                    log_split(num, train_idx, test_idx, targets=targets)
+                    yield num, train_idx, test_idx
+            else:
+                num, train_idx, test_idx, targets = splits
+                log_split(num, train_idx, test_idx, targets=targets)
                 return num, train_idx, test_idx
 
         return decorator

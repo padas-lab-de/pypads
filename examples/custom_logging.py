@@ -4,24 +4,10 @@ import mlflow
 import numpy as np
 from pypadre.pod.importing.dataset.dataset_import import NumpyLoader
 
-from pypadre_ext.logging_functions import dataset, predictions
-from pypads.logging_util import WriteFormats
-
-cached_output = {}
 SEED = 1
 
-config = {"events": {
-    "predictions": {"on": ["pypads_predict"], "with": {"write_format": WriteFormats.text.name}},
-    "dataset": {"on": ["pypads_load", "pypads_dataset"], "with": {"write_format": WriteFormats.pickle.name}}
-}}
-
-mapping = {
-    "predictions": predictions,
-    "dataset": dataset
-}
-
 from pypadre_ext.pypads_padre import PyPadsEXT
-tracker = PyPadsEXT(name="SVC", config=config, mapping=mapping)
+tracker = PyPadsEXT(name="SVC")
 from sklearn.svm import SVC
 
 columns_wine = [
