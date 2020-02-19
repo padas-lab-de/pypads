@@ -5,49 +5,7 @@ import unittest
 import mlflow
 
 
-class PadreAppTest(unittest.TestCase):
-
-    def test_default_logging_extension(self):
-        # Activate tracking of pypads
-        from pypads.base import PyPads
-        tracker = PyPads()
-        from sklearn import datasets
-        from sklearn.metrics.classification import f1_score
-        from sklearn.tree import DecisionTreeClassifier
-
-        # load the iris datasets
-        dataset = datasets.load_iris()
-
-        # fit a model to the data
-        model = DecisionTreeClassifier()
-        model.fit(dataset.data, dataset.target)
-        # make predictions
-        expected = dataset.target
-        predicted = model.predict(dataset.data)
-        # summarize the fit of the model
-        print("Score: " + str(f1_score(expected, predicted, average="macro")))
-
-        # assert statements
-        import mlflow
-        run = mlflow.active_run()
-        assert tracker._run.info.run_id == run.info.run_id
-
-        n_inputs = 5 + 1 + 6  # number of inputs of DecisionTreeClassifier.fit, LabelEncoder.fit and f1_score
-        n_outputs = 1 + 1 + 1 + 1  # number of outputs of fit and predict and score and f1_score
-        assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
-
-        parameters = tracker._mlf.list_artifacts(run.info.run_id, path='../params')
-        assert len(parameters) != 0
-        assert 'split_quality' in ''.join([p.path for p in parameters])
-
-        metrics = tracker.mlf.list_artifacts(run.info.run_id, path='../metrics')
-        assert len(metrics) != 0
-
-        assert 'f1_score' in ''.join([m.path for m in metrics])
-
-        tags = tracker.mlf.list_artifacts(run.info.run_id, path='../tags')
-        assert 'pypads.processor' in ''.join([m.path for m in tags])
-        mlflow.end_run()
+class PypadsAppTest(unittest.TestCase):
 
     def test_simple_parameter_mapping(self):
         # Activate tracking of pypads
@@ -134,7 +92,7 @@ class PadreAppTest(unittest.TestCase):
         print(metrics.classification_report(expected, predicted))
         print(metrics.confusion_matrix(expected, predicted))
 
-        #assert statements
+        # assert statements
         assert run == tracker._run
         assert name == tracker._experiment.name
         mlflow.end_run()
@@ -176,78 +134,9 @@ class PadreAppTest(unittest.TestCase):
         model.fit(dataset.data, dataset.target)
         model.fit(dataset.data, dataset.target)
 
-        n_inputs = 5*2  # number of inputs of DecisionTreeClassifier.fit
-        n_outputs = 1*2  # number of outputs of fit
+        n_inputs = 5 * 2  # number of inputs of DecisionTreeClassifier.fit
+        n_outputs = 1 * 2  # number of outputs of fit
         run = tracker._run
         # TODO currently a function is only tracked on the first call. Fixed
         # TODO assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
-        mlflow.end_run()
-
-    def test_keras_base_class(self):
-        # Activate tracking of pypads
-        from pypads.base import PyPads
-        PyPads()
-        # first neural network with keras make predictions
-        from numpy import loadtxt
-        from keras.models import Sequential
-        from keras.layers import Dense
-        # load the dataset
-        import os
-        cwd = os.getcwd()
-        dataset = loadtxt(cwd + '/keras-diabetes-indians.csv', delimiter=',')
-
-        # split into input (X) and output (y) variables
-        X = dataset[:, 0:8]
-        y = dataset[:, 8]
-        # define the keras model
-        model = Sequential()
-        model.add(Dense(12, input_dim=8, activation='relu'))
-        model.add(Dense(8, activation='relu'))
-        model.add(Dense(1, activation='sigmoid'))
-        # compile the keras model
-        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-        # fit the keras model on the dataset
-        model.fit(X, y, epochs=150, batch_size=10, verbose=0)
-        # make class predictions with the model
-        predictions = model.predict_classes(X)
-        # summarize the first 5 cases
-        for i in range(5):
-            print('%s => %d (expected %d)' % (X[i].tolist(), predictions[i], y[i]))
-        mlflow.end_run()
-
-    def test_keras_autolog(self):
-        # Activate tracking of pypads
-        from pypads.base import PyPads
-        PyPads(config={"events": {
-            "autologgers": {"on": ["pypads_fit"]}}
-        })
-        # first neural network with keras make predictions
-        # from mlflow.keras import autolog
-        # autolog()
-        from numpy import loadtxt
-        from keras.models import Sequential
-        from keras.layers import Dense
-        # load the dataset
-        import os
-
-        cwd = os.getcwd()
-        dataset = loadtxt(cwd + '/keras-diabetes-indians.csv', delimiter=',')
-
-        # split into input (X) and output (y) variables
-        X = dataset[:, 0:8]
-        y = dataset[:, 8]
-        # define the keras model
-        model = Sequential()
-        model.add(Dense(12, input_dim=8, activation='relu'))
-        model.add(Dense(8, activation='relu'))
-        model.add(Dense(1, activation='sigmoid'))
-        # compile the keras model
-        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-        # fit the keras model on the dataset
-        model.fit(X, y, epochs=150, batch_size=10, verbose=0)
-        # make class predictions with the model
-        predictions = model.predict_classes(X)
-        # summarize the first 5 cases
-        for i in range(5):
-            print('%s => %d (expected %d)' % (X[i].tolist(), predictions[i], y[i]))
         mlflow.end_run()

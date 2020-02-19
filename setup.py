@@ -42,7 +42,7 @@ setup(
     # use_scm_version=True,
     # setup_requires=['setuptools_scm'],
     packages=['pypads'] + find_packages(exclude=["tests", "tests.*", "*.tests.*", "*.tests"]),
-    package_dir={'pypads': 'app'},
+    package_dir={'pypads': 'pypads'},
     include_package_data=True,
     url='https://padre-lab.eu',
     license='GPL',

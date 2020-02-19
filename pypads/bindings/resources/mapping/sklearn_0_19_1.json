@@ -21,20 +21,18 @@
         ]
       }
     },
-    "fns": {
-      "pypads_metric": [
-        "f1_score"
-      ]
-    }
+    "fns": {}
   },
   "algorithms": [
     {
-      "name": "f1_score",
+      "name": "sklearn classification metrics",
       "other_names": [],
       "implementation": {
-        "scikit-learn": "sklearn.metrics.classification.f1_score"
+        "scikit-learn": "sklearn.metrics.classification"
       },
-      "type": "metric"
+      "hooks": {
+        "pypads_metric": "always"
+      }
     },
     {
       "name": "base sklearn estimator",

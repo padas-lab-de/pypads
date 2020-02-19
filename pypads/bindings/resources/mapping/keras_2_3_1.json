@@ -18,6 +18,16 @@
   },
   "algorithms": [
     {
+      "name": "keras classification metrics",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "keras.metrics"
+      },
+      "hooks": {
+        "pypads_metric": "always"
+      }
+    },
+    {
       "name": "base keras model",
       "other_names": [],
       "implementation": {

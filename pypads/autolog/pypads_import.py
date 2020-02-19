@@ -96,6 +96,7 @@ class PyPadsFinder(PathFinder):
 
 
 active = False
+is_recursive = False
 
 
 def extend_import_module():
