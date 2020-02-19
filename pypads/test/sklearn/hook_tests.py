@@ -149,4 +149,5 @@ class PypadsHookTest(unittest.TestCase):
 
         # !-------------------------- asserts ---------------------------
         # End the mlflow run opened by PyPads
+
         mlflow.end_run()

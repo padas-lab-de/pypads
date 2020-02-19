@@ -66,8 +66,9 @@ DEFAULT_CONFIG = {"events": {
                "with": {"write_format": WriteFormats.text.name}},
     "input": {"on": ["pypads_fit"], "with": {"write_format": WriteFormats.text.name}},
     "metric": {"on": ["pypads_metric"]},
+    "dataset": {"on": ["pypads_dataset"]},
     "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"],
-                 "with": {"pipeline_type": "group"}},
+                 "with": {"pipeline_type": "normal", "pipeline_args": True}},
     "log": {"on": ["pypads_log"]}
 },
     "recursion_identity": False,

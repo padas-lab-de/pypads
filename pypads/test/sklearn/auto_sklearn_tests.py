@@ -23,9 +23,10 @@ class PypadsHookTest(unittest.TestCase):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        # from pypads.base import PyPads
-        # tracker = PyPads()
+        from pypads.base import PyPads
+        tracker = PyPads()
 
+        # TODO autosklearn fails we seem to change the _init_ involuntarily
         import timeit
         t = timeit.Timer(autosklearn_digits)
         print(t.timeit(1))
