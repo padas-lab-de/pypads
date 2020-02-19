@@ -1,7 +1,7 @@
 import ast
 import inspect
 import types
-from logging import warning, debug, info
+from logging import warning, debug, info, error
 
 import mlflow
 from boltons.funcutils import wraps
@@ -9,7 +9,6 @@ from boltons.funcutils import wraps
 from pypads.autolog.hook import QualNameHook
 from pypads.autolog.mapping import Mapping, found_classes, get_default_module_hooks, get_default_class_hooks, \
     get_default_fn_hooks
-from pypads.logging_functions import log_init
 
 punched_module = set()
 punched_classes = set()
@@ -18,7 +17,7 @@ punched_classes = set()
 current_tracking_stack = []
 
 
-def wrap(wrappee, *args, **kwargs):
+def wrap(wrappee, ctx, mapping):
     """
     Wrap given object with pypads functionality
     :param wrappee:
@@ -27,10 +26,10 @@ def wrap(wrappee, *args, **kwargs):
     :return:
     """
     if inspect.isclass(wrappee):
-        wrap_class(wrappee, *args, **kwargs)
+        return wrap_class(wrappee, ctx, mapping)
 
     elif inspect.isfunction(wrappee):
-        wrap_function(wrappee.__name__, *args, **kwargs)
+        return wrap_function(wrappee, ctx, mapping)
 
 
 def wrap_module(module, mapping):
@@ -71,8 +70,8 @@ def wrap_class(clazz, ctx, mapping):
 
         if hasattr(clazz.__init__, "__module__"):
             original_init = getattr(clazz, "__init__")
-            wrap_method_helper(fn=original_init, hooks=[(log_init, {})], mapping=mapping, ctx=clazz,
-                               fn_type="function")
+            # wrap_method_helper(fn=original_init, hooks=[(log_init, {})], mapping=mapping, ctx=clazz,
+            #                    fn_type="function")
 
         if mapping.hooks:
             for hook in mapping.hooks:
@@ -82,8 +81,10 @@ def wrap_class(clazz, ctx, mapping):
         reference_name = mapping.reference.rsplit('.', 1)[-1]
         setattr(clazz, "_pypads_mapping", mapping)
         setattr(clazz, "_pypads_wrapped", clazz)
-        setattr(ctx, reference_name, clazz)
         punched_classes.add(clazz)
+        if ctx is not None:
+            setattr(ctx, reference_name, clazz)
+    return clazz
 
 
 def _get_hooked_fns(fn, mapping):
@@ -116,6 +117,22 @@ def _get_hooked_fns(fn, mapping):
     return output
 
 
+def _to_original_name(name, ctx):
+    return "_pypads_original_" + str(id(ctx)) + "_" + name
+
+
+def _get_original(name, ctx):
+    try:
+        return getattr(ctx, _to_original_name(name, ctx))
+    except AttributeError:
+        for attr in dir(ctx):
+            if attr.endswith("_" + name) and attr.startswith("_pypads_original_"):
+                return getattr(ctx, attr)
+
+
+retry_cache = set()
+
+
 def _wrapped_inner_function(ctx, *args, _pypads_hooked_fn, _pypads_hook_params, _pypads_wrappe, _pypads_context,
                             _pypads_callback, _pypads_mapped_by, **kwargs):
     """
@@ -132,13 +149,28 @@ def _wrapped_inner_function(ctx, *args, _pypads_hooked_fn, _pypads_hook_params, 
     :param kwargs:
     :return:
     """
+    global retry_cache
     if ctx is not None:
 
         # Track hook execution to stop multiple exections of the same hook
         if not hasattr(ctx, "_pypads_active_calls"):
             setattr(ctx, "_pypads_active_calls", set())
         elif _pypads_hooked_fn in getattr(ctx, "_pypads_active_calls"):
-            return _pypads_callback(*args, **kwargs)
+            try:
+                return _pypads_callback(*args, **kwargs)
+            except Exception as e:
+                # TODO retry functionality
+                if _get_pypads_config()["retry_on_fail"]:
+                    # TODO check tracking stack
+                    if e.args[0] not in retry_cache:
+                        error("Tracking failed: " + str(e) + " Retrying normal call.")
+                        original_fn = _get_original(_pypads_callback.__name__, ctx)
+                        if original_fn and not original_fn == _pypads_callback:
+                            retry_cache.add(e.args[0])
+                            out = original_fn(*args, **kwargs)
+                            retry_cache.remove(e.args[0])
+                            return out
+                raise e
         getattr(ctx, "_pypads_active_calls").add(_pypads_hooked_fn)
 
     try:
@@ -221,7 +253,7 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
             return ctx_setter
 
     setattr(ctx, "_pypads_mapping_" + fn.__name__, mapping)
-    setattr(ctx, "_pypads_original_" + fn.__name__, fn)
+    setattr(ctx, _to_original_name(fn.__name__, ctx), fn)
 
     if not fn_type or "staticmethod" in str(fn_type):
         @wraps(fn)
@@ -231,8 +263,10 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
             callback = fn
             if hooks:
                 if _is_skip_recursion(None, _pypads_mapped_by):
-                    info("Already tracked " + str(ctx.__name__) + "." + str(fn.__name__))
-                    return callback(*args, **kwargs)
+                    info("Skipping " + str(ctx.__name__) + "." + str(fn.__name__))
+                    out = callback(*args, **kwargs)
+                    current_tracking_stack.pop()
+                    return out
 
                 for (hook, params) in hooks:
                     callback = get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
@@ -248,8 +282,10 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
             callback = types.MethodType(fn, self)
             if hooks:
                 if _is_skip_recursion(self, _pypads_mapped_by):
-                    info("Already tracked " + str(ctx.__name__) + ": " + str(fn.__name__))
-                    return callback(*args, **kwargs)
+                    info("Skipping " + str(ctx.__name__) + ": " + str(fn.__name__))
+                    out = callback(*args, **kwargs)
+                    current_tracking_stack.pop()
+                    return out
 
                 for (hook, params) in hooks:
                     callback = types.MethodType(
@@ -268,8 +304,10 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
             callback = types.MethodType(fn, cls)
             if hooks:
                 if _is_skip_recursion(cls, _pypads_mapped_by):
-                    info("Already tracked " + str(ctx.__name__) + ": " + str(fn.__name__))
-                    return callback(*args, **kwargs)
+                    info("Skipping " + str(ctx.__name__) + ": " + str(fn.__name__))
+                    out = callback(*args, **kwargs)
+                    current_tracking_stack.pop()
+                    return out
 
                 for (hook, params) in hooks:
                     callback = types.MethodType(
@@ -279,14 +317,15 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
             current_tracking_stack.pop()
             return out
     else:
-        return
+        return fn
     setattr(ctx, fn.__name__, entry)
+    return entry
 
 
 def _is_skip_recursion(ref, mapping):
     config = _get_pypads_config()
     if 'recursion_depth' in config and config['recursion_depth'] is not -1:
-        if len(current_tracking_stack) >= config['recursion_depth'] + 1:
+        if len(current_tracking_stack) > config['recursion_depth'] + 1:
             return True
         # found_entries = set()
         # for frame, filename, line_number, function_name, lines, index in inspect.stack():
@@ -311,59 +350,76 @@ def _is_skip_recursion(ref, mapping):
     return False
 
 
-def wrap_function(fn_name, ctx, mapping):
+def wrap_function(fn, ctx, mapping):
     """
     Function to wrap the given fn_name on the ctx object with pypads function calls
-    :param fn_name:
+    :param fn:
     :param ctx:
     :param mapping:
     :return:
     """
-    if inspect.isclass(ctx):
-        defining_class = None
-        if not hasattr(ctx, "__dict__") or fn_name not in ctx.__dict__:
-            mro = ctx.mro()
-            for c in mro[1:]:
-                defining_class = ctx
-                if hasattr(ctx, "__dict__") and fn_name in defining_class.__dict__ and callable(
-                        defining_class.__dict__[fn_name]):
-                    break
-                defining_class = None
-        else:
-            defining_class = ctx
-
-        if defining_class:
-
-            fn = None
-            if hasattr(defining_class, "_pypads_original_" + fn_name):
-                fn = getattr(defining_class, "_pypads_original_" + fn_name)
+    if callable(fn):
+        fn_name = fn.__name__
+    else:
+        fn_name = fn
+    if ctx is not None:
+        if inspect.isclass(ctx):
+            defining_class = None
+            if not hasattr(ctx, "__dict__") or fn_name not in ctx.__dict__:
+                mro = ctx.mro()
+                for c in mro[1:]:
+                    defining_class = ctx
+                    if hasattr(ctx, "__dict__") and fn_name in defining_class.__dict__ and callable(
+                            defining_class.__dict__[fn_name]):
+                        break
+                    defining_class = None
             else:
+                defining_class = ctx
+
+            if defining_class:
+
+                fn = None
                 try:
                     fn = getattr(defining_class, fn_name)
                 except Exception as e:
                     warning(str(e))
 
-            # skip wrong extractions TODO fix for structure like <class 'sklearn.utils.metaestimators._IffHasAttrDescriptor'>
-            if not fn or not callable(fn):
-                return
+                # skip wrong extractions TODO fix for structure like <class 'sklearn.utils.metaestimators._IffHasAttrDescriptor'>
+                if not fn or not callable(fn):
+                    return
 
-            if isinstance(fn, property):
-                fn = fn.fget
+                if isinstance(fn, property):
+                    fn = fn.fget
 
+                if hasattr(defining_class, _to_original_name(fn_name, ctx)):
+                    # TODO it would be nice if we could force super to return the here stated original function instead
+                    debug("Wrapping an already wrapped function: " + str(fn) + " on " + str(
+                        defining_class) + " with original: " +
+                          str(getattr(defining_class, _to_original_name(fn_name,
+                                                                        ctx))) + " The function may be wrapped on a superclass.")
+                    fn = getattr(defining_class, _to_original_name(fn_name, ctx))
+
+                hooks = _get_hooked_fns(fn, mapping)
+                if len(hooks) > 0:
+                    return wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=ctx,
+                                              fn_type=type(defining_class.__dict__[fn.__name__]))
+        elif hasattr(ctx, fn_name):
+            if hasattr(ctx, _to_original_name(fn_name, ctx)):
+                fn = getattr(ctx, _to_original_name(fn_name, ctx))
+            else:
+                fn = getattr(ctx, fn_name)
             hooks = _get_hooked_fns(fn, mapping)
             if len(hooks) > 0:
-                wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=ctx,
-                                   fn_type=type(defining_class.__dict__[fn.__name__]))
-    elif hasattr(ctx, fn_name):
-        if hasattr(ctx, "_pypads_original_" + fn_name):
-            fn = getattr(ctx, "_pypads_original_" + fn_name)
+                return wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=ctx)
         else:
-            fn = getattr(ctx, fn_name)
-        hooks = _get_hooked_fns(fn, mapping)
-        if len(hooks) > 0:
-            wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=ctx)
+            warning(ctx + " is no class or module. Couldn't access " + fn_name + " on it.")
     else:
-        warning(ctx + " is no class or module. Couldn't access " + fn_name + " on it.")
+        class DummyClass:
+            pass
+
+        hooks = _get_hooked_fns(fn, mapping)
+        return wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=DummyClass)
+    return fn
 
 
 # Cache configs for runs. Each run could is for now static in it's config.

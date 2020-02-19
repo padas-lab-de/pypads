@@ -6,6 +6,7 @@ from logging import warning
 from os.path import expanduser
 
 import mlflow
+from mlflow.tracking import MlflowClient
 from mlflow.utils.autologging_utils import try_mlflow_log
 
 
@@ -40,6 +41,14 @@ mlflow.end_run = end_run
 class WriteFormats(Enum):
     pickle = 1
     text = 2
+
+
+# extract all tags of runs by experiment id
+def all_tags(experiment_id):
+    client = MlflowClient(mlflow.get_tracking_uri())
+    ds_infos = client.list_run_infos(experiment_id)
+    for i in ds_infos:
+        yield mlflow.get_run(i.run_id).data.tags
 
 
 def try_write_artifact(file_name, obj, write_format):

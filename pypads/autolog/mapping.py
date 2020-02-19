@@ -59,7 +59,8 @@ class Mapping:
             self._hooks = value
 
     def __str__(self):
-        return str(self.file) + str(self.reference) + str(self.library) + str(self.algorithm) + str(self.hooks)
+        return "Mapping[" + str(self.file) + ":" + str(self.reference) + ", lib=" + str(self.library) + ", alg=" + str(
+            self.algorithm) + ", hooks=" + str(self.hooks) + "]"
 
 
 def get_implementations():

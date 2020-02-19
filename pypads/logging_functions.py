@@ -144,3 +144,9 @@ def metric(self, *args, _pypads_wrappe, artifact_fallback=False, _pypads_context
         if result is self._pads_wrapped_instance:
             return self
     return result
+
+
+def log(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
+    print("Called following function: " + str(_pypads_wrappe) + " on " + str(
+        _pypads_context) + " defined by mapping: " + str(_pypads_callback) + ". Next call is " + str(
+        _pypads_callback))

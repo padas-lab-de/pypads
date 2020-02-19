@@ -119,16 +119,7 @@ class PypadsHookTest(unittest.TestCase):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
-        from pypads.logging_util import WriteFormats
-        tracker = PyPads(config={"events": {
-            "parameters": {"on": ["pypads_fit"]},
-            "cpu": {"on": ["pypads_fit"]},
-            "output": {"on": ["pypads_fit", "pypads_predict"],
-                       "with": {"write_format": WriteFormats.text.name}},
-            "input": {"on": ["pypads_fit"], "with": {"write_format": WriteFormats.text.name}},
-            "metric": {"on": ["pypads_metric"]}
-        },
-            "recursion_depth": 0})
+        tracker = PyPads(config={"recursion_depth": 0})
 
         import timeit
         t = timeit.Timer(sklearn_simpled_decision_tree_experiment)
@@ -158,4 +149,5 @@ class PypadsHookTest(unittest.TestCase):
 
         # !-------------------------- asserts ---------------------------
         # End the mlflow run opened by PyPads
+
         mlflow.end_run()
