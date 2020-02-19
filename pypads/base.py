@@ -9,11 +9,12 @@ from mlflow.tracking import MlflowClient
 from pypads.autolog.hook import Hook
 from pypads.autolog.mapping import Mapping
 from pypads.autolog.wrapping import wrap
-from pypads.logging_functions import parameters, output, input, cpu, metric, log
+from pypads.logging_functions import output, input, cpu, metric, log
 from pypads.logging_util import WriteFormats
 from pypads.mlflow.mlflow_autolog import autologgers
 from pypads.pipeline.pipeline_detection import pipeline
 from pypads.util import get_class_that_defined_method
+from pypads.validation.logging_functions import parameters
 
 
 class FunctionRegistry:
