@@ -1,4 +1,5 @@
 import inspect
+from logging import warning
 
 
 def get_class_that_defined_method(meth):
@@ -13,3 +14,10 @@ def get_class_that_defined_method(meth):
         if isinstance(cls, type):
             return cls
     return getattr(meth, '__objclass__', None)  # handle special descriptor objects
+
+def to_string(o):
+    try:
+        return str(o)
+    except Exception as e:
+        warning("couldn't represent object of type " + str(type(o)) + "Falling back to object type + id")
+        return str(type(o)) + str(id(o))

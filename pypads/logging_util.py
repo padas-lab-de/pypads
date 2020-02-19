@@ -9,6 +9,8 @@ import mlflow
 from mlflow.tracking import MlflowClient
 from mlflow.utils.autologging_utils import try_mlflow_log
 
+from pypads.util import to_string
+
 
 def to_folder(file_name):
     """
@@ -68,7 +70,7 @@ def try_write_artifact(file_name, obj, write_format):
     # Functions for the options to write to
     def write_text(p, o):
         with open(p + ".txt", "w+") as fd:
-            fd.write(str(o))
+            fd.write(to_string(o))
             return fd.name
 
     def write_pickle(p, o):
