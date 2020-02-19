@@ -4,8 +4,8 @@ from logging import warning, info
 import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 
-from pypads.bindings.generic_visitor import default_visitor
 from pypads.logging_util import try_write_artifact, WriteFormats
+from pypads.validation.generic_visitor import default_visitor
 
 
 def _to_folder_name(self, _pypads_context, _pypads_wrappe):

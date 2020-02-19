@@ -87,12 +87,13 @@ def autologgers(self, *args, _pypads_autologgers=None, _pypads_wrappe, _pypads_c
         from mlflow import spark
         spark.autolog()
 
+    # If the function is to be logged call the related mlflow autolog function which would have been applied via gorilla
     if _pypads_wrappe.__name__ in mlflow_autolog_fns:
         for ctx, patch in mlflow_autolog_fns[_pypads_wrappe.__name__].items():
             if ctx == _pypads_context or issubclass(_pypads_context, ctx):
                 mlflow_autolog_callbacks.append(_pypads_callback)
 
-                # TODO hacky fix for keras
+                # TODO hacky fix for keras. Unsure why this is needed. This might hint some problem with our wrappers
                 if 'keras' in str(_pypads_mapped_by.library) and args[5] is None:
                     tmp_args = list(args)
                     tmp_args[5] = []

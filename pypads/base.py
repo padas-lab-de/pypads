@@ -1,6 +1,7 @@
 import os
 from logging import warning
 from types import FunctionType
+from typing import List
 
 import mlflow
 from mlflow.tracking import MlflowClient
@@ -105,9 +106,12 @@ class PypadsApi:
         self._pypads = pypads
 
     # noinspection PyMethodMayBeStatic
-    def track(self, fn, ctx=None, event="pypads_log", mapping: Mapping = None):
+    def track(self, fn, ctx=None, events: List = None, mapping: Mapping = None):
+        if events is None:
+            events = ["pypads_log"]
         if ctx is not None and not hasattr(ctx, fn.__name__):
             warning("Given context " + str(ctx) + " doesn't define " + str(fn.__name__))
+            # TODO create dummy context
             ctx = None
         if mapping is None:
             warning("Tracking a function without a mapping definition. A default mapping will be generated.")
@@ -122,7 +126,10 @@ class PypadsApi:
                     ctx_path = ctx.__name__
             else:
                 ctx_path = "<unbound>"
-            mapping = Mapping(ctx_path + "." + fn.__name__, lib, fn.__name__, None, hooks=[Hook(event)])
+
+            # For all events we want to hook to
+            hooks = [Hook(e) for e in events]
+            mapping = Mapping(ctx_path + "." + fn.__name__, lib, fn.__name__, None, hooks=hooks)
         return wrap(fn, ctx=ctx, mapping=mapping)
 
 
