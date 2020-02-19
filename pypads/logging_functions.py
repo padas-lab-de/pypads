@@ -8,7 +8,11 @@ from pypads.bindings.generic_visitor import default_visitor
 from pypads.logging_util import try_write_artifact, WriteFormats
 
 
-def get_now():
+def _to_folder_name(self, _pypads_context, _pypads_wrappe):
+    return _pypads_context.__name__ + "/" + str(id(self)) + "/" + _pypads_wrappe.__name__
+
+
+def _get_now():
     """
     Function for providing a current human readable timestamp.
     :return: timestamp
@@ -43,7 +47,7 @@ def parameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, 
 
         for k, v in visitor[0]["steps"][0]["hyper_parameters"]["model_parameters"].items():
             try_mlflow_log(mlflow.log_param,
-                           _pypads_mapped_by.reference + "." + str(id(self)) + "." + get_now() + "." + k + ".txt", v)
+                           _pypads_mapped_by.reference + "." + str(id(self)) + "." + _get_now() + "." + k + ".txt", v)
     except Exception as e:
         warning("Couldn't use visitor for parameter extraction. " + str(e) + " Omit logging for now.")
         # for i in range(len(args)):
@@ -72,7 +76,7 @@ def output(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypad
     :return:
     """
     result = _pypads_callback(*args, **kwargs)
-    name = _pypads_context.__name__ + "[" + str(id(self)) + "]." + _pypads_wrappe.__name__ + "(return)"
+    name = _to_folder_name(self, _pypads_context, _pypads_wrappe) + "/returns/" + str(id(_pypads_callback))
     try_write_artifact(name, result, write_format)
     return result
 
@@ -94,13 +98,13 @@ def input(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypads
     """
     for i in range(len(args)):
         arg = args[i]
-        name = _pypads_context.__name__ + "[" + str(id(self)) + "]." + _pypads_wrappe.__name__ + "(args[" + str(
-            i) + "])"
+        name = _to_folder_name(self, _pypads_context, _pypads_wrappe) + "/args/" + str(i) + "_" + str(
+            id(_pypads_callback))
         try_write_artifact(name, arg, write_format)
 
     for (k, v) in kwargs.items():
-        name = _pypads_context.__name__ + "[" + str(id(self)) + "]." + _pypads_wrappe.__name__ + "(kwargs[" + str(
-            k) + "])"
+        name = _to_folder_name(self, _pypads_context, _pypads_wrappe) + "/kwargs/" + str(k) + "_" + str(
+            id(_pypads_callback))
         try_write_artifact(name, v, write_format)
 
     result = _pypads_callback(*args, **kwargs)

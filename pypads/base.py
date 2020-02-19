@@ -68,7 +68,7 @@ DEFAULT_CONFIG = {"events": {
     "metric": {"on": ["pypads_metric"]},
     "dataset": {"on": ["pypads_dataset"]},
     "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"],
-                 "with": {"pipeline_type": "normal", "pipeline_args": True}},
+                 "with": {"pipeline_type": "normal", "pipeline_args": False}},
     "log": {"on": ["pypads_log"]}
 },
     "recursion_identity": False,
