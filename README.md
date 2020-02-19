@@ -1,2 +1,2 @@
 # PadrePads
-An extension of pypads to work as a backend for pypadre.
+An extension of pypads that implements the concepts of pypadre.
