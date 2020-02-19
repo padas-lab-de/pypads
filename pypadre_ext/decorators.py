@@ -13,8 +13,10 @@ from pypads.logging_util import all_tags, try_write_artifact, WriteFormats
 
 DATASETS = "datasets"
 
-EXT_MAPPING = DEFAULT_MAPPING["dataset"] = dataset
-EXT_CONFIG = DEFAULT_CONFIG["dataset"] = {"on": ["pypads_dataset"]}
+EXT_MAPPING = DEFAULT_MAPPING
+EXT_MAPPING["dataset"] = dataset
+EXT_CONFIG = DEFAULT_CONFIG
+EXT_CONFIG["dataset"] = {"on": ["pypads_dataset"]}
 
 
 class PyPadsEXT(PyPads):

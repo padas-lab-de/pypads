@@ -27,8 +27,9 @@ class PypadsEXT(unittest.TestCase):
             "Sulphates.",
             "Alcohol.",
             "Quality"]
+        ds_name = "winequality_red"
 
-        @tracker.dataset(name="winequality_red", metadata={"attributes": columns_wine, "target": columns_wine[-1]})
+        @tracker.dataset(name=ds_name, metadata={"attributes": columns_wine, "target": columns_wine[-1]})
         def load_iris():
             from sklearn.datasets import load_iris
             return load_iris()
@@ -37,8 +38,9 @@ class PypadsEXT(unittest.TestCase):
 
         # --------------------------- asserts ---------------------------
         import mlflow
-        datasets = mlflow.get_experiment_by_name("datasets")
-
+        datasets_repo = mlflow.get_experiment_by_name("datasets")
+        datasets = tracker.mlf.list_run_infos(datasets_repo.experiment_id)
+        
         # !-------------------------- asserts ---------------------------
         # End the mlflow run opened by PyPads
         mlflow.end_run()
