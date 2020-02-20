@@ -74,6 +74,11 @@ class PackageNameHook(Hook):
 
 
 def get_hooks(hook_map):
+    """
+    This function returns hook objects defined in a mapping.
+    :param hook_map: mapping containing the hooks
+    :return:
+    """
     hooks = []
     for event, hook_serialization in hook_map.items():
         if Hook.has_type_name(hook_serialization):

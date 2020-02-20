@@ -7,7 +7,7 @@ from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
 from pypads.autolog.wrapping import current_tracking_stack
-from pypads.logging_util import WriteFormats, to_folder, try_write_artifact
+from pypads.logging_util import WriteFormats, get_base_folder, try_write_artifact
 from pypads.mlflow.mlflow_autolog import _is_package_available
 
 last_pipeline_tracking = None
@@ -25,7 +25,7 @@ def end_run(*args, **kwargs):
         try_write_artifact("_pypads_pipeline", network, WriteFormats.pickle)
 
         if _is_package_available("networkx"):
-            base_folder = to_folder("")
+            base_folder = get_base_folder()
             folder = base_folder + "pipeline_graph.png"
             if not os.path.exists(base_folder):
                 os.mkdir(base_folder)

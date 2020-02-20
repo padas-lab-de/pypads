@@ -10,15 +10,13 @@ from mlflow.tracking import MlflowClient
 from mlflow.utils.autologging_utils import try_mlflow_log
 
 
-def to_folder(file_name):
+def get_base_folder():
     """
-    TODO
-    :param file_name:
+    Get the base folder to log tmp files to. For now it can't be changed. TODO
     :return:
     """
     run = mlflow.active_run()
-    return os.path.join(
-        expanduser("~") + "/.pypads/" + run.info.experiment_id + "/" + run.info.run_id + "/" + file_name)
+    return os.path.join(expanduser("~"), ".pypads", run.info.experiment_id, run.info.run_id) + os.path.sep
 
 
 # --- Clean tmp files after run ---
@@ -26,7 +24,7 @@ original_end = mlflow.end_run
 
 
 def end_run(*args, **kwargs):
-    folder = to_folder("")
+    folder = get_base_folder()
     if os.path.exists(folder):
         shutil.rmtree(folder)
     return original_end(*args, **kwargs)
@@ -51,7 +49,7 @@ def all_tags(experiment_id):
         yield mlflow.get_run(i.run_id).data.tags
 
 
-def try_write_artifact(file_name, obj, write_format):
+def try_write_artifact(file_name, obj, write_format, preserve_folder=True):
     """
     Function to write an artifact to disk. TODO
     :param write_format:
@@ -59,7 +57,8 @@ def try_write_artifact(file_name, obj, write_format):
     :param obj:
     :return:
     """
-    path = to_folder(file_name)
+    base_path = get_base_folder()
+    path = base_path + file_name
 
     # Todo allow for configuring output format
     if not os.path.exists(os.path.dirname(path)):
@@ -95,6 +94,12 @@ def try_write_artifact(file_name, obj, write_format):
             return
 
     path = options[write_format](path, obj)
-
-    # Log artifact to mlflow
-    try_mlflow_log(mlflow.log_artifact, path)
+    if preserve_folder:
+        in_folder = os.path.join(base_path, file_name.split(os.sep)[0])
+        # Log artifact to mlflow
+        if os.path.isdir(in_folder):
+            try_mlflow_log(mlflow.log_artifact, in_folder)
+        else:
+            try_mlflow_log(mlflow.log_artifact, path)
+    else:
+        try_mlflow_log(mlflow.log_artifact, path)

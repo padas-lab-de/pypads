@@ -7,7 +7,7 @@ from logging import warning, info, debug
 from types import ModuleType
 
 from pypads.autolog.mapping import get_relevant_mappings, Mapping, found_classes, get_implementations
-from pypads.autolog.wrapping import wrap_module, wrap_class, wrap_function, punched_classes
+from pypads.autolog.wrapping import wrap_module, wrap_class, wrap_function, punched_classes, punched_module
 
 
 class PyPadsLoader(_LoaderBasics):
@@ -26,10 +26,14 @@ class PyPadsLoader(_LoaderBasics):
     def exec_module(self, module):
         out = self.spec.loader.exec_module(module)
 
+        # On execution of a module we search for relevant mappings
+        # TODO we might want to make this configurable/improve performance. This looks at every imported class.
         for name in dir(module):
             reference = getattr(module, name)
             if inspect.isclass(reference) and hasattr(reference, "mro"):
                 try:
+
+                    # Look at the MRO and add classes to be punched which inherit from our punched classes
                     overlap = set(reference.mro()[1:]) & punched_classes
                     if bool(overlap):
                         # TODO maybe only for the first one
@@ -44,6 +48,7 @@ class PyPadsLoader(_LoaderBasics):
                 except Exception as e:
                     debug("Skipping superclasses of " + str(reference) + ". " + str(e))
 
+        # TODO And every mapping.
         for mapping in get_relevant_mappings():
             if mapping.reference.startswith(module.__name__):
                 if mapping.reference == module.__name__:
@@ -83,11 +88,14 @@ class PyPadsFinder(PathFinder):
             i = iter(path_)
             spec = None
             try:
+                # Find a valid importer for the given fullname on the meta_path
                 importer = None
                 while not spec:
                     importer = next(i)
                     if hasattr(importer, "find_spec"):
                         spec = importer.find_spec(fullname, path)
+
+                # Use the importer as a real importer but wrap it in the PyPadsLoader
                 if spec and importer:
                     spec.loader = PyPadsLoader(importer.find_spec(fullname, path))
                     return spec
@@ -120,7 +128,10 @@ def activate_tracking(mod_globals=None):
     if not active:
         active = True
 
+        # Add our loader to the meta_path
         extend_import_module()
+
+        # Try to punch if we already imported modules before starting to track
         for i in set(mapping.reference.rsplit('.', 1)[0] for mapping in get_implementations() if
                      mapping.reference.rsplit('.', 1)[0] in sys.modules
                      and mapping.reference.rsplit('.', 1)[0] not in punched_module):

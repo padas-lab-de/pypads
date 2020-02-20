@@ -1,6 +1,7 @@
 import os
 from logging import warning
 from types import FunctionType
+from typing import List
 
 import mlflow
 from mlflow.tracking import MlflowClient
@@ -8,11 +9,12 @@ from mlflow.tracking import MlflowClient
 from pypads.autolog.hook import Hook
 from pypads.autolog.mapping import Mapping
 from pypads.autolog.wrapping import wrap
-from pypads.logging_functions import parameters, output, input, cpu, metric, log
+from pypads.logging_functions import output, input, cpu, metric, log
 from pypads.logging_util import WriteFormats
 from pypads.mlflow.mlflow_autolog import autologgers
 from pypads.pipeline.pipeline_detection import pipeline
 from pypads.util import get_class_that_defined_method
+from pypads.validation.logging_functions import parameters
 
 
 class FunctionRegistry:
@@ -68,7 +70,7 @@ DEFAULT_CONFIG = {"events": {
     "metric": {"on": ["pypads_metric"]},
     "dataset": {"on": ["pypads_dataset"]},
     "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"],
-                 "with": {"pipeline_type": "normal", "pipeline_args": True}},
+                 "with": {"pipeline_type": "normal", "pipeline_args": False}},
     "log": {"on": ["pypads_log"]}
 },
     "recursion_identity": False,
@@ -105,9 +107,12 @@ class PypadsApi:
         self._pypads = pypads
 
     # noinspection PyMethodMayBeStatic
-    def track(self, fn, ctx=None, event="pypads_log", mapping: Mapping = None):
+    def track(self, fn, ctx=None, events: List = None, mapping: Mapping = None):
+        if events is None:
+            events = ["pypads_log"]
         if ctx is not None and not hasattr(ctx, fn.__name__):
             warning("Given context " + str(ctx) + " doesn't define " + str(fn.__name__))
+            # TODO create dummy context
             ctx = None
         if mapping is None:
             warning("Tracking a function without a mapping definition. A default mapping will be generated.")
@@ -122,7 +127,10 @@ class PypadsApi:
                     ctx_path = ctx.__name__
             else:
                 ctx_path = "<unbound>"
-            mapping = Mapping(ctx_path + "." + fn.__name__, lib, fn.__name__, None, hooks=[Hook(event)])
+
+            # For all events we want to hook to
+            hooks = [Hook(e) for e in events]
+            mapping = Mapping(ctx_path + "." + fn.__name__, lib, fn.__name__, None, hooks=hooks)
         return wrap(fn, ctx=ctx, mapping=mapping)
 
 

@@ -46,7 +46,7 @@ class PypadsHookTest(unittest.TestCase):
             print("I'm an function level experiment")
             return "I'm a return value."
 
-        experiment = tracker.api.track(experiment)
+        experiment = tracker.api.track(experiment, events=["pypads_fit"])
 
         import timeit
         t = timeit.Timer(experiment)
