@@ -1,14 +1,13 @@
 from pathlib import Path
-
-import mlflow
 import numpy as np
-from pypadre.pod.importing.dataset.dataset_import import NumpyLoader
+from pypadre_ext.concepts.dataset import Dataset
 
 SEED = 1
 
 from pypadre_ext.pypads_padre import PyPadsEXT
 tracker = PyPadsEXT(name="SVC")
 from sklearn.svm import SVC
+from sklearn.metrics.classification import f1_score, precision_score, recall_score
 
 columns_wine = [
     "Fixed acidity.",
@@ -31,10 +30,20 @@ def load_wine(type="red"):
     name = "winequality-{}".format(type)
     path = Path(__file__).parent / "{}.csv".format(name)
     data = np.loadtxt(path, delimiter=';', usecols=range(12))
-    loader = NumpyLoader()
-    dataset = loader.load(data, **{"name": "red_winequality",
+    dataset = Dataset(data=data,**{"name": "red_winequality",
                                     "columns": columns_wine,
                                     "target_features": columns_wine[-1]})
+    @dataset.features_fn()
+    def features():
+        return dataset.data[:,:-1]
+
+    @dataset.targets_fn()
+    def targets():
+        return dataset.data[:,-1]
+
+    @dataset.shape_fn()
+    def shape():
+        return dataset.data.shape
     return dataset
 
 
@@ -42,14 +51,14 @@ dataset_ = load_wine()
 
 
 @tracker.splitter()
-def cv(data, n_folds=3, shuffle=True, seed=None):
+def cv(data: Dataset, n_folds=3, shuffle=True, seed=None):
     if seed is None:
         seed = 1
     r = np.random.RandomState(seed)
-    idx = np.arange(data.size[0])
+    idx = np.arange(data.shape[0])
 
     def splitting_iterator():
-        y = data.targets()
+        y = data.targets
         classes_, y_idx, y_inv, y_counts = np.unique(y, return_counts=True, return_index=True,
                                                      return_inverse=True)
         n_classes = len(y_idx)
@@ -84,7 +93,7 @@ def cv(data, n_folds=3, shuffle=True, seed=None):
 
 
 @tracker.grid_search()
-def grid_search():
+def parameters():
     test = {'C': [1.0, 1.5, 2.0], 'kernel': ['rbf'],
             'gamma': ['auto'],
             'random_state': [SEED]}
@@ -94,13 +103,16 @@ def grid_search():
 if not tracker.active_run():
     tracker.start_run()
 
-for params in grid_search():
+for params in parameters():
     for num, train_idx, test_idx in cv(dataset_, n_folds=5, seed=SEED):
         model = SVC(probability=True, **params)
-
-        X_train, y_train = dataset_.features()[train_idx], dataset_.targets()[train_idx]
+        X_train, y_train = dataset_.features[train_idx], dataset_.targets[train_idx]
         model.fit(X_train, y_train)
-        X_test = dataset_.features()[test_idx]
+        X_test = dataset_.features[test_idx]
+        y_test = dataset_.targets[test_idx]
         predicted = model.predict(X_test)
+        f1_score(y_test, predicted, average="macro")
+        precision_score(y_test, predicted, average="macro")
+        recall_score(y_test, predicted, average="macro")
     tracker.pop(tracker.run_id())
     tracker.start_run()

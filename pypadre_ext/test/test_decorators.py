@@ -6,7 +6,7 @@ class PypadsEXT(unittest.TestCase):
 
     def test_dataset(self):
         """
-        This example will track the dataset created by the decorated function
+        This example will track the concepts created by the decorated function
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
