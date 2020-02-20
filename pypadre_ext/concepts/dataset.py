@@ -81,7 +81,10 @@ from boltons.funcutils import wraps
 
 
 class Dataset:
-
+    """
+    This class is a general representation of datasets where the user has to define most of the bound methods for
+    extracting features, targets, attributes
+    """
     def __init__(self, data, features=None, targets=None, attributes=None, **kwargs):
         # Default metadata
         defaults = {"name": "default_name", "version": "1.0", "description": "", "originalSource": "",

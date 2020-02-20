@@ -8,7 +8,7 @@ from mlflow.utils.autologging_utils import try_mlflow_log
 
 from pypadre_ext.logging_functions import dataset, predictions
 from pypads.base import PyPads, DEFAULT_MAPPING, DEFAULT_CONFIG
-from pypads.logging_functions import get_now
+from pypads.logging_functions import _get_now
 from pypads.logging_util import all_tags, try_write_artifact, WriteFormats
 
 DATASETS = "datasets"
@@ -18,8 +18,8 @@ EXT_MAPPING["dataset"] = dataset
 EXT_MAPPING["predictions"] = predictions
 
 EXT_CONFIG = DEFAULT_CONFIG
-EXT_CONFIG["predictions"] = {"on": ["pypads_predict"], "with": {"write_format": WriteFormats.text.name}}
-EXT_CONFIG["dataset"] = {"on": ["pypads_dataset"]}
+EXT_CONFIG.get("events").update({"predictions": {"on": ["pypads_predict"], "with": {"write_format": WriteFormats.text.name}}})
+EXT_CONFIG.get("events").update({"dataset" : {"on": ["pypads_dataset"]}})
 
 
 class PyPadsEXT(PyPads):
@@ -81,6 +81,13 @@ class PyPadsEXT(PyPads):
             @wraps(f_experiment)
             def wrap_experiment(*args, **kwargs):
                 return f_experiment(*args, **kwargs)
+
+            if name is not None and self._experiment.name != name:
+                experiment = mlflow.get_experiment_by_name(name)
+                experiment_id = experiment.experiment_id if experiment else mlflow.create_experiment(name)
+                self._experiment = experiment if experiment else self.mlf.get_experiment(experiment_id)
+                self.start_run()
+
 
     def dataset(self, name, metadata=None):
         def dataset_decorator(f_create_dataset):
@@ -146,13 +153,14 @@ class PyPadsEXT(PyPads):
                                    'test_indices': test_idx}})
 
                     if targets is not None:
-                        warning(
-                            "Your splitter does not provide targets information, Truth values will be missing from "
-                            "the logged predictions")
                         self.cache.get(run_id).get(str(num)).update(
                             {'predictions': {str(sample): {'truth': targets[i]} for i, sample in
                                              enumerate(test_idx)}})
-                    name = 'Split_{}_{}_information.txt'.format(num, get_now())
+                    else:
+                        warning(
+                            "Your splitter does not provide targets information, Truth values will be missing from "
+                            "the logged predictions")
+                    name = 'Split_{}_{}_information.txt'.format(num, _get_now())
                     try_write_artifact(name,
                                        {'dataset': ds_name, 'train_indices': train_idx, 'test_indices': test_idx},
                                        WriteFormats.text)
@@ -195,7 +203,7 @@ class PyPadsEXT(PyPads):
                     for param, idx in zip(params_list, range(0, len(params_list))):
                         execution_params[param] = element[idx]
                         try_mlflow_log(mlflow.log_param, "Grid_params." + param + ".txt", element[idx])
-                    name = "Grid_params_{}".format(get_now())
+                    name = "Grid_params_{}".format(_get_now())
                     try_write_artifact(name, execution_params, WriteFormats.text)
                     yield execution_params
 
