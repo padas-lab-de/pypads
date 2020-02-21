@@ -16,6 +16,8 @@ def get_base_folder():
     :return:
     """
     run = mlflow.active_run()
+    if run is None:
+        ValueError("No active run is defined.")
     return os.path.join(expanduser("~"), ".pypads", run.info.experiment_id, run.info.run_id) + os.path.sep
 
 

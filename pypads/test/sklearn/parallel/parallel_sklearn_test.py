@@ -27,6 +27,7 @@ def parallel_tracking(min_samples_leaf=1):
     from pypads.base import PyPads
     tracker = PyPads()
     sklearn_simple_decision_tree_experiment(min_samples_leaf=min_samples_leaf)
+    tracker.api.end_run()
     return min_samples_leaf
 
 

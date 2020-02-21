@@ -6,14 +6,19 @@ from logging import warning, debug, info, error
 import mlflow
 from boltons.funcutils import wraps
 
-from pypads.autolog.mapping import Mapping, found_classes, get_default_module_hooks, get_default_class_hooks, \
-    get_default_fn_hooks
+from pypads.autolog.mappings import AlgorithmMapping
+from pypads.logging_functions import log_init
 
 punched_module = set()
 punched_classes = set()
 
 # stack of calls to a tracked class
 current_tracking_stack = []
+
+
+def _add_found_class(mapping):
+    from pypads.base import get_current_pads
+    get_current_pads().mapping_registry.add_found_class(mapping.reference, mapping)
 
 
 def wrap(wrappee, ctx, mapping):
@@ -31,7 +36,7 @@ def wrap(wrappee, ctx, mapping):
         return wrap_function(wrappee, ctx, mapping)
 
 
-def wrap_module(module, mapping):
+def wrap_module(module, mapping: AlgorithmMapping):
     """
     Function to wrap modules with pypads functionality
     :param module:
@@ -41,16 +46,17 @@ def wrap_module(module, mapping):
     if not hasattr(module, "_pypads_wrapped"):
         punched_module.add(module)
         if not mapping.hooks:
-            mapping.hooks = get_default_module_hooks(mapping)
+            mapping.hooks = mapping.in_collection.get_default_module_hooks()
 
         for _name in dir(module):
             wrap(getattr(module, _name), module, mapping)
 
         for hook in mapping.hooks:
             for name in list(filter(lambda x: hook.is_applicable(mapping=mapping, fn=getattr(module, x)), dir(module))):
-                found_classes[mapping.reference + "." + name] = Mapping(mapping.reference + "." + name,
-                                                                        mapping.library, mapping.algorithm,
-                                                                        mapping.file, None)
+                algorithm_mapping = AlgorithmMapping(mapping.reference + "." + name, mapping.library, mapping.algorithm,
+                                                     mapping.file, None)
+                algorithm_mapping.in_collection = mapping.in_collection
+                _add_found_class(algorithm_mapping)
 
         setattr(module, "_pypads_wrapped", module)
 
@@ -65,12 +71,12 @@ def wrap_class(clazz, ctx, mapping):
     """
     if clazz not in punched_classes:
         if not mapping.hooks:
-            mapping.hooks = get_default_class_hooks(mapping)
+            mapping.hooks = mapping.in_collection.get_default_class_hooks()
 
         if hasattr(clazz.__init__, "__module__"):
             original_init = getattr(clazz, "__init__")
-            # wrap_method_helper(fn=original_init, hooks=[(log_init, {})], mapping=mapping, ctx=clazz,
-            #                    fn_type="function")
+            wrap_method_helper(fn=original_init, hooks=[(log_init, {})], mapping=mapping, ctx=clazz,
+                               fn_type="function")
 
         if mapping.hooks:
             for hook in mapping.hooks:
@@ -95,7 +101,7 @@ def _get_hooked_fns(fn, mapping):
     :return:
     """
     if not mapping.hooks:
-        mapping.hooks = get_default_fn_hooks(mapping)
+        mapping.hooks = mapping.in_collection.get_default_fn_hooks()
 
     # TODO filter for types, package name contains, etc. instead of only fn names
     hook_events_of_mapping = [hook.event for hook in mapping.hooks if hook.is_applicable(mapping=mapping, fn=fn)]
