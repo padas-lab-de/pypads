@@ -1,11 +1,66 @@
 import datetime
-import os
-import unittest
 
-import mlflow
+from pypads.test.sklearn.base_sklearn_test import BaseSklearnTest, sklearn_simple_decision_tree_experiment, \
+    sklearn_pipeline_experiment
 
 
-class PypadsAppTest(unittest.TestCase):
+class CommonSklearnTest(BaseSklearnTest):
+
+    def test_pipeline(self):
+        """
+        This example will track the experiment exection with the default configuration.
+        :return:
+        """
+        # --------------------------- setup of the tracking ---------------------------
+        # Activate tracking of pypads
+        from pypads.base import PyPads
+        tracker = PyPads()
+
+        import timeit
+        t = timeit.Timer(sklearn_pipeline_experiment)
+        print(t.timeit(1))
+
+        # --------------------------- asserts ---------------------------
+        # TODO
+        # !-------------------------- asserts ---------------------------
+
+    def test_default_tracking(self):
+        """
+        This example will track the experiment exection with the default configuration.
+        :return:
+        """
+        # --------------------------- setup of the tracking ---------------------------
+        # Activate tracking of pypads
+        from pypads.base import PyPads
+        tracker = PyPads()
+
+        import timeit
+        t = timeit.Timer(sklearn_simple_decision_tree_experiment)
+        print(t.timeit(1))
+
+        # --------------------------- asserts ---------------------------
+        import mlflow
+        run = mlflow.active_run()
+        assert tracker._run.info.run_id == run.info.run_id
+        mlflow.end_run()
+
+        # number of inputs of DecisionTreeClassifier.fit, LabelEncoder.fit
+        n_inputs = 5 + 1
+        n_outputs = 1 + 1 + 1  # number of outputs of fit and predict
+        assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
+
+        parameters = tracker._mlf.list_artifacts(run.info.run_id, path='../params')
+        assert len(parameters) != 0
+        assert 'split_quality' in ''.join([p.path for p in parameters])
+
+        metrics = tracker.mlf.list_artifacts(run.info.run_id, path='../metrics')
+        assert len(metrics) != 0
+
+        assert 'f1_score' in ''.join([m.path for m in metrics])
+
+        tags = tracker.mlf.list_artifacts(run.info.run_id, path='../tags')
+        assert 'pypads.processor' in ''.join([m.path for m in tags])
+        # !-------------------------- asserts ---------------------------
 
     def test_simple_parameter_mapping(self):
         # Activate tracking of pypads
@@ -36,7 +91,6 @@ class PypadsAppTest(unittest.TestCase):
 
         parameters = tracker._mlf.list_artifacts(run.info.run_id, path='../params')
         assert len(parameters) != 0
-        mlflow.end_run()
 
     def test_experiment_configuration(self):
         # Activate tracking of pypads
@@ -59,8 +113,7 @@ class PypadsAppTest(unittest.TestCase):
         print(metrics.confusion_matrix(expected, predicted))
 
         # assert statements
-        assert tracker._experiment.name == "ConfiguredExperiment"
-        mlflow.end_run()
+        assert tracker._experiment.regex == "ConfiguredExperiment"
 
     def test_predefined_experiment(self):
         import mlflow
@@ -94,8 +147,7 @@ class PypadsAppTest(unittest.TestCase):
 
         # assert statements
         assert run == tracker._run
-        assert name == tracker._experiment.name
-        mlflow.end_run()
+        assert name == tracker._experiment.regex
 
     def test_parameter_logging_extension_after_import(self):
         from sklearn import datasets, metrics
@@ -117,7 +169,6 @@ class PypadsAppTest(unittest.TestCase):
         # summarize the fit of the model
         print(metrics.classification_report(expected, predicted))
         print(metrics.confusion_matrix(expected, predicted))
-        mlflow.end_run()
 
     def test_multiple_fits(self):
         # Activate tracking of pypads
@@ -139,4 +190,3 @@ class PypadsAppTest(unittest.TestCase):
         run = tracker._run
         # TODO currently a function is only tracked on the first call. Fixed
         # TODO assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
-        mlflow.end_run()

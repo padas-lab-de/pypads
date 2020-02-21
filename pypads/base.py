@@ -10,7 +10,7 @@ from pypads.autolog.hook import Hook
 from pypads.autolog.mapping import Mapping
 from pypads.autolog.wrapping import wrap
 from pypads.logging_functions import output, input, cpu, metric, log
-from pypads.logging_util import WriteFormats
+from pypads.logging_util import WriteFormats, try_write_artifact
 from pypads.mlflow.mlflow_autolog import autologgers
 from pypads.pipeline.pipeline_detection import pipeline
 from pypads.util import get_class_that_defined_method
@@ -133,6 +133,26 @@ class PypadsApi:
             mapping = Mapping(ctx_path + "." + fn.__name__, lib, fn.__name__, None, hooks=hooks)
         return wrap(fn, ctx=ctx, mapping=mapping)
 
+    def log_artifact(self, local_path, artifact_path, meta=None):
+        mlflow.log_artifact(local_path=local_path, artifact_path=artifact_path)
+        self._write_meta(os.path.basename(artifact_path), meta)
+
+    def log_mem_artifact(self, name, obj, write_format=format, preserve_folder=True, meta=None):
+        try_write_artifact(name, obj, write_format, preserve_folder)
+        self._write_meta(name, meta)
+
+    def log_metric(self, key, value, step=None, meta=None):
+        mlflow.log_metric(key, value, step)
+        self._write_meta(key + ".m", meta)
+
+    def log_param(self, key, value, meta=None):
+        mlflow.log_param(key, value)
+        self._write_meta(key + ".p", meta)
+
+    def _write_meta(self, name, meta):
+        if meta:
+            try_write_artifact(name + ".meta", meta, WriteFormats.text, preserve_folder=True)
+
 
 class PypadsDecorators:
     def __init__(self, pypads):
@@ -154,7 +174,8 @@ class PyPads:
     """
     current_pads = None
 
-    def __init__(self, uri=None, name=None, filter_mapping_files=None, mapping=None, config=None, mod_globals=None):
+    def __init__(self, uri=None, name=None, filter_mapping_files=None, mapping_file=None, mapping=None, config=None,
+                 mod_globals=None):
         """
         TODO
         :param uri:
@@ -184,6 +205,11 @@ class PyPads:
             self.config = {**DEFAULT_CONFIG, **config}
         else:
             self.config = DEFAULT_CONFIG
+
+        if mapping_file:
+            import pypads.autolog.mapping as m
+            # TODO better mapping management
+            setattr(m, "mappings", mapping_file)
 
         # override active run if used
         if name and run.info.experiment_id is not self._experiment.experiment_id:

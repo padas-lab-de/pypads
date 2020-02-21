@@ -1,0 +1,31 @@
+{
+  "default_hooks": {
+    "modules": {
+      "fns": {}
+    },
+    "classes": {
+      "fns": {}
+    },
+    "fns": {}
+  },
+  "algorithms": [
+    {
+      "name": "sklearn classification metrics",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.metrics.classification"
+      },
+      "hooks": {
+        "pypads_metric": [
+          ".*"
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "author": "Thomas Weißgerber",
+    "library": "scikit-learn",
+    "library_version": "0.19.1",
+    "mapping_version": "0.1"
+  }
+}

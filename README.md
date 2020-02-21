@@ -86,6 +86,46 @@ In the example of sklearn mapping json file, we have:
       }
 
 For example, "pypads_fit" is an event listener on any fit, fit_predict and fit_transform call made by the tracked model class.
+
+#### Always
+    {
+      "name": "sklearn classification metrics",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.metrics.classification"
+      },
+      "hooks": {
+        "pypads_metric": "always"
+      }
+    }
+This hook triggers always. If you annotate a module with this hook, all its functions and classes will be tracked.
+
+#### QualNameHook
+    {
+      "name": "sklearn classification metrics",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.metrics.classification"
+      },
+      "hooks": {
+        "pypads_metric": ["f1_score"]
+      }
+    }
+Tracks function with a name matching the given Regex.
+
+#### PackageNameHook
+    {
+      "name": "sklearn classification metrics",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.metrics"
+      },
+      "hooks": {
+        "pypads_metric": [{"type": "package_name", "name":".*classification.*"}]
+      }
+    }
+Tracks all attr on module where package name is matching Regex.
+
 ### PyPads class
 As we have seen, a simple initialization of the class at the top of your code activate the tracking for libraries that has a mapping file defining the algorithms to track.
 
