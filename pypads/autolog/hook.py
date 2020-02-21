@@ -1,4 +1,7 @@
-from logging import warning
+import re
+from _py_abc import ABCMeta
+from abc import abstractmethod
+from logging import warning, error
 
 
 class Hook:
@@ -27,50 +30,54 @@ class Hook:
         return True
 
 
-class QualNameHook(Hook):
-    """
-    This class defines a pypads hook triggering if the function name equals the given name.
-    """
+class RegexHook(Hook):
+    __metaclass__ = ABCMeta
 
-    type = "qual_name"
-
-    def __init__(self, event, name):
+    @abstractmethod
+    def __init__(self, event, regex):
         super().__init__(event)
-        self._name = name
+        try:
+            self._regex = re.compile(regex)
+        except Exception as e:
+            error("Couldn't compile regex: " + str(regex) + "of hook" + str(self) + ". Disabling it.")
+            # Regex to never match anything
+            self._regex = re.compile('a^')
 
     @property
-    def name(self):
+    def regex(self):
         """
         Function name to hook to
         :return:
         """
-        return self._name
+        return self._regex
+
+
+class QualNameHook(RegexHook):
+    """
+    This class defines a pypads hook triggering if the function name equals the given name.
+    """
+
+    def __init__(self, event, regex):
+        super().__init__(event, regex)
+
+    type = "qual_name"
 
     def is_applicable(self, *args, fn=None, **kwargs):
-        return fn is not None and fn.__name__ == self.name
+        return fn is not None and hasattr(fn, "__name__") and self.regex.match(fn.__name__)
 
 
-class PackageNameHook(Hook):
+class PackageNameHook(RegexHook):
     """
     This class defines a pypads hook triggering if the package name includes given name.
     """
 
+    def __init__(self, event, regex):
+        super().__init__(event, regex)
+
     type = "package_name"
 
-    def __init__(self, event, name):
-        super().__init__(event)
-        self._name = name
-
-    @property
-    def name(self):
-        """
-        Package name to hook to
-        :return:
-        """
-        return self._name
-
     def is_applicable(self, *args, mapping=None, **kwargs):
-        return mapping is not None and self.name in mapping.reference
+        return mapping is not None and self.regex.match(mapping.reference)
 
 
 def get_hooks(hook_map):
@@ -82,19 +89,24 @@ def get_hooks(hook_map):
     hooks = []
     for event, hook_serialization in hook_map.items():
         if Hook.has_type_name(hook_serialization):
+            # If we are a string "always"
             hooks.append(Hook(event))
         else:
             for hook in hook_serialization:
+                # If hook is already a hook
                 if isinstance(hook, Hook):
                     hooks.append(hook)
+
+                # If hook dict has a type
                 elif hasattr(hook, 'type'):
                     if QualNameHook.has_type_name(hook['type']):
-                        hooks.append(QualNameHook(event, hook['name']))
-
+                        hooks.append(QualNameHook(event, hook['regex']))
                     elif PackageNameHook.has_type_name(hook['type']):
-                        hooks.append(PackageNameHook(event, hook['name']))
+                        hooks.append(PackageNameHook(event, hook['regex']))
                     else:
                         warning("Type " + str(hook['type']) + " of hook " + str(hook) + " unknown.")
+
+                # If hook is just a string
                 else:
                     hooks.append(QualNameHook(event, hook))
     return hooks

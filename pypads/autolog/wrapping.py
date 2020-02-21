@@ -6,7 +6,6 @@ from logging import warning, debug, info, error
 import mlflow
 from boltons.funcutils import wraps
 
-from pypads.autolog.hook import QualNameHook
 from pypads.autolog.mapping import Mapping, found_classes, get_default_module_hooks, get_default_class_hooks, \
     get_default_fn_hooks
 
@@ -48,10 +47,10 @@ def wrap_module(module, mapping):
             wrap(getattr(module, _name), module, mapping)
 
         for hook in mapping.hooks:
-            if isinstance(hook, QualNameHook):
-                found_classes[mapping.reference + "." + hook.name] = Mapping(mapping.reference + "." + hook.name,
-                                                                             mapping.library, mapping.algorithm,
-                                                                             mapping.file, mapping.hooks)
+            for name in list(filter(lambda x: hook.is_applicable(mapping=mapping, fn=getattr(module, x)), dir(module))):
+                found_classes[mapping.reference + "." + name] = Mapping(mapping.reference + "." + name,
+                                                                        mapping.library, mapping.algorithm,
+                                                                        mapping.file, None)
 
         setattr(module, "_pypads_wrapped", module)
 
@@ -75,8 +74,9 @@ def wrap_class(clazz, ctx, mapping):
 
         if mapping.hooks:
             for hook in mapping.hooks:
-                if isinstance(hook, QualNameHook):
-                    wrap_function(hook.name, clazz, mapping)
+                for name in list(
+                        filter(lambda x: hook.is_applicable(mapping=mapping, fn=getattr(clazz, x)), dir(clazz))):
+                    wrap_function(name, clazz, mapping)
 
         reference_name = mapping.reference.rsplit('.', 1)[-1]
         setattr(clazz, "_pypads_mapping", mapping)

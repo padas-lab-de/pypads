@@ -110,7 +110,7 @@ def metric(self, *args, _pypads_wrappe, artifact_fallback=False, _pypads_context
                 try_write_artifact(_pypads_wrappe.__name__, str(result), WriteFormats.text)
 
     if self is not None:
-        if result is self._pads_wrapped_instance:
+        if result is self._pypads_wrapped:
             return self
     return result
 

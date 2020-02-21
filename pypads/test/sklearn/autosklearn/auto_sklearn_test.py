@@ -1,4 +1,4 @@
-import unittest
+from pypads.test.sklearn.base_sklearn_test import BaseSklearnTest
 
 
 def autosklearn_digits():
@@ -14,11 +14,11 @@ def autosklearn_digits():
     print("Accuracy score", sklearn.metrics.accuracy_score(y_test, y_hat))
 
 
-class PypadsHookTest(unittest.TestCase):
+class PypadsHookTest(BaseSklearnTest):
 
     def test_pipeline(self):
         """
-        This example will track the experiment exection with the default configuration.
+        This example will track an autosklearn experiment.
         :return:
         """
         # --------------------------- setup of the tracking ---------------------------
@@ -32,8 +32,5 @@ class PypadsHookTest(unittest.TestCase):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        import mlflow
         # TODO
         # !-------------------------- asserts ---------------------------
-        # End the mlflow run opened by PyPads
-        mlflow.end_run()
