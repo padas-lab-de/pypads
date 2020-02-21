@@ -18,7 +18,7 @@ current_tracking_stack = []
 
 def _add_found_class(mapping):
     from pypads.base import get_current_pads
-    get_current_pads().mapping_registry.add_found_class(mapping.reference, mapping)
+    get_current_pads().mapping_registry.add_found_class(mapping)
 
 
 def wrap(wrappee, ctx, mapping):

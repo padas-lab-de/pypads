@@ -178,9 +178,9 @@ class MappingRegistry:
             mapping_file = MappingFile(name, json=content)
             self._mappings[mapping_file.lib] = mapping_file
 
-    def add_found_class(self, key, mapping):
-        if key not in self.found_classes:
-            self.found_classes[key] = mapping
+    def add_found_class(self, mapping):
+        if mapping.reference not in self.found_classes:
+            self.found_classes[mapping.reference] = mapping
 
     def iter_found_classes(self):
         for i, mapping in self.found_classes.items():

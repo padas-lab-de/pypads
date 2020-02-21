@@ -16,9 +16,14 @@ class PyPadsLoader(_LoaderBasics):
         self.spec = spec
 
     @staticmethod
-    def _get_mapping_registry():
+    def _add_found_class(mapping):
         from pypads.base import get_current_pads
-        return get_current_pads().mapping_registry
+        return get_current_pads().mapping_registry.add_found_class(mapping)
+
+    @staticmethod
+    def _get_algorithm_mappings():
+        from pypads.base import get_current_pads
+        return get_current_pads().mapping_registry.get_relevant_mappings()
 
     def load_module(self, fullname):
         module = self.spec.loader.load_module(fullname)
@@ -44,19 +49,16 @@ class PyPadsLoader(_LoaderBasics):
                         # TODO maybe only for the first one
                         for o in overlap:
                             if reference not in punched_classes:
-                                from pypads.base import PyPads
-                                self._get_mapping_registry()[
-                                    reference.__module__ + "." + reference.__qualname__] = AlgorithmMapping(
-                                    reference.__module__ + "." + reference.__qualname__,
-                                    o._pypads_mapping.library,
-                                    o._pypads_mapping.algorithm,
-                                    o._pypads_mapping.file,
-                                    o._pypads_mapping.hooks)
+                                found_mapping = AlgorithmMapping(
+                                    reference.__module__ + "." + reference.__qualname__, o._pypads_mapping.library,
+                                    o._pypads_mapping.algorithm, o._pypads_mapping.file, o._pypads_mapping.hooks)
+                                found_mapping.in_collection = o._pypads_mapping.in_collection
+                                self._add_found_class(mapping=found_mapping)
                 except Exception as e:
                     debug("Skipping superclasses of " + str(reference) + ". " + str(e))
 
         # TODO And every mapping.
-        for mapping in self._get_mapping_registry().get_relevant_mappings():
+        for mapping in self._get_algorithm_mappings():
             if mapping.reference.startswith(module.__name__):
                 if mapping.reference == module.__name__:
                     wrap_module(module, mapping)
