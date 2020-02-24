@@ -101,7 +101,10 @@ class PyPadsEXT(PyPads):
 
     def add(self, key, value):
         if key in self.cache:
-            self.cache.get(key).update(value)
+            if isinstance(value, dict):
+                self.cache.get(key).update(value)
+            else:
+                warning("The given value has no defining key besides the run id!")
         else:
             self.cache.update({key: value})
 

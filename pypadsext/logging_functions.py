@@ -28,13 +28,13 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
 
     if hasattr(result, "name"):
         ds_name = result.name
-    elif "dataset_name" in pads.cache.get(self.run_id):
-        ds_name = pads.cache.get(self.run_id).get("dataset_name")
+    elif "dataset_name" in pads.cache.get(pads.run_id):
+        ds_name = pads.cache.get(pads.run_id).get("dataset_name")
     else:
         ds_name = _pypads_wrappe.__name__
 
-    if "dataset_meta" in pads.cache.get(self.run_id):
-        metadata = {**metadata, **pads.cache.get(self.run_id).get("dataset_meta")}
+    if "dataset_meta" in pads.cache.get(pads.run_id):
+        metadata = {**metadata, **pads.cache.get(pads.run_id).get("dataset_meta")}
 
     repo = mlflow.get_experiment_by_name(DATASETS)
     if repo is None:
@@ -45,7 +45,7 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
         pads.stop_run()
         run = mlflow.start_run(experiment_id=repo.experiment_id)
         dataset_id = run.info.run_id
-        pads.add("dataset_id", dataset_id)
+        pads.add(pads.run_id, {"dataset_id", dataset_id})
         mlflow.set_tag("name", ds_name)
         name = _pypads_context.__name__ + "[" + str(id(result)) + "]." + ds_name + ".data"
         try_write_artifact(name, data, write_format)
