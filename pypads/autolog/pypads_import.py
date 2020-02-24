@@ -6,7 +6,7 @@ from logging import warning, info, debug
 # noinspection PyUnresolvedReferences
 from types import ModuleType
 
-from pypads.autolog.mapping import get_relevant_mappings, Mapping, found_classes, get_implementations
+from pypads.autolog.mappings import AlgorithmMapping
 from pypads.autolog.wrapping import wrap_module, wrap_class, wrap_function, punched_classes, punched_module
 
 
@@ -14,6 +14,16 @@ class PyPadsLoader(_LoaderBasics):
 
     def __init__(self, spec):
         self.spec = spec
+
+    @staticmethod
+    def _add_found_class(mapping):
+        from pypads.base import get_current_pads
+        return get_current_pads().mapping_registry.add_found_class(mapping)
+
+    @staticmethod
+    def _get_algorithm_mappings():
+        from pypads.base import get_current_pads
+        return get_current_pads().mapping_registry.get_relevant_mappings()
 
     def load_module(self, fullname):
         module = self.spec.loader.load_module(fullname)
@@ -39,17 +49,16 @@ class PyPadsLoader(_LoaderBasics):
                         # TODO maybe only for the first one
                         for o in overlap:
                             if reference not in punched_classes:
-                                found_classes[reference.__module__ + "." + reference.__qualname__] = Mapping(
-                                    reference.__module__ + "." + reference.__qualname__,
-                                    o._pypads_mapping.library,
-                                    o._pypads_mapping.algorithm,
-                                    o._pypads_mapping.file,
-                                    o._pypads_mapping.hooks)
+                                found_mapping = AlgorithmMapping(
+                                    reference.__module__ + "." + reference.__qualname__, o._pypads_mapping.library,
+                                    o._pypads_mapping.algorithm, o._pypads_mapping.file, o._pypads_mapping.hooks)
+                                found_mapping.in_collection = o._pypads_mapping.in_collection
+                                self._add_found_class(mapping=found_mapping)
                 except Exception as e:
                     debug("Skipping superclasses of " + str(reference) + ". " + str(e))
 
         # TODO And every mapping.
-        for mapping in get_relevant_mappings():
+        for mapping in self._get_algorithm_mappings():
             if mapping.reference.startswith(module.__name__):
                 if mapping.reference == module.__name__:
                     wrap_module(module, mapping)
@@ -132,7 +141,11 @@ def activate_tracking(mod_globals=None):
         extend_import_module()
 
         # Try to punch if we already imported modules before starting to track
-        for i in set(mapping.reference.rsplit('.', 1)[0] for mapping in get_implementations() if
+        from pypads.base import get_current_pads
+
+        # TODO cleanup the mapping reference rsplit checks
+        for i in set(mapping.reference.rsplit('.', 1)[0] for mapping in
+                     get_current_pads().mapping_registry.get_algorithms() if
                      mapping.reference.rsplit('.', 1)[0] in sys.modules
                      and mapping.reference.rsplit('.', 1)[0] not in punched_module):
             spec = importlib.util.find_spec(i)

@@ -1,5 +1,8 @@
+import glob
 import os
+from contextlib import contextmanager
 from logging import warning
+from os.path import expanduser
 from types import FunctionType
 from typing import List
 
@@ -7,8 +10,9 @@ import mlflow
 from mlflow.tracking import MlflowClient
 
 from pypads.autolog.hook import Hook
-from pypads.autolog.mapping import Mapping
+from pypads.autolog.mappings import AlgorithmMapping, MappingRegistry, AlgorithmMeta
 from pypads.autolog.wrapping import wrap
+from pypads.caches import PypadsCache
 from pypads.logging_functions import output, input, cpu, metric, log
 from pypads.logging_util import WriteFormats, try_write_artifact
 from pypads.mlflow.mlflow_autolog import autologgers
@@ -44,8 +48,8 @@ class FunctionRegistry:
 
 # --- Pypads App ---
 
-# Default mappings. We allow to log parameters, output or input
-DEFAULT_MAPPING = {
+# Default event mappings. We allow to log parameters, output or input
+DEFAULT_EVENT_MAPPING = {
     "parameters": parameters,
     "output": output,
     "input": input,
@@ -107,7 +111,7 @@ class PypadsApi:
         self._pypads = pypads
 
     # noinspection PyMethodMayBeStatic
-    def track(self, fn, ctx=None, events: List = None, mapping: Mapping = None):
+    def track(self, fn, ctx=None, events: List = None, mapping: AlgorithmMapping = None):
         if events is None:
             events = ["pypads_log"]
         if ctx is not None and not hasattr(ctx, fn.__name__):
@@ -130,35 +134,73 @@ class PypadsApi:
 
             # For all events we want to hook to
             hooks = [Hook(e) for e in events]
-            mapping = Mapping(ctx_path + "." + fn.__name__, lib, fn.__name__, None, hooks=hooks)
+            mapping = AlgorithmMapping(ctx_path + "." + fn.__name__, lib, AlgorithmMeta(fn.__name__, []), None,
+                                       hooks=hooks)
         return wrap(fn, ctx=ctx, mapping=mapping)
 
+    # ---- logging ----
     def log_artifact(self, local_path, artifact_path, meta=None):
         mlflow.log_artifact(local_path=local_path, artifact_path=artifact_path)
-        self._write_meta(os.path.basename(artifact_path), meta)
+        self._write_meta(_to_artifact_meta_name(os.path.basename(artifact_path)), meta)
 
-    def log_mem_artifact(self, name, obj, write_format=format, preserve_folder=True, meta=None):
+    def log_mem_artifact(self, name, obj, write_format=WriteFormats.text.name, preserve_folder=True, meta=None):
         try_write_artifact(name, obj, write_format, preserve_folder)
-        self._write_meta(name, meta)
+        self._write_meta(_to_artifact_meta_name(name), meta)
 
     def log_metric(self, key, value, step=None, meta=None):
         mlflow.log_metric(key, value, step)
-        self._write_meta(key + ".m", meta)
+        self._write_meta(_to_metric_meta_name(key), meta)
 
     def log_param(self, key, value, meta=None):
         mlflow.log_param(key, value)
-        self._write_meta(key + ".p", meta)
+        self._write_meta(_to_param_meta_name(key), meta)
 
     def _write_meta(self, name, meta):
         if meta:
             try_write_artifact(name + ".meta", meta, WriteFormats.text, preserve_folder=True)
+
+    # !--- logging ----
+
+    # ---- run management ----
+    @contextmanager
+    def intermediate_run(self, **kwargs):
+        enclosing_run = mlflow.active_run()
+        try:
+            run = mlflow.start_run(**kwargs)
+            self._pypads.cache.run_init()
+            yield run
+        finally:
+            if not mlflow.active_run() is enclosing_run:
+                self._pypads.cache.run_clear()
+                try:
+                    mlflow.start_run(run_id=enclosing_run.info.run_id)
+                except Exception:
+                    mlflow.end_run()
+                    mlflow.start_run(run_id=enclosing_run.info.run_id)
+
+    def end_run(self):
+        # TODO maybe do cleanup here instead of punching mlflow end_run
+        mlflow.end_run()
+    # !--- run management ----
+
+
+def _to_artifact_meta_name(name):
+    return name + ".artifact"
+
+
+def _to_metric_meta_name(name):
+    return name + ".metric"
+
+
+def _to_param_meta_name(name):
+    return name + ".param"
 
 
 class PypadsDecorators:
     def __init__(self, pypads):
         self._pypads = pypads
 
-    def track(self, event="pypads_log", mapping: Mapping = None):
+    def track(self, event="pypads_log", mapping: AlgorithmMapping = None):
         def track_decorator(fn):
             ctx = get_class_that_defined_method(fn)
             events = event if isinstance(event, List) else [event]
@@ -167,26 +209,52 @@ class PypadsDecorators:
         return track_decorator
 
 
+current_pads = None
+
+
 class PyPads:
     """
     PyPads app. Enable automatic logging for all libs in mapping files.
     Serves as the main entrypoint to PyPads. After constructing this app tracking is activated.
     """
-    current_pads = None
 
-    def __init__(self, uri=None, name=None, filter_mapping_files=None, mapping_file=None, mapping=None, config=None,
+    def __init__(self, uri=None, name=None, mapping_paths=None, mapping=None, include_default_mappings=True,
+                 event_mapping=None, config=None,
                  mod_globals=None):
         """
         TODO
         :param uri:
         :param name:
-        :param mapping:
+        :param event_mapping:
         :param config:
         :param mod_globals:
         """
-        if filter_mapping_files is None:
-            filter_mapping_files = []
-        self.filter_mapping_files = filter_mapping_files
+
+        if mapping_paths is None:
+            mapping_paths = []
+
+        self._init_mlflow_backend(uri, name, config)
+        self._function_registry = FunctionRegistry(event_mapping or DEFAULT_EVENT_MAPPING)
+        self._init_mapping_registry(*mapping_paths, mapping=mapping, include_defaults=include_default_mappings)
+
+        global current_pads
+        current_pads = self
+
+        self._api = PypadsApi(self)
+        self._decorators = PypadsDecorators(self)
+        self._cache = PypadsCache()
+
+        from pypads.autolog.pypads_import import activate_tracking
+        activate_tracking(mod_globals=mod_globals)
+
+    def _init_mlflow_backend(self, uri=None, name=None, config=None):
+        """
+        Intialize the mlflow backend experiment and run as well as store the config to it.
+        :param uri:
+        :param name:
+        :param config:
+        :return:
+        """
         self._uri = uri or os.environ.get('MLFLOW_PATH') or 'file:' + os.path.expanduser('~/.mlruns')
         mlflow.set_tracking_uri(self._uri)
 
@@ -198,7 +266,6 @@ class PyPads:
             experiment_id = experiment.experiment_id if experiment else mlflow.create_experiment(name)
             run = mlflow.start_run(experiment_id=experiment_id)
         self._mlf = MlflowClient(self._uri)
-        self._function_registry = FunctionRegistry(mapping or DEFAULT_MAPPING)
         self._experiment = self.mlf.get_experiment_by_name(name) if name else self.mlf.get_experiment(
             run.info.experiment_id)
         if config:
@@ -206,28 +273,43 @@ class PyPads:
         else:
             self.config = DEFAULT_CONFIG
 
-        if mapping_file:
-            import pypads.autolog.mapping as m
-            # TODO better mapping management
-            setattr(m, "mappings", mapping_file)
-
         # override active run if used
         if name and run.info.experiment_id is not self._experiment.experiment_id:
             warning("Active run doesn't match given input name " + name + ". Recreating new run.")
             try:
-                self._run = mlflow.start_run(experiment_id=self._experiment.experiment_id)
+                mlflow.start_run(experiment_id=self._experiment.experiment_id)
             except Exception:
                 mlflow.end_run()
-                self._run = mlflow.start_run(experiment_id=self._experiment.experiment_id)
-        else:
-            self._run = run
-        PyPads.current_pads = self
+                mlflow.start_run(experiment_id=self._experiment.experiment_id)
 
-        self._api = PypadsApi(self)
-        self._decorators = PypadsDecorators(self)
+    def _init_mapping_registry(self, *paths, mapping=None, include_defaults=True):
+        """
+        Function to initialize the mapping file registry
+        :param paths:
+        :param mapping:
+        :param include_defaults:
+        :return:
+        """
+        mapping_file_paths = []
+        if include_defaults:
+            # Use our with the package delivered mapping files
+            mapping_file_paths.extend(glob.glob(os.path.join(expanduser("~"), ".pypads", "bindings", "**.json")))
+            mapping_file_paths.extend(glob.glob(
+                os.path.abspath(
+                    os.path.join(os.path.dirname(__file__), "bindings", "resources", "mapping", "**.json"))))
+        if paths:
+            mapping_file_paths.extend(paths)
+        self._mapping_registry = MappingRegistry(*mapping_file_paths)
+        if mapping:
+            if isinstance(mapping, dict):
+                for key, mapping in mapping.items():
+                    self._mapping_registry.add_mapping(mapping, key=key)
+            else:
+                self._mapping_registry.add_mapping(mapping, key=id(mapping))
 
-        from pypads.autolog.pypads_import import activate_tracking
-        activate_tracking(mod_globals=mod_globals)
+    @property
+    def mapping_registry(self):
+        return self._mapping_registry
 
     @property
     def mlf(self) -> MlflowClient:
@@ -246,20 +328,17 @@ class PyPads:
         mlflow.set_tag(CONFIG_NAME, value)
 
     @property
-    def run(self):
-        return self._run
-
-    @run.setter
-    def run(self, value):
-        self._run = value
-
-    @property
     def experiment(self):
         return self._experiment
 
     @experiment.setter
     def experiment(self, value):
+        # noinspection PyAttributeOutsideInit
         self._experiment = value
+
+    @property
+    def experiment_id(self):
+        return self.experiment.experiment_id
 
     @property
     def api(self):
@@ -269,13 +348,18 @@ class PyPads:
     def decorators(self):
         return self._decorators
 
+    @property
+    def cache(self):
+        return self._cache
+
 
 def get_current_pads() -> PyPads:
     """
     Get the currently active pypads instance. All duck punched objects use this function for interacting with pypads.
     :return:
     """
-    if not PyPads.current_pads:
+    global current_pads
+    if not current_pads:
         warning("PyPads has to be initialized before logging can be used. Initializing for your with default values.")
         PyPads()
-    return PyPads.current_pads
+    return current_pads

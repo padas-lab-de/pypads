@@ -42,7 +42,6 @@ class CommonSklearnTest(BaseSklearnTest):
         import mlflow
         run = mlflow.active_run()
         assert tracker._run.info.run_id == run.info.run_id
-        mlflow.end_run()
 
         # number of inputs of DecisionTreeClassifier.fit, LabelEncoder.fit
         n_inputs = 5 + 1

@@ -14,7 +14,7 @@ def autosklearn_digits():
     print("Accuracy score", sklearn.metrics.accuracy_score(y_test, y_hat))
 
 
-class PypadsHookTest(BaseSklearnTest):
+class AutoSklearnTest(BaseSklearnTest):
 
     def test_pipeline(self):
         """
