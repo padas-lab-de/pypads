@@ -140,24 +140,24 @@ class PypadsApi:
         mlflow.log_artifact(local_path=local_path, artifact_path=artifact_path)
         self._write_meta(os.path.basename(artifact_path), meta)
 
-    def log_mem_artifact(self, name, obj, write_format=format, preserve_folder=True, meta=None):
+    def log_mem_artifact(self, name, obj, write_format=WriteFormats.text.name, preserve_folder=True, meta=None):
         try_write_artifact(name, obj, write_format, preserve_folder)
-        self._write_meta(name, meta)
+        self._write_meta(name + ".artifact", meta)
 
     def log_metric(self, key, value, step=None, meta=None):
         mlflow.log_metric(key, value, step)
-        self._write_meta(key + ".m", meta)
+        self._write_meta(key + ".metric", meta)
 
     def log_param(self, key, value, meta=None):
         mlflow.log_param(key, value)
-        self._write_meta(key + ".p", meta)
+        self._write_meta(key + ".param", meta)
 
     def _write_meta(self, name, meta):
         if meta:
             try_write_artifact(name + ".meta", meta, WriteFormats.text, preserve_folder=True)
 
     def end_run(self):
-        # TODO pypads hooks instead of punching mlflow end_run
+        # TODO maybe do cleanup here instead of punching mlflow end_run
         mlflow.end_run()
 
 

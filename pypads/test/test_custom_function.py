@@ -7,7 +7,7 @@ def experiment():
     return "I'm a return value."
 
 
-class PypadsHookTest(unittest.TestCase):
+class PypadsCustomFunctionTest(unittest.TestCase):
 
     def test_api(self):
         """
