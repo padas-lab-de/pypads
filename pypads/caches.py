@@ -13,6 +13,7 @@ class Cache:
         if key in self.cache:
             self.cache.get(key).update(value)
         else:
+            # TODO fixme
             self.cache.update({key: value})
 
     def pop(self, key):
@@ -23,15 +24,18 @@ class Cache:
     def get(self, item):
         return self._cache.get(item)
 
+    def exists(self, key):
+        return key in self._cache
+
     def clear(self):
         self._cache = {}
 
 
 class PypadsRunCache(Cache):
-    def __init__(self):
+    def __init__(self, run):
         super().__init__()
-        self._run = mlflow.active_run()
-        if self._run:
+        self._run = run or mlflow.active_run()
+        if not self._run:
             raise ValueError("No active run for run cache found.")
 
     @property
@@ -45,26 +49,33 @@ class PypadsCache(Cache):
         super().__init__()
         self._run_caches = {}
 
-    def run_init(self):
-        active_run = mlflow.active_run()
-        if not active_run:
+    def run_init(self, run_id=None):
+        if run_id is None:
+            run = mlflow.active_run()
+        else:
+            run = mlflow.get_run(run_id)
+        if not run:
             raise ValueError("No run is active. Couldn't init run cache.")
-        if active_run not in self._run_caches:
-            self._run_caches[active_run] = PypadsRunCache()
-        return active_run
+        if run not in self._run_caches:
+            self._run_caches[run] = PypadsRunCache(run)
+        return run
 
-    def run_add(self, key, value):
-        active_run = self.run_init()
-        self._run_caches[active_run].add(key, value)
+    def run_add(self, key, value, run_id=None):
+        run = self.run_init(run_id)
+        self._run_caches[run].add(key, value)
 
-    def run_pop(self, key):
-        active_run = self.run_init()
-        self._run_caches[active_run].prop(key)
+    def run_pop(self, key, run_id=None):
+        run = self.run_init(run_id)
+        return self._run_caches[run].prop(key)
 
-    def run_get(self, key):
-        active_run = self.run_init()
-        self._run_caches[active_run].get(key)
+    def run_get(self, key, run_id=None):
+        run = self.run_init(run_id)
+        return self._run_caches[run].get(key)
 
-    def run_clear(self):
-        active_run = self.run_init()
-        self._run_caches[active_run].clear()
+    def run_exists(self, key, run_id=None):
+        run = self.run_init(run_id)
+        return self._run_caches[run].exists(key)
+
+    def run_clear(self, run_id=None):
+        run = self.run_init(run_id)
+        self._run_caches[run].clear()
