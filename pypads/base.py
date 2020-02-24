@@ -138,19 +138,19 @@ class PypadsApi:
 
     def log_artifact(self, local_path, artifact_path, meta=None):
         mlflow.log_artifact(local_path=local_path, artifact_path=artifact_path)
-        self._write_meta(os.path.basename(artifact_path), meta)
+        self._write_meta(_to_artifact_meta_name(os.path.basename(artifact_path)), meta)
 
     def log_mem_artifact(self, name, obj, write_format=WriteFormats.text.name, preserve_folder=True, meta=None):
         try_write_artifact(name, obj, write_format, preserve_folder)
-        self._write_meta(name + ".artifact", meta)
+        self._write_meta(_to_artifact_meta_name(name), meta)
 
     def log_metric(self, key, value, step=None, meta=None):
         mlflow.log_metric(key, value, step)
-        self._write_meta(key + ".metric", meta)
+        self._write_meta(_to_metric_meta_name(key), meta)
 
     def log_param(self, key, value, meta=None):
         mlflow.log_param(key, value)
-        self._write_meta(key + ".param", meta)
+        self._write_meta(_to_param_meta_name(key), meta)
 
     def _write_meta(self, name, meta):
         if meta:
@@ -159,6 +159,18 @@ class PypadsApi:
     def end_run(self):
         # TODO maybe do cleanup here instead of punching mlflow end_run
         mlflow.end_run()
+
+
+def _to_artifact_meta_name(name):
+    return name + ".artifact"
+
+
+def _to_metric_meta_name(name):
+    return name + ".metric"
+
+
+def _to_param_meta_name(name):
+    return name + ".param"
 
 
 class PypadsDecorators:
