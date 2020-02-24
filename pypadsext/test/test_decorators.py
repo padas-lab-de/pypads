@@ -10,7 +10,7 @@ class PypadsEXT(unittest.TestCase):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypadre_ext.pypads_padre import PyPadsEXT
+        from pypadsext.pypadsext import PyPadsEXT
         tracker = PyPadsEXT()
 
         cwd = os.getcwd()
@@ -27,14 +27,17 @@ class PypadsEXT(unittest.TestCase):
             "Sulphates.",
             "Alcohol.",
             "Quality"]
+
         ds_name = "winequality_red"
 
-        @tracker.dataset(name=ds_name, metadata={"attributes": columns_wine, "target": columns_wine[-1]})
-        def load_iris():
-            from sklearn.datasets import load_iris
-            return load_iris()
+        @tracker.dataset(name=ds_name)
+        def load_wine():
+            import numpy as np
+            name = "/winequality-red.csv"
+            data = np.loadtxt(cwd + name, delimiter=';', usecols=range(12))
+            return data
 
-        data = load_iris()
+        data = load_wine()
 
         # --------------------------- asserts ---------------------------
         import mlflow
@@ -48,7 +51,7 @@ class PypadsEXT(unittest.TestCase):
                     with open(os.path.normpath(os.path.join(run_info.artifact_uri.replace('file://',''),tag.path)), 'r') as f:
                         name = f.read()
                     return name
-        ds_names = [ get_name(ds) for ds in datasets]
+        ds_names = [get_name(ds) for ds in datasets]
         assert ds_name in ds_names
 
         # !-------------------------- asserts ---------------------------
@@ -58,7 +61,7 @@ class PypadsEXT(unittest.TestCase):
     def test_splitter(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypadre_ext.pypads_padre import PyPadsEXT
+        from pypadsext.pypadsext import PyPadsEXT
         tracker = PyPadsEXT()
 
         cwd = os.getcwd()
@@ -77,7 +80,7 @@ class PypadsEXT(unittest.TestCase):
             "Quality"]
         ds_name = "winequality_red"
 
-        @tracker.dataset(name=ds_name, metadata={"attributes": columns_wine, "target": columns_wine[-1]})
+        @tracker.dataset()
         def load_iris():
             from sklearn.datasets import load_iris
             return load_iris()
@@ -96,21 +99,6 @@ class PypadsEXT(unittest.TestCase):
 
         # --------------------------- asserts ---------------------------
         import mlflow
-        datasets_repo = mlflow.get_experiment_by_name("datasets")
-        datasets = tracker.mlf.list_run_infos(datasets_repo.experiment_id)
-
-        def get_name(run_info):
-            tags = tracker.mlf.list_artifacts(run_info.run_id, path='../tags')
-            for tag in tags:
-                if '/name' in tag.path:
-                    with open(os.path.normpath(os.path.join(run_info.artifact_uri.replace('file://', ''), tag.path)),
-                              'r') as f:
-                        name = f.read()
-                    return name
-
-        ds_names = [get_name(ds) for ds in datasets]
-        assert ds_name in ds_names
-
         # !-------------------------- asserts ---------------------------
         # End the mlflow run opened by PyPads
         mlflow.end_run()

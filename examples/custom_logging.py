@@ -1,10 +1,10 @@
 from pathlib import Path
 import numpy as np
-from pypadre_ext.concepts.dataset import Dataset
+
 
 SEED = 1
 
-from pypadre_ext.pypads_padre import PyPadsEXT
+from pypadsext.pypadsext import PyPadsEXT
 tracker = PyPadsEXT(name="SVC")
 from sklearn.svm import SVC
 from sklearn.metrics.classification import f1_score, precision_score, recall_score
@@ -25,33 +25,20 @@ columns_wine = [
 ]
 
 
-@tracker.dataset(name="Winequality-red", metadata={"attributes": columns_wine,"target": columns_wine[-1]})
+@tracker.dataset()
 def load_wine(type="red"):
     name = "winequality-{}".format(type)
     path = Path(__file__).parent / "{}.csv".format(name)
     data = np.loadtxt(path, delimiter=';', usecols=range(12))
-    dataset = Dataset(data=data,**{"name": "red_winequality",
-                                    "columns": columns_wine,
-                                    "target_features": columns_wine[-1]})
-    @dataset.features_fn()
-    def features():
-        return dataset.data[:,:-1]
 
-    @dataset.targets_fn()
-    def targets():
-        return dataset.data[:,-1]
-
-    @dataset.shape_fn()
-    def shape():
-        return dataset.data.shape
-    return dataset
+    return data
 
 
 dataset_ = load_wine()
 
 
 @tracker.splitter()
-def cv(data: Dataset, n_folds=3, shuffle=True, seed=None):
+def cv(data, n_folds=3, shuffle=True, seed=None):
     if seed is None:
         seed = 1
     r = np.random.RandomState(seed)

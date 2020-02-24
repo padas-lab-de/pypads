@@ -1,25 +1,59 @@
 from logging import warning
 from types import GeneratorType
-from typing import Tuple
-
 import mlflow
 from boltons.funcutils import wraps
 from mlflow.utils.autologging_utils import try_mlflow_log
+from pypads.autolog.mapping import Mapping
+from pypads.base import PyPads, PypadsApi, PypadsDecorators
+from pypads.mlflow.mlflow_autolog import autologgers
+from pypads.pipeline.pipeline_detection import pipeline
+from pypadsext.util import get_class_that_defined_method
+from pypads.validation.logging_functions import parameters
+from typing import List
+from pypadsext.logging_functions import dataset, predictions
+from pypads.logging_functions import _get_now, output, input, cpu, metric, log
+from pypads.logging_util import try_write_artifact, WriteFormats
 
-from pypadre_ext.logging_functions import dataset, predictions
-from pypads.base import PyPads, DEFAULT_MAPPING, DEFAULT_CONFIG
-from pypads.logging_functions import _get_now
-from pypads.logging_util import all_tags, try_write_artifact, WriteFormats
+# --- Pypads App ---
 
-DATASETS = "datasets"
+# Extended mappings. We allow to log parameters, output or input, datasets
+EXT_MAPPING = {
+    "parameters": parameters,
+    "output": output,
+    "input": input,
+    "cpu": cpu,
+    "metric": metric,
+    "autolog": autologgers,
+    "pipeline": pipeline,
+    "log": log,
+    "dataset": dataset,
+    "predictions" : predictions
+}
 
-EXT_MAPPING = DEFAULT_MAPPING
-EXT_MAPPING["dataset"] = dataset
-EXT_MAPPING["predictions"] = predictions
+# Extended config.
+# Pypads mapping files shouldn't interact directly with the logging functions,
+# but define events on which different logging functions can listen.
+# This config defines such a listening structure.
+# {"recursive": track functions recursively. Otherwise check the callstack to only track the top level function.}
+EXT_CONFIG = {"events": {
+    "parameters": {"on": ["pypads_fit"]},
+    "cpu": {"on": ["pypads_fit"]},
+    "output": {"on": ["pypads_fit", "pypads_predict"],
+               "with": {"write_format": WriteFormats.text.name}},
+    "input": {"on": ["pypads_fit"], "with": {"write_format": WriteFormats.text.name}},
+    "metric": {"on": ["pypads_metric"]},
+    "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"],
+                 "with": {"pipeline_type": "normal", "pipeline_args": False}},
+    "log": {"on": ["pypads_log"]},
+    "dataset": {"on": ["pypads_data"]},
+    "predictions": {"on": ["pypads_predict"]}
+},
+    "recursion_identity": False,
+    "recursion_depth": -1,
+    "retry_on_fail": True}
 
-EXT_CONFIG = DEFAULT_CONFIG
-EXT_CONFIG.get("events").update({"predictions": {"on": ["pypads_predict"], "with": {"write_format": WriteFormats.text.name}}})
-EXT_CONFIG.get("events").update({"dataset" : {"on": ["pypads_dataset"]}})
+# Tag name to save the config to in mlflow context.
+CONFIG_NAME = "pypads.config"
 
 
 class PyPadsEXT(PyPads):
@@ -29,6 +63,8 @@ class PyPadsEXT(PyPads):
         mapping = mapping or EXT_MAPPING
         super().__init__(*args, config=config, mapping=mapping, **kwargs)
         PyPads.current_pads = self
+        self._api = PypadsApi(self)
+        self._decorators = PypadsDecorators(self)
 
     # ------------------------------------------- public API methods ------------------------
     def run_id(self):
@@ -75,67 +111,15 @@ class PyPadsEXT(PyPads):
         return None
 
     # ------------------------------------------- decorators --------------------------------
-
-    def experiment(self, name=None, dataset=None, preprocessing=None, splitting=None, parameters=None):
-        def experiment_decorator(f_experiment):
-            @wraps(f_experiment)
-            def wrap_experiment(*args, **kwargs):
-                return f_experiment(*args, **kwargs)
-
-            if name is not None and self._experiment.name != name:
-                experiment = mlflow.get_experiment_by_name(name)
-                experiment_id = experiment.experiment_id if experiment else mlflow.create_experiment(name)
-                self._experiment = experiment if experiment else self.mlf.get_experiment(experiment_id)
-                self.start_run()
-
-
-    def dataset(self, name, metadata=None):
-        def dataset_decorator(f_create_dataset):
-            @wraps(f_create_dataset)
-            def wrap_dataset(*args, **kwargs):
-                dataset = f_create_dataset(*args, **kwargs)
-
-                repo = mlflow.get_experiment_by_name(DATASETS)
-                if repo is None:
-                    repo = mlflow.get_experiment(mlflow.create_experiment(DATASETS))
-
-                # add data set if it is not already existing
-                if not any(t["name"] == name for t in all_tags(repo.experiment_id)):
-                    # stop the current run
-                    self.stop_run()
-                    run = mlflow.start_run(experiment_id=repo.experiment_id)
-
-                    dataset_id = run.info.run_id
-                    self.add("dataset_id", dataset_id)
-                    self.add("dataset_name", name)
-                    mlflow.set_tag("name", name)
-                    name_ = f_create_dataset.__qualname__ + "[" + str(id(dataset)) + "]." + name + "_data"
-                    if hasattr(dataset, "data"):
-                        if hasattr(dataset.data, "__self__") or hasattr(dataset.data, "__func__"):
-                            try_write_artifact(name_, dataset.data(), WriteFormats.pickle)
-                            self.add("data", dataset.data())
-                        else:
-                            try_write_artifact(name_, dataset.data, WriteFormats.pickle)
-                            self.add("data", dataset.data)
-                    else:
-                        try_write_artifact(name_, dataset, WriteFormats.pickle)
-
-                    if metadata:
-                        name_ = f_create_dataset.__qualname__ + "[" + str(id(dataset)) + "]." + name + "_metadata"
-                        try_write_artifact(name_, metadata, WriteFormats.text)
-                    elif hasattr(dataset, "metadata"):
-                        name_ = f_create_dataset.__qualname__ + "[" + str(id(dataset)) + "]." + name + "_metadata"
-                        if hasattr(dataset.metadata, "__self__") or hasattr(dataset.metadata, "__func__"):
-                            try_write_artifact(name_, dataset.metadata(), WriteFormats.text)
-                        else:
-                            try_write_artifact(name_, dataset.metadata, WriteFormats.text)
-                    self.resume_run()
-                    mlflow.set_tag("dataset", dataset_id)
-
-                return dataset
-
-            return wrap_dataset
-
+    def dataset(self, event="pypads_data", mapping: Mapping = None, name=None, metadata=None):
+        def dataset_decorator(fn):
+            ctx = get_class_that_defined_method(fn)
+            events = event if isinstance(event, List) else [event]
+            return self.api.track(ctx=ctx, fn=fn, events=events, mapping=mapping)
+        if name:
+            self.add(self.run_id, {'dataset_name':name})
+        if metadata:
+            self.add(self.run_id, {'dataset_meta': metadata})
         return dataset_decorator
 
     def splitter(self, dataset=None):
@@ -210,3 +194,14 @@ class PyPadsEXT(PyPads):
             return wrapper
 
         return decorator
+
+
+def get_current_pads() -> PyPadsEXT:
+    """
+        Get the currently active pypads instance. All duck punched objects use this function for interacting with pypads.
+        :return:
+        """
+    if not PyPadsEXT.current_pads:
+        warning("PyPads has to be initialized before logging can be used. Initializing for your with default values.")
+        PyPadsEXT()
+    return PyPadsEXT.current_pads
