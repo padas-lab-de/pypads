@@ -2,7 +2,7 @@ import unittest
 import os
 
 
-class PypadsEXT(unittest.TestCase):
+class PyPadrePadsTest(unittest.TestCase):
 
     def test_dataset(self):
         """
@@ -10,8 +10,8 @@ class PypadsEXT(unittest.TestCase):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypadsext.pypadsext import PyPadsEXT
-        tracker = PyPadsEXT()
+        from pypadsext.base import PyPadrePads
+        tracker = PyPadrePads()
 
         cwd = os.getcwd()
         columns_wine = [
@@ -30,7 +30,7 @@ class PypadsEXT(unittest.TestCase):
 
         ds_name = "winequality_red"
 
-        @tracker.dataset(name=ds_name)
+        @tracker.decorators.dataset(name=ds_name)
         def load_wine():
             import numpy as np
             name = "/winequality-red.csv"
@@ -61,7 +61,7 @@ class PypadsEXT(unittest.TestCase):
     def test_splitter(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypadsext.pypadsext import PyPadsEXT
+        from pypadsext.base import PyPadsEXT
         tracker = PyPadsEXT()
 
         cwd = os.getcwd()

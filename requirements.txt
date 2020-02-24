@@ -1,4 +1,1 @@
-mlflow>=1.6.0
-boltons>=19.3.0
 pypads==0.0.1
-pypadre==0.3.0

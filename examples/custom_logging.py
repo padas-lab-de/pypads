@@ -4,7 +4,7 @@ import numpy as np
 
 SEED = 1
 
-from pypadsext.pypadsext import PyPadsEXT
+from pypadsext.base import PyPadsEXT
 tracker = PyPadsEXT(name="SVC")
 from sklearn.svm import SVC
 from sklearn.metrics.classification import f1_score, precision_score, recall_score

@@ -23,18 +23,20 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
         """
     result = _pypads_callback(*args, **kwargs)
     data, metadata = log_data(result)
-    from pypadsext.pypadsext import get_current_pads
+    from pypads.base import get_current_pads
     pads = get_current_pads()
+
+    experiment_run = mlflow.active_run()
 
     if hasattr(result, "name"):
         ds_name = result.name
-    elif "dataset_name" in pads.cache.get(self.run_id):
-        ds_name = pads.cache.get(self.run_id).get("dataset_name")
+    elif pads.cache.run_exists("dataset_name"):
+        ds_name = pads.cache.run_get("dataset_name")
     else:
         ds_name = _pypads_wrappe.__name__
 
-    if "dataset_meta" in pads.cache.get(self.run_id):
-        metadata = {**metadata, **pads.cache.get(self.run_id).get("dataset_meta")}
+    if pads.cache.run_exists("dataset_meta"):
+        metadata = {**metadata, **pads.cache.run_get("dataset_meta")}
 
     repo = mlflow.get_experiment_by_name(DATASETS)
     if repo is None:
@@ -42,17 +44,16 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
 
     # add data set if it is not already existing
     if not any(t["name"] == ds_name for t in all_tags(repo.experiment_id)):
-        pads.stop_run()
-        run = mlflow.start_run(experiment_id=repo.experiment_id)
-        dataset_id = run.info.run_id
-        pads.add("dataset_id", dataset_id)
-        mlflow.set_tag("name", ds_name)
-        name = _pypads_context.__name__ + "[" + str(id(result)) + "]." + ds_name + ".data"
-        try_write_artifact(name, data, write_format)
+        with pads.api.intermediate_run(experiment_id=repo.experiment_id) as run:
+            dataset_id = run.info.run_id
 
-        name = _pypads_context.__name__ + "[" + str(id(result)) + "]." + ds_name + ".metadata"
-        try_write_artifact(name, metadata, WriteFormats.text)
-        pads.resume_run()
+            pads.cache.run_add("dataset_id", dataset_id, experiment_run.info.run_id)
+            mlflow.set_tag("name", ds_name)
+            name = _pypads_context.__name__ + "[" + str(id(result)) + "]." + ds_name + ".data"
+            try_write_artifact(name, data, write_format)
+
+            name = _pypads_context.__name__ + "[" + str(id(result)) + "]." + ds_name + ".metadata"
+            try_write_artifact(name, metadata, WriteFormats.text)
         mlflow.set_tag("dataset", dataset_id)
     return result
 
