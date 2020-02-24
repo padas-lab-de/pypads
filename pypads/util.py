@@ -1,4 +1,3 @@
-import collections
 import inspect
 
 
@@ -16,19 +15,23 @@ def get_class_that_defined_method(meth):
     return getattr(meth, '__objclass__', None)  # handle special descriptor objects
 
 
-def dict_merge(dct, merge_dct):
-    """ Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
-    updating only top-level keys, dict_merge recurses down into dicts nested
-    to an arbitrary depth, updating keys. The ``merge_dct`` is merged into
-    ``dct``.
-    https://stackoverflow.com/questions/20656135/python-deep-merge-dictionary-data
-    :param dct: dict onto which the merge is executed
-    :param merge_dct: dct merged into dct
-    :return: None
+def dict_merge(source, destination):
     """
-    for k, v in merge_dct.iteritems():
-        if (k in dct and isinstance(dct[k], dict)
-                and isinstance(merge_dct[k], collections.Mapping)):
-            dict_merge(dct[k], merge_dct[k])
-        else:
-            dct[k] = merge_dct[k]
+    run me with nosetests --with-doctest file.py
+
+    >>> a = { 'first' : { 'all_rows' : { 'pass' : 'dog', 'number' : '1' } } }
+    >>> b = { 'first' : { 'all_rows' : { 'fail' : 'cat', 'number' : '5' } } }
+    >>> dict_merge(b, a) == { 'first' : { 'all_rows' : { 'pass' : 'dog', 'fail' : 'cat', 'number' : '5' } } }
+    https://stackoverflow.com/questions/20656135/python-deep-merge-dictionary-data
+    True
+    """
+    if isinstance(source, dict) and isinstance(destination, dict):
+        for key, value in source.items():
+            if isinstance(value, dict):
+                # get node or create one
+                node = destination.setdefault(key, {})
+                dict_merge(value, node)
+            else:
+                destination[key] = value
+
+    return destination

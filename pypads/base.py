@@ -72,7 +72,6 @@ DEFAULT_CONFIG = {"events": {
                "with": {"write_format": WriteFormats.text.name}},
     "input": {"on": ["pypads_fit"], "with": {"write_format": WriteFormats.text.name}},
     "metric": {"on": ["pypads_metric"]},
-    "dataset": {"on": ["pypads_dataset"]},
     "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"],
                  "with": {"pipeline_type": "normal", "pipeline_args": False}},
     "log": {"on": ["pypads_log"]}
@@ -166,17 +165,24 @@ class PypadsApi:
     def intermediate_run(self, **kwargs):
         enclosing_run = mlflow.active_run()
         try:
-            run = mlflow.start_run(**kwargs)
-            self._pypads.cache.run_init()
+            # TODO check if nested run is a good idea
+            # if enclosing_run:
+            #   mlflow.end_run()
+            run = mlflow.start_run(**kwargs, nested=True)
+            self._pypads.cache.run_add("enclosing_run", enclosing_run)
             yield run
         finally:
             if not mlflow.active_run() is enclosing_run:
                 self._pypads.cache.run_clear()
-                try:
-                    mlflow.start_run(run_id=enclosing_run.info.run_id)
-                except Exception:
-                    mlflow.end_run()
-                    mlflow.start_run(run_id=enclosing_run.info.run_id)
+                mlflow.end_run()
+                # try:
+                #     mlflow.start_run(run_id=enclosing_run.info.run_id)
+                # except Exception:
+                #     mlflow.end_run()
+                #     mlflow.start_run(run_id=enclosing_run.info.run_id)
+
+    def active_run(self):
+        return mlflow.active_run()
 
     def end_run(self):
         # TODO maybe do cleanup here instead of punching mlflow end_run
