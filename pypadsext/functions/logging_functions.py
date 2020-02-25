@@ -10,7 +10,8 @@ from pypadsext.concepts.util import _create_ctx
 DATASETS = "datasets"
 
 
-def random_seed(self, *args, pypads_seed=None, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
+def random_seed(self, *args, pypads_seed=None, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
+                **kwargs):
     from pypads.base import get_current_pads
     from pypadsext.base import PyPadrePads
     pads: PyPadrePads = get_current_pads()
@@ -164,6 +165,7 @@ def split(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypa
         result = default_split(ctx, **kwargs)
     else:
         result = _pypads_callback(*args, **kwargs)
+    return result
 
 
 def hyperparameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):

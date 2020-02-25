@@ -48,9 +48,11 @@ class PyPadrePadsTest(unittest.TestCase):
             tags = tracker.mlf.list_artifacts(run_info.run_id, path='../tags')
             for tag in tags:
                 if '/name' in tag.path:
-                    with open(os.path.normpath(os.path.join(run_info.artifact_uri.replace('file://',''),tag.path)), 'r') as f:
+                    with open(os.path.normpath(os.path.join(run_info.artifact_uri.replace('file://', ''), tag.path)),
+                              'r') as f:
                         name = f.read()
                     return name
+
         ds_names = [get_name(ds) for ds in datasets]
         assert ds_name in ds_names
 

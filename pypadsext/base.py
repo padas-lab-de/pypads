@@ -1,24 +1,10 @@
-from logging import warning
-from types import GeneratorType
-from typing import List
-
-import mlflow
-from babel.messages.extract import DEFAULT_MAPPING
-from boltons.funcutils import wraps
-from mlflow.utils.autologging_utils import try_mlflow_log
 from pypads import util
 from pypads.autolog.mappings import AlgorithmMapping
-from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG
-from pypads.logging_functions import _get_now
-from pypads.logging_util import try_write_artifact, WriteFormats
+from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG, DEFAULT_EVENT_MAPPING
 
 from pypadsext.analysis.doc_parsing import doc
 from pypadsext.concepts.splitter import default_split
-from pypadsext.functions.logging_functions import dataset, predictions
-from pypadsext.util import get_class_that_defined_method, _is_package_available
-from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG, DEFAULT_EVENT_MAPPING
-
-from pypadsext.logging_functions import dataset, predictions, split, hyperparameters
+from pypadsext.functions.logging_functions import dataset, predictions, split, hyperparameters
 from pypadsext.util import get_class_that_defined_method
 
 # --- Pypads App ---
@@ -58,7 +44,6 @@ class PyPadrePadsActuators:
 
     # noinspection PyMethodMayBeStatic
     def default_splitter(self, data, **kwargs):
-
         return default_split(data, **kwargs)
 
 
@@ -119,4 +104,4 @@ class PyPadrePads(PyPads):
 
     @property
     def actuators(self):
-        return self._actuator
+        return self._actuators

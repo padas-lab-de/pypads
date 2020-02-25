@@ -28,14 +28,14 @@ class Data:
         dict = dict
 
 
-def numpy_crawl(obj,**kwargs):
+def numpy_crawl(obj, **kwargs):
     metadata = {"type": str(Data.Types.ndarray.value), "shape": obj.shape}
     metadata = {**metadata, **kwargs}
     data = obj
     return data, metadata, None
 
 
-def dataframe_crawl(obj,**kwargs):
+def dataframe_crawl(obj, **kwargs):
     metadata = {"type": str(Data.Types.dataFrame.value), "shape": obj.shape, "features": obj.columns}
     metadata = {**metadata, **kwargs}
     data = obj
@@ -45,9 +45,9 @@ def dataframe_crawl(obj,**kwargs):
     return data, metadata, targets
 
 
-def bunch_crawl(obj,**kwargs):
+def bunch_crawl(obj, **kwargs):
     import numpy as np
-    data = np.concatenate([obj.get('data'), obj.get("target").reshape(len(obj.get("target")),1)], axis=1)
+    data = np.concatenate([obj.get('data'), obj.get("target").reshape(len(obj.get("target")), 1)], axis=1)
     metadata = {"type": str(Data.Types.bunch.value), "features_names": obj.get("feature_names"),
                 "target_names": list(obj.get("target_names")), "description": obj.get("DESCR"), "shape": data.shape}
     metadata = {**metadata, **kwargs}
@@ -75,10 +75,10 @@ def object_crawl(obj, **kwargs):
 
 crawl_fns = {
     str(Data.Types.bunch.value): bunch_crawl,
-    str(Data.Types.ndarray.value) : numpy_crawl,
-    str(Data.Types.dataframe.value) : dataframe_crawl,
-    str(Data.Types.graph.value) : graph_crawl,
-    str(object) : object_crawl
+    str(Data.Types.ndarray.value): numpy_crawl,
+    str(Data.Types.dataframe.value): dataframe_crawl,
+    str(Data.Types.graph.value): graph_crawl,
+    str(object): object_crawl
 }
 
 
