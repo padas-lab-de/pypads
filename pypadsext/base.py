@@ -12,6 +12,7 @@ from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG
 from pypads.logging_functions import _get_now
 from pypads.logging_util import try_write_artifact, WriteFormats
 
+from pypadsext.concepts.splitter import default_split
 from pypadsext.logging_functions import dataset, predictions
 from pypadsext.util import get_class_that_defined_method
 
@@ -39,65 +40,39 @@ class PyPadrePadsApi(PypadsApi):
     def __init__(self, pypads):
         super().__init__(pypads)
 
-    def track_dataset(self, fn, ctx=None, name=None, metadata=None, mapping: AlgorithmMapping = None):
+    def track_dataset(self, fn, ctx=None, name=None, metadata=None, mapping: AlgorithmMapping = None, **kwargs):
         if metadata is None:
             metadata = {}
         self._pypads.cache.run_add('dataset_name', name)
         self._pypads.cache.run_add('dataset_meta', metadata)
+        self._pypads.cache.run_add('dataset_kwargs', kwargs)
         return self.track(fn, ctx, ["pypads_dataset"], mapping=mapping)
 
+    def track_splits(self, fn, ctx=None,mapping: AlgorithmMapping = None):
+        return self.track(fn, ctx, ["pypads_split"], mapping=mapping)
+
+    # noinspection PyMethodMayBeStatic
+    def default_splitter(self, data, **kwargs):
+
+        return default_split(data, **kwargs)
     # TODO add as api and then use it in the decorators
 
 
 class PyPadrePadsDecorators(PypadsDecorators):
     # ------------------------------------------- decorators --------------------------------
-    def dataset(self, mapping=None, name=None, metadata=None):
+    def dataset(self, mapping=None, name=None, metadata=None,**kwargs):
         def track_decorator(fn):
             ctx = get_class_that_defined_method(fn)
             return self._pypads.api.track_dataset(ctx=ctx, fn=fn, name=name, metadata=metadata, mapping=mapping)
 
         return track_decorator
 
-    def splitter(self, dataset=None):
-        def decorator(f_splitter):
-            @wraps(f_splitter)
-            def wrapper(*args, **kwargs):
-                splits = f_splitter(*args, **kwargs)
-                ds_name = self._pypads.run_cache.get("dataset_name", dataset)
-                ds_id = self._pypads.run_cache.get("dataset_id", None)
-                run_id = self._pypads.run.info.run_id
+    def splitter(self, mapping=None, default=False):
+        def track_decorator(fn):
+            ctx = get_class_that_defined_method(fn)
+            return self._pypads.api.track_splits(ctx=ctx, fn=fn, mapping=mapping)
 
-                def log_split(num, train_idx, test_idx, targets=None):
-                    self._pypads.run_cache.add(run_id, {
-                        str(num): {'dataset': ds_name, 'dataset_id': ds_id, 'train_indices': train_idx,
-                                   'test_indices': test_idx}})
-
-                    if targets is not None:
-                        self._pypads.cache.get(run_id).get(str(num)).update(
-                            {'predictions': {str(sample): {'truth': targets[i]} for i, sample in
-                                             enumerate(test_idx)}})
-                    else:
-                        warning(
-                            "Your splitter does not provide targets information, Truth values will be missing from "
-                            "the logged predictions")
-                    name = 'Split_{}_{}_information.txt'.format(num, _get_now())
-                    try_write_artifact(name,
-                                       {'dataset': ds_name, 'train_indices': train_idx, 'test_indices': test_idx},
-                                       WriteFormats.text)
-                    self._pypads.run_cache.get(run_id).update({"curr_split": num})
-
-                if isinstance(splits, GeneratorType):
-                    for num, train_idx, test_idx, targets in splits:
-                        log_split(num, train_idx, test_idx, targets=targets)
-                        yield num, train_idx, test_idx
-                else:
-                    num, train_idx, test_idx, targets = splits
-                    log_split(num, train_idx, test_idx, targets=targets)
-                    return num, train_idx, test_idx
-
-            return wrapper
-
-        return decorator
+        return track_decorator
 
     # noinspection PyMethodMayBeStatic
     def grid_search(self):

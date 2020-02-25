@@ -30,7 +30,7 @@ class PyPadrePadsTest(unittest.TestCase):
 
         ds_name = "winequality_red"
 
-        @tracker.decorators.dataset(name=ds_name)
+        @tracker.decorators.dataset(name=ds_name, columns=columns_wine, target=[-1])
         def load_wine():
             import numpy as np
             name = "/winequality-red.csv"

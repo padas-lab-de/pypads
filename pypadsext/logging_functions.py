@@ -1,9 +1,6 @@
 import mlflow
-
 from pypads.logging_util import try_write_artifact, WriteFormats, all_tags
-
-# from pypadsext.concepts.dataset import log_data
-from pypadsext.concepts.dataset import log_data
+from pypadsext.concepts.dataset import scrape_data
 
 DATASETS = "datasets"
 
@@ -22,10 +19,15 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
         :return:
         """
     result = _pypads_callback(*args, **kwargs)
-    data, metadata = log_data(result)
     from pypads.base import get_current_pads
     pads = get_current_pads()
 
+    _kwargs = dict()
+    if pads.cache.run_exists("dataset_kwargs"):
+        _kwargs = pads.cache.run_get("dataset_kwargs")
+
+    data, metadata, targets = scrape_data(result, **_kwargs)
+    pads.cache.run_add("data", data)
     experiment_run = mlflow.active_run()
 
     if hasattr(result, "name"):
@@ -48,13 +50,13 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
             dataset_id = run.info.run_id
 
             pads.cache.run_add("dataset_id", dataset_id, experiment_run.info.run_id)
-            mlflow.set_tag("name", ds_name)
+            mlflow.set_tag("pypads.name", ds_name)
             name = _pypads_context.__name__ + "[" + str(id(result)) + "]." + ds_name + ".data"
             try_write_artifact(name, data, write_format)
 
             name = _pypads_context.__name__ + "[" + str(id(result)) + "]." + ds_name + ".metadata"
             try_write_artifact(name, metadata, WriteFormats.text)
-        mlflow.set_tag("dataset", dataset_id)
+        mlflow.set_tag("pypads.datasetID", dataset_id)
     return result
 
 
@@ -64,21 +66,76 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
     result = _pypads_callback(*args, **kwargs)
     from pypads.base import get_current_pads
     pads = get_current_pads()
-    run = pads.run_id()
-    num = pads.cache.get(run).get("curr_split")
-    for i, sample in enumerate(pads.cache.get(run).get(str(num)).get('test_indices')):
-        pads.cache.get(run).get(str(num)).get('predictions').get(str(sample)).update({'predicted': result[i]})
+    num = 0
+    split_info = None
+    if pads.cache.run_exists("current_split"):
+        num = pads.cache.run_get("current_split")
+    if pads.cache.run_exists(num):
+        split_info = pads.cache.run_get(num)
 
+    # check if the estimator computes decision scores
     probabilities = None
     if hasattr(self, "predict_proba") or hasattr(self, "_predict_proba"):
         probabilities = self.predict_proba(*args, **kwargs)
-    if probabilities is not None:
-        for i, sample in enumerate(pads.cache.get(run).get(str(num)).get('test_indices')):
-            pads.cache.get(run).get(str(num)).get('predictions').get(str(sample)).update(
-                {'probabilities': probabilities[i]})
+
+    # check if there are information about the current split
+    if not split_info:
+        pads.cache.run_add(num, {'predictions': {str(i): {'predicted': result[i]}} for i in range(len(result))})
+        if probabilities is not None:
+            for i in pads.cache.run_get(num).get('predictions').keys():
+                pads.cache.run_get(num).get('predictions').get(str(i)).update(
+                        {'probabilities': probabilities[i]})
+    else:
+        for i, sample in enumerate(split_info.get('test_indices')):
+            pads.cache.run_get(num).get('predictions').get(str(sample)).update({'predicted': result[i]})
+
+        if probabilities is not None:
+            for i, sample in enumerate(split_info.get('test_indices')):
+                pads.cache.run_get(num).get('predictions').get(str(sample)).update(
+                    {'probabilities': probabilities[i]})
 
     name = _pypads_context.__name__ + "[" + str(
         id(self)) + "]." + _pypads_wrappe.__name__ + "_results.split_{}".format(num)
-    try_write_artifact(name, pads.cache.get(run).get(str(num)), write_format)
+    try_write_artifact(name, pads.cache.run_get(num), write_format)
 
     return result
+
+
+
+# def decorator(f_splitter):
+#     @wraps(f_splitter)
+#     def wrapper(*args, **kwargs):
+#         splits = f_splitter(*args, **kwargs)
+#         ds_name = self._pypads.run_cache.get("dataset_name", dataset)
+#         ds_id = self._pypads.run_cache.get("dataset_id", None)
+#         run_id = self._pypads.run.info.run_id
+#
+#         def log_split(num, train_idx, test_idx, targets=None):
+#             self._pypads.run_cache.add(run_id, {
+#                 str(num): {'dataset': ds_name, 'dataset_id': ds_id, 'train_indices': train_idx,
+#                            'test_indices': test_idx}})
+#
+#             if targets is not None:
+#                 self._pypads.cache.get(run_id).get(str(num)).update(
+#                     {'predictions': {str(sample): {'truth': targets[i]} for i, sample in
+#                                      enumerate(test_idx)}})
+#             else:
+#                 warning(
+#                     "Your splitter does not provide targets information, Truth values will be missing from "
+#                     "the logged predictions")
+#             name = 'Split_{}_{}_information.txt'.format(num, _get_now())
+#             try_write_artifact(name,
+#                                {'dataset': ds_name, 'train_indices': train_idx, 'test_indices': test_idx},
+#                                WriteFormats.text)
+#             self._pypads.run_cache.get(run_id).update({"curr_split": num})
+#
+#         if isinstance(splits, GeneratorType):
+#             for num, train_idx, test_idx, targets in splits:
+#                 log_split(num, train_idx, test_idx, targets=targets)
+#                 yield num, train_idx, test_idx
+#         else:
+#             num, train_idx, test_idx, targets = splits
+#             log_split(num, train_idx, test_idx, targets=targets)
+#             return num, train_idx, test_idx
+#
+#     return wrapper

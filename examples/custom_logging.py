@@ -4,8 +4,8 @@ import numpy as np
 
 SEED = 1
 
-from pypadsext.base import PyPadsEXT
-tracker = PyPadsEXT(name="SVC")
+from pypadsext.base import PyPadrePads
+tracker = PyPadrePads(name="SVC-example")
 from sklearn.svm import SVC
 from sklearn.metrics.classification import f1_score, precision_score, recall_score
 
@@ -25,7 +25,7 @@ columns_wine = [
 ]
 
 
-@tracker.dataset()
+@tracker.decorators.dataset()
 def load_wine(type="red"):
     name = "winequality-{}".format(type)
     path = Path(__file__).parent / "{}.csv".format(name)
@@ -37,7 +37,7 @@ def load_wine(type="red"):
 dataset_ = load_wine()
 
 
-@tracker.splitter()
+@tracker.decorators.splitter()
 def cv(data, n_folds=3, shuffle=True, seed=None):
     if seed is None:
         seed = 1

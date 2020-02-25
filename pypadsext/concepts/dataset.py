@@ -27,36 +27,52 @@ class Data:
         dict = dict
 
 
-def numpy_crawl(obj):
-    metadata = {"type": str(Data.Types.ndarray.value), "shape": str(obj.shape)}
+def numpy_crawl(obj,**kwargs):
+    metadata = {"type": str(Data.Types.ndarray.value), "shape": obj.shape}
     data = obj
-    return data, metadata
+    return data, metadata, None
 
 
-def dataframe_crawl(obj):
-    metadata = {"type": str(Data.Types.dataFrame.value), "shape": str(obj.shape), "features": obj.columns}
-    data = obj.values
-    return data, metadata
+def dataframe_crawl(obj,**kwargs):
+    metadata = {"type": str(Data.Types.dataFrame.value), "shape": obj.shape, "features": obj.columns}
+    data = obj
+    targets = None
+    if "target" in obj.columns:
+        targets = data[[col for col in obj.columns if "target" in col]]
+    return data, metadata, targets
 
 
-def bunch_crawl(obj):
+def bunch_crawl(obj,**kwargs):
     import numpy as np
     data = np.concatenate([obj.get('data'), obj.get("target").reshape(len(obj.get("target")),1)], axis=1)
-    metadata = {"type": str(Data.Types.bunch.value), "features": obj.get("feature_names"),
-                "target_names": list(obj.get("target_names")), "description": obj.get("DESCR")}
-    return data, metadata
+    metadata = {"type": str(Data.Types.bunch.value), "features_names": obj.get("feature_names"),
+                "target_names": list(obj.get("target_names")), "description": obj.get("DESCR"), "shape": data.shape}
+    return data, metadata, obj.get("target")
 
 
-def object_crawl(obj):
-    metadata = {"type": str(object)}
+def graph_crawl(obj, **kwargs):
+    metadata = {"type": str(Data.Types.graph.value), "shape": (obj.number_of_edges(), obj.number_of_nodes())}
     data = obj
-    return data, metadata
+    return data, obj, None
+
+
+def object_crawl(obj, **kwargs):
+    metadata = {"type": str(object)}
+    if hasattr(obj, "shape"):
+        metadata.update({"shape": obj.shape})
+    targets = None
+    if hasattr(obj, "targets"):
+        targets = obj.targets
+        metadata.update({"targets": targets})
+    data = obj
+    return data, metadata, targets
 
 
 crawl_fns = {
     str(Data.Types.bunch.value): bunch_crawl,
     str(Data.Types.ndarray.value) : numpy_crawl,
     str(Data.Types.dataframe.value) : dataframe_crawl,
+    str(Data.Types.graph.value) : graph_crawl,
     str(object) : object_crawl
 }
 
@@ -80,7 +96,7 @@ def _identify_data_object(obj):
     return obj_ctx
 
 
-def _crawl_obj(obj, ctx=None):
+def _scrape_obj(obj, ctx=None, **kwargs):
     """
     Depending on the object type, crawl information from the object
     :param obj:
@@ -88,13 +104,13 @@ def _crawl_obj(obj, ctx=None):
     :return:
     """
     _proxy_fn = crawl_fns[str(ctx)]
-    data , metadata = _proxy_fn(obj)
-    return data, metadata
+    data, metadata, targets = _proxy_fn(obj, **kwargs)
+    return data, metadata, targets
 
 
-def log_data(obj):
+def scrape_data(obj, **kwargs):
     ctx = _identify_data_object(obj)
-    return _crawl_obj(obj, ctx)
+    return _scrape_obj(obj, ctx, **kwargs)
 
 
 # @wraps(f_create_dataset)
