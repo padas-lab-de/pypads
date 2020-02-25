@@ -1,5 +1,21 @@
+from logging import warning
+from types import GeneratorType
+from typing import List
+
+import mlflow
+from babel.messages.extract import DEFAULT_MAPPING
+from boltons.funcutils import wraps
+from mlflow.utils.autologging_utils import try_mlflow_log
 from pypads import util
 from pypads.autolog.mappings import AlgorithmMapping
+from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG
+from pypads.logging_functions import _get_now
+from pypads.logging_util import try_write_artifact, WriteFormats
+
+from pypadsext.analysis.doc_parsing import doc
+from pypadsext.concepts.splitter import default_split
+from pypadsext.functions.logging_functions import dataset, predictions
+from pypadsext.util import get_class_that_defined_method, _is_package_available
 from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG, DEFAULT_EVENT_MAPPING
 
 from pypadsext.logging_functions import dataset, predictions, split, hyperparameters
@@ -12,7 +28,8 @@ DEFAULT_PYPADRE_MAPPING = {
     "dataset": dataset,
     "predictions": predictions,
     "splits": split,
-    "hyperparameters": hyperparameters
+    "hyperparameters": hyperparameters,
+    "doc": doc
 }
 
 # Extended config.
@@ -24,8 +41,25 @@ DEFAULT_PYPADRE_CONFIG = {"events": {
     "dataset": {"on": ["pypads_dataset"]},
     "predictions": {"on": ["pypads_predict"]},
     "splits": {"on": ["pypads_split"]},
-    "hyperparameters": {"on": ["pypads_params"]}
+    "hyperparameters": {"on": ["pypads_params"]},
+    "doc": {"on": ["pypads_dataset"]}
 }}
+
+
+class PyPadrePadsActuators:
+
+    def __init__(self, pypads):
+        self._pypads = pypads
+
+    def set_random_seed(self, seed):
+        from pypadsext.functions.management_functions import set_random_seed
+        self._pypads.cache.run_add('seed', seed)
+        set_random_seed(seed)
+
+    # noinspection PyMethodMayBeStatic
+    def default_splitter(self, data, **kwargs):
+
+        return default_split(data, **kwargs)
 
 
 class PyPadrePadsApi(PypadsApi):
@@ -45,9 +79,8 @@ class PyPadrePadsApi(PypadsApi):
         self._pypads.cache.run_add('default_splitter', default)
         return self.track(fn, ctx, ["pypads_split"], mapping=mapping)
 
-    def track_params(self, fn, ctx=None, mapping: AlgorithmMapping = None):
+    def track_parameters(self, fn, ctx=None, mapping: AlgorithmMapping = None):
         return self.track(fn, ctx, ["pypads_params"], mapping=mapping)
-    # TODO add as api and then use it in the decorators
 
 
 class PyPadrePadsDecorators(PypadsDecorators):
@@ -82,3 +115,8 @@ class PyPadrePads(PyPads):
         super().__init__(*args, config=config, event_mapping=event_mapping, **kwargs)
         self._api = PyPadrePadsApi(self)
         self._decorators = PyPadrePadsDecorators(self)
+        self._actuators = PyPadrePadsActuators(self)
+
+    @property
+    def actuators(self):
+        return self._actuator
