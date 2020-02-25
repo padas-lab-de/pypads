@@ -1,5 +1,5 @@
-import unittest
 import os
+import unittest
 
 
 class PyPadrePadsTest(unittest.TestCase):
@@ -64,17 +64,17 @@ class PyPadrePadsTest(unittest.TestCase):
         from pypadsext.base import PyPadrePads
         tracker = PyPadrePads()
 
-        @tracker.decorators.dataset()
+        @tracker.decorators.dataset(name="iris")
         def load_iris():
             from sklearn.datasets import load_iris
             return load_iris()
 
-        @tracker.decorators.splitter()
+        @tracker.decorators.splitter(default=False)
         def splitter(data, training=0.6):
             import numpy as np
             idx = np.arange(data.shape[0])
-            cut = int(len(idx)*training)
-            targets = data[:,-1][cut:]
+            cut = int(len(idx) * training)
+            targets = data[:, -1][cut:]
             return 0, idx[:cut], idx[cut:], targets
 
         data = load_iris()

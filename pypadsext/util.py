@@ -1,4 +1,8 @@
 import inspect
+
+from typing import Tuple
+
+
 def _is_package_available(name):
     import importlib
     spam_loader = importlib.util.find_spec(name)
@@ -17,3 +21,27 @@ def get_class_that_defined_method(meth):
         if isinstance(cls, type):
             return cls
     return getattr(meth, '__objclass__', None)  # handle special descriptor objects
+
+
+def unpack(kwargs_obj: dict, *args):
+    """
+    Unpacks a dict object into a tuple. You can pass tuples for setting default values.
+    :param kwargs_obj:
+    :param args:
+    :return:
+    """
+    empty = object()
+    arg_list = []
+    for entry in args:
+        if isinstance(entry, str):
+            arg_list.append(kwargs_obj.get(entry))
+        elif isinstance(entry, Tuple):
+            key, *rest = entry
+            default = empty if len(rest) == 0 else rest[0]
+            if default is empty:
+                arg_list.append(kwargs_obj.get(key))
+            else:
+                arg_list.append(kwargs_obj.get(key, default))
+        else:
+            raise ValueError("Pass a tuple or string not: " + str(entry))
+    return tuple(arg_list)
