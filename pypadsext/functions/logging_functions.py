@@ -1,8 +1,34 @@
+from logging import warning
+
 import mlflow
 from pypads.logging_util import try_write_artifact, WriteFormats, all_tags
 from pypadsext.concepts.dataset import scrape_data
 
 DATASETS = "datasets"
+
+
+def random_seed(self, *args, pypads_seed=None, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
+    from pypads.base import get_current_pads
+    from pypadsext.base import PyPadrePads
+    pads: PyPadrePads = get_current_pads()
+
+    # Set seed if needed
+    if pypads_seed is not None:
+        if isinstance(pypads_seed, bool) and pypads_seed:
+            import random
+            import sys
+            pypads_seed = random.randrange(sys.maxsize)
+        if isinstance(pypads_seed, int):
+            pads.actuators.set_random_seed(pypads_seed)
+
+    # Get seed information from cache
+    if pads.cache.run_exists("seed"):
+        pads.api.log_param()
+    else:
+        warning("Can't log seed produced by seed generator. You have to enable ")
+
+    # Run callbacks after seed
+    return _pypads_callback(*args, **kwargs)
 
 
 def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypads_context, _pypads_mapped_by,

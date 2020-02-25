@@ -12,16 +12,18 @@ from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG
 from pypads.logging_functions import _get_now
 from pypads.logging_util import try_write_artifact, WriteFormats
 
+from pypadsext.analysis.doc_parsing import doc
 from pypadsext.concepts.splitter import default_split
-from pypadsext.logging_functions import dataset, predictions
-from pypadsext.util import get_class_that_defined_method
+from pypadsext.functions.logging_functions import dataset, predictions
+from pypadsext.util import get_class_that_defined_method, _is_package_available
 
 # --- Pypads App ---
 
 # Extended mappings. We allow to log parameters, output or input, datasets
 DEFAULT_PYPADRE_MAPPING = {
     "dataset": dataset,
-    "predictions": predictions
+    "predictions": predictions,
+    "doc": doc
 }
 
 # Extended config.
@@ -31,8 +33,25 @@ DEFAULT_PYPADRE_MAPPING = {
 # {"recursive": track functions recursively. Otherwise check the callstack to only track the top level function.}
 DEFAULT_PYPADRE_CONFIG = {"events": {
     "dataset": {"on": ["pypads_dataset"]},
-    "predictions": {"on": ["pypads_predict"]}
+    "predictions": {"on": ["pypads_predict"]},
+    "doc": {"on": ["pypads_dataset"]}
 }}
+
+
+class PyPadrePadsActuators:
+
+    def __init__(self, pypads):
+        self._pypads = pypads
+
+    def set_random_seed(self, seed):
+        from pypadsext.functions.management_functions import set_random_seed
+        self._pypads.cache.run_add('seed', seed)
+        set_random_seed(seed)
+
+    # noinspection PyMethodMayBeStatic
+    def default_splitter(self, data, **kwargs):
+
+        return default_split(data, **kwargs)
 
 
 class PyPadrePadsApi(PypadsApi):
@@ -50,12 +69,6 @@ class PyPadrePadsApi(PypadsApi):
 
     def track_splits(self, fn, ctx=None,mapping: AlgorithmMapping = None):
         return self.track(fn, ctx, ["pypads_split"], mapping=mapping)
-
-    # noinspection PyMethodMayBeStatic
-    def default_splitter(self, data, **kwargs):
-
-        return default_split(data, **kwargs)
-    # TODO add as api and then use it in the decorators
 
 
 class PyPadrePadsDecorators(PypadsDecorators):
@@ -114,3 +127,8 @@ class PyPadrePads(PyPads):
         super().__init__(*args, config=config, event_mapping=event_mapping, **kwargs)
         self._api = PyPadrePadsApi(self)
         self._decorators = PyPadrePadsDecorators(self)
+        self._actuators = PyPadrePadsActuators(self)
+
+    @property
+    def actuators(self):
+        return self._actuator
