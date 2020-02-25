@@ -11,9 +11,11 @@ class Cache:
 
     def add(self, key, value):
         if key in self.cache:
-            self.cache.get(key).update(value)
+            if isinstance(value, dict):
+                self.cache.get(key).update(value)
+            else:
+                self.cache[key] = value
         else:
-            # TODO fixme
             self.cache.update({key: value})
 
     def pop(self, key):
@@ -48,6 +50,10 @@ class PypadsCache(Cache):
     def __init__(self):
         super().__init__()
         self._run_caches = {}
+
+    def run_cache(self, run_id=None):
+        run = self.run_init(run_id)
+        return self._run_caches.get(run)
 
     def run_init(self, run_id=None):
         if run_id is None:
