@@ -11,8 +11,6 @@ from pypads.autolog.mappings import AlgorithmMapping
 from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG
 from pypads.logging_functions import _get_now
 from pypads.logging_util import try_write_artifact, WriteFormats
-
-from pypadsext.concepts.splitter import default_split
 from pypadsext.logging_functions import dataset, predictions
 from pypadsext.util import get_class_that_defined_method
 
@@ -51,10 +49,6 @@ class PyPadrePadsApi(PypadsApi):
     def track_splits(self, fn, ctx=None,mapping: AlgorithmMapping = None):
         return self.track(fn, ctx, ["pypads_split"], mapping=mapping)
 
-    # noinspection PyMethodMayBeStatic
-    def default_splitter(self, data, **kwargs):
-
-        return default_split(data, **kwargs)
     # TODO add as api and then use it in the decorators
 
 
@@ -74,37 +68,6 @@ class PyPadrePadsDecorators(PypadsDecorators):
 
         return track_decorator
 
-    # noinspection PyMethodMayBeStatic
-    def grid_search(self):
-        def decorator(f_grid):
-            @wraps(f_grid)
-            def wrapper(*args, **kwargs):
-                parameters = f_grid(*args, **kwargs)
-
-                import itertools
-                master_list = []
-                params_list = []
-                for params in parameters:
-                    param = parameters.get(params)
-                    if not isinstance(param, list):
-                        param = [param]
-                    master_list.append(param)
-                    params_list.append(params)
-
-                grid = itertools.product(*master_list)
-
-                for element in grid:
-                    execution_params = dict()
-                    for param, idx in zip(params_list, range(0, len(params_list))):
-                        execution_params[param] = element[idx]
-                        try_mlflow_log(mlflow.log_param, "Grid_params." + param + ".txt", element[idx])
-                    name = "Grid_params_{}".format(_get_now())
-                    try_write_artifact(name, execution_params, WriteFormats.text)
-                    yield execution_params
-
-            return wrapper
-
-        return decorator
 
 
 class PyPadrePads(PyPads):
