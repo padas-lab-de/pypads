@@ -61,31 +61,15 @@ class PyPadrePadsTest(unittest.TestCase):
     def test_splitter(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypadsext.base import PyPadsEXT
-        tracker = PyPadsEXT()
+        from pypadsext.base import PyPadrePads
+        tracker = PyPadrePads()
 
-        cwd = os.getcwd()
-        columns_wine = [
-            "Fixed acidity.",
-            "Volatile acidity.",
-            "Citric acid.",
-            "Residual sugar.",
-            "Chlorides.",
-            "Free sulfur dioxide.",
-            "Total sulfur dioxide.",
-            "Density.",
-            "pH.",
-            "Sulphates.",
-            "Alcohol.",
-            "Quality"]
-        ds_name = "winequality_red"
-
-        @tracker.dataset()
+        @tracker.decorators.dataset()
         def load_iris():
             from sklearn.datasets import load_iris
             return load_iris()
 
-        @tracker.splitter(dataset=ds_name)
+        @tracker.decorators.splitter()
         def splitter(data, training=0.6):
             import numpy as np
             idx = np.arange(data.shape[0])

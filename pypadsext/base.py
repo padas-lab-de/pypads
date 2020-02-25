@@ -16,6 +16,7 @@ from pypadsext.analysis.doc_parsing import doc
 from pypadsext.concepts.splitter import default_split
 from pypadsext.functions.logging_functions import dataset, predictions
 from pypadsext.util import get_class_that_defined_method, _is_package_available
+from pypadsext.util import get_class_that_defined_method
 
 # --- Pypads App ---
 
@@ -87,37 +88,6 @@ class PyPadrePadsDecorators(PypadsDecorators):
 
         return track_decorator
 
-    # noinspection PyMethodMayBeStatic
-    def grid_search(self):
-        def decorator(f_grid):
-            @wraps(f_grid)
-            def wrapper(*args, **kwargs):
-                parameters = f_grid(*args, **kwargs)
-
-                import itertools
-                master_list = []
-                params_list = []
-                for params in parameters:
-                    param = parameters.get(params)
-                    if not isinstance(param, list):
-                        param = [param]
-                    master_list.append(param)
-                    params_list.append(params)
-
-                grid = itertools.product(*master_list)
-
-                for element in grid:
-                    execution_params = dict()
-                    for param, idx in zip(params_list, range(0, len(params_list))):
-                        execution_params[param] = element[idx]
-                        try_mlflow_log(mlflow.log_param, "Grid_params." + param + ".txt", element[idx])
-                    name = "Grid_params_{}".format(_get_now())
-                    try_write_artifact(name, execution_params, WriteFormats.text)
-                    yield execution_params
-
-            return wrapper
-
-        return decorator
 
 
 class PyPadrePads(PyPads):
