@@ -1,7 +1,9 @@
 import importlib
 import inspect
 import sys
-from importlib._bootstrap_external import PathFinder, _LoaderBasics
+import types
+from functools import wraps
+from importlib._bootstrap_external import PathFinder
 from logging import warning, info, debug
 # noinspection PyUnresolvedReferences
 from types import ModuleType
@@ -10,31 +12,22 @@ from pypads.autolog.mappings import AlgorithmMapping
 from pypads.autolog.wrapping import wrap_module, wrap_class, wrap_function, punched_classes, punched_module
 
 
-class PyPadsLoader(_LoaderBasics):
+def _add_found_class(mapping):
+    from pypads.base import get_current_pads
+    return get_current_pads().mapping_registry.add_found_class(mapping)
 
-    def __init__(self, spec):
-        self.spec = spec
 
-    @staticmethod
-    def _add_found_class(mapping):
-        from pypads.base import get_current_pads
-        return get_current_pads().mapping_registry.add_found_class(mapping)
+def _get_algorithm_mappings():
+    from pypads.base import get_current_pads
+    return get_current_pads().mapping_registry.get_relevant_mappings()
 
-    @staticmethod
-    def _get_algorithm_mappings():
-        from pypads.base import get_current_pads
-        return get_current_pads().mapping_registry.get_relevant_mappings()
 
-    def load_module(self, fullname):
-        module = self.spec.loader.load_module(fullname)
-        return module
+def duck_punch_loader(spec):
+    original_exec = spec.loader.exec_module
 
-    def create_module(self, spec):
-        module = self.spec.loader.create_module(spec)
-        return module
-
-    def exec_module(self, module):
-        out = self.spec.loader.exec_module(module)
+    @wraps(original_exec)
+    def exec_module(self, module, execute=original_exec):
+        out = execute(module)
 
         # On execution of a module we search for relevant mappings
         # TODO we might want to make this configurable/improve performance. This looks at every imported class.
@@ -53,12 +46,12 @@ class PyPadsLoader(_LoaderBasics):
                                     reference.__module__ + "." + reference.__qualname__, o._pypads_mapping.library,
                                     o._pypads_mapping.algorithm, o._pypads_mapping.file, o._pypads_mapping.hooks)
                                 found_mapping.in_collection = o._pypads_mapping.in_collection
-                                self._add_found_class(mapping=found_mapping)
+                                _add_found_class(mapping=found_mapping)
                 except Exception as e:
                     debug("Skipping superclasses of " + str(reference) + ". " + str(e))
 
         # TODO And every mapping.
-        for mapping in self._get_algorithm_mappings():
+        for mapping in _get_algorithm_mappings():
             if mapping.reference.startswith(module.__name__):
                 if mapping.reference == module.__name__:
                     wrap_module(module, mapping)
@@ -84,6 +77,9 @@ class PyPadsLoader(_LoaderBasics):
                             wrap_function(obj.__name__, ctx, mapping)
         return out
 
+    spec.loader.exec_module = types.MethodType(exec_module, spec.loader)
+    return spec
+
 
 class PyPadsFinder(PathFinder):
     """
@@ -106,8 +102,7 @@ class PyPadsFinder(PathFinder):
 
                 # Use the importer as a real importer but wrap it in the PyPadsLoader
                 if spec and importer:
-                    spec.loader = PyPadsLoader(importer.find_spec(fullname, path))
-                    return spec
+                    return duck_punch_loader(spec)
             except StopIteration:
                 pass
 
@@ -149,7 +144,8 @@ def activate_tracking(mod_globals=None):
                      mapping.reference.rsplit('.', 1)[0] in sys.modules
                      and mapping.reference.rsplit('.', 1)[0] not in punched_module):
             spec = importlib.util.find_spec(i)
-            loader = PyPadsLoader(spec)
+            duck_punch_loader(spec)
+            loader = spec.loader
             module = loader.load_module(i)
             loader.exec_module(module)
             sys.modules[i] = module
