@@ -4,11 +4,7 @@ from logging import warning, info
 import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 
-from pypads.logging_util import try_write_artifact, WriteFormats
-
-
-def _to_folder_name(self, _pypads_context, _pypads_wrappe):
-    return _pypads_context.__name__ + "/" + str(id(self)) + "/" + _pypads_wrappe.__name__
+from pypads.logging_util import try_write_artifact, WriteFormats, to_folder_name
 
 
 def _get_now():
@@ -41,7 +37,7 @@ def output(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypad
     :return:
     """
     result = _pypads_callback(*args, **kwargs)
-    name = _to_folder_name(self, _pypads_context, _pypads_wrappe) + "/returns/" + str(id(_pypads_callback))
+    name = to_folder_name(self, _pypads_context, _pypads_wrappe) + "/returns/" + str(id(_pypads_callback))
     try_write_artifact(name, result, write_format)
     return result
 
@@ -63,12 +59,12 @@ def input(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypads
     """
     for i in range(len(args)):
         arg = args[i]
-        name = _to_folder_name(self, _pypads_context, _pypads_wrappe) + "/args/" + str(i) + "_" + str(
+        name = to_folder_name(self, _pypads_context, _pypads_wrappe) + "/args/" + str(i) + "_" + str(
             id(_pypads_callback))
         try_write_artifact(name, arg, write_format)
 
     for (k, v) in kwargs.items():
-        name = _to_folder_name(self, _pypads_context, _pypads_wrappe) + "/kwargs/" + str(k) + "_" + str(
+        name = to_folder_name(self, _pypads_context, _pypads_wrappe) + "/kwargs/" + str(k) + "_" + str(
             id(_pypads_callback))
         try_write_artifact(name, v, write_format)
 
