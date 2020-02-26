@@ -88,7 +88,7 @@ class PyPadrePadsDecorators(PypadsDecorators):
     def hyperparameters(self, mapping=None):
         def track_decorator(fn):
             ctx = get_class_that_defined_method(fn)
-            return self._pypads.api.track_params(ctx=ctx, fn=fn, mapping=mapping)
+            return self._pypads.api.track_parameters(ctx=ctx, fn=fn, mapping=mapping)
 
         return track_decorator
 

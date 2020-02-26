@@ -5,7 +5,7 @@ from pypadsext.util import unpack
 
 def default_split(ctx, strategy="random", test_ratio=0.25, random_seed=None, val_ratio=0,
                   n_folds=3, shuffle=True, stratified=None, indices=None, index=None):
-    (data, n, y) = unpack(ctx, "data", ("shape", None), ("targets", None))
+    (data, shape, y) = unpack(ctx, "data", ("shape", None), ("targets", None))
     """
         The splitter creates index arrays into the dataset for different splitting startegies. It provides an iterator
         over the different splits.
@@ -44,6 +44,7 @@ def default_split(ctx, strategy="random", test_ratio=0.25, random_seed=None, val
         from pypadre.core.util.random import padre_seed
         random_seed = padre_seed
     r = np.random.RandomState(random_seed)
+    n = shape[0]
     idx = np.arange(n)
 
     def splitting_iterator():

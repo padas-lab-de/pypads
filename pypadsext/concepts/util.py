@@ -7,11 +7,11 @@ from typing import Tuple
 
 def _create_ctx(cache):
     ctx = dict()
-    if "data" in cache:
+    if "data" in cache.keys():
         ctx["data"] = cache.get("data")
-    if "shape" in cache:
+    if "shape" in cache.keys():
         ctx["shape"] = cache.get("shape")
-    if "targets" in cache:
+    if "targets" in cache.keys():
         ctx["targets"] = cache.get("targets")
     return ctx
 
@@ -26,6 +26,7 @@ def persistent_hash(to_hash, algorithm=hashlib.md5):
 
 
 def _split_output_inv(result, fn=None):
+    # function that looks into the output of the custom splitter
     split_info = dict()
     indices = True
     if isinstance(result, Tuple) or isinstance(result, list):

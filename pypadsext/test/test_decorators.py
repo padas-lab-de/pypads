@@ -105,7 +105,37 @@ class PyPadrePadsTest(unittest.TestCase):
 
         data = load_iris()
 
-        train_idx, test_idx, val_idx = splitter(data)
+        for train_idx, test_idx, val_idx in splitter():
+            print("train: {}\n test: {}\n val: {}".format(train_idx, test_idx, val_idx))
+
+        # --------------------------- asserts ---------------------------
+        import mlflow
+        # !-------------------------- asserts ---------------------------
+        # End the mlflow run opened by PyPads
+        mlflow.end_run()
+
+    def test_default_splitter_with_params(self):
+        # --------------------------- setup of the tracking ---------------------------
+        # Activate tracking of pypads
+        from pypadsext.base import PyPadrePads
+        tracker = PyPadrePads()
+
+        @tracker.decorators.dataset(name="iris")
+        def load_iris():
+            from sklearn.datasets import load_iris
+            return load_iris()
+
+        @tracker.decorators.hyperparameters()
+        @tracker.decorators.splitter(default=True)
+        def splitter():
+            strategy = "cv"
+            n_folds = 3
+            return
+
+        data = load_iris()
+
+        for train_idx, test_idx, val_idx in splitter():
+            print("train: {}\n test: {}\n val: {}".format(train_idx, test_idx, val_idx))
 
         # --------------------------- asserts ---------------------------
         import mlflow

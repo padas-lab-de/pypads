@@ -163,32 +163,39 @@ def split(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypa
     if pads.cache.run_exists("default_splitter"):
         use_default = pads.cache.run_get("default_splitter")
     if use_default:
-        ctx = _create_ctx(pads.cache.run_cache())
+        current_cache = pads.cache.run_cache().cache
+        ctx = _create_ctx(current_cache)
         kwargs = {}
         if pads.cache.run_exists(_pypads_callback.__qualname__):
             kwargs = pads.cache.run_get(_pypads_callback.__qualname__)
-        result = pads.actuators.default_splitter(ctx, **kwargs)
-        for num, train, test, val in result:
-            pads.cache.run_add("current_split", num)
-            pads.cache.run_add(num, {"train": train, "test": test, "val": val})
-            yield train, test, val
+        split_iterator = pads.actuators.default_splitter(ctx, **kwargs)
+
+        def generator():
+            for num, train, test, val in split_iterator:
+                pads.cache.run_add("current_split", num)
+                pads.cache.run_add(num, {"train": train, "test": test, "val": val})
+                yield train, test, val
+
     else:
         result = _pypads_callback(*args, **kwargs)
-
         if isinstance(result, GeneratorType):
-            num = -1
-            for r in result:
-                num += 1
-                pads.cache.run_add("current_split", num)
-                split_info = _split_output_inv(r, fn=_pypads_callback)
-                pads.cache.run_add(num, split_info)
-                yield r
+            def generator():
+                num = -1
+                for r in result:
+                    num += 1
+                    pads.cache.run_add("current_split", num)
+                    split_info = _split_output_inv(r, fn=_pypads_callback)
+                    pads.cache.run_add(num, split_info)
+                    yield r
         else:
-            split_info = _split_output_inv(result, fn=_pypads_callback)
-            pads.cache.run_add("current_split", 0)
-            pads.cache.run_add(0, split_info)
+            def generator():
+                split_info = _split_output_inv(result, fn=_pypads_callback)
+                pads.cache.run_add("current_split", 0)
+                pads.cache.run_add(0, split_info)
 
-            return result
+                return result
+
+    return generator()
 
 
 def hyperparameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
@@ -199,7 +206,9 @@ def hyperparameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped
     def tracer(frame, event, arg):
         if event == 'return':
             params = frame.f_locals.copy()
-            pads.cache.run_add(_pypads_callback.__qualname__, params)
+            key = _pypads_callback.__wrapped__.__qualname__ if hasattr(_pypads_callback,
+                                                                       "__wrapped__") else _pypads_callback.__qualname__
+            pads.cache.run_add(key, params)
 
     import sys
     # tracer is activated on next call, return or exception
@@ -213,7 +222,7 @@ def hyperparameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped
         # deactivate tracer
         sys.setprofile(None)
 
-    params = pads.cache.run_get(_pypads_callback.__qualname__)
+    params = pads.cache.run_get(fn.__qualname__)
     for key, param in params.items():
         pads.api.log_param(key, param)
 
@@ -221,40 +230,3 @@ def hyperparameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped
 
     return result
 
-# def decorator(f_splitter):
-#     @wraps(f_splitter)
-#     def wrapper(*args, **kwargs):
-#         splits = f_splitter(*args, **kwargs)
-#         ds_name = self._pypads.run_cache.get("dataset_name", dataset)
-#         ds_id = self._pypads.run_cache.get("dataset_id", None)
-#         run_id = self._pypads.run.info.run_id
-#
-#         def log_split(num, train_idx, test_idx, targets=None):
-#             self._pypads.run_cache.add(run_id, {
-#                 str(num): {'dataset': ds_name, 'dataset_id': ds_id, 'train_indices': train_idx,
-#                            'test_indices': test_idx}})
-#
-#             if targets is not None:
-#                 self._pypads.cache.get(run_id).get(str(num)).update(
-#                     {'predictions': {str(sample): {'truth': targets[i]} for i, sample in
-#                                      enumerate(test_idx)}})
-#             else:
-#                 warning(
-#                     "Your splitter does not provide targets information, Truth values will be missing from "
-#                     "the logged predictions")
-#             name = 'Split_{}_{}_information.txt'.format(num, _get_now())
-#             try_write_artifact(name,
-#                                {'dataset': ds_name, 'train_indices': train_idx, 'test_indices': test_idx},
-#                                WriteFormats.text)
-#             self._pypads.run_cache.get(run_id).update({"curr_split": num})
-#
-#         if isinstance(splits, GeneratorType):
-#             for num, train_idx, test_idx, targets in splits:
-#                 log_split(num, train_idx, test_idx, targets=targets)
-#                 yield num, train_idx, test_idx
-#         else:
-#             num, train_idx, test_idx, targets = splits
-#             log_split(num, train_idx, test_idx, targets=targets)
-#             return num, train_idx, test_idx
-#
-#     return wrapper
