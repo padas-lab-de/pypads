@@ -327,7 +327,7 @@ class PyPads:
 
     @property
     def config(self):
-        return self.mlf.get_run(mlflow.active_run()).tag[CONFIG_NAME]
+        return self.mlf.get_run(mlflow.active_run().info.run_id).data.tags[CONFIG_NAME]
 
     @config.setter
     def config(self, value: dict):
