@@ -1,7 +1,7 @@
 import glob
 import os
 from contextlib import contextmanager
-from logging import warning
+from logging import warning, debug
 from os.path import expanduser
 from types import FunctionType
 from typing import List
@@ -13,7 +13,7 @@ from pypads.analysis.pipeline_detection import pipeline
 from pypads.autolog.hook import Hook
 from pypads.autolog.mappings import AlgorithmMapping, MappingRegistry, AlgorithmMeta
 from pypads.autolog.wrapping import wrap
-from pypads.caches import PypadsCache
+from pypads.caches import PypadsCache, Cache
 from pypads.logging_functions import output, input, cpu, metric, log
 from pypads.logging_util import WriteFormats, try_write_artifact
 from pypads.mlflow.mlflow_autolog import autologgers
@@ -181,11 +181,27 @@ class PypadsApi:
                 #     mlflow.end_run()
                 #     mlflow.start_run(run_id=enclosing_run.info.run_id)
 
+    def _get_post_run(self):
+        if not self._pypads.cache.run_exists("post_run_fns"):
+            post_run_fn_cache = Cache()
+            self._pypads.cache.run_add("post_run_fns", post_run_fn_cache)
+        return self._pypads.cache.run_get("post_run_fns")
+
+    def register_post_fn(self, name, fn):
+        cache = self._get_post_run()
+        if cache.exists(name):
+            debug("Post run fn with name '" + name + "' already exists. Skipped.")
+        else:
+            cache.add(name, fn)
+
     def active_run(self):
         return mlflow.active_run()
 
     def end_run(self):
-        # TODO maybe do cleanup here instead of punching mlflow end_run
+        cache = self._get_post_run()
+        for name, fn in cache.items():
+            fn()
+        # TODO alternatively punch mlflow end_run
         mlflow.end_run()
     # !--- run management ----
 

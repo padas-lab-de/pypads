@@ -1,3 +1,5 @@
+from logging import debug
+
 import mlflow
 
 
@@ -26,6 +28,9 @@ class Cache:
     def get(self, item):
         return self._cache.get(item)
 
+    def items(self):
+        return self._cache.items()
+
     def exists(self, key):
         return key in self._cache
 
@@ -44,6 +49,18 @@ class PypadsRunCache(Cache):
     def run(self):
         return self._run
 
+    def register_cleanup_fn(self):
+        from pypads.base import get_current_pads
+        pads = get_current_pads()
+
+        def cleanup_cache(run_id=self._run.info.run_id):
+            from pypads.base import get_current_pads
+            pads = get_current_pads()
+            pads.cache.run_delete(run_id)
+            debug("Cleared run cache after run " + run_id)
+
+        pads.api.register_post_fn("cache_cleanup", cleanup_cache)
+
 
 class PypadsCache(Cache):
 
@@ -55,15 +72,21 @@ class PypadsCache(Cache):
         run = self.run_init(run_id)
         return self._run_caches.get(run)
 
-    def run_init(self, run_id=None):
+    def _get_run(self, run_id=None):
         if run_id is None:
             run = mlflow.active_run()
         else:
             run = mlflow.get_run(run_id)
+        return run
+
+    def run_init(self, run_id=None):
+        run = self._get_run(run_id)
         if not run:
             raise ValueError("No run is active. Couldn't init run cache.")
         if run not in self._run_caches:
-            self._run_caches[run] = PypadsRunCache(run)
+            run_cache = PypadsRunCache(run)
+            self._run_caches[run] = run_cache
+            run_cache.register_cleanup_fn()
         return run
 
     def run_add(self, key, value, run_id=None):
@@ -85,3 +108,7 @@ class PypadsCache(Cache):
     def run_clear(self, run_id=None):
         run = self.run_init(run_id)
         self._run_caches[run].clear()
+
+    def run_delete(self, run_id=None):
+        run = self.run_init(run_id)
+        del self._run_caches[run]

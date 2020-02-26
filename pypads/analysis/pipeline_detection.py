@@ -15,10 +15,8 @@ last_pipeline_tracking = None
 _pipeline_type = None
 network = None
 
+
 # --- Clean nodes after run ---
-original_end = mlflow.end_run
-
-
 def end_run(*args, **kwargs):
     global network
     if network is not None and len(network.nodes) > 0:
@@ -89,12 +87,6 @@ def end_run(*args, **kwargs):
     network = None
     global last_pipeline_tracking
     last_pipeline_tracking = None
-    return original_end(*args, **kwargs)
-
-
-mlflow.end_run = end_run
-
-
 # !--- Clean nodes after run ---
 
 
@@ -136,6 +128,10 @@ def pipeline(self, *args, _pypads_autologgers=None, pipeline_type="normal", pipe
     global network
     global _pipeline_type
     _pipeline_type = pipeline_type
+
+    from pypads.base import get_current_pads
+    pads = get_current_pads()
+    pads.api.register_post_fn("pipeline_clean_up", end_run)
 
     if _is_package_available("networkx"):
         import networkx as nx

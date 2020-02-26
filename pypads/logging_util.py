@@ -33,8 +33,6 @@ def end_run(*args, **kwargs):
 
 
 mlflow.end_run = end_run
-
-
 # !--- Clean tmp files after run ---
 
 
@@ -108,4 +106,4 @@ def try_write_artifact(file_name, obj, write_format, preserve_folder=True):
 
 
 def to_folder_name(self, _pypads_context, _pypads_wrappe):
-    return _pypads_context.__name__ + "/" + str(id(self)) + "/" + _pypads_wrappe.__name__
+    return os.path.join(_pypads_context.__name__, str(id(self)), _pypads_wrappe.__name__)

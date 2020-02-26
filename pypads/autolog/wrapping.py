@@ -442,7 +442,7 @@ def wrap_function(fn, ctx, mapping):
 # Cache configs for runs. Each run could is for now static in it's config.
 configs = {}
 
-# --- Clean cache after run ---
+# --- Clean the config cache after run ---
 original_end = mlflow.end_run
 
 
@@ -454,7 +454,8 @@ def end_run(*args, **kwargs):
 mlflow.end_run = end_run
 
 
-# !--- Clean cache after run ---
+# !--- Clean he config cache after run ---
+
 
 def _get_pypads_config():
     """

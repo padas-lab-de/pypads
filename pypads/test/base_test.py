@@ -5,5 +5,6 @@ class BaseTest(unittest.TestCase):
 
     def tearDown(self):
         # End the mlflow run opened by PyPads
-        import mlflow
-        mlflow.end_run()
+        from pypads.base import get_current_pads
+        pads = get_current_pads()
+        pads.api.end_run()
