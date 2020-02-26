@@ -15,6 +15,8 @@ punched_classes = set()
 # stack of calls to a tracked class
 current_tracking_stack = []
 
+DEFAULT_ORDER = 1
+
 
 def _add_found_class(mapping):
     from pypads.base import get_current_pads
@@ -75,7 +77,7 @@ def wrap_class(clazz, ctx, mapping):
 
         if hasattr(clazz.__init__, "__module__"):
             original_init = getattr(clazz, "__init__")
-            wrap_method_helper(fn=original_init, hooks=[(log_init, {})], mapping=mapping, ctx=clazz,
+            wrap_method_helper(fn=original_init, hooks=[(log_init, {}, DEFAULT_ORDER)], mapping=mapping, ctx=clazz,
                                fn_type="function")
 
         if mapping.hooks:
@@ -109,17 +111,26 @@ def _get_hooked_fns(fn, mapping):
     config = _get_pypads_config()
     for log_event, event_config in config["events"].items():
         configured_hook_events = event_config["on"]
+
+        # Add by config defined parameters
         if "with" in event_config:
             hook_params = event_config["with"]
         else:
             hook_params = {}
+
+        # Add an order
+        if "order" in event_config:
+            order = event_config["order"]
+        else:
+            order = DEFAULT_ORDER
 
         # If one configured_hook_events is in this config.
         if set(configured_hook_events) & set(hook_events_of_mapping):
             from pypads.base import get_current_pads
             pads = get_current_pads()
             fn = pads.function_registry.find_function(log_event)
-            output.append((fn, hook_params))
+            output.append((fn, hook_params, order))
+    output.sort(key=lambda t: t[2])
     return output
 
 
@@ -274,7 +285,7 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
                     current_tracking_stack.pop()
                     return out
 
-                for (hook, params) in hooks:
+                for (hook, params, order) in hooks:
                     callback = get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
                                            _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping)
             out = callback(*args, **kwargs)
@@ -293,7 +304,7 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
                     current_tracking_stack.pop()
                     return out
 
-                for (hook, params) in hooks:
+                for (hook, params, order) in hooks:
                     callback = types.MethodType(
                         get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
                                     _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping), self)
@@ -315,7 +326,7 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
                     current_tracking_stack.pop()
                     return out
 
-                for (hook, params) in hooks:
+                for (hook, params, order) in hooks:
                     callback = types.MethodType(
                         get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
                                     _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping), cls)

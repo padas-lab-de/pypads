@@ -9,6 +9,7 @@ from typing import List
 import mlflow
 from mlflow.tracking import MlflowClient
 
+from pypads.analysis.pipeline_detection import pipeline
 from pypads.autolog.hook import Hook
 from pypads.autolog.mappings import AlgorithmMapping, MappingRegistry, AlgorithmMeta
 from pypads.autolog.wrapping import wrap
@@ -16,7 +17,6 @@ from pypads.caches import PypadsCache
 from pypads.logging_functions import output, input, cpu, metric, log
 from pypads.logging_util import WriteFormats, try_write_artifact
 from pypads.mlflow.mlflow_autolog import autologgers
-from pypads.pipeline.pipeline_detection import pipeline
 from pypads.util import get_class_that_defined_method
 from pypads.validation.logging_functions import parameters
 
