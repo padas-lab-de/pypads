@@ -209,7 +209,8 @@ class PypadsDecorators:
     def track(self, event="pypads_log", mapping: AlgorithmMapping = None):
         def track_decorator(fn):
             ctx = get_class_that_defined_method(fn)
-            return self._pypads.api.track(ctx=ctx, fn=fn, event=event, mapping=mapping)
+            events = event if isinstance(event, List) else [event]
+            return self._pypads.api.track(ctx=ctx, fn=fn, events=events, mapping=mapping)
 
         return track_decorator
 
