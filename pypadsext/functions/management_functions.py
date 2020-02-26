@@ -1,4 +1,4 @@
-from pypadsext.util import _is_package_available
+from pypadsext.util import is_package_available
 
 
 def set_random_seed(seed):
@@ -13,7 +13,7 @@ def set_random_seed(seed):
     # global seeds for numpy seem to not work with RandomState()
 
     # set pytorch seed
-    if _is_package_available("pytorch"):
+    if is_package_available("pytorch"):
         # noinspection PyPackageRequirements,PyUnresolvedReferences
         import torch
         torch.manual_seed(seed)

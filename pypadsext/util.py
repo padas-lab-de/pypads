@@ -1,5 +1,7 @@
 import inspect
-def _is_package_available(name):
+
+
+def is_package_available(name):
     import importlib
     spam_loader = importlib.util.find_spec(name)
     return spam_loader is not None

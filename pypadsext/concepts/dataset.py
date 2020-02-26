@@ -1,25 +1,27 @@
 from enum import Enum
-from pypadsext.util import _is_package_available
+
 from sklearn.utils import Bunch
+
+from pypadsext.util import is_package_available
 
 
 class Data:
 
     class Types(Enum):
         bunch = Bunch
-        if _is_package_available('numpy'):
+        if is_package_available('numpy'):
             from numpy import ndarray
             Ndarray = ndarray
         else:
             ndarray = 'numpy.ndarray'
-        if _is_package_available('pandas'):
+        if is_package_available('pandas'):
             from pandas import DataFrame, Series
             dataframe = DataFrame
             series = Series
         else:
             dataframe = 'pandas.DataFrame'
             series = 'pandas.Series'
-        if _is_package_available('networkx'):
+        if is_package_available('networkx'):
             from networkx import Graph
             graph = Graph
         else:

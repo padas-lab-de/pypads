@@ -1,5 +1,42 @@
 import os
 
+from pypadsext.util import is_package_available
+
+
+def tag_extraction():
+    from pypads.base import get_current_pads
+    from pypadsext.base import PyPadrePads
+    pads: PyPadrePads = get_current_pads()
+    docs = pads.cache.get("doc_map")
+    corpus = " ".join([doc for name, doc in docs.items()])
+
+    import re
+    corpus = re.sub('[\s]+', ' ', corpus)
+    corpus = re.sub('[\t]+', '', corpus)
+    corpus = re.sub('[\n]+', '', corpus)
+    pat = re.compile(r'([A-Z][^\[\]\+\<\>\-\.!?]*[\.!?])', re.M)
+    corpus = " ".join(pat.findall(corpus))
+
+    if is_package_available("spacy"):
+        import spacy
+        nlp = spacy.load("en_core_web_sm")
+        doc = nlp(corpus)
+        nouns = set()
+        for chunk in doc.noun_chunks:
+            if "=" not in chunk.text and "." not in chunk.text:
+                nouns.add(chunk.text)
+        pads.api.log_mem_artifact("doc_nouns", str(nouns))
+
+        ents = set()
+        for ent in doc.ents:
+            if "=" not in ent.text and "." not in ent.text and "`" not in ent.text and "/" not in ent.text:
+                ents.add(ent.text)
+        pads.api.log_mem_artifact("doc_named_entities", str(ents))
+
+    elif is_package_available("nltk"):
+        # TODO https://towardsdatascience.com/named-entity-recognition-with-nltk-and-spacy-8c4a7d88e7da
+        pass
+
 
 def doc(self, *args, _pypads_wrappe,
         _pypads_context,
@@ -10,6 +47,8 @@ def doc(self, *args, _pypads_wrappe,
     from pypads.base import get_current_pads
     from pypadsext.base import PyPadrePads
     pads: PyPadrePads = get_current_pads()
+    pads.api.register_post_fn("tag_extraction", tag_extraction)
+
     doc_map = {}
     if not pads.cache.exists("doc_map"):
         pads.cache.add("doc_map", doc_map)
@@ -19,15 +58,13 @@ def doc(self, *args, _pypads_wrappe,
     if doc_str:
         name = os.path.join(_pypads_context.__name__, _pypads_wrappe.__name__ + ".__doc__")
         pads.api.log_mem_artifact(name, doc_str)
-        pads.cache.add(name, doc_str)
         doc_map[name] = doc_str
 
         if _pypads_context.__doc__:
             name = os.path.join(_pypads_context.__name__,
                                 _pypads_context.__name__ + ".__doc__")
             pads.api.log_mem_artifact(name, _pypads_context.__doc__)
-            pads.cache.add(name, doc_str)
-            doc_map[name] = doc_str
+            doc_map[name] = _pypads_context.__doc__
 
     pads.cache.add("doc_map", doc_map)
     output = _pypads_callback(*args, **kwargs)
