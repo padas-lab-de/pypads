@@ -1,5 +1,4 @@
 import numpy as np
-from pypads.base import get_current_pads
 
 from pypadsext.util import unpack
 
@@ -47,10 +46,8 @@ def default_split(ctx, strategy="random", test_ratio=0.25, random_seed=None, val
     r = np.random.RandomState(random_seed)
     idx = np.arange(n)
 
-    # TODO logging split information
     def splitting_iterator():
         # Enable the tracking
-        pads = get_current_pads()
         num = -1
         # now apply splitting strategy
         if strategy is None:
@@ -84,7 +81,7 @@ def default_split(ctx, strategy="random", test_ratio=0.25, random_seed=None, val
                 if np.all(n_folds > y_counts):
                     raise ValueError("n_folds=%d cannot be greater than the"
                                      " number of members in each class."
-                                     % (n_folds))
+                                     % n_folds)
                 if n_folds > min_groups:
                     raise Warning("The least populated class in y has only %d"
                                   " members, which is less than n_splits=%d." % (min_groups, n_folds))
@@ -101,13 +98,13 @@ def default_split(ctx, strategy="random", test_ratio=0.25, random_seed=None, val
                 for i in range(n_folds):
                     num += 1
                     test_index = test_folds == i
-                    train_idx = idx[np.logical_not(test_index)]
-                    test_idx = idx[test_index]
+                    train = idx[np.logical_not(test_index)]
+                    test = idx[test_index]
                     if val_ratio > 0:
-                        n_v = int(len(train_idx) * val_ratio)
-                        yield num, train_idx[:n_v], test_idx, train_idx[n_v:]
+                        n_v = int(len(train) * val_ratio)
+                        yield num, train[:n_v], test, train[n_v:]
                     else:
-                        yield num, train_idx, test_idx, None
+                        yield num, train, test, None
             else:
 
                 if shuffle:
@@ -115,10 +112,7 @@ def default_split(ctx, strategy="random", test_ratio=0.25, random_seed=None, val
                 for i in range(n_folds):
                     n_te = i * int(n / n_folds)
                     test = idx[n_te: n_te + int(n / n_folds)]
-                    train = np.asarray(list(set(idx) - set(test)))
                     # The test array can be seen as a non overlapping sub array of size n_te moving from start to end
-                    n_te = i * int(n / n_folds)
-                    test = np.asarray(range(n_te, n_te + int(n / n_folds)))
 
                     # if the test array exceeds the end of the array wrap it around the beginning of the array
                     test = np.mod(test, n)

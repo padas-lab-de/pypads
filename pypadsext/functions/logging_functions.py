@@ -1,11 +1,11 @@
 from logging import warning
+from types import GeneratorType
 
 import mlflow
-from pypads.logging_util import try_write_artifact, WriteFormats, all_tags
+from pypads.logging_util import WriteFormats, all_tags
 
 from pypadsext.concepts.dataset import scrape_data
-from pypadsext.concepts.splitter import default_split
-from pypadsext.concepts.util import _create_ctx
+from pypadsext.concepts.util import _create_ctx, persistent_hash, _split_output_inv
 
 DATASETS = "datasets"
 
@@ -63,7 +63,7 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
     data, metadata, targets = scrape_data(result, **_kwargs)
     pads.cache.run_add("data", data)
     pads.cache.run_add("shape", metadata.get("shape"))
-    pads.cache.run_add("targets", metadata.get("targets", None))
+    pads.cache.run_add("targets", targets)
 
     # get the current active run
     experiment_run = mlflow.active_run()
@@ -85,18 +85,23 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
     if repo is None:
         repo = mlflow.get_experiment(mlflow.create_experiment(DATASETS))
 
-    # add data set if it is not already existing
-    if not any(t["pypads.name"] == ds_name for t in all_tags(repo.experiment_id)):
+    # add data set if it is not already existing with name and hash check
+    _hash = persistent_hash(str(result))
+    if not any(
+            t["pypads.dataset"] == ds_name or t["pypads.dataset.hash"] == str(_hash) for t in
+            all_tags(repo.experiment_id)):
         with pads.api.intermediate_run(experiment_id=repo.experiment_id) as run:
             dataset_id = run.info.run_id
 
             pads.cache.run_add("dataset_id", dataset_id, experiment_run.info.run_id)
-            mlflow.set_tag("pypads.name", ds_name)
+            mlflow.set_tag("pypads.dataset", ds_name)
+            try:
+                mlflow.set_tag("pypads.dataset.hash", _hash)
+            except Exception:
+                Warning("Could not compute the hash of the dataset object")
             name = _pypads_context.__name__ + "[" + str(id(result)) + "]." + ds_name + ".data"
-            try_write_artifact(name, data, write_format)
+            pads.api.log_mem_artifact(name, data, write_format=write_format, meta=metadata)
 
-            name = _pypads_context.__name__ + "[" + str(id(result)) + "]." + ds_name + ".metadata"
-            try_write_artifact(name, metadata, WriteFormats.text)
         mlflow.set_tag("pypads.datasetID", dataset_id)
     return result
 
@@ -133,17 +138,17 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
                 pads.cache.run_get(num).get('predictions').get(str(i)).update(
                     {'probabilities': probabilities[i]})
     else:
-        for i, sample in enumerate(split_info.get('test_indices')):
+        for i, sample in enumerate(split_info.get('test')):
             pads.cache.run_get(num).get('predictions').get(str(sample)).update({'predicted': result[i]})
 
         if probabilities is not None:
-            for i, sample in enumerate(split_info.get('test_indices')):
+            for i, sample in enumerate(split_info.get('test')):
                 pads.cache.run_get(num).get('predictions').get(str(sample)).update(
                     {'probabilities': probabilities[i]})
 
     name = _pypads_context.__name__ + "[" + str(
         id(self)) + "]." + _pypads_wrappe.__name__ + "_results.split_{}".format(num)
-    try_write_artifact(name, pads.cache.run_get(num), write_format)
+    pads.api.log_mem_artifact(name, pads.cache.run_get(num), write_format=write_format)
 
     return result
 
@@ -162,10 +167,28 @@ def split(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypa
         kwargs = {}
         if pads.cache.run_exists(_pypads_callback.__qualname__):
             kwargs = pads.cache.run_get(_pypads_callback.__qualname__)
-        result = default_split(ctx, **kwargs)
+        result = pads.actuators.default_splitter(ctx, **kwargs)
+        for num, train, test, val in result:
+            pads.cache.run_add("current_split", num)
+            pads.cache.run_add(num, {"train": train, "test": test, "val": val})
+            yield train, test, val
     else:
         result = _pypads_callback(*args, **kwargs)
-    return result
+
+        if isinstance(result, GeneratorType):
+            num = -1
+            for r in result:
+                num += 1
+                pads.cache.run_add("current_split", num)
+                split_info = _split_output_inv(r, fn=_pypads_callback)
+                pads.cache.run_add(num, split_info)
+                yield r
+        else:
+            split_info = _split_output_inv(result, fn=_pypads_callback)
+            pads.cache.run_add("current_split", 0)
+            pads.cache.run_add(0, split_info)
+
+            return result
 
 
 def hyperparameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
@@ -190,9 +213,12 @@ def hyperparameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped
         # deactivate tracer
         sys.setprofile(None)
 
+    params = pads.cache.run_get(_pypads_callback.__qualname__)
+    for key, param in params.items():
+        pads.api.log_param(key, param)
+
     result = _pypads_callback(*args, **kwargs)
 
-    # TODO log parameters?
     return result
 
 # def decorator(f_splitter):

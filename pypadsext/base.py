@@ -43,8 +43,8 @@ class PyPadrePadsActuators:
         set_random_seed(seed)
 
     # noinspection PyMethodMayBeStatic
-    def default_splitter(self, data, **kwargs):
-        return default_split(data, **kwargs)
+    def default_splitter(self, ctx, **kwargs):
+        return default_split(ctx, **kwargs)
 
 
 class PyPadrePadsApi(PypadsApi):

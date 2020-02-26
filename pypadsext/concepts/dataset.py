@@ -1,13 +1,15 @@
 from enum import Enum
 
-from sklearn.utils import Bunch
-
 from pypadsext.util import _is_package_available
 
 
 class Data:
     class Types(Enum):
-        bunch = Bunch
+        if _is_package_available('sklearn'):
+            from sklearn.utils import Bunch
+            bunch = Bunch
+        else:
+            bunch = "sklearn.Bunch"
         if _is_package_available('numpy'):
             from numpy import ndarray
             Ndarray = ndarray
@@ -56,6 +58,7 @@ def bunch_crawl(obj, **kwargs):
 
 def graph_crawl(obj, **kwargs):
     metadata = {"type": str(Data.Types.graph.value), "shape": (obj.number_of_edges(), obj.number_of_nodes())}
+    metadata = {**metadata, **kwargs}
     data = obj
     return data, metadata, None
 

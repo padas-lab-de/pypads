@@ -47,7 +47,7 @@ class PyPadrePadsTest(unittest.TestCase):
         def get_name(run_info):
             tags = tracker.mlf.list_artifacts(run_info.run_id, path='../tags')
             for tag in tags:
-                if '/name' in tag.path:
+                if '/pypads.dataset' in tag.path:
                     with open(os.path.normpath(os.path.join(run_info.artifact_uri.replace('file://', ''), tag.path)),
                               'r') as f:
                         name = f.read()
@@ -60,7 +60,7 @@ class PyPadrePadsTest(unittest.TestCase):
         # End the mlflow run opened by PyPads
         mlflow.end_run()
 
-    def test_splitter(self):
+    def test_custom_splitter(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypadsext.base import PyPadrePads
@@ -76,12 +76,36 @@ class PyPadrePadsTest(unittest.TestCase):
             import numpy as np
             idx = np.arange(data.shape[0])
             cut = int(len(idx) * training)
-            targets = data[:, -1][cut:]
-            return 0, idx[:cut], idx[cut:], targets
+            return idx[:cut], idx[cut:]
 
         data = load_iris()
 
-        num, train_idx, test_idx = splitter(data)
+        train_idx, test_idx = splitter(data.data, training=0.7)
+
+        # --------------------------- asserts ---------------------------
+        import mlflow
+        # !-------------------------- asserts ---------------------------
+        # End the mlflow run opened by PyPads
+        mlflow.end_run()
+
+    def test_default_splitter_with_no_params(self):
+        # --------------------------- setup of the tracking ---------------------------
+        # Activate tracking of pypads
+        from pypadsext.base import PyPadrePads
+        tracker = PyPadrePads()
+
+        @tracker.decorators.dataset(name="iris")
+        def load_iris():
+            from sklearn.datasets import load_iris
+            return load_iris()
+
+        @tracker.decorators.splitter(default=True)
+        def splitter():
+            return
+
+        data = load_iris()
+
+        train_idx, test_idx, val_idx = splitter(data)
 
         # --------------------------- asserts ---------------------------
         import mlflow
