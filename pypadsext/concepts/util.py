@@ -27,7 +27,7 @@ def persistent_hash(to_hash, algorithm=hashlib.md5):
     return int(algorithm(to_hash.encode("utf-8")).hexdigest(), 16)
 
 
-def _split_output_inv(result, fn=None):
+def split_output_inv(result, fn=None):
     # function that looks into the output of the custom splitter
     split_info = dict()
     indices = True
@@ -65,7 +65,7 @@ def _split_output_inv(result, fn=None):
     return split_info
 
 
-def _get_by_tag(tag=None, value=None, experiment_id=None):
+def get_by_tag(tag=None, value=None, experiment_id=None):
     if not experiment_id:
         experiment_id = mlflow.active_run().info.experiment_id
     client = MlflowClient(mlflow.get_tracking_uri())

@@ -5,7 +5,7 @@ import mlflow
 from pypads.logging_util import WriteFormats
 
 from pypadsext.concepts.dataset import scrape_data
-from pypadsext.concepts.util import persistent_hash, _split_output_inv, _get_by_tag
+from pypadsext.concepts.util import persistent_hash, split_output_inv, get_by_tag
 
 DATASETS = "datasets"
 
@@ -88,7 +88,7 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
 
     # add data set if it is not already existing with name and hash check
     _hash = persistent_hash(str(result))
-    _stored = _get_by_tag("pypads.dataset.hash", str(_hash), repo.experiment_id)
+    _stored = get_by_tag("pypads.dataset.hash", str(_hash), repo.experiment_id)
     if not _stored:
         with pads.api.intermediate_run(experiment_id=repo.experiment_id) as run:
             dataset_id = run.info.run_id
@@ -174,12 +174,12 @@ def split(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypa
             for r in result:
                 num += 1
                 pads.cache.run_add("current_split", num)
-                split_info = _split_output_inv(r, fn=_pypads_callback)
+                split_info = split_output_inv(r, fn=_pypads_callback)
                 pads.cache.run_add(num, split_info)
                 yield r
     else:
         def generator():
-            split_info = _split_output_inv(result, fn=_pypads_callback)
+            split_info = split_output_inv(result, fn=_pypads_callback)
             pads.cache.run_add("current_split", 0)
             pads.cache.run_add(0, split_info)
 

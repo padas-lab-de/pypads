@@ -94,6 +94,7 @@ class PyPadrePadsDecorators(PypadsDecorators):
 
         return track_decorator
 
+
 class PyPadrePads(PyPads):
     def __init__(self, *args, config=None, event_mapping=None, **kwargs):
         config = config or util.dict_merge(DEFAULT_CONFIG, DEFAULT_PYPADRE_CONFIG)
