@@ -30,7 +30,7 @@ DEFAULT_PYPADRE_CONFIG = {"events": {
     "predictions": {"on": ["pypads_predict"]},
     "splits": {"on": ["pypads_split"]},
     "hyperparameters": {"on": ["pypads_params"]},
-    "doc": {"on": ["pypads_dataset"]}
+    "doc": {"on": ["pypads_dataset", "pypads_fit", "pypads_transform", "pypads_predict"]}
 }}
 
 
@@ -93,7 +93,6 @@ class PyPadrePadsDecorators(PypadsDecorators):
             return self._pypads.api.track_parameters(ctx=ctx, fn=fn, mapping=mapping)
 
         return track_decorator
-
 
 class PyPadrePads(PyPads):
     def __init__(self, *args, config=None, event_mapping=None, **kwargs):
