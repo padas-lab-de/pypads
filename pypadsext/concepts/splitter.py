@@ -1,8 +1,27 @@
 import numpy as np
+from boltons.funcutils import wraps
+from pypads.base import get_current_pads
 
 from pypadsext.util import unpack
 
 
+def logger():
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            pads = get_current_pads()
+            splits = fn(*args, **kwargs)
+            for num, train, test, val in splits:
+                pads.cache.run_add("current_split", num)
+                pads.cache.run_add(num, {"train": train, "test": test, "val": val})
+                yield train, test, val
+
+        return wrapper
+
+    return decorator
+
+
+@logger()
 def default_split(ctx, strategy="random", test_ratio=0.25, random_seed=None, val_ratio=0,
                   n_folds=3, shuffle=True, stratified=None, indices=None, index=None):
     (data, shape, y) = unpack(ctx, "data", ("shape", None), ("targets", None))

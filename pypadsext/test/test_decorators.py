@@ -1,6 +1,8 @@
 import os
 import unittest
 
+from pypadsext.concepts.util import _get_by_tag
+
 
 class PyPadrePadsTest(unittest.TestCase):
 
@@ -12,7 +14,6 @@ class PyPadrePadsTest(unittest.TestCase):
         # Activate tracking of pypads
         from pypadsext.base import PyPadrePads
         tracker = PyPadrePads()
-
         cwd = os.getcwd()
         columns_wine = [
             "Fixed acidity.",
@@ -42,16 +43,11 @@ class PyPadrePadsTest(unittest.TestCase):
         # --------------------------- asserts ---------------------------
         import mlflow
         datasets_repo = mlflow.get_experiment_by_name("datasets")
-        datasets = tracker.mlf.list_run_infos(datasets_repo.experiment_id)
+        datasets = _get_by_tag("pypads.dataset", experiment_id=datasets_repo.experiment_id)
 
-        def get_name(run_info):
-            tags = tracker.mlf.list_artifacts(run_info.run_id, path='../tags')
-            for tag in tags:
-                if '/pypads.dataset' in tag.path:
-                    with open(os.path.normpath(os.path.join(run_info.artifact_uri.replace('file://', ''), tag.path)),
-                              'r') as f:
-                        name = f.read()
-                    return name
+        def get_name(run):
+            tags = run.data.tags
+            return tags.get("pypads.dataset", None)
 
         ds_names = [get_name(ds) for ds in datasets]
         assert ds_name in ds_names
@@ -99,13 +95,9 @@ class PyPadrePadsTest(unittest.TestCase):
             from sklearn.datasets import load_iris
             return load_iris()
 
-        @tracker.decorators.splitter(default=True)
-        def splitter():
-            return
-
         data = load_iris()
 
-        for train_idx, test_idx, val_idx in splitter():
+        for train_idx, test_idx, val_idx in tracker.actuators.default_splitter(data.data):
             print("train: {}\n test: {}\n val: {}".format(train_idx, test_idx, val_idx))
 
         # --------------------------- asserts ---------------------------
@@ -125,16 +117,9 @@ class PyPadrePadsTest(unittest.TestCase):
             from sklearn.datasets import load_iris
             return load_iris()
 
-        @tracker.decorators.hyperparameters()
-        @tracker.decorators.splitter(default=True)
-        def splitter():
-            strategy = "cv"
-            n_folds = 3
-            return
-
         data = load_iris()
 
-        for train_idx, test_idx, val_idx in splitter():
+        for train_idx, test_idx, val_idx in tracker.actuators.default_splitter(data.data, strategy="cv", n_folds=3):
             print("train: {}\n test: {}\n val: {}".format(train_idx, test_idx, val_idx))
 
         # --------------------------- asserts ---------------------------

@@ -4,7 +4,9 @@ from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG, DEF
 
 from pypadsext.analysis.doc_parsing import doc
 from pypadsext.concepts.splitter import default_split
+from pypadsext.concepts.util import _create_ctx
 from pypadsext.functions.logging_functions import dataset, predictions, split, hyperparameters
+from pypadsext.functions.management_functions import set_random_seed
 from pypadsext.util import get_class_that_defined_method
 
 # --- Pypads App ---
@@ -38,12 +40,13 @@ class PyPadrePadsActuators:
         self._pypads = pypads
 
     def set_random_seed(self, seed):
-        from pypadsext.functions.management_functions import set_random_seed
         self._pypads.cache.run_add('seed', seed)
         set_random_seed(seed)
 
     # noinspection PyMethodMayBeStatic
-    def default_splitter(self, ctx, **kwargs):
+    def default_splitter(self, data, **kwargs):
+        ctx = _create_ctx(self._pypads.cache.run_cache().cache)
+        ctx.update({"data": data})
         return default_split(ctx, **kwargs)
 
 
@@ -60,8 +63,7 @@ class PyPadrePadsApi(PypadsApi):
         self._pypads.cache.run_add('dataset_kwargs', kwargs)
         return self.track(fn, ctx, ["pypads_dataset"], mapping=mapping)
 
-    def track_splits(self, fn, ctx=None, mapping: AlgorithmMapping = None, default=False):
-        self._pypads.cache.run_add('default_splitter', default)
+    def track_splits(self, fn, ctx=None, mapping: AlgorithmMapping = None):
         return self.track(fn, ctx, ["pypads_split"], mapping=mapping)
 
     def track_parameters(self, fn, ctx=None, mapping: AlgorithmMapping = None):
@@ -78,10 +80,10 @@ class PyPadrePadsDecorators(PypadsDecorators):
 
         return track_decorator
 
-    def splitter(self, mapping=None, default=False):
+    def splitter(self, mapping=None):
         def track_decorator(fn):
             ctx = get_class_that_defined_method(fn)
-            return self._pypads.api.track_splits(ctx=ctx, fn=fn, mapping=mapping, default=default)
+            return self._pypads.api.track_splits(ctx=ctx, fn=fn, mapping=mapping)
 
         return track_decorator
 

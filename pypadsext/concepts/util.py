@@ -1,8 +1,10 @@
 import functools
 import hashlib
 import operator
-
 from typing import Tuple
+
+import mlflow
+from mlflow.tracking import MlflowClient
 
 
 def _create_ctx(cache):
@@ -61,3 +63,23 @@ def _split_output_inv(result, fn=None):
         Warning("The splitter has a single output. Logging...")
         split_info.update({'output': result})
     return split_info
+
+
+def _get_by_tag(tag=None, value=None, experiment_id=None):
+    if not experiment_id:
+        experiment_id = mlflow.active_run().info.experiment_id
+    client = MlflowClient(mlflow.get_tracking_uri())
+    runs = client.list_run_infos(experiment_id)
+    selection = []
+    for run in runs:
+        run = client.get_run(run.run_id)
+        if tag:
+            tags = run.data.tags
+            if value:
+                if tags[tag] == value:
+                    selection.append(run)
+            else:
+                selection.append(run)
+        else:
+            selection.append(run)
+    return selection

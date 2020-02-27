@@ -2,10 +2,10 @@ from logging import warning
 from types import GeneratorType
 
 import mlflow
-from pypads.logging_util import WriteFormats, all_tags
+from pypads.logging_util import WriteFormats
 
 from pypadsext.concepts.dataset import scrape_data
-from pypadsext.concepts.util import _create_ctx, persistent_hash, _split_output_inv
+from pypadsext.concepts.util import persistent_hash, _split_output_inv, _get_by_tag
 
 DATASETS = "datasets"
 
@@ -27,7 +27,7 @@ def random_seed(self, *args, pypads_seed=None, _pypads_wrappe, _pypads_context, 
 
     # Get seed information from cache
     if pads.cache.run_exists("seed"):
-        pads.api.log_param()
+        pads.api.log_param("seed", )
     else:
         warning("Can't log seed produced by seed generator. You have to enable ")
 
@@ -52,6 +52,7 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
     from pypadsext.base import PyPadrePads
     pads: PyPadrePads = get_current_pads()
 
+    # get the dataset object
     result = _pypads_callback(*args, **kwargs)
 
     # Get additional arguments if given by the user
@@ -87,9 +88,8 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
 
     # add data set if it is not already existing with name and hash check
     _hash = persistent_hash(str(result))
-    if not any(
-            t["pypads.dataset"] == ds_name or t["pypads.dataset.hash"] == str(_hash) for t in
-            all_tags(repo.experiment_id)):
+    _stored = _get_by_tag("pypads.dataset.hash", str(_hash), repo.experiment_id)
+    if not _stored:
         with pads.api.intermediate_run(experiment_id=repo.experiment_id) as run:
             dataset_id = run.info.run_id
 
@@ -103,6 +103,14 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
             pads.api.log_mem_artifact(name, data, write_format=write_format, meta=metadata)
 
         mlflow.set_tag("pypads.datasetID", dataset_id)
+    else:
+        # look for the existing dataset and reference it to the active run
+        if len(_stored) > 1:
+            Warning("multiple existing datasets with the same hash!!!")
+        else:
+            dataset_id = _stored.pop().info.run_id
+            mlflow.set_tag("pypads.datasetID", dataset_id)
+
     return result
 
 
@@ -158,42 +166,24 @@ def split(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypa
     from pypadsext.base import PyPadrePads
     pads: PyPadrePads = get_current_pads()
 
-    use_default = False
-    # check if the default splitter is to be used
-    if pads.cache.run_exists("default_splitter"):
-        use_default = pads.cache.run_get("default_splitter")
-    if use_default:
-        current_cache = pads.cache.run_cache().cache
-        ctx = _create_ctx(current_cache)
-        kwargs = {}
-        if pads.cache.run_exists(_pypads_callback.__qualname__):
-            kwargs = pads.cache.run_get(_pypads_callback.__qualname__)
-        split_iterator = pads.actuators.default_splitter(ctx, **kwargs)
+    result = _pypads_callback(*args, **kwargs)
 
+    if isinstance(result, GeneratorType):
         def generator():
-            for num, train, test, val in split_iterator:
+            num = -1
+            for r in result:
+                num += 1
                 pads.cache.run_add("current_split", num)
-                pads.cache.run_add(num, {"train": train, "test": test, "val": val})
-                yield train, test, val
-
+                split_info = _split_output_inv(r, fn=_pypads_callback)
+                pads.cache.run_add(num, split_info)
+                yield r
     else:
-        result = _pypads_callback(*args, **kwargs)
-        if isinstance(result, GeneratorType):
-            def generator():
-                num = -1
-                for r in result:
-                    num += 1
-                    pads.cache.run_add("current_split", num)
-                    split_info = _split_output_inv(r, fn=_pypads_callback)
-                    pads.cache.run_add(num, split_info)
-                    yield r
-        else:
-            def generator():
-                split_info = _split_output_inv(result, fn=_pypads_callback)
-                pads.cache.run_add("current_split", 0)
-                pads.cache.run_add(0, split_info)
+        def generator():
+            split_info = _split_output_inv(result, fn=_pypads_callback)
+            pads.cache.run_add("current_split", 0)
+            pads.cache.run_add(0, split_info)
 
-                return result
+            return result
 
     return generator()
 
@@ -229,4 +219,3 @@ def hyperparameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped
     result = _pypads_callback(*args, **kwargs)
 
     return result
-
