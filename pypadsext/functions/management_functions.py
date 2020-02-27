@@ -9,9 +9,13 @@ original_random = random.seed
 
 
 def random_seed(seed):
-    pads = get_current_pads()
-    pads.cache.run_add("random.seed", seed)
-    return original_random(seed)
+    try:
+        pads = get_current_pads()
+        pads.cache.run_add("random.seed", seed)
+        return original_random(seed)
+    except Exception as e:
+        Warning("Tracker failed to log the setted seed because %s" % str(e))
+        return original_random(seed)
 
 
 random.seed = random_seed
@@ -24,9 +28,13 @@ original_numpy = numpy.random.seed
 
 
 def numpy_seed(seed):
-    pads = get_current_pads()
-    pads.cache.run_add("numpy.random.seed", seed)
-    return original_numpy(seed)
+    try:
+        pads = get_current_pads()
+        pads.cache.run_add("numpy.random.seed", seed)
+        return original_numpy(seed)
+    except Exception as e:
+        Warning("Tracker failed to log the setted seed because %s" % str(e))
+        return original_numpy(seed)
 
 
 numpy.random.seed = numpy_seed
@@ -40,9 +48,13 @@ if _is_package_available("pytorch"):
 
 
     def torch_seed(seed):
-        pads = get_current_pads()
-        pads.cache.run_add("torch.seed", seed)
-        return original_torch(seed)
+        try:
+            pads = get_current_pads()
+            pads.cache.run_add("torch.seed", seed)
+            return original_torch(seed)
+        except Exception as e:
+            Warning("Tracker failed to log the setted seed because %s" % str(e))
+            return original_torch(seed)
 
 
     torch.manual_seed = torch_seed
@@ -52,9 +64,13 @@ if _is_package_available("pytorch"):
 
 
         def torch_cuda_seed(seed):
-            pads = get_current_pads()
-            pads.cache.run_add("torch.cuda.seed", seed)
-            return original_torch_cuda(seed)
+            try:
+                pads = get_current_pads()
+                pads.cache.run_add("torch.cuda.seed", seed)
+                return original_torch_cuda(seed)
+            except Exception as e:
+                Warning("Tracker failed to log the setted seed because %s" % str(e))
+                return original_torch_cuda(seed)
 
 
         torch.cuda.manual_seed_all = torch_cuda_seed

@@ -1,8 +1,10 @@
+import os
 from logging import warning
 from types import GeneratorType
+from typing import Iterable
 
 import mlflow
-from pypads.logging_util import WriteFormats
+from pypads.logging_util import WriteFormats, to_folder_name
 
 from pypadsext.concepts.dataset import scrape_data
 from pypadsext.concepts.util import persistent_hash, split_output_inv, get_by_tag
@@ -87,7 +89,12 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
         repo = mlflow.get_experiment(mlflow.create_experiment(DATASETS))
 
     # add data set if it is not already existing with name and hash check
-    _hash = persistent_hash(str(result))
+    try:
+        _hash = persistent_hash(str(result))
+    except Exception:
+        Warning("Could not compute the hash of the dataset object, falling back to dataset name hash...")
+        _hash = persistent_hash(str(ds_name))
+
     _stored = get_by_tag("pypads.dataset.hash", str(_hash), repo.experiment_id)
     if not _stored:
         with pads.api.intermediate_run(experiment_id=repo.experiment_id) as run:
@@ -95,11 +102,9 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
 
             pads.cache.run_add("dataset_id", dataset_id, experiment_run.info.run_id)
             mlflow.set_tag("pypads.dataset", ds_name)
-            try:
-                mlflow.set_tag("pypads.dataset.hash", _hash)
-            except Exception:
-                Warning("Could not compute the hash of the dataset object")
-            name = _pypads_context.__name__ + "[" + str(id(result)) + "]." + ds_name + ".data"
+            mlflow.set_tag("pypads.dataset.hash", _hash)
+            name = os.path.join(to_folder_name(self, _pypads_context, _pypads_wrappe), "data",
+                                str(id(_pypads_callback)))
             pads.api.log_mem_artifact(name, data, write_format=write_format, meta=metadata)
 
         mlflow.set_tag("pypads.datasetID", dataset_id)
@@ -138,13 +143,22 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
 
     # depending on available info log the predictions
     if split_info is None:
-        Warning("No split information were found in cache of the current run, "
-                "if individual decision tracking is needed, try to decorate you splitter")
+        Warning("No split information were found in the cache of the current run, "
+                "individual decision tracking might be missing Truth values, try to decorate you splitter!")
         pads.cache.run_add(num, {'predictions': {str(i): {'predicted': result[i]} for i in range(len(result))}})
         if probabilities is not None:
             for i in pads.cache.run_get(num).get('predictions').keys():
                 pads.cache.run_get(num).get('predictions').get(str(i)).update(
                     {'probabilities': probabilities[int(i)]})
+        if pads.cache.run_exists("targets"):
+            try:
+                targets = pads.cache.run_get("targets")
+                if isinstance(targets, Iterable) and len(targets) == len(result):
+                    for i in pads.cache.run_get(num).get('predictions').keys():
+                        pads.cache.run_get(num).get('predictions').get(str(i)).update(
+                            {'truth': targets[int(i)]})
+            except Exception:
+                Warning("Could not add the truth values")
     else:
         for i, sample in enumerate(split_info.get('test')):
             pads.cache.run_get(num).get('predictions').get(str(sample)).update({'predicted': result[i]})
@@ -154,8 +168,7 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
                 pads.cache.run_get(num).get('predictions').get(str(sample)).update(
                     {'probabilities': probabilities[i]})
 
-    name = _pypads_context.__name__ + "[" + str(
-        id(self)) + "]." + _pypads_wrappe.__name__ + "_results.split_{}".format(num)
+    name = os.path.join(to_folder_name(self, _pypads_context, _pypads_wrappe), "decisions", str(id(_pypads_callback)))
     pads.api.log_mem_artifact(name, pads.cache.run_get(num), write_format=write_format)
 
     return result
@@ -168,6 +181,7 @@ def split(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypa
 
     result = _pypads_callback(*args, **kwargs)
 
+    # TODO add truth values if targets are present
     if isinstance(result, GeneratorType):
         def generator():
             num = -1
