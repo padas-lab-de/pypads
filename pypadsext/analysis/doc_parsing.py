@@ -1,6 +1,6 @@
 import os
 
-from pypadsext.util import is_package_available
+from pypadsext.util import _is_package_available
 
 
 def tag_extraction():
@@ -17,7 +17,7 @@ def tag_extraction():
     pat = re.compile(r'([A-Z][^\[\]\+\<\>\-\.!?]*[\.!?])', re.M)
     corpus = " ".join(pat.findall(corpus))
 
-    if is_package_available("spacy"):
+    if _is_package_available("spacy"):
         import spacy
         nlp = spacy.load("en_core_web_sm")
         doc = nlp(corpus)
@@ -33,7 +33,7 @@ def tag_extraction():
                 ents.add(ent.text)
         pads.api.log_mem_artifact("doc_named_entities", str(ents))
 
-    elif is_package_available("nltk"):
+    elif _is_package_available("nltk"):
         # TODO https://towardsdatascience.com/named-entity-recognition-with-nltk-and-spacy-8c4a7d88e7da
         pass
 

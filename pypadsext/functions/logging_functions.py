@@ -137,14 +137,14 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
         probabilities = self.predict_proba(*args, **kwargs)
 
     # depending on available info log the predictions
-    if not split_info:
+    if split_info is None:
         Warning("No split information were found in cache of the current run, "
-                "if individual decision tracking is need, try to decorate you splitter")
-        pads.cache.run_add(num, {'predictions': {str(i): {'predicted': result[i]}} for i in range(len(result))})
+                "if individual decision tracking is needed, try to decorate you splitter")
+        pads.cache.run_add(num, {'predictions': {str(i): {'predicted': result[i]} for i in range(len(result))}})
         if probabilities is not None:
             for i in pads.cache.run_get(num).get('predictions').keys():
                 pads.cache.run_get(num).get('predictions').get(str(i)).update(
-                    {'probabilities': probabilities[i]})
+                    {'probabilities': probabilities[int(i)]})
     else:
         for i, sample in enumerate(split_info.get('test')):
             pads.cache.run_get(num).get('predictions').get(str(sample)).update({'predicted': result[i]})

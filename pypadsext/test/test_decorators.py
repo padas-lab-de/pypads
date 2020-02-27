@@ -1,10 +1,11 @@
 import os
-import unittest
+
+from pypads.test.base_test import BaseTest
 
 from pypadsext.concepts.util import _get_by_tag
 
 
-class PyPadrePadsTest(unittest.TestCase):
+class PyPadrePadsTest(BaseTest):
 
     def test_dataset(self):
         """
