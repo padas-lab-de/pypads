@@ -1,4 +1,5 @@
 import os
+from logging import warning
 
 from pypadsext.util import is_package_available
 
@@ -32,10 +33,53 @@ def tag_extraction():
             if "=" not in ent.text and "." not in ent.text and "`" not in ent.text and "/" not in ent.text:
                 ents.add(ent.text)
         pads.api.log_mem_artifact("doc_named_entities", str(ents))
+        pads.cache.run_add("doc_named_entities", ents)
+        find_rdf_by_label()
 
     elif is_package_available("nltk"):
         # TODO https://towardsdatascience.com/named-entity-recognition-with-nltk-and-spacy-8c4a7d88e7da
         pass
+
+
+query = """SELECT ?item ?itemLabel
+WHERE { 
+  ?item rdfs:label ?itemLabel. 
+  FILTER(REGEX(LCASE(?itemLabel), "%s"@en)). 
+}
+LIMIT 10"""
+
+
+def find_rdf_by_label():
+    import re
+    from pypads.base import get_current_pads
+    from pypadsext.base import PyPadrePads
+    pads: PyPadrePads = get_current_pads()
+    if pads.cache.run_exists("doc_named_entities"):
+        ents = pads.cache.run_get("doc_named_entities")
+        regex = ""
+        init = True
+        for entity in ents:
+            entity = str(entity).lower()
+            if init:
+                regex = re.escape(entity)
+                init = False
+            else:
+                regex += "|.*" + re.escape(entity) + ".*"
+        label_query = query % regex
+        print(label_query)
+        # TODO send query to sparql endpoint (This will be really slow on most endpoints if some data is in there)
+    else:
+        warning("Couldn't extract any rdf links because named entities are not in cache.")
+
+
+def link_rdf(self, *args, _pypads_wrappe,
+             _pypads_context,
+             _pypads_mapped_by,
+             _pypads_callback, **kwargs):
+    from pypads.base import get_current_pads
+    from pypadsext.base import PyPadrePads
+    pads: PyPadrePads = get_current_pads()
+    pads.api.register_post_fn("find_labeled_sparql", find_rdf_by_label)
 
 
 def doc(self, *args, _pypads_wrappe,
