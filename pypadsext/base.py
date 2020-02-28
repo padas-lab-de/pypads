@@ -6,7 +6,7 @@ from pypadsext.analysis.doc_parsing import doc
 from pypadsext.concepts.splitter import default_split
 from pypadsext.concepts.util import _create_ctx
 from pypadsext.functions.logging_functions import dataset, predictions, split, hyperparameters
-from pypadsext.functions.management_functions import set_random_seed
+from pypadsext.functions.management.randomness import set_random_seed
 from pypadsext.util import get_class_that_defined_method
 
 # --- Pypads App ---
@@ -39,7 +39,14 @@ class PyPadrePadsActuators:
     def __init__(self, pypads):
         self._pypads = pypads
 
-    def set_random_seed(self, seed):
+    def set_random_seed(self, seed=None):
+        # Set seed if needed
+        if seed is None:
+            import random
+            # import sys
+            # seed = random.randrange(sys.maxsize)
+            # Numpy only allows for a max value of 2**32 - 1
+            seed = random.randrange(2 ** 32 - 1)
         self._pypads.cache.run_add('seed', seed)
         set_random_seed(seed)
 

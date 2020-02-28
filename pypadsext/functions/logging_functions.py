@@ -1,5 +1,4 @@
 import os
-from logging import warning
 from types import GeneratorType
 from typing import Iterable
 
@@ -10,31 +9,6 @@ from pypadsext.concepts.dataset import Crawler
 from pypadsext.concepts.util import persistent_hash, split_output_inv, get_by_tag
 
 DATASETS = "datasets"
-
-
-def random_seed(self, *args, pypads_seed=None, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
-                **kwargs):
-    from pypads.base import get_current_pads
-    from pypadsext.base import PyPadrePads
-    pads: PyPadrePads = get_current_pads()
-
-    # Set seed if needed
-    if pypads_seed is not None:
-        if isinstance(pypads_seed, bool) and pypads_seed:
-            import random
-            import sys
-            pypads_seed = random.randrange(sys.maxsize)
-        if isinstance(pypads_seed, int):
-            pads.actuators.set_random_seed(pypads_seed)
-
-    # Get seed information from cache
-    if pads.cache.run_exists("seed"):
-        pads.api.log_param("seed", )
-    else:
-        warning("Can't log seed produced by seed generator. You have to enable ")
-
-    # Run callbacks after seed
-    return _pypads_callback(*args, **kwargs)
 
 
 def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
@@ -63,7 +37,7 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
         _kwargs = pads.cache.run_get("dataset_kwargs")
 
     # Scrape the data object
-    crawler = Crawler(result, callbacks=_pypads_callback)
+    crawler = Crawler(result, callback=_pypads_callback)
     data, metadata, targets = crawler.crawl(**_kwargs)
     pads.cache.run_add("data", data)
     pads.cache.run_add("shape", metadata.get("shape"))
