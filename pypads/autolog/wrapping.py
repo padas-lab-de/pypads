@@ -230,6 +230,7 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
     :return:
     """
 
+    # Get the wrapped function and set context
     def get_wrapper(_pypads_hooked_fn, _pypads_hook_params, _pypads_wrappe,
                     _pypads_context, _pypads_callback, _pypads_mapped_by):
         if not fn_type or "staticmethod" in str(fn_type):
@@ -256,7 +257,7 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
                                                **kwargs)
 
             return ctx_setter
-        else:
+        elif "classmethod" in str(fn_type):
             @wraps(fn)
             def ctx_setter(cls, *args, _pypads_hooked_fn=_pypads_hooked_fn, _pypads_callback=_pypads_callback,
                            _pypads_hook_params=_pypads_hook_params, _pypads_mapped_by=_pypads_mapped_by, **kwargs):
@@ -268,6 +269,22 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
                                                **kwargs)  #
 
             return ctx_setter
+        elif "sklearn_IffHasAttrDescriptor" == str(fn_type):
+            tmp_fn = getattr(ctx, fn.__name__)
+
+            @wraps(tmp_fn)
+            def ctx_setter(self, *args, _pypads_hooked_fn=_pypads_hooked_fn, _pypads_callback=_pypads_callback,
+                           _pypads_hook_params=_pypads_hook_params, _pypads_mapped_by=_pypads_mapped_by, **kwargs):
+                debug("Method hook " + str(ctx) + str(fn) + str(_pypads_hooked_fn))
+                return _wrapped_inner_function(None, *args, _pypads_hooked_fn=_pypads_hooked_fn,
+                                               _pypads_hook_params=_pypads_hook_params, _pypads_wrappe=_pypads_wrappe,
+                                               _pypads_context=_pypads_context,
+                                               _pypads_callback=_pypads_callback, _pypads_mapped_by=_pypads_mapped_by,
+                                               **kwargs)
+
+            return ctx_setter
+        else:
+            raise ValueError("Failed!")
 
     setattr(ctx, "_pypads_mapping_" + fn.__name__, mapping)
     setattr(ctx, _to_original_name(fn.__name__, ctx), fn)
@@ -330,6 +347,30 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
                     callback = types.MethodType(
                         get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
                                     _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping), cls)
+            out = callback(*args, **kwargs)
+            current_tracking_stack.pop()
+            return out
+    elif "sklearn_IffHasAttrDescriptor" == str(fn_type):
+        tmp_fn = getattr(ctx, fn.__name__)
+
+        @wraps(tmp_fn)
+        def entry(self, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
+            debug("Call to tracked method " + str(fn))
+            current_tracking_stack.append((_pypads_mapped_by, ctx, fn, self))
+            callback = fn.__get__(self)
+
+            if hooks:
+                if _is_skip_recursion(self, _pypads_mapped_by):
+                    info("Skipping " + str(ctx.__name__) + ": " + str(fn.__name__))
+                    out = callback(*args, **kwargs)
+                    current_tracking_stack.pop()
+                    return out
+
+                for (hook, params, order) in hooks:
+                    callback = types.MethodType(
+                        get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
+                                    _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping), self)
+
             out = callback(*args, **kwargs)
             current_tracking_stack.pop()
             return out
@@ -418,8 +459,14 @@ def wrap_function(fn, ctx, mapping):
 
                 hooks = _get_hooked_fns(fn, mapping)
                 if len(hooks) > 0:
+                    function_type = type(defining_class.__dict__[fn.__name__])
+                    # TODO can we find less error prone ways to get the type of the given fn.
+                    # Delegate decorator of sklearn obfuscates the real type.
+                    if str(function_type) == "<class 'sklearn.utils.metaestimators._IffHasAttrDescriptor'>":
+                        function_type = "sklearn_IffHasAttrDescriptor"
+                        fn = defining_class.__dict__[fn.__name__]
                     return wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=ctx,
-                                              fn_type=type(defining_class.__dict__[fn.__name__]))
+                                              fn_type=function_type)
         elif hasattr(ctx, fn_name):
             if hasattr(ctx, _to_original_name(fn_name, ctx)):
                 fn = getattr(ctx, _to_original_name(fn_name, ctx))
