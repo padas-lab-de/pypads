@@ -1,0 +1,48 @@
+{
+  "default_hooks": {
+    "modules": {
+      "fns": {}
+    },
+    "classes": {
+      "fns": {
+        "pypads_fit": [
+          "fit",
+          "fit_generator"
+        ],
+        "pypads_predit": [
+          "predict",
+          "predict_classes"
+        ]
+      }
+    },
+    "fns": {
+      "pypads_metric": [
+      ]
+    }
+  },
+  "algorithms": [
+    {
+      "name": "keras classification metrics",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "keras.metrics"
+      },
+      "hooks": {
+        "pypads_metric": "always"
+      }
+    },
+    {
+      "name": "base keras model",
+      "other_names": [],
+      "implementation": {
+        "keras": "keras.engine.training.Model"
+      }
+    }
+  ],
+  "metadata": {
+    "author": "Thomas Weißgerber",
+    "library": "keras",
+    "library_version": "2.3.1",
+    "mapping_version": "0.1"
+  }
+}

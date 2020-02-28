@@ -6,7 +6,7 @@ from typing import Iterable
 import mlflow
 from pypads.logging_util import WriteFormats, to_folder_name
 
-from pypadsext.concepts.dataset import scrape_data
+from pypadsext.concepts.dataset import scrape_data, Crawler
 from pypadsext.concepts.util import persistent_hash, split_output_inv, get_by_tag
 
 DATASETS = "datasets"
@@ -63,7 +63,8 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
         _kwargs = pads.cache.run_get("dataset_kwargs")
 
     # Scrape the data object
-    data, metadata, targets = scrape_data(result, **_kwargs)
+    crawler = Crawler(result, callbacks=_pypads_callback)
+    data, metadata, targets = crawler.crawl(**_kwargs)
     pads.cache.run_add("data", data)
     pads.cache.run_add("shape", metadata.get("shape"))
     pads.cache.run_add("targets", targets)

@@ -1,16 +1,8 @@
-import json
 import os
 
-from pypads.autolog.mappings import MappingFile
 from pypads.test.base_test import BaseTest
 from pypads.test.sklearn.base_sklearn_test import sklearn_pipeline_experiment, sklearn_simple_decision_tree_experiment
-
-
-def _get_mapping(path):
-    with open(path) as json_file:
-        name = os.path.basename(json_file.name)
-        return MappingFile(name, json.load(json_file))
-
+from pypads.test.sklearn.mappings.mapping_sklearn_test import _get_mapping
 
 sklearn_padre = _get_mapping(os.path.join(os.path.dirname(__file__), "sklearn_pypadre.json"))
 
