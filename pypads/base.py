@@ -154,6 +154,9 @@ class PypadsApi:
         mlflow.log_param(key, value)
         self._write_meta(_to_param_meta_name(key), meta)
 
+    def set_tag(self, key, value):
+        return mlflow.set_tag(key, value)
+
     def _write_meta(self, name, meta):
         if meta:
             try_write_artifact(name + ".meta", meta, WriteFormats.text, preserve_folder=True)
