@@ -6,7 +6,7 @@ from typing import Iterable
 import mlflow
 from pypads.logging_util import WriteFormats, to_folder_name
 
-from pypadsext.concepts.dataset import scrape_data, Crawler
+from pypadsext.concepts.dataset import Crawler
 from pypadsext.concepts.util import persistent_hash, split_output_inv, get_by_tag
 
 DATASETS = "datasets"

@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 from enum import Enum
 from typing import Any, Tuple, Callable
 
@@ -10,7 +10,7 @@ class Types(Enum):
         from sklearn.utils import Bunch
         bunch = Bunch
     else:
-        bunch = "sklearn.Bunch"
+        bunch = "sklearn.utils.Bunch"
     if _is_package_available('numpy'):
         from numpy import ndarray
         Ndarray = ndarray
@@ -42,11 +42,10 @@ class Crawler:
     def register_fn(cls, _format, fn):
         cls._fns.update({_format: fn})
 
-    def __init__(self, obj: Any, callbacks: Callable = None):
+    def __init__(self, obj: Any, callback: Callable = None):
         self._data = obj
-        self._callbacks = callbacks
+        self._callback = callback
         self._identify_data_object()
-        self._get_crawler_fn()
 
     @property
     def data(self):
@@ -71,8 +70,13 @@ class Crawler:
                 if isinstance(self._data, _type.value):
                     self._format = _type.value
                     break
+        self._get_crawler_fn()
 
     def _get_crawler_fn(self):
+        """
+        This maps the object format to the associated crawling function
+        :return:
+        """
         if self._format:
             self._fn = self._fns.get(self._format, Crawler.default_crawler)
         else:
@@ -111,7 +115,7 @@ Crawler.register_fn(Types.ndarray.value, numpy_crawler)
 
 
 # --- Pandas Dataframe object ---
-def dataframe_crawler(obj : Crawler, **kwargs):
+def dataframe_crawler(obj: Crawler, **kwargs):
     data = obj.data
     metadata = {"type": obj.format, "shape": data.shape, "features": data.columns}
     metadata = {**metadata, **kwargs}
@@ -139,7 +143,7 @@ Crawler.register_fn(Types.bunch.value, bunch_crawler)
 
 
 # --- networkx graph object ---
-def graph_crawler(obj, **kwargs):
+def graph_crawler(obj: Crawler, **kwargs):
     graph = obj.data
     metadata = {"type": str(obj.format), "shape": (graph.number_of_edges(), graph.number_of_nodes())}
     metadata = {**metadata, **kwargs}
