@@ -1,7 +1,10 @@
+import os
 import unittest
 
 import mlflow
+from pypads.test.sklearn.mappings.mapping_sklearn_test import _get_mapping
 
+keras_padre = _get_mapping(os.path.join(os.path.dirname(__file__), "keras_pypadre.json"))
 
 def keras_simple_sequential_experiment():
     # first neural network with keras make predictions
@@ -76,7 +79,7 @@ class PypadsKerasTest(unittest.TestCase):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypadsext.base import PyPadrePads
-        PyPadrePads()
+        PyPadrePads(mapping=keras_padre)
 
         import timeit
         t = timeit.Timer(keras_simple_sequential_experiment)
@@ -90,8 +93,8 @@ class PypadsKerasTest(unittest.TestCase):
     def test_keras_mlp(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
-        PyPads()
+        from pypadsext.base import PyPadrePads
+        PyPadrePads(mapping=keras_padre)
 
         import timeit
         t = timeit.Timer(keras_mlp_for_multi_class_softmax_classification)
@@ -104,12 +107,12 @@ class PypadsKerasTest(unittest.TestCase):
 
     def test_keras_autolog(self):
         # Activate tracking of pypads
-        from pypads.base import PyPads
-        PyPads(config={"events": {
+        from pypadsext.base import PyPadrePads
+        PyPadrePads(config={"events": {
             "autolog": {"on": ["pypads_fit"]},
             "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metrics"]}
         }
-        })
+        }, mapping=keras_padre)
 
         import timeit
         t = timeit.Timer(keras_simple_sequential_experiment)
