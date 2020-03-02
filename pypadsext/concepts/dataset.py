@@ -32,9 +32,19 @@ class Types(Enum):
     tuple = Tuple
 
 
+class modules(Enum):
+    if _is_package_available('sklearn'):
+        sklearn = "sklearn.datasets"
+    if _is_package_available('keras'):
+        keras = "keras.datasets"
+    if _is_package_available('torchvision'):
+        torch = "torchvision.datasets"
+
+
 class Crawler:
     __metaclass__ = ABCMeta
     _formats = Types
+    _modules = modules
     _format = None
     _fns = {}
 
@@ -42,9 +52,12 @@ class Crawler:
     def register_fn(cls, _format, fn):
         cls._fns.update({_format: fn})
 
-    def __init__(self, obj: Any, callback: Callable = None):
+    def __init__(self, obj: Any, ctx=None, callback: Callable = None, kw=None):
         self._data = obj
         self._callback = callback
+        self._ctx = ctx
+        self._callback_kw = kw
+        self._use_args = False
         self._identify_data_object()
 
     @property
@@ -72,6 +85,22 @@ class Crawler:
                     break
         self._get_crawler_fn()
 
+    def _check_callback_format(self):
+        """
+        This function checks the module or the class returning the data object and overwriting the crawler if possible
+        :return:
+        """
+        if self._ctx is not None:
+            self._fn = self._fns.get(self._ctx.__name__, self._fn)
+            self._use_args = True
+        else:
+            for _ctx in self._modules:
+                if _ctx.value == self._callback.__module__ or _ctx.value in self._callback.__module__ or self._callback.__module__ in _ctx.value:
+                    self._format = _ctx.value
+                    self._fn = self._fns.get(_ctx.value, self._fn)
+                    self._use_args = True
+                    break
+
     def _get_crawler_fn(self):
         """
         This maps the object format to the associated crawling function
@@ -81,12 +110,16 @@ class Crawler:
             self._fn = self._fns.get(self._format, Crawler.default_crawler)
         else:
             self._fn = Crawler.default_crawler
+        self._check_callback_format()
 
     def crawl(self, **kwargs):
-        return self._fn(self, **kwargs)
+        if self._use_args:
+            return self._fn(self, *self._callback_kw, **kwargs)
+        else:
+            return self._fn(self, **kwargs)
 
     @staticmethod
-    def default_crawler(obj, **kwargs):
+    def default_crawler(obj, *args, **kwargs):
         metadata = {"type": str(object)}
         metadata = {**metadata, **kwargs}
         if hasattr(obj.data, "shape"):
@@ -139,7 +172,20 @@ def bunch_crawler(obj: Crawler, **kwargs):
     return data, metadata, bunch.get("target")
 
 
+def sklearn_crawler(obj: Crawler, *args, **kwargs):
+    import numpy as np
+    if True in args:
+        X, y = obj.data
+        data = np.concatenate([X, y.reshape(len(y), 1)], axis=1)
+        metadata = {"type": str(obj.format), "features": X, "shape": (X.shape[0], X.shape[1] + 1)}
+        metadata = {**metadata, **kwargs}
+        return data, metadata, y
+    else:
+        return bunch_crawler(obj, **kwargs)
+
+
 Crawler.register_fn(Types.bunch.value, bunch_crawler)
+Crawler.register_fn(modules.sklearn.value, sklearn_crawler)
 
 
 # --- networkx graph object ---

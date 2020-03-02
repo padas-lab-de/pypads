@@ -63,7 +63,7 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
         _kwargs = pads.cache.run_get("dataset_kwargs")
 
     # Scrape the data object
-    crawler = Crawler(result, callbacks=_pypads_callback)
+    crawler = Crawler(result, ctx=_pypads_context, callback=_pypads_callback, kw=args)
     data, metadata, targets = crawler.crawl(**_kwargs)
     pads.cache.run_add("data", data)
     pads.cache.run_add("shape", metadata.get("shape"))
@@ -135,12 +135,15 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
     if pads.cache.run_exists("current_split"):
         num = pads.cache.run_get("current_split")
     if pads.cache.run_exists(num):
-        split_info = pads.cache.run_get(num)
+        split_info = pads.cache.run_get(num).get("split_info", None)
 
     # check if the estimator computes decision scores
     probabilities = None
     if hasattr(self, "predict_proba") or hasattr(self, "_predict_proba"):
-        probabilities = self.predict_proba(*args, **kwargs)
+        try:
+            probabilities = self.predict_proba(*args, **kwargs)
+        except Exception as e:
+            print(str(e))
 
     # depending on available info log the predictions
     if split_info is None:
@@ -161,13 +164,16 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
             except Exception:
                 Warning("Could not add the truth values")
     else:
-        for i, sample in enumerate(split_info.get('test')):
-            pads.cache.run_get(num).get('predictions').get(str(sample)).update({'predicted': result[i]})
-
-        if probabilities is not None:
+        try:
             for i, sample in enumerate(split_info.get('test')):
-                pads.cache.run_get(num).get('predictions').get(str(sample)).update(
-                    {'probabilities': probabilities[i]})
+                pads.cache.run_get(num).get('predictions').get(str(sample)).update({'predicted': result[i]})
+
+            if probabilities is not None:
+                for i, sample in enumerate(split_info.get('test')):
+                    pads.cache.run_get(num).get('predictions').get(str(sample)).update(
+                        {'probabilities': probabilities[i]})
+        except Exception as e:
+            print(e)
 
     name = os.path.join(to_folder_name(self, _pypads_context, _pypads_wrappe), "decisions", str(id(_pypads_callback)))
     pads.api.log_mem_artifact(name, pads.cache.run_get(num), write_format=write_format)
@@ -190,13 +196,13 @@ def split(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypa
                 num += 1
                 pads.cache.run_add("current_split", num)
                 split_info = split_output_inv(r, fn=_pypads_callback)
-                pads.cache.run_add(num, split_info)
+                pads.cache.run_add(num, {"split_info": split_info})
                 yield r
     else:
         def generator():
             split_info = split_output_inv(result, fn=_pypads_callback)
             pads.cache.run_add("current_split", 0)
-            pads.cache.run_add(0, split_info)
+            pads.cache.run_add(0, {"split_info": split_info})
 
             return result
 
