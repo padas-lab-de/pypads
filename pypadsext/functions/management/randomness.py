@@ -1,8 +1,24 @@
 import random
+from logging import warning
 
 from pypads.base import get_current_pads
 
 from pypadsext.util import _is_package_available
+
+
+# Logging
+def log_random_seed(key):
+    from pypads.base import get_current_pads
+    from pypadsext.base import PyPadrePads
+    pads: PyPadrePads = get_current_pads()
+
+    # Get seed information from cache
+    if pads.cache.run_exists(key):
+        # TODO if tag already exists (set called multiple times) we need to handle that (save seed per function run?)
+        pads.api.set_tag("_pypads." + key, pads.cache.run_get(key))
+    else:
+        warning("Can't log seed produced by seed generator. You have to enable ")
+
 
 # --- random seed ---
 original_random = random.seed
@@ -12,6 +28,7 @@ def random_seed(seed):
     try:
         pads = get_current_pads()
         pads.cache.run_add("random.seed", seed)
+        log_random_seed("random.seed")
         return original_random(seed)
     except Exception as e:
         Warning("Tracker failed to log the setted seed because %s" % str(e))
@@ -31,6 +48,7 @@ def numpy_seed(seed):
     try:
         pads = get_current_pads()
         pads.cache.run_add("numpy.random.seed", seed)
+        log_random_seed("numpy.random.seed")
         return original_numpy(seed)
     except Exception as e:
         Warning("Tracker failed to log the setted seed because %s" % str(e))
@@ -51,6 +69,7 @@ if _is_package_available("pytorch"):
         try:
             pads = get_current_pads()
             pads.cache.run_add("torch.seed", seed)
+            log_random_seed("torch.seed")
             return original_torch(seed)
         except Exception as e:
             Warning("Tracker failed to log the setted seed because %s" % str(e))
@@ -85,7 +104,6 @@ def set_random_seed(seed):
     random.seed(seed)
 
     # --- set numpy seed ---
-
     numpy.random.seed(seed)
     # global seeds for numpy seem to not work with RandomState()
 

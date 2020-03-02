@@ -23,11 +23,12 @@ class PyPadrePadsSklearnTest(BaseTest):
         # TODO
         # !-------------------------- asserts ---------------------------
 
-    def test_DecisionTree(self):
+    def test_decision_tree(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypadsext.base import PyPadrePads
         tracker = PyPadrePads(mapping=sklearn_padre)
+        tracker.actuators.set_random_seed()
 
         import timeit
         t = timeit.Timer(sklearn_simple_decision_tree_experiment)
