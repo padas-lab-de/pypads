@@ -95,7 +95,7 @@ def wrap_class(clazz, ctx, mapping):
     return clazz
 
 
-def _get_hooked_fns(fn, mapping):
+def _get_hooked_fns(fn, mapping, lib=None, version=None):
     """
     For a given fn find the hook functions defined in a mapping and configured in a configuration.
     :param fn:
@@ -128,7 +128,7 @@ def _get_hooked_fns(fn, mapping):
         if set(configured_hook_events) & set(hook_events_of_mapping):
             from pypads.base import get_current_pads
             pads = get_current_pads()
-            fn = pads.function_registry.find_function(log_event)
+            fn = pads.function_registry.find_function(log_event,lib=lib, version=version)
             output.append((fn, hook_params, order))
     output.sort(key=lambda t: t[2])
     return output
@@ -276,7 +276,7 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
             def ctx_setter(self, *args, _pypads_hooked_fn=_pypads_hooked_fn, _pypads_callback=_pypads_callback,
                            _pypads_hook_params=_pypads_hook_params, _pypads_mapped_by=_pypads_mapped_by, **kwargs):
                 debug("Method hook " + str(ctx) + str(fn) + str(_pypads_hooked_fn))
-                return _wrapped_inner_function(None, *args, _pypads_hooked_fn=_pypads_hooked_fn,
+                return _wrapped_inner_function(self, *args, _pypads_hooked_fn=_pypads_hooked_fn,
                                                _pypads_hook_params=_pypads_hook_params, _pypads_wrappe=_pypads_wrappe,
                                                _pypads_context=_pypads_context,
                                                _pypads_callback=_pypads_callback, _pypads_mapped_by=_pypads_mapped_by,

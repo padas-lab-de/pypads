@@ -116,3 +116,18 @@ def log(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads
     print("Called following function: " + str(_pypads_wrappe) + " on " + str(
         _pypads_context) + " defined by mapping: " + str(_pypads_callback) + ". Next call is " + str(
         _pypads_callback))
+
+
+def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
+    # Fallback logging function
+    pass
+
+
+def keras_predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
+    # keras lib logging function
+    pass
+
+
+def keras_2_3_1_predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
+    # keras lib logging function
+    pass
