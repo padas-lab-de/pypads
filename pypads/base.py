@@ -15,7 +15,7 @@ from pypads.autolog.hook import Hook
 from pypads.autolog.mappings import AlgorithmMapping, MappingRegistry, AlgorithmMeta
 from pypads.caches import PypadsCache, Cache
 from pypads.functions.logging import output, input, cpu, metric, log
-from pypads.functions.run_init import isystem, iram, icpu, idisk
+from pypads.functions.run_init import isystem, iram, icpu, idisk, ipid
 from pypads.logging_util import WriteFormats, try_write_artifact
 from pypads.mlflow.mlflow_autolog import autologgers
 from pypads.util import get_class_that_defined_method
@@ -60,7 +60,7 @@ class FunctionRegistry:
 # --- Pypads App ---
 
 # Default init_run fns
-DEFAULT_INIT_RUN_FNS = [isystem, iram, icpu, idisk]
+DEFAULT_INIT_RUN_FNS = [isystem, iram, icpu, idisk, ipid]
 
 # Default event mappings. We allow to log parameters, output or input
 DEFAULT_EVENT_MAPPING = {
