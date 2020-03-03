@@ -1,5 +1,4 @@
 from pypads.base import PyPads
-
 tracker = PyPads()
 
 import mlflow
@@ -18,4 +17,5 @@ expected = dataset.target
 predicted = model.predict(dataset.data)
 # summarize the fit of the model
 print("Score: " + str(f1_score(expected, predicted, average="macro")))
+
 mlflow.end_run()

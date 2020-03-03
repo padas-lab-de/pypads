@@ -110,3 +110,62 @@ class PypadsCustomFunctionTest(unittest.TestCase):
         # !-------------------------- asserts ---------------------------
         # End the mlflow run opened by PyPads
         mlflow.end_run()
+
+    def test_fail_decorator(self):
+        """
+        This example will track the experiment exection with the default configuration.
+        :return:
+        """
+        # --------------------------- setup of the tracking ---------------------------
+        # Activate tracking of pypads
+        from pypads.base import PyPads
+        tracker = PyPads()
+
+        @tracker.decorators.track(event="pypads_fit")
+        def experiment():
+            print("I'm an function level experiment")
+            raise Exception("Planed failure")
+
+        import timeit
+        t = timeit.Timer(experiment)
+        print(t.timeit(1))
+
+        # --------------------------- asserts ---------------------------
+        import mlflow
+        # TODO
+        # !-------------------------- asserts ---------------------------
+        # End the mlflow run opened by PyPads
+        mlflow.end_run()
+
+    def test_retry(self):
+        """
+        This example will track the experiment exection with the default configuration.
+        :return:
+        """
+        # --------------------------- setup of the tracking ---------------------------
+        # Activate tracking of pypads
+        from pypads.base import PyPads
+        tracker = PyPads()
+
+        i = 0
+
+        @tracker.decorators.track(event="pypads_fit")
+        def experiment():
+            print("I'm an function level experiment")
+            nonlocal i
+            if i == 0:
+                i = i + 1
+                raise Exception("Planed failure")
+            else:
+                return "I'm a retried return value."
+
+        import timeit
+        t = timeit.Timer(experiment)
+        print(t.timeit(1))
+
+        # --------------------------- asserts ---------------------------
+        import mlflow
+        # TODO
+        # !-------------------------- asserts ---------------------------
+        # End the mlflow run opened by PyPads
+        mlflow.end_run()

@@ -1,4 +1,3 @@
-import ast
 import inspect
 import types
 from logging import warning, debug, info, error
@@ -7,7 +6,7 @@ import mlflow
 from boltons.funcutils import wraps
 
 from pypads.autolog.mappings import AlgorithmMapping
-from pypads.logging_functions import log_init
+from pypads.functions.logging import log_init
 
 punched_module = set()
 punched_classes = set()
@@ -108,7 +107,7 @@ def _get_hooked_fns(fn, mapping):
     # TODO filter for types, package name contains, etc. instead of only fn names
     hook_events_of_mapping = [hook.event for hook in mapping.hooks if hook.is_applicable(mapping=mapping, fn=fn)]
     output = []
-    config = _get_pypads_config()
+    config = _get_current_config()
     for log_event, event_config in config["events"].items():
         configured_hook_events = event_config["on"]
 
@@ -166,28 +165,16 @@ def _wrapped_inner_function(ctx, *args, _pypads_hooked_fn, _pypads_hook_params, 
     :param kwargs:
     :return:
     """
-    global retry_cache
+    if ctx is None:
+        ctx = _pypads_context
+
     if ctx is not None:
 
         # Track hook execution to stop multiple exections of the same hook
         if not hasattr(ctx, "_pypads_active_calls"):
             setattr(ctx, "_pypads_active_calls", set())
         elif _pypads_hooked_fn in getattr(ctx, "_pypads_active_calls"):
-            try:
-                return _pypads_callback(*args, **kwargs)
-            except Exception as e:
-                # TODO retry functionality
-                if _get_pypads_config()["retry_on_fail"]:
-                    # TODO check tracking stack
-                    if e.args[0] not in retry_cache:
-                        error("Tracking failed: " + str(e) + " Retrying normal call.")
-                        original_fn = _get_original(_pypads_callback.__name__, ctx)
-                        if original_fn and not original_fn == _pypads_callback:
-                            retry_cache.add(e.args[0])
-                            out = original_fn(*args, **kwargs)
-                            retry_cache.remove(e.args[0])
-                            return out
-                raise e
+            return _pypads_callback(*args, **kwargs)
         getattr(ctx, "_pypads_active_calls").add(_pypads_hooked_fn)
 
     try:
@@ -210,9 +197,33 @@ def _wrapped_inner_function(ctx, *args, _pypads_hooked_fn, _pypads_hook_params, 
             getattr(ctx, "_pypads_active_calls").remove(_pypads_hooked_fn)
         return out
     except Exception as e:
+
+        # retry on failure
+        global retry_cache
+        if _get_current_config()["retry_on_fail"]:
+            # TODO check tracking stack
+            if e.args[0] not in retry_cache:
+                error("Tracking failed for " + str(_pypads_callback) + " with: " + str(e))
+                original_fn = _get_original(_pypads_callback.__name__, _pypads_context)
+                if original_fn and not original_fn == _pypads_callback:
+                    # TODO maybe retry only if the exception wasn't raised in the original function
+                    error("Retrying normal call. " + str(original_fn))
+                    mlflow.set_tag("pypads_retry", True)
+                    retry_cache.add(e.args[0])
+                    out = original_fn(*args, **kwargs)
+                    retry_cache.remove(e.args[0])
+                    return out
+
+        from pypads.base import get_current_pads
+        pads = get_current_pads()
+        if _get_current_config()["log_on_failure"] and pads.cache.run_exists("stdout"):
+            pads.api.log_mem_artifact("stdout.txt", pads.cache.run_get("stdout"))
+
+        # clear cache
         debug("Cleared cache entry for " + str(_pypads_wrappe) + " because of exception: " + str(e))
         if ctx is not None:
             getattr(ctx, "_pypads_active_calls").remove(_pypads_hooked_fn)
+
         raise e
 
 
@@ -381,7 +392,7 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
 
 
 def _is_skip_recursion(ref, mapping):
-    config = _get_pypads_config()
+    config = _get_current_config()
     if 'recursion_depth' in config and config['recursion_depth'] is not -1:
         if len(current_tracking_stack) > config['recursion_depth'] + 1:
             return True
@@ -481,43 +492,13 @@ def wrap_function(fn, ctx, mapping):
         class DummyClass:
             pass
 
+        setattr(DummyClass, _to_original_name(fn.__name__, ctx), fn)
+
         hooks = _get_hooked_fns(fn, mapping)
         return wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=DummyClass)
     return fn
 
 
-# Cache configs for runs. Each run could is for now static in it's config.
-configs = {}
-
-# --- Clean the config cache after run ---
-original_end = mlflow.end_run
-
-
-def end_run(*args, **kwargs):
-    configs.clear()
-    return original_end(*args, **kwargs)
-
-
-mlflow.end_run = end_run
-
-
-# !--- Clean he config cache after run ---
-
-
-def _get_pypads_config():
-    """
-    Get configuration defined in the current mlflow run
-    :return:
-    """
-    global configs
-    active_run = mlflow.active_run()
-    if active_run in configs.keys():
-        return configs[active_run]
-    from pypads.base import get_current_pads
-    from pypads.base import CONFIG_NAME
-    pads = get_current_pads()
-    run = pads.mlf.get_run(active_run.info.run_id)
-    if CONFIG_NAME in run.data.tags:
-        configs[active_run] = ast.literal_eval(run.data.tags[CONFIG_NAME])
-        return configs[active_run]
-    return {"events": {}, "recursive": True}
+def _get_current_config():
+    from pypads.base import get_current_config
+    return get_current_config()

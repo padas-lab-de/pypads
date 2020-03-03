@@ -1,11 +1,13 @@
 import datetime
 import os
-from logging import warning, info
+from logging import info, warning
 
 import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 
-from pypads.logging_util import try_write_artifact, WriteFormats, to_folder_name
+from pypads.logging_util import WriteFormats, to_folder_name, try_write_artifact
+from pypads.mlflow.mlflow_autolog import _is_package_available
+from pypads.util import sizeof_fmt
 
 
 def _get_now():
@@ -74,9 +76,51 @@ def input(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypads
 
 
 def cpu(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
-    import platform
-    mlflow.set_tag("pypads.processor", platform.processor())
-    return _pypads_callback(*args, **kwargs)
+    if _is_package_available("psutil"):
+        import psutil
+        cpu_usage = "CPU usage for cores:"
+        for i, percentage in enumerate(psutil.cpu_percent(percpu=True)):
+            cpu_usage += f"\nCore {i}: {percentage}%"
+        cpu_usage += f"\nTotal CPU usage: {psutil.cpu_percent()}%"
+
+        name = os.path.join(to_folder_name(self, _pypads_context, _pypads_wrappe), "cpu_usage")
+        try_write_artifact(name, cpu_usage, WriteFormats.text)
+    else:
+        warning("To track cpu usage you need to install psutil.")
+    result = _pypads_callback(*args, **kwargs)
+    return result
+
+
+def ram(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
+    if _is_package_available("psutil"):
+        import psutil
+        memory = psutil.virtual_memory()
+        swap = psutil.swap_memory()
+        memory_usage = "Memory usage:"
+        memory_usage += f"\n\tAvailable:{sizeof_fmt(memory.available)}"
+        memory_usage += f"\n\tUsed:{sizeof_fmt(memory.used)}"
+        memory_usage += f"\n\tPercentage:{sizeof_fmt(memory.percent)}"
+        memory_usage += f"\nSwap usage::"
+        memory_usage += f"\n\tFree:{sizeof_fmt(swap.free)}"
+        memory_usage += f"\n\tUsed:{sizeof_fmt(memory.used)}"
+        memory_usage += f"\n\tPercentage:{sizeof_fmt(memory.percent)}"
+
+        name = os.path.join(to_folder_name(self, _pypads_context, _pypads_wrappe), "memory_usage")
+        try_write_artifact(name, memory_usage, WriteFormats.text)
+    else:
+        warning("To track ram usage you need to install psutil.")
+    result = _pypads_callback(*args, **kwargs)
+    return result
+
+
+def disk(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
+    if _is_package_available("psutil"):
+        import psutil
+        # TODO https://www.thepythoncode.com/article/get-hardware-system-information-python
+    else:
+        warning("To track disk usage you need to install psutil.")
+    result = _pypads_callback(*args, **kwargs)
+    return result
 
 
 def metric(self, *args, _pypads_wrappe, artifact_fallback=False, _pypads_context, _pypads_mapped_by, _pypads_callback,

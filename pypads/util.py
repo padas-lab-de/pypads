@@ -35,3 +35,12 @@ def dict_merge(source, destination):
                 destination[key] = value
 
     return destination
+
+
+def sizeof_fmt(num, suffix='B'):
+    import math
+    magnitude = int(math.floor(math.log(num, 1024)))
+    val = num / math.pow(1024, magnitude)
+    if magnitude > 7:
+        return '{:.1f}{}{}'.format(val, 'Yi', suffix)
+    return '{:3.1f}{}{}'.format(val, ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z'][magnitude], suffix)

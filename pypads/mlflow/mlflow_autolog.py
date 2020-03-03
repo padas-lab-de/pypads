@@ -76,7 +76,7 @@ def autologgers(self, *args, _pypads_autologgers=None, _pypads_wrappe, _pypads_c
         gluon.autolog()
 
     if 'spark' in _pypads_autologgers and 'spark' in sys.modules and 'spark' not in added_autologs and _is_package_available(
-            'spark'):
+            'pyspark'):
         added_autologs.add('spark')
         from mlflow import spark
         spark.autolog()
@@ -84,8 +84,8 @@ def autologgers(self, *args, _pypads_autologgers=None, _pypads_wrappe, _pypads_c
     if 'lightgbm' in _pypads_autologgers and 'lightgbm' in sys.modules and 'lightgbm' not in added_autologs and _is_package_available(
             'lightgbm'):
         added_autologs.add('lightgbm')
-        from mlflow import spark
-        spark.autolog()
+        from mlflow import lightgbm
+        lightgbm.autolog()
 
     # If the function is to be logged call the related mlflow autolog function which would have been applied via gorilla
     if _pypads_wrappe.__name__ in mlflow_autolog_fns:

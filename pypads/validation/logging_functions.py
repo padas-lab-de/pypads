@@ -3,7 +3,7 @@ from logging import warning
 import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 
-from pypads.logging_functions import _get_now
+from pypads.functions.logging import _get_now
 from pypads.validation.generic_visitor import default_visitor
 
 
