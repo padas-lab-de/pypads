@@ -95,7 +95,7 @@ def wrap_class(clazz, ctx, mapping):
     return clazz
 
 
-def _get_hooked_fns(fn, mapping, lib=None, version=None):
+def _get_hooked_fns(fn, mapping):
     """
     For a given fn find the hook functions defined in a mapping and configured in a configuration.
     :param fn:
@@ -106,6 +106,11 @@ def _get_hooked_fns(fn, mapping, lib=None, version=None):
         mapping.hooks = mapping.in_collection.get_default_fn_hooks()
 
     # TODO filter for types, package name contains, etc. instead of only fn names
+    library = None
+    version = None
+    if mapping.in_collection is not None:
+        library = mapping.in_collection.lib
+        version = mapping.in_collection.lib_version
     hook_events_of_mapping = [hook.event for hook in mapping.hooks if hook.is_applicable(mapping=mapping, fn=fn)]
     output = []
     config = _get_pypads_config()
@@ -128,7 +133,7 @@ def _get_hooked_fns(fn, mapping, lib=None, version=None):
         if set(configured_hook_events) & set(hook_events_of_mapping):
             from pypads.base import get_current_pads
             pads = get_current_pads()
-            fn = pads.function_registry.find_function(log_event,lib=lib, version=version)
+            fn = pads.function_registry.find_function(log_event,lib=library, version=version)
             output.append((fn, hook_params, order))
     output.sort(key=lambda t: t[2])
     return output

@@ -37,19 +37,23 @@ class FunctionRegistry:
         self.fns = mapping
 
     def find_function(self, name, lib=None, version=None):
-        key = name
-        if lib is not None:
-            key = (name, lib)
-            if version is not None:
-                key = (name, lib, version)
-
-        if key in self.fns:
-            return self.fns[key]
+        if (name, lib, version) in self.fns:
+            return self.fns[(name, lib, version)]
+        elif (name, lib) in self.fns:
+            return self.fns[(name,lib)]
+        elif name in self.fns:
+            return self.fns[name]
         else:
-            warning("Function call with name '" + key + "' is not linked with any logging functionality.")
+            warning("Function call with name '" + name + "' is not linked with any logging functionality.")
 
-    def add_function(self, name, fn: FunctionType):
-        self.fns[name] = fn
+    def add_function(self, name, fn: FunctionType, lib=None, version=None):
+        if lib:
+            if version:
+                self.fns[(name,lib,version)] = fn
+            else:
+                self.fns[(name,lib)] = fn
+        else:
+            self.fns[name] = fn
 
 
 # --- Pypads App ---

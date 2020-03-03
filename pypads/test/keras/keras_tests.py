@@ -73,11 +73,33 @@ def keras_mlp_for_multi_class_softmax_classification():
 # noinspection PyMethodMayBeStatic
 class PypadsKerasTest(unittest.TestCase):
 
-    def test_keras_custom_mapping(self):
+    def test_keras_custom_logging(self):
         # --------------------------- setup of the tracking ---------------------------
-        # custom mapping
-        from pypads.logging_functions import keras_predictions, keras_2_3_1_predictions
+        global callback
+        # custom logging
+
+        def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
+            # Fallback logging function
+            global callback
+            callback = "predictions"
+            return _pypads_callback(*args, **kwargs)
+
+        def keras_predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
+                              **kwargs):
+            # keras lib logging function
+            global callback
+            callback = "predictions for keras"
+            return _pypads_callback(*args, **kwargs)
+
+        def keras_2_3_1_predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
+                                    **kwargs):
+            # keras lib logging function
+            global callback
+            callback = "predictions for keras v 2.3.1"
+            return _pypads_callback(*args, **kwargs)
+
         DEFAULT_Keras_MAPPING = {
+            "predictions": predictions,
             ("predictions", "keras"): keras_predictions,
             ("predictions", "keras", "2.3.1"): keras_2_3_1_predictions
         }
@@ -96,6 +118,7 @@ class PypadsKerasTest(unittest.TestCase):
 
         # --------------------------- asserts ---------------------------
         # TODO
+        assert callback == "predictions for keras v 2.3.1"
         # !-------------------------- asserts ---------------------------
         mlflow.end_run()
 
