@@ -95,7 +95,7 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
 
 
 def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
-                write_format=WriteFormats.text,
+                write_format=WriteFormats.text, probabilities=None,
                 **kwargs):
     from pypads.base import get_current_pads
     from pypadsext.base import PyPadrePads
@@ -110,14 +110,6 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
         num = pads.cache.run_get("current_split")
     if pads.cache.run_exists(num):
         split_info = pads.cache.run_get(num).get("split_info", None)
-
-    # check if the estimator computes decision scores
-    probabilities = None
-    if hasattr(self, "predict_proba") or hasattr(self, "_predict_proba"):
-        try:
-            probabilities = self.predict_proba(*args, **kwargs)
-        except Exception as e:
-            print(str(e))
 
     # depending on available info log the predictions
     if split_info is None:
@@ -153,6 +145,47 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
     pads.api.log_mem_artifact(name, pads.cache.run_get(num), write_format=write_format)
 
     return result
+
+
+def keras_probabilities(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
+                        write_format=WriteFormats.text,
+                        **kwargs):
+    probabilities = None
+    try:
+        probabilities = self.predict(*args, **kwargs)
+    except Exception as e:
+        Warning("Couldn't compute probabilities because %s" % str(e))
+
+    # Call the predictions logging function
+    out = predictions(self, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
+                      _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback,
+                      write_format=write_format, probabilities=probabilities, **kwargs)
+
+    return out
+
+
+def sklearn_probabilities(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
+                          write_format=WriteFormats.text,
+                          **kwargs):
+    # check if the estimator computes decision scores
+    probabilities = None
+    if hasattr(self, "predict_proba"):
+        try:
+            probabilities = self.predict_proba(*args, **kwargs)
+        except Exception as e:
+            Warning("Couldn't compute probabilities because %s" % str(e))
+    elif hasattr(self, "_predict_proba"):
+        try:
+            probabilities = self._predict_proba(*args, **kwargs)
+        except Exception as e:
+            Warning("Couldn't compute probabilities because %s" % str(e))
+
+    # Call the predictions logging function
+    out = predictions(self, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
+                      _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback,
+                      write_format=write_format, probabilities=probabilities, **kwargs)
+
+    return out
 
 
 def split(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):

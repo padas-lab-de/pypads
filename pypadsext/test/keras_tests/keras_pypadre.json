@@ -9,8 +9,7 @@
           "fit",
           "fit_generator"
         ],
-        "pypads_predit": [
-          "predict",
+        "pypads_predict": [
           "predict_classes"
         ]
       }
@@ -28,7 +27,7 @@
         "scikit-learn": "keras.metrics"
       },
       "hooks": {
-        "pypads_metric": "always"
+        "pypads_metric": []
       }
     },
     {

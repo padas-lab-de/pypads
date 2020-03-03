@@ -5,7 +5,8 @@ from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG, DEF
 from pypadsext.analysis.doc_parsing import doc
 from pypadsext.concepts.splitter import default_split
 from pypadsext.concepts.util import _create_ctx
-from pypadsext.functions.logging_functions import dataset, predictions, split, hyperparameters
+from pypadsext.functions.logging_functions import dataset, predictions, split, hyperparameters, keras_probabilities, \
+    sklearn_probabilities
 from pypadsext.functions.management.randomness import set_random_seed
 from pypadsext.util import get_class_that_defined_method
 
@@ -15,6 +16,8 @@ from pypadsext.util import get_class_that_defined_method
 DEFAULT_PYPADRE_MAPPING = {
     "dataset": dataset,
     "predictions": predictions,
+    ("predictions", "keras"): keras_probabilities,
+    ("predictions", "scikit-learn"): sklearn_probabilities,
     "splits": split,
     "hyperparameters": hyperparameters,
     "doc": doc
