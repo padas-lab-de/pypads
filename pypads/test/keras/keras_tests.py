@@ -2,6 +2,8 @@ import unittest
 
 import mlflow
 
+from pypads.util import dict_merge
+
 
 def keras_simple_sequential_experiment():
     # first neural network with keras make predictions
@@ -70,6 +72,55 @@ def keras_mlp_for_multi_class_softmax_classification():
 
 # noinspection PyMethodMayBeStatic
 class PypadsKerasTest(unittest.TestCase):
+
+    def test_keras_custom_logging(self):
+        # --------------------------- setup of the tracking ---------------------------
+        global callback
+        # custom logging
+
+        def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
+            # Fallback logging function
+            global callback
+            callback = "predictions"
+            return _pypads_callback(*args, **kwargs)
+
+        def keras_predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
+                              **kwargs):
+            # keras lib logging function
+            global callback
+            callback = "predictions for keras"
+            return _pypads_callback(*args, **kwargs)
+
+        def keras_2_3_1_predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
+                                    **kwargs):
+            # keras lib logging function
+            global callback
+            callback = "predictions for keras v 2.3.1"
+            return _pypads_callback(*args, **kwargs)
+
+        DEFAULT_Keras_MAPPING = {
+            "predictions": predictions,
+            ("predictions", "keras"): keras_predictions,
+            ("predictions", "keras", "2.3.1"): keras_2_3_1_predictions
+        }
+        DEFAULT_keras_CONFIG = {"events": {
+            "predictions": {"on": ["pypads_predict"]}
+        }}
+        # Activate tracking of pypads
+        from pypads.base import PyPads
+        from pypads.base import DEFAULT_EVENT_MAPPING, DEFAULT_CONFIG
+        PyPads(config=dict_merge(DEFAULT_CONFIG, DEFAULT_keras_CONFIG),
+               event_mapping=dict_merge(DEFAULT_EVENT_MAPPING, DEFAULT_Keras_MAPPING))
+
+        import timeit
+        t = timeit.Timer(keras_simple_sequential_experiment)
+        print(t.timeit(1))
+
+        # --------------------------- asserts ---------------------------
+        # TODO
+        assert callback == "predictions for keras v 2.3.1"
+        # !-------------------------- asserts ---------------------------
+        mlflow.end_run()
 
     def test_keras_base_class(self):
         # --------------------------- setup of the tracking ---------------------------

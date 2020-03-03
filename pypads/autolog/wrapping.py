@@ -105,6 +105,11 @@ def _get_hooked_fns(fn, mapping):
         mapping.hooks = mapping.in_collection.get_default_fn_hooks()
 
     # TODO filter for types, package name contains, etc. instead of only fn names
+    library = None
+    version = None
+    if mapping.in_collection is not None:
+        library = mapping.in_collection.lib
+        version = mapping.in_collection.lib_version
     hook_events_of_mapping = [hook.event for hook in mapping.hooks if hook.is_applicable(mapping=mapping, fn=fn)]
     output = []
     config = _get_current_config()
@@ -127,7 +132,7 @@ def _get_hooked_fns(fn, mapping):
         if set(configured_hook_events) & set(hook_events_of_mapping):
             from pypads.base import get_current_pads
             pads = get_current_pads()
-            fn = pads.function_registry.find_function(log_event)
+            fn = pads.function_registry.find_function(log_event,lib=library, version=version)
             output.append((fn, hook_params, order))
     output.sort(key=lambda t: t[2])
     return output
@@ -287,7 +292,7 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
             def ctx_setter(self, *args, _pypads_hooked_fn=_pypads_hooked_fn, _pypads_callback=_pypads_callback,
                            _pypads_hook_params=_pypads_hook_params, _pypads_mapped_by=_pypads_mapped_by, **kwargs):
                 debug("Method hook " + str(ctx) + str(fn) + str(_pypads_hooked_fn))
-                return _wrapped_inner_function(None, *args, _pypads_hooked_fn=_pypads_hooked_fn,
+                return _wrapped_inner_function(self, *args, _pypads_hooked_fn=_pypads_hooked_fn,
                                                _pypads_hook_params=_pypads_hook_params, _pypads_wrappe=_pypads_wrappe,
                                                _pypads_context=_pypads_context,
                                                _pypads_callback=_pypads_callback, _pypads_mapped_by=_pypads_mapped_by,
