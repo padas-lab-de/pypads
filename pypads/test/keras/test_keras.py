@@ -108,9 +108,9 @@ class PypadsKerasTest(unittest.TestCase):
         }}
         # Activate tracking of pypads
         from pypads.base import PyPads
-        from pypads.base import DEFAULT_EVENT_MAPPING, DEFAULT_CONFIG
+        from pypads.base import DEFAULT_LOGGING_FNS, DEFAULT_CONFIG
         PyPads(config=dict_merge(DEFAULT_CONFIG, DEFAULT_keras_CONFIG),
-               event_mapping=dict_merge(DEFAULT_EVENT_MAPPING, DEFAULT_Keras_MAPPING))
+               logging_fns=dict_merge(DEFAULT_LOGGING_FNS, DEFAULT_Keras_MAPPING))
 
         import timeit
         t = timeit.Timer(keras_simple_sequential_experiment)

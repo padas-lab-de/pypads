@@ -62,7 +62,7 @@ class PypadsOrderTest(unittest.TestCase):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
-        tracker = PyPads(config=config, event_mapping=event_mapping)
+        tracker = PyPads(config=config, logging_fns=event_mapping)
 
         tracker.api.track(experiment, events=["order"], ctx=sys.modules[__name__])
 

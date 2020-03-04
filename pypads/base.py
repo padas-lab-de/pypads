@@ -63,7 +63,7 @@ class FunctionRegistry:
 DEFAULT_INIT_RUN_FNS = [isystem, iram, icpu, idisk, ipid]
 
 # Default event mappings. We allow to log parameters, output or input
-DEFAULT_EVENT_MAPPING = {
+DEFAULT_LOGGING_FNS = {
     "parameters": parameters,
     "output": output,
     "input": input,
@@ -266,12 +266,12 @@ class PyPads:
 
     def __init__(self, uri=None, name=None, mapping_paths=None, mapping=None, init_run_fns=None,
                  include_default_mappings=True,
-                 event_mapping=None, config=None, mod_globals=None):
+                 logging_fns=None, config=None, mod_globals=None):
         """
         TODO
         :param uri:
         :param name:
-        :param event_mapping:
+        :param logging_fns:
         :param config:
         :param mod_globals:
         """
@@ -288,7 +288,7 @@ class PyPads:
 
         self._init_run_fns = init_run_fns
         self._init_mlflow_backend(uri, name, config)
-        self._function_registry = FunctionRegistry(event_mapping or DEFAULT_EVENT_MAPPING)
+        self._function_registry = FunctionRegistry(logging_fns or DEFAULT_LOGGING_FNS)
         self._init_mapping_registry(*mapping_paths, mapping=mapping, include_defaults=include_default_mappings)
 
         global current_pads
