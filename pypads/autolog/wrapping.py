@@ -37,6 +37,28 @@ def wrap(wrappee, ctx, mapping):
         return wrap_function(wrappee, ctx, mapping)
 
 
+def make_hook_applicable_filter(hook, ctx, mapping):
+    def hook_applicable_filter(name):
+        if hasattr(ctx, name):
+            if not name.startswith("__"):
+                if not name.startswith("_pypads"):
+                    try:
+                        fn = getattr(ctx, name)
+                        return hook.is_applicable(mapping=mapping, fn=fn)
+                    except RecursionError as re:
+                        error("Recursion error on '" + str(
+                            ctx) + "'. This might be because __get_attr__ is being wrapped. " + str(re))
+                else:
+                    debug("Tried to wrap native function '" + name + "' on '" + str(ctx) + "'. Omit logging.")
+            else:
+                debug("Tried to wrap native function '" + name + "' on '" + str(ctx) + "'. Omit logging.")
+        else:
+            warning("Can't access attribute '" + str(name) + "' on '" + str(ctx) + "'. Skipping.")
+        return False
+
+    return hook_applicable_filter
+
+
 def wrap_module(module, mapping: AlgorithmMapping):
     """
     Function to wrap modules with pypads functionality
@@ -53,13 +75,17 @@ def wrap_module(module, mapping: AlgorithmMapping):
             wrap(getattr(module, _name), module, mapping)
 
         for hook in mapping.hooks:
-            for name in list(filter(lambda x: hook.is_applicable(mapping=mapping, fn=getattr(module, x)), dir(module))):
+            for name in list(filter(lambda x: make_hook_applicable_filter(hook, module, mapping), dir(module))):
                 algorithm_mapping = AlgorithmMapping(mapping.reference + "." + name, mapping.library, mapping.algorithm,
                                                      mapping.file, None)
                 algorithm_mapping.in_collection = mapping.in_collection
                 _add_found_class(algorithm_mapping)
 
-        setattr(module, "_pypads_wrapped", module)
+        try:
+            setattr(module, "_pypads_wrapped", module)
+        except TypeError as e:
+            debug("Can't set attribute '_pypads_wrapped' on '" + str(module) + "'. Omit wrapping.")
+            return module
 
 
 def wrap_class(clazz, ctx, mapping):
@@ -74,6 +100,13 @@ def wrap_class(clazz, ctx, mapping):
         if not mapping.hooks:
             mapping.hooks = mapping.in_collection.get_default_class_hooks()
 
+        try:
+            setattr(clazz, "_pypads_mapping", mapping)
+            setattr(clazz, "_pypads_wrapped", clazz)
+        except TypeError as e:
+            debug("Can't set attributes '_pypads_mapping', '_pypads_wrapped' on '" + str(clazz) + "'. Omit wrapping.")
+            return clazz
+
         if hasattr(clazz.__init__, "__module__"):
             original_init = getattr(clazz, "__init__")
             wrap_method_helper(fn=original_init, hooks=[(log_init, {}, DEFAULT_ORDER)], mapping=mapping, ctx=clazz,
@@ -81,13 +114,10 @@ def wrap_class(clazz, ctx, mapping):
 
         if mapping.hooks:
             for hook in mapping.hooks:
-                for name in list(
-                        filter(lambda x: hook.is_applicable(mapping=mapping, fn=getattr(clazz, x)), dir(clazz))):
+                for name in list(filter(make_hook_applicable_filter(hook, clazz, mapping), dir(clazz))):
                     wrap_function(name, clazz, mapping)
 
         reference_name = mapping.reference.rsplit('.', 1)[-1]
-        setattr(clazz, "_pypads_mapping", mapping)
-        setattr(clazz, "_pypads_wrapped", clazz)
         punched_classes.add(clazz)
         if ctx is not None:
             setattr(ctx, reference_name, clazz)
@@ -132,7 +162,7 @@ def _get_hooked_fns(fn, mapping):
         if set(configured_hook_events) & set(hook_events_of_mapping):
             from pypads.base import get_current_pads
             pads = get_current_pads()
-            fn = pads.function_registry.find_function(log_event,lib=library, version=version)
+            fn = pads.function_registry.find_function(log_event, lib=library, version=version)
             output.append((fn, hook_params, order))
     output.sort(key=lambda t: t[2])
     return output
@@ -302,8 +332,12 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
         else:
             raise ValueError("Failed!")
 
-    setattr(ctx, "_pypads_mapping_" + fn.__name__, mapping)
-    setattr(ctx, _to_original_name(fn.__name__, ctx), fn)
+    try:
+        setattr(ctx, "_pypads_mapping_" + fn.__name__, mapping)
+        setattr(ctx, _to_original_name(fn.__name__, ctx), fn)
+    except TypeError as e:
+        debug("Can't set attribute '" + fn.__name__ + "' on '" + str(ctx) + "'. Omit wrapping.")
+        return fn
 
     if not fn_type or "staticmethod" in str(fn_type):
         @wraps(fn)
@@ -440,13 +474,17 @@ def wrap_function(fn, ctx, mapping):
         if inspect.isclass(ctx):
             defining_class = None
             if not hasattr(ctx, "__dict__") or fn_name not in ctx.__dict__:
-                mro = ctx.mro()
-                for c in mro[1:]:
-                    defining_class = ctx
-                    if hasattr(ctx, "__dict__") and fn_name in defining_class.__dict__ and callable(
-                            defining_class.__dict__[fn_name]):
-                        break
-                    defining_class = None
+                try:
+                    mro = ctx.mro()
+                    for c in mro[1:]:
+                        defining_class = ctx
+                        if hasattr(ctx, "__dict__") and fn_name in defining_class.__dict__ and callable(
+                                defining_class.__dict__[fn_name]):
+                            break
+                        defining_class = None
+                except Exception as e:
+                    warning("Couldn't get defining class of context '" + str(ctx) + "'. Omit logging. " + str(e))
+                    return fn
             else:
                 defining_class = ctx
 
@@ -458,9 +496,9 @@ def wrap_function(fn, ctx, mapping):
                 except Exception as e:
                     warning(str(e))
 
-                # skip wrong extractions TODO fix for structure like <class 'sklearn.utils.metaestimators._IffHasAttrDescriptor'>
+                # skip wrong extractions
                 if not fn or not callable(fn):
-                    return
+                    return fn
 
                 if isinstance(fn, property):
                     fn = fn.fget
@@ -475,7 +513,12 @@ def wrap_function(fn, ctx, mapping):
 
                 hooks = _get_hooked_fns(fn, mapping)
                 if len(hooks) > 0:
-                    function_type = type(defining_class.__dict__[fn.__name__])
+                    try:
+                        function_type = type(defining_class.__dict__[fn.__name__])
+                    except Exception as e:
+                        warning("Couldn't get function type of '" + str(fn.__name__) + "' on '" + str(
+                            defining_class) + ". Omit logging. " + str(e))
+                        return fn
                     # TODO can we find less error prone ways to get the type of the given fn.
                     # Delegate decorator of sklearn obfuscates the real type.
                     if str(function_type) == "<class 'sklearn.utils.metaestimators._IffHasAttrDescriptor'>":
