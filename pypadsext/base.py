@@ -6,7 +6,7 @@ from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG, \
 from pypadsext.analysis.doc_parsing import doc
 from pypadsext.concepts.splitter import default_split
 from pypadsext.concepts.util import _create_ctx
-from pypadsext.functions.logging_functions import dataset, predictions, split, hyperparameters, keras_probabilities, \
+from pypadsext.functions.logging import dataset, predictions, split, hyperparameters, keras_probabilities, \
     sklearn_probabilities, torch_metric
 from pypadsext.functions.management.randomness import set_random_seed
 from pypadsext.functions.run_init import git_meta
