@@ -1,8 +1,11 @@
-from pypadsext.code.storage import get_run_git
+from pypadsext.code.storage import get_run_git, get_git_repo
 
 
 def git_meta(pads):
-    repo = get_run_git()
+    run = pads.api.active_run()
+    tags = run.data.tags
+    source_name = tags.get("mlflow.source.name", None)
+    repo = get_git_repo(source_name) if source_name else None
     if repo:
         # Disable pager for returns
         repo.git.set_persistent_git_options(no_pager=True)
