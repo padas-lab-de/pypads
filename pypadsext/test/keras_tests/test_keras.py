@@ -2,7 +2,7 @@ import os
 import unittest
 
 import mlflow
-from pypads.test.sklearn.mappings.mapping_sklearn_test import _get_mapping
+from pypads.test.sklearn.mappings.test_mapping_sklearn import _get_mapping
 
 keras_padre = _get_mapping(os.path.join(os.path.dirname(__file__), "keras_pypadre.json"))
 

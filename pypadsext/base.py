@@ -1,6 +1,7 @@
 from pypads import util
 from pypads.autolog.mappings import AlgorithmMapping
-from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG, DEFAULT_EVENT_MAPPING, DEFAULT_INIT_RUN_FNS
+from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG, \
+    DEFAULT_INIT_RUN_FNS, DEFAULT_LOGGING_FNS
 
 from pypadsext.analysis.doc_parsing import doc
 from pypadsext.concepts.splitter import default_split
@@ -15,7 +16,7 @@ from pypadsext.util import get_class_that_defined_method
 DEFAULT_PYPADRE_INIT_RUN_FNS = [git_meta]
 
 # Extended mappings. We allow to log parameters, output or input, datasets
-DEFAULT_PYPADRE_MAPPING = {
+DEFAULT_PYPADRE_LOGGING_FNS = {
     "dataset": dataset,
     "predictions": predictions,
     "splits": split,
@@ -120,10 +121,10 @@ class PyPadrePadsDecorators(PypadsDecorators):
 
 
 class PyPadrePads(PyPads):
-    def __init__(self, *args, config=None, event_mapping=None, init_run_fns=None, remote_provider=None, **kwargs):
+    def __init__(self, *args, config=None, logging_fns=None, init_run_fns=None, remote_provider=None, **kwargs):
         config = config or util.dict_merge(DEFAULT_CONFIG, DEFAULT_PYPADRE_CONFIG)
         run_init = init_run_fns or DEFAULT_INIT_RUN_FNS + DEFAULT_PYPADRE_INIT_RUN_FNS
-        event_mapping = event_mapping or util.dict_merge(DEFAULT_EVENT_MAPPING, DEFAULT_PYPADRE_MAPPING)
+        logging_fns = logging_fns or util.dict_merge(DEFAULT_LOGGING_FNS, DEFAULT_PYPADRE_LOGGING_FNS)
 
         if remote_provider is None:
             # TODO add gitlab remote provider
@@ -131,7 +132,7 @@ class PyPadrePads(PyPads):
         else:
             self._remote_provider = remote_provider
 
-        super().__init__(*args, config=config, event_mapping=event_mapping, init_run_fns=run_init, **kwargs)
+        super().__init__(*args, config=config, logging_fns=logging_fns, init_run_fns=run_init, **kwargs)
         self._api = PyPadrePadsApi(self)
         self._decorators = PyPadrePadsDecorators(self)
         self._actuators = PyPadrePadsActuators(self)
