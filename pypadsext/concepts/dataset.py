@@ -41,7 +41,6 @@ class modules(Enum):
         torch = "torchvision.datasets"
 
 
-
 class Crawler:
     __metaclass__ = ABCMeta
     _formats = Types

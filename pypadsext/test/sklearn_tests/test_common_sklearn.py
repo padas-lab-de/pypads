@@ -89,6 +89,8 @@ class PyPadrePadsTest(BaseSklearnTest):
             "init": {"on": ["pypads_init"]},
             "splits": {"on": ["pypads_split"]},
             "metric": {"on": ["pypads_metric"]},
+            "parameter_search": {"on": ["pypads_param_search"]},
+            "parameter_search_executor": {"on": ["pypads_param_search_exec"]},
             "doc": {"on": ["pypads_init", "pypads_dataset", "pypads_fit", "pypads_transform", "pypads_predict"]}
         },
             "mirror_git": True
