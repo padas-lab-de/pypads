@@ -200,6 +200,7 @@ class PypadsApi:
         finally:
             if not mlflow.active_run() is enclosing_run:
                 self._pypads.cache.run_clear()
+                self._pypads.cache.run_delete()
                 mlflow.end_run()
                 # try:
                 #     mlflow.start_run(run_id=enclosing_run.info.run_id)

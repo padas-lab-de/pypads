@@ -93,9 +93,9 @@ class PypadsCache(Cache):
         run = self.run_init(run_id)
         self._run_caches[run].add(key, value)
 
-    def run_pop(self, key, run_id=None):
+    def run_pop(self, key, run_id=None, default=None):
         run = self.run_init(run_id)
-        return self._run_caches[run].prop(key)
+        return self._run_caches[run].pop(key, default=default)
 
     def run_get(self, key, run_id=None):
         run = self.run_init(run_id)
