@@ -41,6 +41,7 @@ class modules(Enum):
         torch = "torchvision.datasets"
 
 
+
 class Crawler:
     __metaclass__ = ABCMeta
     _formats = Types
@@ -218,7 +219,8 @@ def torch_crawler(obj: Crawler, *args, **kwargs):
     return data, metadata, targets
 
 
-Crawler.register_fn(modules.torch.value, torch_crawler)
+if _is_package_available("torch"):
+    Crawler.register_fn(modules.torch.value, torch_crawler)
 
 
 # --- networkx graph object ---

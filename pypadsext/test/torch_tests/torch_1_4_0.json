@@ -4,7 +4,11 @@
       "fns": {}
     },
     "classes": {
-      "fns": {}
+      "fns": {
+        "pypads_init": [
+          "__init__"
+        ]
+      }
     },
     "fns": {}
   },
@@ -25,11 +29,11 @@
       "name": "torchvision datasets",
       "other_names": [],
       "implementation": {
-        "torch": "torchvision.datasets.vision.VisionDataset"
+        "torch": "torchvision.datasets"
       },
       "hooks": {
         "pypads_dataset": [
-          ".*"
+          "__init__"
         ]
       }
     },
@@ -58,14 +62,14 @@
       }
     },
     {
-      "name": "base torch loss",
+      "name": "torch loss",
       "other_names": [],
       "implementation": {
-        "torch": "torch.nn.modules.loss._Loss"
+        "torch": "torch.nn.functional"
       },
       "hooks": {
         "pypads_metric": [
-          "forward"
+          "*_loss"
         ]
       }
     }
