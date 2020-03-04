@@ -6,7 +6,8 @@ from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG, \
 from pypadsext.analysis.doc_parsing import doc
 from pypadsext.concepts.splitter import default_split
 from pypadsext.concepts.util import _create_ctx
-from pypadsext.functions.logging_functions import dataset, predictions, split, hyperparameters
+from pypadsext.functions.logging_functions import dataset, predictions, split, hyperparameters, keras_probabilities, \
+    sklearn_probabilities, torch_metric
 from pypadsext.functions.management.randomness import set_random_seed
 from pypadsext.functions.run_init import git_meta
 from pypadsext.util import get_class_that_defined_method
@@ -19,9 +20,12 @@ DEFAULT_PYPADRE_INIT_RUN_FNS = [git_meta]
 DEFAULT_PYPADRE_LOGGING_FNS = {
     "dataset": dataset,
     "predictions": predictions,
+    ("predictions", "keras"): keras_probabilities,
+    ("predictions", "scikit-learn"): sklearn_probabilities,
     "splits": split,
     "hyperparameters": hyperparameters,
-    "doc": doc
+    "doc": doc,
+    ("metric", "torch"): torch_metric
 }
 
 # Extended config.
@@ -34,7 +38,8 @@ DEFAULT_PYPADRE_CONFIG = {"events": {
     "predictions": {"on": ["pypads_predict"]},
     "splits": {"on": ["pypads_split"]},
     "hyperparameters": {"on": ["pypads_params"]},
-    "doc": {"on": ["pypads_init", "pypads_dataset", "pypads_fit", "pypads_transform", "pypads_predict"]}
+    "doc": {"on": ["pypads_init", "pypads_dataset", "pypads_fit", "pypads_transform", "pypads_predict"]},
+    "metric": {"on": ["pypads_metric"], "with": {"artifact_fallback": True}}
 },
     "mirror_git": True
 }

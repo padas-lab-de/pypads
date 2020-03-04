@@ -75,12 +75,14 @@
         ],
         "pypads_predict": [
           "fit_predict",
-          "predict",
-          "score"
+          "predict"
         ],
         "pypads_transform": [
           "fit_transform",
           "transform"
+        ],
+        "pypads_metric": [
+          "score"
         ]
       }
     }

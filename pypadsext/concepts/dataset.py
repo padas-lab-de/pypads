@@ -1,6 +1,6 @@
 from abc import ABCMeta
 from enum import Enum
-from typing import Any, Tuple, Callable
+from typing import Any, Tuple, Callable, Iterable
 
 from pypadsext.util import _is_package_available
 
@@ -91,7 +91,11 @@ class Crawler:
         :return:
         """
         if self._ctx is not None:
-            self._fn = self._fns.get(self._ctx.__name__, self._fn)
+            for key in self._fns:
+                if isinstance(key, str) and key in self._ctx.__module__:
+                    self._fn = self._fns.get(key, self._fn)
+                    self._format = key
+                    break
             self._use_args = True
         else:
             for _ctx in self._modules:
@@ -141,7 +145,13 @@ class Crawler:
 def numpy_crawler(obj: Crawler, **kwargs):
     metadata = {"type": str(obj.format), "shape": obj.data.shape}
     metadata = {**metadata, **kwargs}
-    return obj.data, metadata, None
+    targets_col = [arg for arg in kwargs if isinstance(arg, Iterable)]
+    targets = None
+    try:
+        targets = obj.data[:, targets_col]
+    except Exception as e:
+        print(str(e))
+    return obj.data, metadata, targets
 
 
 Crawler.register_fn(Types.ndarray.value, numpy_crawler)
@@ -152,16 +162,26 @@ def dataframe_crawler(obj: Crawler, **kwargs):
     data = obj.data
     metadata = {"type": obj.format, "shape": data.shape, "features": data.columns}
     metadata = {**metadata, **kwargs}
-    targets = None
     if "target" in data.columns:
-        targets = data[[col for col in data.columns if "target" in col]]
+        targets = data[[col for col in data.columns if "target" in col]].values
+    else:
+        Warning("Target values might be innaccurate.")
+        targets = data[[data.columns[-1]]].values
     return data, metadata, targets
 
 
 Crawler.register_fn(Types.dataframe.value, dataframe_crawler)
 
 
-# --- sklearn Bunch object ---
+# --- Pandas Series object ---
+def series_crawler(obj: Crawler, **kwargs):
+    data = obj.data
+    metadata = {"type": obj.format, "shape": data.shape}
+    metadata = {**metadata, **kwargs}
+    return data, metadata, None
+
+
+# --- sklearn dataset object ---
 def bunch_crawler(obj: Crawler, **kwargs):
     import numpy as np
     bunch = obj.data
@@ -186,6 +206,19 @@ def sklearn_crawler(obj: Crawler, *args, **kwargs):
 
 Crawler.register_fn(Types.bunch.value, bunch_crawler)
 Crawler.register_fn(modules.sklearn.value, sklearn_crawler)
+
+
+# --- TorchVision Dataset object ---
+def torch_crawler(obj: Crawler, *args, **kwargs):
+    data = obj.data.data.numpy()
+    targets = obj.data.targets.numpy()
+    metadata = {"format": obj.format, "shape": data.shape, "classes": obj.data.classes,
+                "Description": obj.data.__repr__()}
+    metadata = {**metadata, **kwargs}
+    return data, metadata, targets
+
+
+Crawler.register_fn(modules.torch.value, torch_crawler)
 
 
 # --- networkx graph object ---
