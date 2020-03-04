@@ -22,7 +22,11 @@ def get_git_repo(path):
         import git
         if os.path.isfile(path):
             path = os.path.dirname(path)
-        return git.Repo(path, search_parent_directories=True)
+            from git import InvalidGitRepositoryError
+            try:
+                return git.Repo(path, search_parent_directories=True)
+            except InvalidGitRepositoryError:
+                return None
     else:
         warning("Git needs to be installed to manage a central repository.")
         return None

@@ -7,6 +7,7 @@ from pypadsext.concepts.splitter import default_split
 from pypadsext.concepts.util import _create_ctx
 from pypadsext.functions.logging_functions import dataset, predictions, split, hyperparameters
 from pypadsext.functions.management.randomness import set_random_seed
+from pypadsext.functions.run_init import git_meta
 from pypadsext.util import get_class_that_defined_method
 
 # --- Pypads App ---
@@ -36,6 +37,15 @@ DEFAULT_PYPADRE_CONFIG = {"events": {
 },
     "mirror_git": True
 }
+
+
+class PyPadrePadsValidators:
+
+    def __init__(self, pypads):
+        self._pypads = pypads
+
+    def validate_split(self, splitting):
+        pass
 
 
 class PyPadrePadsActuators:
@@ -125,7 +135,12 @@ class PyPadrePads(PyPads):
         self._api = PyPadrePadsApi(self)
         self._decorators = PyPadrePadsDecorators(self)
         self._actuators = PyPadrePadsActuators(self)
+        self._validators = PyPadrePadsValidators
 
     @property
     def actuators(self):
         return self._actuators
+
+    @property
+    def validators(self):
+        return self._validators
