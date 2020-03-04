@@ -20,9 +20,9 @@ class Cache:
         else:
             self.cache.update({key: value})
 
-    def pop(self, key):
+    def pop(self, key, default=None):
         if key in self.cache:
-            return self.cache.pop(key)
+            return self.cache.pop(key, default=default)
         return None
 
     def get(self, item):
@@ -96,6 +96,10 @@ class PypadsCache(Cache):
     def run_pop(self, key, run_id=None, default=None):
         run = self.run_init(run_id)
         return self._run_caches[run].pop(key, default=default)
+
+    def run_remove(self, key, run_id=None):
+        run = self.run_init(run_id)
+        del self._run_caches[run][key]
 
     def run_get(self, key, run_id=None):
         run = self.run_init(run_id)
