@@ -1,6 +1,17 @@
 import os
+import re
 
 from pypadsext.util import _is_package_available
+
+
+def camel_case_to_space(label):
+    return re.sub(".*([a-z])([A-Z]).*", "\g<1> \g<2>", label)
+
+
+def name_to_words(label):
+    label = re.sub(".*([a-z])([A-Z]).*", "\g<1> \g<2>", label)
+    label = label.replace("_", " ")
+    return label.replace(".", " ")
 
 
 def tag_extraction():
@@ -9,12 +20,11 @@ def tag_extraction():
     pads: PyPadrePads = get_current_pads()
     docs = pads.cache.get("doc_map")
     corpus = " ".join([doc for name, doc in docs.items()])
-
-    import re
+    corpus = corpus
     corpus = re.sub('[\s]+', ' ', corpus)
     corpus = re.sub('[\t]+', '', corpus)
     corpus = re.sub('[\n]+', '', corpus)
-    pat = re.compile(r'([A-Z][^\[\]\+\<\>\-\.!?]*[\.!?])', re.M)
+    pat = re.compile(r'([a-zA-Z][^\[\]\+\<\>\-\.!?]*[\.!?])', re.M)
     corpus = " ".join(pat.findall(corpus))
 
     if _is_package_available("spacy"):
@@ -42,7 +52,6 @@ def doc(self, *args, _pypads_wrappe,
         _pypads_context,
         _pypads_mapped_by,
         _pypads_callback, **kwargs):
-    doc_str = _pypads_wrappe.__doc__
 
     from pypads.base import get_current_pads
     from pypadsext.base import PyPadrePads
@@ -55,17 +64,23 @@ def doc(self, *args, _pypads_wrappe,
     else:
         doc_map = pads.cache.get("doc_map")
 
-    if doc_str:
+    if _pypads_wrappe.__doc__:
         name = os.path.join(_pypads_context.__name__, _pypads_wrappe.__name__ + ".__doc__")
-        pads.api.log_mem_artifact(name, doc_str)
-        doc_map[name] = doc_str
+        pads.api.log_mem_artifact(name, _pypads_wrappe.__doc__)
+        doc_map[name] = _pypads_wrappe.__doc__
 
-        if _pypads_context.__doc__:
-            name = os.path.join(_pypads_context.__name__,
-                                _pypads_context.__name__ + ".__doc__")
-            pads.api.log_mem_artifact(name, _pypads_context.__doc__)
-            doc_map[name] = _pypads_context.__doc__
+    if _pypads_context.__doc__:
+        name = os.path.join(_pypads_context.__name__,
+                            _pypads_context.__name__ + ".__doc__")
+        pads.api.log_mem_artifact(name, _pypads_context.__doc__)
+        doc_map[name] = _pypads_context.__doc__
 
+    # Add ctx name to doc_map for named entity searching
+    doc_map[_pypads_context.__name__ + "_exists"] = "The " + name_to_words(_pypads_context.__name__) + " exists."
+    doc_map[_pypads_wrappe.__name__ + "_exists"] = "The " + name_to_words(_pypads_wrappe.__name__) + " exists."
+    doc_map[_pypads_wrappe.__name__ + "_is_in"] = "The " + name_to_words(
+        _pypads_wrappe.__name__) + " is in " + name_to_words(_pypads_context.__name__) + "."
+    # !Add ctx name to doc_map for named entity searching
     pads.cache.add("doc_map", doc_map)
     output = _pypads_callback(*args, **kwargs)
     return output

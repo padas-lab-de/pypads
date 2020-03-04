@@ -34,7 +34,7 @@ DEFAULT_PYPADRE_CONFIG = {"events": {
     "predictions": {"on": ["pypads_predict"]},
     "splits": {"on": ["pypads_split"]},
     "hyperparameters": {"on": ["pypads_params"]},
-    "doc": {"on": ["pypads_dataset", "pypads_fit", "pypads_transform", "pypads_predict"]}
+    "doc": {"on": ["pypads_init", "pypads_dataset", "pypads_fit", "pypads_transform", "pypads_predict"]}
 },
     "mirror_git": True
 }

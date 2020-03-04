@@ -86,9 +86,10 @@ class PyPadrePadsTest(BaseSklearnTest):
         # Activate tracking of pypads
         from pypadsext.base import PyPadrePads
         config = {"events": {
+            "init": {"on": ["pypads_init"]},
             "splits": {"on": ["pypads_split"]},
             "metric": {"on": ["pypads_metric"]},
-            "doc": {"on": ["pypads_dataset", "pypads_fit", "pypads_transform", "pypads_predict"]}
+            "doc": {"on": ["pypads_init", "pypads_dataset", "pypads_fit", "pypads_transform", "pypads_predict"]}
         },
             "mirror_git": True
         }

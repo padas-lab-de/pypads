@@ -4,7 +4,11 @@
       "fns": {}
     },
     "classes": {
-      "fns": {}
+      "fns": {
+        "pypads_init": [
+          "__init__"
+        ]
+      }
     },
     "fns": {}
   },
