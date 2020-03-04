@@ -1,6 +1,7 @@
 from pypads import util
 from pypads.autolog.mappings import AlgorithmMapping
-from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG, DEFAULT_EVENT_MAPPING
+from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG, \
+    DEFAULT_INIT_RUN_FNS, DEFAULT_LOGGING_FNS
 
 from pypadsext.analysis.doc_parsing import doc
 from pypadsext.concepts.splitter import default_split
@@ -8,12 +9,15 @@ from pypadsext.concepts.util import _create_ctx
 from pypadsext.functions.logging_functions import dataset, predictions, split, hyperparameters, keras_probabilities, \
     sklearn_probabilities, torch_metric
 from pypadsext.functions.management.randomness import set_random_seed
+from pypadsext.functions.run_init import git_meta
 from pypadsext.util import get_class_that_defined_method
 
 # --- Pypads App ---
 
+DEFAULT_PYPADRE_INIT_RUN_FNS = [git_meta]
+
 # Extended mappings. We allow to log parameters, output or input, datasets
-DEFAULT_PYPADRE_MAPPING = {
+DEFAULT_PYPADRE_LOGGING_FNS = {
     "dataset": dataset,
     "predictions": predictions,
     ("predictions", "keras"): keras_probabilities,
@@ -36,7 +40,18 @@ DEFAULT_PYPADRE_CONFIG = {"events": {
     "hyperparameters": {"on": ["pypads_params"]},
     "doc": {"on": ["pypads_dataset", "pypads_fit", "pypads_transform", "pypads_predict"]},
     "metric": {"on": ["pypads_metric"], "with": {"artifact_fallback": True}}
-}}
+},
+    "mirror_git": True
+}
+
+
+class PyPadrePadsValidators:
+
+    def __init__(self, pypads):
+        self._pypads = pypads
+
+    def validate_split(self, splitting):
+        pass
 
 
 class PyPadrePadsActuators:
@@ -81,6 +96,9 @@ class PyPadrePadsApi(PypadsApi):
     def track_parameters(self, fn, ctx=None, mapping: AlgorithmMapping = None):
         return self.track(fn, ctx, ["pypads_params"], mapping=mapping)
 
+    def mirror_git(self):
+        return self._pypads.remote_provider
+
 
 class PyPadrePadsDecorators(PypadsDecorators):
     # ------------------------------------------- decorators --------------------------------
@@ -108,14 +126,27 @@ class PyPadrePadsDecorators(PypadsDecorators):
 
 
 class PyPadrePads(PyPads):
-    def __init__(self, *args, config=None, event_mapping=None, **kwargs):
+    def __init__(self, *args, config=None, logging_fns=None, init_run_fns=None, remote_provider=None, **kwargs):
         config = config or util.dict_merge(DEFAULT_CONFIG, DEFAULT_PYPADRE_CONFIG)
-        event_mapping = event_mapping or util.dict_merge(DEFAULT_EVENT_MAPPING, DEFAULT_PYPADRE_MAPPING)
-        super().__init__(*args, config=config, event_mapping=event_mapping, **kwargs)
+        run_init = init_run_fns or DEFAULT_INIT_RUN_FNS + DEFAULT_PYPADRE_INIT_RUN_FNS
+        logging_fns = logging_fns or util.dict_merge(DEFAULT_LOGGING_FNS, DEFAULT_PYPADRE_LOGGING_FNS)
+
+        if remote_provider is None:
+            # TODO add gitlab remote provider
+            self._remote_provider = None
+        else:
+            self._remote_provider = remote_provider
+
+        super().__init__(*args, config=config, logging_fns=logging_fns, init_run_fns=run_init, **kwargs)
         self._api = PyPadrePadsApi(self)
         self._decorators = PyPadrePadsDecorators(self)
         self._actuators = PyPadrePadsActuators(self)
+        self._validators = PyPadrePadsValidators
 
     @property
     def actuators(self):
         return self._actuators
+
+    @property
+    def validators(self):
+        return self._validators

@@ -34,6 +34,30 @@
       }
     },
     {
+      "name": "sklearn cross validation",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.model_selection._split.BaseCrossValidator"
+      },
+      "hooks": {
+        "pypads_split": [
+          "split"
+        ]
+      }
+    },
+    {
+      "name": "sklearn shuffle split",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.model_selection._split.BaseShuffleSplit"
+      },
+      "hooks": {
+        "pypads_split": [
+          "split"
+        ]
+      }
+    },
+    {
       "name": "base sklearn estimator",
       "other_names": [],
       "implementation": {

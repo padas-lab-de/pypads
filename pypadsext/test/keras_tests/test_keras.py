@@ -2,9 +2,10 @@ import os
 
 import mlflow
 from pypads.test.base_test import BaseTest
-from pypads.test.sklearn.mappings.mapping_sklearn_test import _get_mapping
+from pypads.test.sklearn.mappings.test_mapping_sklearn import _get_mapping
 
 keras_padre = _get_mapping(os.path.join(os.path.dirname(__file__), "keras_pypadre.json"))
+
 
 def keras_simple_sequential_experiment():
     # first neural network with keras make predictions
@@ -102,7 +103,6 @@ class PypadsKerasTest(BaseTest):
         # --------------------------- asserts ---------------------------
         # TODO
         # !-------------------------- asserts ---------------------------
-        mlflow.end_run()
 
     def test_keras_autolog(self):
         # Activate tracking of pypads
@@ -120,4 +120,3 @@ class PypadsKerasTest(BaseTest):
         # --------------------------- asserts ---------------------------
         # TODO
         # !-------------------------- asserts ---------------------------
-        mlflow.end_run()
