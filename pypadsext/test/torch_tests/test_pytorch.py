@@ -9,7 +9,7 @@ torch_padre = _get_mapping(os.path.join(os.path.dirname(__file__), "torch_1_4_0.
 # https://github.com/jcjohnson/pytorch-examples/blob/master/nn/two_layer_net_nn.py
 def torch_simple_example():
     from torch.nn import Sequential, Conv2d, Linear, ReLU, MaxPool2d, Dropout2d, Softmax
-    import torch.nn.functional as F
+    from torch.nn import functional
     from torch.optim import Adam
     import torch
     from torchvision import datasets
@@ -45,7 +45,7 @@ def torch_simple_example():
             data, target = data.to(device), target.to(device)
             optimizer.zero_grad()
             output = model(data)
-            loss = F.nll_loss(output, target)
+            loss = functional.nll_loss(output, target)
             loss.backward()
             optimizer.step()
             if batch_idx % log_interval == 0:
@@ -61,7 +61,7 @@ def torch_simple_example():
             for data, target in test_loader:
                 data, target = data.to(device), target.to(device)
                 output = model(data)
-                test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
+                test_loss += functional.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
                 pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
                 correct += pred.eq(target.view_as(pred)).sum().item()
 

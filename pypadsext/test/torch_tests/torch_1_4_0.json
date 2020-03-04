@@ -53,7 +53,7 @@
       "name": "Sequential torch model",
       "other_names": [],
       "implementation": {
-        "torch": "torch.nn.modules.module.Module"
+        "torch": "torch.nn.modules.container.Sequential"
       },
       "hooks": {
         "pypads_predict": [
@@ -69,7 +69,7 @@
       },
       "hooks": {
         "pypads_metric": [
-          "*_loss"
+          "loss$"
         ]
       }
     }
