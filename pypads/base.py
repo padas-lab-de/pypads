@@ -41,7 +41,7 @@ class FunctionRegistry:
         if (name, lib, version) in self.fns:
             return self.fns[(name, lib, version)]
         elif (name, lib) in self.fns:
-            return self.fns[(name,lib)]
+            return self.fns[(name, lib)]
         elif name in self.fns:
             return self.fns[name]
         else:
@@ -50,9 +50,9 @@ class FunctionRegistry:
     def add_function(self, name, fn: FunctionType, lib=None, version=None):
         if lib:
             if version:
-                self.fns[(name,lib,version)] = fn
+                self.fns[(name, lib, version)] = fn
             else:
-                self.fns[(name,lib)] = fn
+                self.fns[(name, lib)] = fn
         else:
             self.fns[name] = fn
 
