@@ -22,12 +22,30 @@ def _get_algorithm_mappings():
     return get_current_pads().mapping_registry.get_relevant_mappings()
 
 
+def mappings_to_names():
+    for mapping in _get_algorithm_mappings():
+        for k, v in mapping.algorithm.name["implementation"].items():
+            yield v
+
+
+def _add_inherited_mapping(clazz, super_class):
+    if clazz not in punched_classes:
+        found_mapping = AlgorithmMapping(
+            clazz.__module__ + "." + clazz.__qualname__, super_class._pypads_mapping.library,
+            super_class._pypads_mapping.algorithm, super_class._pypads_mapping.file, super_class._pypads_mapping.hooks)
+        found_mapping.in_collection = super_class._pypads_mapping.in_collection
+        _add_found_class(mapping=found_mapping)
+
+
 def duck_punch_loader(spec):
     original_exec = spec.loader.exec_module
 
     @wraps(original_exec)
     def exec_module(self, module, execute=original_exec):
         out = execute(module)
+
+        # History to check if a class inherits a wrapping intra-module
+        mro_entry_history = {}
 
         # On execution of a module we search for relevant mappings
         # TODO we might want to make this configurable/improve performance. This looks at every imported class.
@@ -37,16 +55,17 @@ def duck_punch_loader(spec):
                 try:
 
                     # Look at the MRO and add classes to be punched which inherit from our punched classes
-                    overlap = set(reference.mro()[1:]) & punched_classes
+                    mro_ = reference.mro()[1:]
+                    for entry in mro_:
+                        if entry not in mro_entry_history.keys():
+                            mro_entry_history[entry] = [reference]
+                        else:
+                            mro_entry_history[entry].append(reference)
+                    overlap = set(mro_) & punched_classes
                     if bool(overlap):
                         # TODO maybe only for the first one
                         for o in overlap:
-                            if reference not in punched_classes:
-                                found_mapping = AlgorithmMapping(
-                                    reference.__module__ + "." + reference.__qualname__, o._pypads_mapping.library,
-                                    o._pypads_mapping.algorithm, o._pypads_mapping.file, o._pypads_mapping.hooks)
-                                found_mapping.in_collection = o._pypads_mapping.in_collection
-                                _add_found_class(mapping=found_mapping)
+                            _add_inherited_mapping(reference, o)
                 except Exception as e:
                     debug("Skipping superclasses of " + str(reference) + ". " + str(e))
 
@@ -72,6 +91,9 @@ def duck_punch_loader(spec):
                         if inspect.isclass(obj):
                             if mapping.reference == obj.__module__ + "." + obj.__name__:
                                 wrap_class(obj, ctx, mapping)
+                                if obj in mro_entry_history:
+                                    for clazz in mro_entry_history[obj]:
+                                        _add_inherited_mapping(clazz, obj)
 
                         elif inspect.isfunction(obj):
                             wrap_function(obj.__name__, ctx, mapping)
