@@ -1,12 +1,15 @@
 import os
+from logging import warning, info
 from types import GeneratorType
 from typing import Iterable
 
 import mlflow
-from pypads.logging_util import WriteFormats, to_folder_name
+from mlflow.utils.autologging_utils import try_mlflow_log
+from pypads.logging_util import WriteFormats, to_folder_name, try_write_artifact
 
 from pypadsext.concepts.dataset import Crawler
 from pypadsext.concepts.util import persistent_hash, split_output_inv, get_by_tag
+from pypadsext.util import _is_package_available
 
 DATASETS = "datasets"
 
@@ -30,14 +33,16 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
 
     # get the dataset object
     result = _pypads_callback(*args, **kwargs)
-
+    obj = result if result is not None else None
+    if not obj:
+        obj = self
     # Get additional arguments if given by the user
     _kwargs = dict()
     if pads.cache.run_exists("dataset_kwargs"):
         _kwargs = pads.cache.run_get("dataset_kwargs")
 
     # Scrape the data object
-    crawler = Crawler(result, ctx=_pypads_context, callback=_pypads_callback, kw=args)
+    crawler = Crawler(obj, ctx=_pypads_context, callback=_pypads_callback, kw=args)
     data, metadata, targets = crawler.crawl(**_kwargs)
     pads.cache.run_add("data", data)
     pads.cache.run_add("shape", metadata.get("shape"))
@@ -47,12 +52,12 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
     experiment_run = mlflow.active_run()
 
     # setting the dataset object name
-    if hasattr(result, "name"):
-        ds_name = result.name
+    if hasattr(obj, "name"):
+        ds_name = obj.name
     elif pads.cache.run_exists("dataset_name") and pads.cache.run_get("dataset_name") is not None:
         ds_name = pads.cache.run_get("dataset_name")
     else:
-        ds_name = _pypads_wrappe.__name__
+        ds_name = _pypads_wrappe.__qualname__
 
     # Look for metadata information given by the user when using the decorators
     if pads.cache.run_exists("dataset_meta"):
@@ -65,7 +70,7 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
 
     # add data set if it is not already existing with name and hash check
     try:
-        _hash = persistent_hash(str(result))
+        _hash = persistent_hash(str(obj))
     except Exception:
         Warning("Could not compute the hash of the dataset object, falling back to dataset name hash...")
         _hash = persistent_hash(str(ds_name))
@@ -90,6 +95,38 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
         else:
             dataset_id = _stored.pop().info.run_id
             mlflow.set_tag("pypads.datasetID", dataset_id)
+
+    return result
+
+
+def torch_metric(self, *args, _pypads_wrappe, artifact_fallback=False, _pypads_context, _pypads_mapped_by,
+                 _pypads_callback,
+                 **kwargs):
+    """
+    Function logging the wrapped metric function
+    :param self: Wrapper library object
+    :param args: Input args to the real library call
+    :param pypads_wrappe: pypads provided - wrapped library object
+    :param pypads_package: pypads provided - wrapped library package
+    :param pypads_item: pypads provided - wrapped function name
+    :param pypads_fn_stack: pypads provided - stack of all the next functions to execute
+    :param kwargs: Input kwargs to the real library call
+    :return:
+    """
+    result = _pypads_callback(*args, **kwargs)
+    if _is_package_available("torch"):
+        from torch import Tensor
+        if result is not None:
+            if isinstance(result, Tensor):
+                try_mlflow_log(mlflow.log_metric, _pypads_context.__name__ + ".txt", result.item())
+            else:
+                warning("Mlflow metrics have to be doubles. Could log the return value of type '" + str(
+                    type(result)) + "' of '" + _pypads_context.__name__ + "' as artifact instead.")
+
+                # TODO search callstack for already logged functions and ignore?
+                if artifact_fallback:
+                    info("Logging result if '" + _pypads_context.__name__ + "' as artifact.")
+                    try_write_artifact(_pypads_context.__name__, str(result), WriteFormats.text)
 
     return result
 

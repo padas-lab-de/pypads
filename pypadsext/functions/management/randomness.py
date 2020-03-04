@@ -15,7 +15,7 @@ def log_random_seed(key):
     # Get seed information from cache
     if pads.cache.run_exists(key):
         # TODO if tag already exists (set called multiple times) we need to handle that (save seed per function run?)
-        pads.api.set_tag("_pypads." + key, pads.cache.run_get(key))
+        pads.api.set_tag("pypads." + key, pads.cache.run_get(key))
     else:
         warning("Can't log seed produced by seed generator. You have to enable ")
 
@@ -58,7 +58,7 @@ def numpy_seed(seed):
 numpy.random.seed = numpy_seed
 
 # --- pytorch seed ---
-if _is_package_available("pytorch"):
+if _is_package_available("torch"):
     # noinspection PyPackageRequirements,PyUnresolvedReferences
     import torch
 
@@ -108,7 +108,7 @@ def set_random_seed(seed):
     # global seeds for numpy seem to not work with RandomState()
 
     # --- set pytorch seed ---
-    if _is_package_available("pytorch"):
+    if _is_package_available("torch"):
         # noinspection PyPackageRequirements,PyUnresolvedReferences
         import torch
         torch.manual_seed(seed)

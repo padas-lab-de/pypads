@@ -1,0 +1,79 @@
+{
+  "default_hooks": {
+    "modules": {
+      "fns": {}
+    },
+    "classes": {
+      "fns": {}
+    },
+    "fns": {}
+  },
+  "algorithms": [
+    {
+      "name": "base torch optimizer",
+      "other_names": [],
+      "implementation": {
+        "torch": "torch.optim.optimizer.Optimizer"
+      },
+      "hooks": {
+        "pypads_fit": [
+          "step"
+        ]
+      }
+    },
+    {
+      "name": "torchvision datasets",
+      "other_names": [],
+      "implementation": {
+        "torch": "torchvision.datasets.vision.VisionDataset"
+      },
+      "hooks": {
+        "pypads_dataset": [
+          ".*"
+        ]
+      }
+    },
+    {
+      "name": "torch dataloader",
+      "other_names": [],
+      "implementation": {
+        "torch": "torch.utils.data.DataLoader"
+      },
+      "hooks": {
+        "pypads_split": [
+          "__iter__"
+        ]
+      }
+    },
+    {
+      "name": "Sequential torch model",
+      "other_names": [],
+      "implementation": {
+        "torch": "torch.nn.modules.module.Module"
+      },
+      "hooks": {
+        "pypads_predict": [
+          "forward"
+        ]
+      }
+    },
+    {
+      "name": "base torch loss",
+      "other_names": [],
+      "implementation": {
+        "torch": "torch.nn.modules.loss._Loss"
+      },
+      "hooks": {
+        "pypads_metric": [
+          "forward"
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "author": "Mehdi Ben Amor",
+    "library": "torch",
+    "library_version": "1.4.0",
+    "mapping_version": "0.1"
+  }
+}

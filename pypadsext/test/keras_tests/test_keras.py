@@ -1,7 +1,7 @@
 import os
-import unittest
 
 import mlflow
+from pypads.test.base_test import BaseTest
 from pypads.test.sklearn.mappings.mapping_sklearn_test import _get_mapping
 
 keras_padre = _get_mapping(os.path.join(os.path.dirname(__file__), "keras_pypadre.json"))
@@ -73,7 +73,7 @@ def keras_mlp_for_multi_class_softmax_classification():
 
 
 # noinspection PyMethodMayBeStatic
-class PypadsKerasTest(unittest.TestCase):
+class PypadsKerasTest(BaseTest):
 
     def test_keras_base_class(self):
         # --------------------------- setup of the tracking ---------------------------
@@ -88,7 +88,6 @@ class PypadsKerasTest(unittest.TestCase):
         # --------------------------- asserts ---------------------------
         # TODO
         # !-------------------------- asserts ---------------------------
-        mlflow.end_run()
 
     def test_keras_mlp(self):
         # --------------------------- setup of the tracking ---------------------------

@@ -6,7 +6,7 @@ from pypadsext.analysis.doc_parsing import doc
 from pypadsext.concepts.splitter import default_split
 from pypadsext.concepts.util import _create_ctx
 from pypadsext.functions.logging_functions import dataset, predictions, split, hyperparameters, keras_probabilities, \
-    sklearn_probabilities
+    sklearn_probabilities, torch_metric
 from pypadsext.functions.management.randomness import set_random_seed
 from pypadsext.util import get_class_that_defined_method
 
@@ -20,7 +20,8 @@ DEFAULT_PYPADRE_MAPPING = {
     ("predictions", "scikit-learn"): sklearn_probabilities,
     "splits": split,
     "hyperparameters": hyperparameters,
-    "doc": doc
+    "doc": doc,
+    ("metric", "torch"): torch_metric
 }
 
 # Extended config.
@@ -33,7 +34,8 @@ DEFAULT_PYPADRE_CONFIG = {"events": {
     "predictions": {"on": ["pypads_predict"]},
     "splits": {"on": ["pypads_split"]},
     "hyperparameters": {"on": ["pypads_params"]},
-    "doc": {"on": ["pypads_dataset", "pypads_fit", "pypads_transform", "pypads_predict"]}
+    "doc": {"on": ["pypads_dataset", "pypads_fit", "pypads_transform", "pypads_predict"]},
+    "metric": {"on": ["pypads_metric"], "with": {"artifact_fallback": True}}
 }}
 
 
