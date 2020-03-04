@@ -8,11 +8,14 @@ torch_padre = _get_mapping(os.path.join(os.path.dirname(__file__), "torch_1_4_0.
 
 # https://github.com/jcjohnson/pytorch-examples/blob/master/nn/two_layer_net_nn.py
 def torch_simple_example():
-    from torch.nn import Sequential, Conv2d, Linear, ReLU, MaxPool2d, MSELoss, LogSoftmax, Dropout2d
-    from torch.optim import SGD
+    from torch.nn import Sequential, Conv2d, Linear, ReLU, MaxPool2d, Dropout2d, Softmax
+    import torch.nn.functional as F
+    from torch.optim import Adam
     import torch
     from torchvision import datasets
     from torchvision.transforms import transforms
+
+    log_interval = 100
 
     class Flatten(torch.nn.Module):
         __constants__ = ['start_dim', 'end_dim']
@@ -25,21 +28,65 @@ def torch_simple_example():
         def forward(self, input: torch.Tensor):
             return input.flatten(self.start_dim, self.end_dim)
 
+    class ArgMax(torch.nn.Module):
+        __constants__ = ['start_dim', 'end_dim']
+
+        def __init__(self, dim=1, keepdim: bool = False):
+            super(ArgMax, self).__init__()
+            self.dim = dim
+            self.keep_dim = keepdim
+
+        def forward(self, input: torch.Tensor):
+            return input.argmax(dim=self.dim, keepdim=self.keep_dim)
+
+    def train(model, device, train_loader, optimizer, epoch):
+        model.train()
+        for batch_idx, (data, target) in enumerate(train_loader):
+            data, target = data.to(device), target.to(device)
+            optimizer.zero_grad()
+            output = model(data)
+            loss = F.nll_loss(output, target)
+            loss.backward()
+            optimizer.step()
+            if batch_idx % log_interval == 0:
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                    epoch, batch_idx * len(data), len(train_loader.dataset),
+                           100. * batch_idx / len(train_loader), loss.item()))
+
+    def test(model, device, test_loader):
+        model.eval()
+        test_loss = 0
+        correct = 0
+        with torch.no_grad():
+            for data, target in test_loader:
+                data, target = data.to(device), target.to(device)
+                output = model(data)
+                test_loss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
+                pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+                correct += pred.eq(target.view_as(pred)).sum().item()
+
     # Set the random seed
     torch.manual_seed(0)
     device = torch.device('cpu')
 
     # Load Mnist Dataset
-    mnist = datasets.MNIST('data', train=True, download=False, transform=transforms.Compose([
+    train_mnist = datasets.MNIST('data', train=True, download=False, transform=transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.1307,), (0.3081,))
+    ]))
+    test_mnist = datasets.MNIST('data', train=False, download=False, transform=transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
     ]))
 
     # N is batch size;
-    N, epochs = 64, 50
+    N, epochs = 100, 10
 
     # Training Loader
-    loader = torch.utils.data.DataLoader(mnist, batch_size=N)
+    train_loader = torch.utils.data.DataLoader(train_mnist, batch_size=N)
+
+    # Testing Loader
+    test_loader = torch.utils.data.DataLoader(test_mnist, batch_size=N)
 
     # Create random Tensors to hold inputs and outputs
     # x = torch.randn(N, D_in, device=device)
@@ -57,45 +104,21 @@ def torch_simple_example():
         ReLU(),
         Dropout2d(0.5),
         Linear(128, 10),
-        LogSoftmax(dim=1)
+        Softmax(dim=1)
     ).to(device)
 
-    # define the loss function
-    loss_fn = MSELoss(reduction='sum')
-
     # define the optimize
-    optimizer = SGD(model.parameters(), lr=1e-4, momentum=0.9)
+    optimizer = Adam(model.parameters(), lr=1e-4)
 
     # Training loop
-    for x, y in loader:
-        x, y = x.to(device), y.to(device)
-        # Forward pass: Compute predicted y by passing x to the model
-        y_pred = model(x)
-
-        # Compute and print loss
-        loss = loss_fn(y_pred, y)
-        print(loss.item())
-
-        # Zero gradients, perform a backward pass, and update the weights.
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-    # for t in range(epochs):
-    #     # Forward pass: Compute predicted y by passing x to the model
-    #     y_pred = model(x)
-    #
-    #     # Compute and print loss
-    #     loss = loss_fn(y_pred, y)
-    #     print(t, loss.item())
-    #
-    #     # Zero gradients, perform a backward pass, and update the weights.
-    #     optimizer.zero_grad()
-    #     loss.backward()
-    #     optimizer.step()
+    for epoch in range(1, epochs + 1):
+        train(model=model, device=device, train_loader=train_loader, optimizer=optimizer, epoch=epoch)
+        test(model=model, device=device, test_loader=test_loader)
 
 
 # noinspection PyMethodMayBeStatic
 class PyPadsTorchTest(BaseTest):
+
     def test_torch_Sequential_class(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
