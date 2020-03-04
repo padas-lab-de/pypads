@@ -22,12 +22,6 @@ def _get_algorithm_mappings():
     return get_current_pads().mapping_registry.get_relevant_mappings()
 
 
-def mappings_to_names():
-    for mapping in _get_algorithm_mappings():
-        for k, v in mapping.algorithm.name["implementation"].items():
-            yield v
-
-
 def _add_inherited_mapping(clazz, super_class):
     if clazz not in punched_classes:
         found_mapping = AlgorithmMapping(

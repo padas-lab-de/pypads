@@ -6,7 +6,6 @@ import mlflow
 from boltons.funcutils import wraps
 
 from pypads.autolog.mappings import AlgorithmMapping
-from pypads.functions.logging import log_init
 
 punched_module = set()
 punched_classes = set()
@@ -40,7 +39,7 @@ def wrap(wrappee, ctx, mapping):
 def make_hook_applicable_filter(hook, ctx, mapping):
     def hook_applicable_filter(name):
         if hasattr(ctx, name):
-            if not name.startswith("__"):
+            if not name.startswith("__") or name == "__init__":
                 if not name.startswith("_pypads"):
                     try:
                         fn = getattr(ctx, name)
@@ -49,9 +48,10 @@ def make_hook_applicable_filter(hook, ctx, mapping):
                         error("Recursion error on '" + str(
                             ctx) + "'. This might be because __get_attr__ is being wrapped. " + str(re))
                 else:
-                    debug("Tried to wrap native function '" + name + "' on '" + str(ctx) + "'. Omit logging.")
+                    debug("Tried to wrap pypads function '" + name + "' on '" + str(ctx) + "'. Omit logging.")
             else:
-                debug("Tried to wrap native function '" + name + "' on '" + str(ctx) + "'. Omit logging.")
+                debug(
+                    "Tried to wrap non-constructor native function '" + name + "' on '" + str(ctx) + "'. Omit logging.")
         else:
             warning("Can't access attribute '" + str(name) + "' on '" + str(ctx) + "'. Skipping.")
         return False
@@ -106,11 +106,6 @@ def wrap_class(clazz, ctx, mapping):
         except TypeError as e:
             debug("Can't set attributes '_pypads_mapping', '_pypads_wrapped' on '" + str(clazz) + "'. Omit wrapping.")
             return clazz
-
-        if hasattr(clazz.__init__, "__module__"):
-            original_init = getattr(clazz, "__init__")
-            wrap_method_helper(fn=original_init, hooks=[(log_init, {}, DEFAULT_ORDER)], mapping=mapping, ctx=clazz,
-                               fn_type="function")
 
         if mapping.hooks:
             for hook in mapping.hooks:

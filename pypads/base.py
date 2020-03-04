@@ -14,7 +14,7 @@ from pypads.analysis.pipeline_detection import pipeline
 from pypads.autolog.hook import Hook
 from pypads.autolog.mappings import AlgorithmMapping, MappingRegistry, AlgorithmMeta
 from pypads.caches import PypadsCache, Cache
-from pypads.functions.logging import output, input, cpu, metric, log
+from pypads.functions.logging import output, input, cpu, metric, log, log_init
 from pypads.functions.run_init import isystem, iram, icpu, idisk, ipid
 from pypads.logging_util import WriteFormats, try_write_artifact
 from pypads.mlflow.mlflow_autolog import autologgers
@@ -71,7 +71,8 @@ DEFAULT_LOGGING_FNS = {
     "metric": metric,
     "autolog": autologgers,
     "pipeline": pipeline,
-    "log": log
+    "log": log,
+    "init": log_init
 }
 
 # Default config.
@@ -80,6 +81,7 @@ DEFAULT_LOGGING_FNS = {
 # This config defines such a listening structure.
 # {"recursive": track functions recursively. Otherwise check the callstack to only track the top level function.}
 DEFAULT_CONFIG = {"events": {
+    "init": {"on": ["pypads_init"]},
     "parameters": {"on": ["pypads_fit"]},
     "hardware": {"on": ["pypads_fit"]},
     "output": {"on": ["pypads_fit", "pypads_predict"],

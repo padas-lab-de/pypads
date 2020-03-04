@@ -5,6 +5,9 @@
     },
     "classes": {
       "fns": {
+        "pypads_init": [
+          "__init__"
+        ],
         "pypads_fit": [
           "fit",
           "fit_predict",
