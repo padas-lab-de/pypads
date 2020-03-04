@@ -1,6 +1,6 @@
 import inspect
 import types
-from logging import warning, debug, info, error
+from logging import warning, debug, info, error, exception
 
 import mlflow
 from boltons.funcutils import wraps
@@ -233,7 +233,7 @@ def _wrapped_inner_function(ctx, *args, _pypads_hooked_fn, _pypads_hook_params, 
         if _get_current_config()["retry_on_fail"]:
             # TODO check tracking stack
             if e.args[0] not in retry_cache:
-                error("Tracking failed for " + str(_pypads_callback) + " with: " + str(e))
+                exception("Tracking failed for " + str(_pypads_callback) + " with: " + str(e))
                 original_fn = _get_original(_pypads_callback.__name__, _pypads_context)
                 if original_fn and not original_fn == _pypads_callback:
                     # TODO maybe retry only if the exception wasn't raised in the original function

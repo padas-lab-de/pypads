@@ -94,7 +94,7 @@ DEFAULT_CONFIG = {"events": {
 },
     "recursion_identity": False,
     "recursion_depth": -1,
-    "retry_on_fail": True,
+    "retry_on_fail": False,
     "log_on_failure": True}
 
 # Tag name to save the config to in mlflow context.

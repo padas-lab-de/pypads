@@ -22,7 +22,7 @@ class Cache:
 
     def pop(self, key, default=None):
         if key in self.cache:
-            return self.cache.pop(key, default=default)
+            return self.cache.pop(key, default)
         return None
 
     def get(self, item):
