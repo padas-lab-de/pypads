@@ -67,6 +67,8 @@ class PyPadrePadsDecoratorsTest(BaseTest):
             from sklearn.datasets import load_iris
             return load_iris()
 
+        tracker.actuators.default_splitter()
+
         @tracker.decorators.splitter()
         def splitter(data, training=0.6):
             import numpy as np

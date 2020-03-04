@@ -45,3 +45,15 @@ def unpack(kwargs_obj: dict, *args):
         else:
             raise ValueError("Pass a tuple or string not: " + str(entry))
     return tuple(arg_list)
+
+
+def dependencies(packages=None, message=None):
+    if packages is None:
+        packages = []
+    if message is None:
+        message = "Missing dependencies {0} for the usage of function {1}"
+
+    def track_decorator(fn):
+        return fn
+
+    return track_decorator

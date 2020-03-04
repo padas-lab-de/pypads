@@ -36,7 +36,7 @@ dataset_ = load_wine()
 
 
 @tracker.decorators.hyperparameters()
-@tracker.decorators.splitter(default=True)
+@tracker.decorators.splitter()
 def splitter():
     strategy = "random"
     seed = 0
