@@ -72,7 +72,7 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
     try:
         _hash = persistent_hash(str(obj))
     except Exception:
-        Warning("Could not compute the hash of the dataset object, falling back to dataset name hash...")
+        warning("Could not compute the hash of the dataset object, falling back to dataset name hash...")
         _hash = persistent_hash(str(ds_name))
 
     _stored = get_by_tag("pypads.dataset.hash", str(_hash), repo.experiment_id)
@@ -91,7 +91,7 @@ def dataset(self, *args, write_format=WriteFormats.pickle, _pypads_wrappe, _pypa
     else:
         # look for the existing dataset and reference it to the active run
         if len(_stored) > 1:
-            Warning("multiple existing datasets with the same hash!!!")
+            warning("multiple existing datasets with the same hash!!!")
         else:
             dataset_id = _stored.pop().info.run_id
             mlflow.set_tag("pypads.datasetID", dataset_id)
@@ -132,7 +132,7 @@ def torch_metric(self, *args, _pypads_wrappe, artifact_fallback=False, _pypads_c
 
 
 def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
-                write_format=WriteFormats.text, probabilities=None,
+                write_format=WriteFormats.text,
                 **kwargs):
     from pypads.base import get_current_pads
     from pypadsext.base import PyPadrePads
@@ -148,9 +148,13 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
     if pads.cache.run_exists(num):
         split_info = pads.cache.run_get(num).get("split_info", None)
 
+    probabilities = None
+    if pads.cache.run_exists("probabilities"):
+        pads.cache.run_get("probabilities")
+
     # depending on available info log the predictions
     if split_info is None:
-        Warning("No split information were found in the cache of the current run, "
+        warning("No split information were found in the cache of the current run, "
                 "individual decision tracking might be missing Truth values, try to decorate you splitter!")
         pads.cache.run_add(num, {'predictions': {str(i): {'predicted': result[i]} for i in range(len(result))}})
         if probabilities is not None:
@@ -164,8 +168,8 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
                     for i in pads.cache.run_get(num).get('predictions').keys():
                         pads.cache.run_get(num).get('predictions').get(str(i)).update(
                             {'truth': targets[int(i)]})
-            except Exception:
-                Warning("Could not add the truth values")
+            except Exception as e:
+                warning("Could not add the truth values")
     else:
         try:
             for i, sample in enumerate(split_info.get('test')):
@@ -187,16 +191,22 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
 def keras_probabilities(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
                         write_format=WriteFormats.text,
                         **kwargs):
+    from pypads.base import get_current_pads
+    from pypadsext.base import PyPadrePads
+    pads: PyPadrePads = get_current_pads()
+
     probabilities = None
     try:
         probabilities = self.predict(*args, **kwargs)
     except Exception as e:
-        Warning("Couldn't compute probabilities because %s" % str(e))
+        warning("Couldn't compute probabilities because %s" % str(e))
 
+    pads.cache.run_add("probabilities", probabilities)
     # Call the predictions logging function
     out = predictions(self, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
                       _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback,
-                      write_format=write_format, probabilities=probabilities, **kwargs)
+                      write_format=write_format, **kwargs)
+    pads.cache.run_pop("probabilities")
 
     return out
 
@@ -204,23 +214,29 @@ def keras_probabilities(self, *args, _pypads_wrappe, _pypads_context, _pypads_ma
 def sklearn_probabilities(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
                           write_format=WriteFormats.text,
                           **kwargs):
+    from pypads.base import get_current_pads
+    from pypadsext.base import PyPadrePads
+    pads: PyPadrePads = get_current_pads()
+
     # check if the estimator computes decision scores
     probabilities = None
     if hasattr(self, "predict_proba"):
         try:
             probabilities = self.predict_proba(*args, **kwargs)
         except Exception as e:
-            Warning("Couldn't compute probabilities because %s" % str(e))
+            warning("Couldn't compute probabilities because %s" % str(e))
     elif hasattr(self, "_predict_proba"):
         try:
             probabilities = self._predict_proba(*args, **kwargs)
         except Exception as e:
-            Warning("Couldn't compute probabilities because %s" % str(e))
+            warning("Couldn't compute probabilities because %s" % str(e))
 
+    pads.cache.run_add("probabilities", probabilities)
     # Call the predictions logging function
     out = predictions(self, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
                       _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback,
-                      write_format=write_format, probabilities=probabilities, **kwargs)
+                      write_format=write_format, **kwargs)
+    pads.cache.run_pop("probabilities")
 
     return out
 

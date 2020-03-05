@@ -8,8 +8,7 @@ torch_padre = _get_mapping(os.path.join(os.path.dirname(__file__), "torch_1_4_0.
 
 # https://github.com/jcjohnson/pytorch-examples/blob/master/nn/two_layer_net_nn.py
 def torch_simple_example():
-    from torch.nn import Sequential, Conv2d, Linear, ReLU, MaxPool2d, Dropout2d, Softmax
-    from torch.nn import functional
+    from torch.nn import Sequential, Conv2d, Linear, ReLU, MaxPool2d, Dropout2d, Softmax, CrossEntropyLoss
     from torch.optim import Adam
     import torch
     from torchvision import datasets
@@ -28,24 +27,13 @@ def torch_simple_example():
         def forward(self, input: torch.Tensor):
             return input.flatten(self.start_dim, self.end_dim)
 
-    class ArgMax(torch.nn.Module):
-        __constants__ = ['start_dim', 'end_dim']
-
-        def __init__(self, dim=1, keepdim: bool = False):
-            super(ArgMax, self).__init__()
-            self.dim = dim
-            self.keep_dim = keepdim
-
-        def forward(self, input: torch.Tensor):
-            return input.argmax(dim=self.dim, keepdim=self.keep_dim)
-
     def train(model, device, train_loader, optimizer, epoch):
         model.train()
         for batch_idx, (data, target) in enumerate(train_loader):
             data, target = data.to(device), target.to(device)
             optimizer.zero_grad()
             output = model(data)
-            loss = functional.nll_loss(output, target)
+            loss = loss_fn(output, target)
             loss.backward()
             optimizer.step()
             if batch_idx % log_interval == 0:
@@ -61,7 +49,7 @@ def torch_simple_example():
             for data, target in test_loader:
                 data, target = data.to(device), target.to(device)
                 output = model(data)
-                test_loss += functional.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
+                test_loss += loss_fn(output, target).item()  # sum up batch loss
                 pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
                 correct += pred.eq(target.view_as(pred)).sum().item()
 
@@ -80,7 +68,7 @@ def torch_simple_example():
     ]))
 
     # N is batch size;
-    N, epochs = 100, 10
+    N, epochs = 100, 1
 
     # Training Loader
     train_loader = torch.utils.data.DataLoader(train_mnist, batch_size=N)
@@ -106,6 +94,9 @@ def torch_simple_example():
         Linear(128, 10),
         Softmax(dim=1)
     ).to(device)
+
+    # Define loss function
+    loss_fn = CrossEntropyLoss().to(device)
 
     # define the optimize
     optimizer = Adam(model.parameters(), lr=1e-4)

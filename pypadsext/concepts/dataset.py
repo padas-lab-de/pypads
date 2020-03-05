@@ -92,7 +92,7 @@ class Crawler:
         """
         if self._ctx is not None:
             for key in self._fns:
-                if isinstance(key, str) and key in self._ctx.__module__:
+                if isinstance(key, str) and key in str(self._ctx):
                     self._fn = self._fns.get(key, self._fn)
                     self._format = key
                     break

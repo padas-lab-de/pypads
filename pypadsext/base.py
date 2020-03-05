@@ -9,7 +9,6 @@ from pypadsext.concepts.splitter import default_split
 from pypadsext.concepts.util import _create_ctx
 from pypadsext.functions.logging import dataset, predictions, split, hyperparameters, keras_probabilities, \
     sklearn_probabilities, torch_metric
-from pypadsext.functions.management.randomness import set_random_seed
 from pypadsext.functions.run_init import git_meta
 from pypadsext.util import get_class_that_defined_method
 
@@ -65,6 +64,7 @@ class PyPadrePadsActuators:
         self._pypads = pypads
 
     def set_random_seed(self, seed=None):
+        from pypadsext.functions.management.randomness import set_random_seed
         # Set seed if needed
         if seed is None:
             import random

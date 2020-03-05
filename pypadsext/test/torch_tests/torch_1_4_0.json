@@ -50,7 +50,7 @@
       }
     },
     {
-      "name": "Sequential torch model",
+      "name": "Base torch module",
       "other_names": [],
       "implementation": {
         "torch": "torch.nn.modules.container.Sequential"
@@ -58,18 +58,21 @@
       "hooks": {
         "pypads_predict": [
           "forward"
+        ],
+        "pypads_fit": [
+          "forward"
         ]
       }
     },
     {
-      "name": "torch loss",
+      "name": "torch loss functions",
       "other_names": [],
       "implementation": {
-        "torch": "torch.nn.functional"
+        "torch": "torch.nn.modules.loss._Loss"
       },
       "hooks": {
         "pypads_metric": [
-          "loss$"
+          "forward"
         ]
       }
     }
