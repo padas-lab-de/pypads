@@ -4,10 +4,6 @@ import re
 from pypadsext.util import _is_package_available
 
 
-def camel_case_to_space(label):
-    return re.sub(".*([a-z])([A-Z]).*", "\g<1> \g<2>", label)
-
-
 def name_to_words(label):
     label = re.sub(".*([a-z])([A-Z]).*", "\g<1> \g<2>", label)
     label = label.replace("_", " ")

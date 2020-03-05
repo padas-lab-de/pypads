@@ -156,7 +156,7 @@ class PyPadrePads(PyPads):
         self._api = PyPadrePadsApi(self)
         self._decorators = PyPadrePadsDecorators(self)
         self._actuators = PyPadrePadsActuators(self)
-        self._validators = PyPadrePadsValidators
+        self._validators = PyPadrePadsValidators(self)
 
     @property
     def actuators(self):
