@@ -14,6 +14,28 @@
   },
   "algorithms": [
     {
+      "name": "base sklearn estimator",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.base.BaseEstimator"
+      },
+      "hooks": {
+        "pypads_fit": [
+          "fit",
+          "fit_predict",
+          "fit_transform"
+        ],
+        "pypads_predict": [
+          "fit_predict",
+          "predict"
+        ],
+        "pypads_transform": [
+          "fit_transform",
+          "transform"
+        ]
+      }
+    },
+    {
       "name": "sklearn classification metrics",
       "other_names": [],
       "implementation": {
@@ -116,28 +138,6 @@
       "hooks": {
         "pypads_metric": [
           "score"
-        ]
-      }
-    },
-    {
-      "name": "base sklearn estimator",
-      "other_names": [],
-      "implementation": {
-        "scikit-learn": "sklearn.base.BaseEstimator"
-      },
-      "hooks": {
-        "pypads_fit": [
-          "fit",
-          "fit_predict",
-          "fit_transform"
-        ],
-        "pypads_predict": [
-          "fit_predict",
-          "predict"
-        ],
-        "pypads_transform": [
-          "fit_transform",
-          "transform"
         ]
       }
     }
