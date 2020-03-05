@@ -20,8 +20,20 @@
         "torch": "torch.optim.optimizer.Optimizer"
       },
       "hooks": {
-        "pypads_fit": [
+        "pypads_grad": [
           "step"
+        ]
+      }
+    },
+    {
+      "name": "base torch parameter",
+      "other_names": [],
+      "implementation": {
+        "torch": "torch.nn.parameter.Parameter"
+      },
+      "hooks": {
+        "pypads_grad": [
+          "backward"
         ]
       }
     },
@@ -41,7 +53,7 @@
       "name": "torch dataloader",
       "other_names": [],
       "implementation": {
-        "torch": "torch.utils.data.DataLoader"
+        "torch": "torch.utils.data.dataLoader.DataLoader"
       },
       "hooks": {
         "pypads_split": [
@@ -57,9 +69,6 @@
       },
       "hooks": {
         "pypads_predict": [
-          "forward"
-        ],
-        "pypads_fit": [
           "forward"
         ]
       }

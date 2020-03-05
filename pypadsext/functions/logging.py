@@ -115,8 +115,9 @@ def torch_metric(self, *args, _pypads_wrappe, artifact_fallback=False, _pypads_c
     """
     result = _pypads_callback(*args, **kwargs)
     if _is_package_available("torch"):
-        from torch import Tensor
+
         if result is not None:
+            from torch import Tensor
             if isinstance(result, Tensor):
                 try_mlflow_log(mlflow.log_metric, _pypads_context.__name__ + ".txt", result.item())
             else:
@@ -127,6 +128,18 @@ def torch_metric(self, *args, _pypads_wrappe, artifact_fallback=False, _pypads_c
                 if artifact_fallback:
                     info("Logging result if '" + _pypads_context.__name__ + "' as artifact.")
                     try_write_artifact(_pypads_context.__name__, str(result), WriteFormats.text)
+        else:
+            from torch.optim.optimizer import Optimizer
+            if isinstance(self, Optimizer):
+                # Logging the gradient of the weigths after the optimizer step
+                param_groups = self.param_groups
+                for group in param_groups:
+                    weights_by_layer = group.get('params', None)
+                    if weights_by_layer and isinstance(weights_by_layer, list):
+                        for layer, weights in enumerate(weights_by_layer):
+                            try_mlflow_log(mlflow.log_metric,
+                                           _pypads_context.__name__ + ".Layer_" + str(layer) + "_MEAN_GRADIENT.txt",
+                                           weights.grad.mean().item())
 
     return result
 
@@ -140,6 +153,10 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
 
     result = _pypads_callback(*args, **kwargs)
 
+    predictions = result
+    if pads.cache.run_exists("predictions"):
+        predictions = pads.cache.run_get("predictions")
+
     # check if there exists information of the current split
     num = 0
     split_info = None
@@ -148,6 +165,7 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
     if pads.cache.run_exists(num):
         split_info = pads.cache.run_get(num).get("split_info", None)
 
+    # check if there is info about decision scores
     probabilities = None
     if pads.cache.run_exists("probabilities"):
         pads.cache.run_get("probabilities")
@@ -156,7 +174,8 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
     if split_info is None:
         warning("No split information were found in the cache of the current run, "
                 "individual decision tracking might be missing Truth values, try to decorate you splitter!")
-        pads.cache.run_add(num, {'predictions': {str(i): {'predicted': result[i]} for i in range(len(result))}})
+        pads.cache.run_add(num,
+                           {'predictions': {str(i): {'predicted': predictions[i]} for i in range(len(predictions))}})
         if probabilities is not None:
             for i in pads.cache.run_get(num).get('predictions').keys():
                 pads.cache.run_get(num).get('predictions').get(str(i)).update(
@@ -164,7 +183,7 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
         if pads.cache.run_exists("targets"):
             try:
                 targets = pads.cache.run_get("targets")
-                if isinstance(targets, Iterable) and len(targets) == len(result):
+                if isinstance(targets, Iterable) and len(targets) == len(predictions):
                     for i in pads.cache.run_get(num).get('predictions').keys():
                         pads.cache.run_get(num).get('predictions').get(str(i)).update(
                             {'truth': targets[int(i)]})
@@ -173,7 +192,7 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
     else:
         try:
             for i, sample in enumerate(split_info.get('test')):
-                pads.cache.run_get(num).get('predictions').get(str(sample)).update({'predicted': result[i]})
+                pads.cache.run_get(num).get('predictions').get(str(sample)).update({'predicted': predictions[i]})
 
             if probabilities is not None:
                 for i, sample in enumerate(split_info.get('test')):
@@ -186,6 +205,28 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
     pads.api.log_mem_artifact(name, pads.cache.run_get(num), write_format=write_format)
 
     return result
+
+
+def torch_predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
+                      write_format=WriteFormats.text,
+                      **kwargs):
+    from pypads.base import get_current_pads
+    from pypadsext.base import PyPadrePads
+    pads: PyPadrePads = get_current_pads()
+
+    result = _pypads_callback(*args, **kwargs)
+
+    pads.cache.run_add("probabilities", result.data.numpy())
+    pads.cache.run_add("predictions", result.argmax(dim=1).data.numpy())
+
+    # call the predictions logging function
+    out = predictions(self, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
+                      _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback,
+                      write_format=write_format, **kwargs)
+    pads.cache.run_pop("probabilities")
+    pads.cache.run_pop("predictions")
+
+    return out
 
 
 def keras_probabilities(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
