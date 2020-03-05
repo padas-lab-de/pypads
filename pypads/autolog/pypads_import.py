@@ -1,4 +1,3 @@
-import importlib
 import inspect
 import sys
 import types
@@ -6,6 +5,7 @@ from functools import wraps
 from importlib._bootstrap_external import PathFinder
 from logging import warning, info, debug
 # noinspection PyUnresolvedReferences
+from multiprocessing import Value
 from types import ModuleType
 
 from pypads.autolog.mappings import AlgorithmMapping
@@ -137,7 +137,7 @@ def extend_import_module():
     sys.meta_path.insert(path_finder.pop(), PyPadsFinder())
 
 
-def activate_tracking(mod_globals=None):
+def activate_tracking(mod_globals=None, reload_modules=False):
     """
     Function to duck punch all objects defined in the mapping files. This should at best be called before importing
     any libraries.
@@ -154,26 +154,39 @@ def activate_tracking(mod_globals=None):
         # Try to punch if we already imported modules before starting to track
         from pypads.base import get_current_pads
 
-        # TODO cleanup the mapping reference rsplit checks
-        for i in set(mapping.reference.rsplit('.', 1)[0] for mapping in
-                     get_current_pads().mapping_registry.get_algorithms() if
-                     mapping.reference.rsplit('.', 1)[0] in sys.modules
-                     and mapping.reference.rsplit('.', 1)[0] not in punched_module):
-            spec = importlib.util.find_spec(i)
-            duck_punch_loader(spec)
-            loader = spec.loader
-            module = loader.load_module(i)
-            loader.exec_module(module)
-            sys.modules[i] = module
-            warning(i + " was imported before PyPads. PyPads has to be imported before importing tracked libraries."
-                        " Otherwise it can only try to wrap classes on global level.")
-            if mod_globals:
-                for k, l in mod_globals.items():
-                    if isinstance(l, ModuleType) and i in str(l):
-                        mod_globals[k] = module
-                    elif inspect.isclass(l) and i in str(l) and hasattr(module, l.__name__):
-                        if k not in mod_globals:
-                            warning(i + " was imported before PyPads, but couldn't be modified on globals.")
-                        else:
-                            info("Modded " + i + " after importing it. This might fail.")
-                            mod_globals[k] = getattr(module, l.__name__)
+        import sys
+        if reload_modules:
+            tmp_modules = sys.modules
+
+            # reimport modules
+            import importlib
+            for module in tmp_modules:
+                try:
+                    importlib.reload(module)
+                except:
+                    pass
+        else:
+            import importlib
+            # TODO cleanup the mapping reference rsplit checks
+            for i in set(mapping.reference.rsplit('.', 1)[0] for mapping in
+                         get_current_pads().mapping_registry.get_algorithms() if
+                         mapping.reference.rsplit('.', 1)[0] in sys.modules
+                         and mapping.reference.rsplit('.', 1)[0] not in punched_module):
+                spec = importlib.util.find_spec(i)
+                duck_punch_loader(spec)
+                loader = spec.loader
+                module = loader.load_module(i)
+                loader.exec_module(module)
+                sys.modules[i] = module
+                warning(i + " was imported before PyPads. PyPads has to be imported before importing tracked libraries."
+                            " Otherwise it can only try to wrap classes on global level.")
+                if mod_globals:
+                    for k, l in mod_globals.items():
+                        if isinstance(l, ModuleType) and i in str(l):
+                            mod_globals[k] = module
+                        elif inspect.isclass(l) and i in str(l) and hasattr(module, l.__name__):
+                            if k not in mod_globals:
+                                warning(i + " was imported before PyPads, but couldn't be modified on globals.")
+                            else:
+                                info("Modded " + i + " after importing it. This might fail.")
+                                mod_globals[k] = getattr(module, l.__name__)

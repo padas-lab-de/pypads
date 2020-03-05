@@ -2,7 +2,9 @@ import ast
 import glob
 import os
 from contextlib import contextmanager
+from functools import wraps
 from logging import warning, debug
+from multiprocessing import Process
 from os.path import expanduser
 from types import FunctionType
 from typing import List
@@ -17,9 +19,11 @@ from pypads.caches import PypadsCache, Cache
 from pypads.functions.logging import output, input, cpu, metric, log, log_init
 from pypads.functions.run_init import isystem, iram, icpu, idisk, ipid
 from pypads.logging_util import WriteFormats, try_write_artifact
-from pypads.mlflow.mlflow_autolog import autologgers
+from pypads.mlflow.mlflow_autolog import autologgers, _is_package_available
 from pypads.util import get_class_that_defined_method
 from pypads.validation.logging_functions import parameters
+
+current_pads = None
 
 
 class FunctionRegistry:
@@ -56,6 +60,82 @@ class FunctionRegistry:
         else:
             self.fns[name] = fn
 
+
+original_init_ = Process.__init__
+
+
+def punched_init_(self, group=None, target=None, name=None, args=(), kwargs={}):
+    if target:
+        run = mlflow.active_run()
+        if run:
+            @wraps(target)
+            def new_target(*args, _pypads=None, _pypads_active_run_id=None, _pypads_tracking_uri=None, **kwargs):
+                import mlflow
+                import pypads.base
+                pypads.base.current_pads = _pypads
+                mlflow.set_tracking_uri(_pypads_tracking_uri)
+                mlflow.start_run(run_id=_pypads_active_run_id)
+                from pypads.autolog.pypads_import import activate_tracking
+                activate_tracking(reload_modules=True)
+                out = target(*args, **kwargs)
+                return out
+
+            target = new_target
+            kwargs["_pypads"] = current_pads
+            kwargs["_pypads_active_run_id"] = run.info.run_id
+            kwargs["_pypads_tracking_uri"] = mlflow.get_tracking_uri()
+    return original_init_(*self, group=group, target=target, name=name, args=args, kwargs=kwargs)
+
+
+Process.__init__ = punched_init_
+
+if _is_package_available("joblib"):
+    import joblib
+
+    original_delayed = joblib.delayed
+
+
+    def punched_delayed(function, check_pickle=None):
+        """Decorator used to capture the arguments of a function."""
+        if check_pickle is not None:
+            import warnings
+            warnings.warn('check_pickle is deprecated in joblib 0.12 and will be'
+                          ' removed in 0.13', DeprecationWarning)
+        # Try to pickle the input function, to catch the problems early when
+        # using with multiprocessing:
+        if check_pickle:
+            from pickle import dumps
+            dumps(function)
+
+        @wraps(function)
+        def wrapped_function(*args, _pypads=None, _pypads_active_run_id=None, _pypads_tracking_uri=None, **kwargs):
+            import mlflow
+            import pypads.base
+            pypads.base.current_pads = _pypads
+            mlflow.set_tracking_uri(_pypads_tracking_uri)
+            mlflow.start_run(run_id=_pypads_active_run_id, nested=True)
+            from pypads.autolog.pypads_import import activate_tracking
+            activate_tracking(reload_modules=True)
+            out = function(*args, **kwargs)
+            return out
+
+        def delayed_function(*args, **kwargs):
+            run = mlflow.active_run()
+            if run:
+                kwargs["_pypads"] = current_pads
+                kwargs["_pypads_active_run_id"] = run.info.run_id
+                kwargs["_pypads_tracking_uri"] = mlflow.get_tracking_uri()
+            return wrapped_function, args, kwargs
+
+        try:
+            import functools
+            delayed_function = functools.wraps(function)(delayed_function)
+        except AttributeError:
+            " functools.wraps fails on some callable objects "
+        return delayed_function
+
+
+    setattr(joblib, "delayed", punched_delayed)
 
 # --- Pypads App ---
 
@@ -258,9 +338,6 @@ class PypadsDecorators:
         return track_decorator
 
 
-current_pads = None
-
-
 class PyPads:
     """
     PyPads app. Enable automatic logging for all libs in mapping files.
@@ -269,7 +346,7 @@ class PyPads:
 
     def __init__(self, uri=None, name=None, mapping_paths=None, mapping=None, init_run_fns=None,
                  include_default_mappings=True,
-                 logging_fns=None, config=None, mod_globals=None):
+                 logging_fns=None, config=None, mod_globals=None, reload_modules=False):
         """
         TODO
         :param uri:
@@ -278,6 +355,9 @@ class PyPads:
         :param config:
         :param mod_globals:
         """
+
+        global current_pads
+        current_pads = self
 
         if mapping_paths is None:
             mapping_paths = []
@@ -294,11 +374,8 @@ class PyPads:
         self._function_registry = FunctionRegistry(logging_fns or DEFAULT_LOGGING_FNS)
         self._init_mapping_registry(*mapping_paths, mapping=mapping, include_defaults=include_default_mappings)
 
-        global current_pads
-        current_pads = self
-
         from pypads.autolog.pypads_import import activate_tracking
-        activate_tracking(mod_globals=mod_globals)
+        activate_tracking(mod_globals=mod_globals, reload_modules=reload_modules)
 
     def _init_mlflow_backend(self, uri=None, name=None, config=None):
         """
@@ -422,8 +499,17 @@ def get_current_pads() -> PyPads:
     """
     global current_pads
     if not current_pads:
-        warning("PyPads has to be initialized before logging can be used. Initializing for your with default values.")
-        PyPads()
+        # Try to reload pads if it was already defined in the active run
+        config = get_current_config()
+
+        if config:
+            warning(
+                "PyPads seems to be missing on given run with saved configuration. Reinitializing.")
+            PyPads(config=config, reload_modules=True)
+        else:
+            warning(
+                "PyPads has to be initialized before logging can be used. Initializing for your with default values.")
+            PyPads(reload_modules=True)
     return current_pads
 
 
@@ -445,7 +531,7 @@ mlflow.end_run = end_run
 # !--- Clean the config cache after run ---
 
 
-def get_current_config():
+def get_current_config(default=None):
     """
     Get configuration defined in the current mlflow run
     :return:
@@ -454,9 +540,10 @@ def get_current_config():
     active_run = mlflow.active_run()
     if active_run in configs.keys():
         return configs[active_run]
-    pads = get_current_pads()
-    run = pads.mlf.get_run(active_run.info.run_id)
+    if not active_run:
+        return default
+    run = mlflow.get_run(active_run.info.run_id)
     if CONFIG_NAME in run.data.tags:
         configs[active_run] = ast.literal_eval(run.data.tags[CONFIG_NAME])
         return configs[active_run]
-    return {"events": {}, "recursive": True}
+    return default
