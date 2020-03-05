@@ -41,6 +41,28 @@
       "name": "sklearn cross validation",
       "other_names": [],
       "implementation": {
+        "scikit-learn": "sklearn.model_selection._search.BaseSearchCV"
+      },
+      "hooks": {
+        "pypads_param_search": [
+          "fit"
+        ]
+      }
+    },
+    {
+      "name": "sklearn cross validation",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.model_selection._validation._fit_and_score"
+      },
+      "hooks": {
+        "pypads_param_search_exec": "always"
+      }
+    },
+    {
+      "name": "sklearn cross validation",
+      "other_names": [],
+      "implementation": {
         "scikit-learn": "sklearn.model_selection._split.BaseCrossValidator"
       },
       "hooks": {
@@ -65,6 +87,42 @@
       "name": "base sklearn estimator",
       "other_names": [],
       "implementation": {
+        "scikit-learn": "sklearn.base.RegressorMixin"
+      },
+      "hooks": {
+        "pypads_metric": [
+          "score"
+        ]
+      }
+    },
+    {
+      "name": "base sklearn estimator",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.base.ClassifierMixin"
+      },
+      "hooks": {
+        "pypads_metric": [
+          "score"
+        ]
+      }
+    },
+    {
+      "name": "base sklearn estimator",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.base.DensityMixin"
+      },
+      "hooks": {
+        "pypads_metric": [
+          "score"
+        ]
+      }
+    },
+    {
+      "name": "base sklearn estimator",
+      "other_names": [],
+      "implementation": {
         "scikit-learn": "sklearn.base.BaseEstimator"
       },
       "hooks": {
@@ -80,9 +138,6 @@
         "pypads_transform": [
           "fit_transform",
           "transform"
-        ],
-        "pypads_metric": [
-          "score"
         ]
       }
     }
