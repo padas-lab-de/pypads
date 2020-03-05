@@ -48,10 +48,12 @@ def make_hook_applicable_filter(hook, ctx, mapping):
                         error("Recursion error on '" + str(
                             ctx) + "'. This might be because __get_attr__ is being wrapped. " + str(re))
                 else:
-                    debug("Tried to wrap pypads function '" + name + "' on '" + str(ctx) + "'. Omit logging.")
+                    pass
+                    # debug("Tried to wrap pypads function '" + name + "' on '" + str(ctx) + "'. Omit logging.")
             else:
-                debug(
-                    "Tried to wrap non-constructor native function '" + name + "' on '" + str(ctx) + "'. Omit logging.")
+                pass
+                # debug(
+                #     "Tried to wrap non-constructor native function '" + name + "' on '" + str(ctx) + "'. Omit logging.")
         else:
             warning("Can't access attribute '" + str(name) + "' on '" + str(ctx) + "'. Skipping.")
         return False
@@ -230,29 +232,32 @@ def _wrapped_inner_function(ctx, *args, _pypads_hooked_fn, _pypads_hook_params, 
 
         # retry on failure
         global retry_cache
-        if _get_current_config()["retry_on_fail"]:
+        if e.args[0] not in retry_cache:
+            retry_cache.add(e.args[0])
+
+            from pypads.base import get_current_pads
+            pads = get_current_pads()
+
+            if _get_current_config()["retry_on_fail"]:
             # TODO check tracking stack
-            if e.args[0] not in retry_cache:
                 exception("Tracking failed for " + str(_pypads_callback) + " with: " + str(e))
                 original_fn = _get_original(_pypads_callback.__name__, _pypads_context)
                 if original_fn and not original_fn == _pypads_callback:
                     # TODO maybe retry only if the exception wasn't raised in the original function
                     error("Retrying normal call. " + str(original_fn))
                     mlflow.set_tag("pypads_retry", True)
-                    retry_cache.add(e.args[0])
                     out = original_fn(*args, **kwargs)
                     retry_cache.remove(e.args[0])
                     return out
 
-        from pypads.base import get_current_pads
-        pads = get_current_pads()
-        if _get_current_config()["log_on_failure"] and pads.cache.run_exists("stdout"):
-            pads.api.log_mem_artifact("stdout.txt", pads.cache.run_get("stdout"))
+            if _get_current_config()["log_on_failure"] and pads.cache.run_exists("stdout"):
+                pads.api.log_mem_artifact("stdout.txt", pads.cache.run_get("stdout"))
 
         # clear cache
         debug("Cleared cache entry for " + str(_pypads_wrappe) + " because of exception: " + str(e))
         if ctx is not None:
-            getattr(ctx, "_pypads_active_calls").remove(_pypads_hooked_fn)
+            if hasattr(ctx, "_pypads_active_calls"):
+                getattr(ctx, "_pypads_active_calls").remove(_pypads_hooked_fn)
 
         raise e
 
@@ -544,4 +549,4 @@ def wrap_function(fn, ctx, mapping):
 
 def _get_current_config():
     from pypads.base import get_current_config
-    return get_current_config()
+    return get_current_config(default={"events": {}, "recursive": True})

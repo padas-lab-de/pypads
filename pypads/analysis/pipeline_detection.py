@@ -102,10 +102,17 @@ def _to_node_label(mapping, ctx, wrappe, ref):
         try:
             return str(ref)
         except Exception as e:
-            warning(
-                "Couldn't get str representation for given ref of type " + str(type(ref)) + ". Falling back to " + str(
-                    wrappe) + " and id or ref " + str(id(ref)))
-            return str(wrappe) + str(id(ref))
+            try:
+                warning(str(e))
+                warning(
+                    "Couldn't get str representation for given ref of type " + str(
+                        type(ref)) + ". Falling back to " + str(
+                        wrappe) + " and id or ref " + str(id(ref)))
+                return str(wrappe) + str(id(ref))
+            except Exception as e:
+                warning(str(e))
+                warning("Couldn't get fallback string. Fallback to id " + str(id(ref)))
+                return str(id(ref))
     else:
         return str(wrappe)
 

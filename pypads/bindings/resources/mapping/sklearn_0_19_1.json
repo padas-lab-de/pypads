@@ -28,20 +28,131 @@
   },
   "algorithms": [
     {
+      "name": "base sklearn estimator",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.base.BaseEstimator"
+      },
+      "hooks": {
+        "pypads_fit": [
+          "fit",
+          "fit_predict",
+          "fit_transform"
+        ],
+        "pypads_predict": [
+          "fit_predict",
+          "predict"
+        ],
+        "pypads_transform": [
+          "fit_transform",
+          "transform"
+        ]
+      }
+    },
+    {
       "name": "sklearn classification metrics",
       "other_names": [],
       "implementation": {
         "scikit-learn": "sklearn.metrics.classification"
       },
       "hooks": {
-        "pypads_metric": "always"
+        "pypads_metric": [
+          ".*"
+        ]
+      }
+    },
+    {
+      "name": "sklearn datasets",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.datasets"
+      },
+      "hooks": {
+        "pypads_dataset": [
+          "load*"
+        ]
+      }
+    },
+    {
+      "name": "sklearn cross validation",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.model_selection._search.BaseSearchCV"
+      },
+      "hooks": {
+        "pypads_param_search": [
+          "fit"
+        ]
+      }
+    },
+    {
+      "name": "sklearn cross validation",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.model_selection._validation._fit_and_score"
+      },
+      "hooks": {
+        "pypads_param_search_exec": "always"
+      }
+    },
+    {
+      "name": "sklearn cross validation",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.model_selection._split.BaseCrossValidator"
+      },
+      "hooks": {
+        "pypads_split": [
+          "split"
+        ]
+      }
+    },
+    {
+      "name": "sklearn shuffle split",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.model_selection._split.BaseShuffleSplit"
+      },
+      "hooks": {
+        "pypads_split": [
+          "split"
+        ]
       }
     },
     {
       "name": "base sklearn estimator",
       "other_names": [],
       "implementation": {
-        "scikit-learn": "sklearn.base.BaseEstimator"
+        "scikit-learn": "sklearn.base.RegressorMixin"
+      },
+      "hooks": {
+        "pypads_metric": [
+          "score"
+        ]
+      }
+    },
+    {
+      "name": "base sklearn estimator",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.base.ClassifierMixin"
+      },
+      "hooks": {
+        "pypads_metric": [
+          "score"
+        ]
+      }
+    },
+    {
+      "name": "base sklearn estimator",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "sklearn.base.DensityMixin"
+      },
+      "hooks": {
+        "pypads_metric": [
+          "score"
+        ]
       }
     },
     {
