@@ -1,6 +1,8 @@
 import ast
 import glob
+import io
 import os
+import pickle
 from contextlib import contextmanager
 from functools import wraps
 from logging import warning, debug
@@ -61,6 +63,13 @@ class FunctionRegistry:
             self.fns[name] = fn
 
 
+def _parameter_pickle(args, kwargs):
+    with io.BytesIO() as file:
+        pickle.dump((args, kwargs), file)
+        file.seek(0)
+        return file.read()
+
+
 original_init_ = Process.__init__
 
 
@@ -76,7 +85,7 @@ def punched_init_(self, group=None, target=None, name=None, args=(), kwargs={}):
                 mlflow.set_tracking_uri(_pypads_tracking_uri)
                 mlflow.start_run(run_id=_pypads_active_run_id)
                 from pypads.autolog.pypads_import import activate_tracking
-                activate_tracking(reload_modules=True)
+                activate_tracking(reload_modules=False)
                 out = target(*args, **kwargs)
                 return out
 
@@ -95,36 +104,39 @@ if _is_package_available("joblib"):
     original_delayed = joblib.delayed
 
 
-    def punched_delayed(function, check_pickle=None):
+    def punched_delayed(function):
         """Decorator used to capture the arguments of a function."""
-        if check_pickle is not None:
-            import warnings
-            warnings.warn('check_pickle is deprecated in joblib 0.12 and will be'
-                          ' removed in 0.13', DeprecationWarning)
-        # Try to pickle the input function, to catch the problems early when
-        # using with multiprocessing:
-        if check_pickle:
-            from pickle import dumps
-            dumps(function)
 
         @wraps(function)
         def wrapped_function(*args, _pypads=None, _pypads_active_run_id=None, _pypads_tracking_uri=None, **kwargs):
-            import mlflow
-            import pypads.base
-            pypads.base.current_pads = _pypads
-            mlflow.set_tracking_uri(_pypads_tracking_uri)
-            mlflow.start_run(run_id=_pypads_active_run_id, nested=True)
-            from pypads.autolog.pypads_import import activate_tracking
-            activate_tracking(reload_modules=True)
+            if _pypads:
+                # noinspection PyUnresolvedReferences
+                import pypads.base
+                if not pypads.base.current_pads:
+                    import pypads
+                    pypads.base.current_pads = _pypads
+                    import mlflow
+                    mlflow.set_tracking_uri(_pypads_tracking_uri)
+                    mlflow.start_run(run_id=_pypads_active_run_id, nested=True)
+                    from pypads.autolog.pypads_import import activate_tracking
+                    activate_tracking(reload_modules=False)
+
+                import pickle
+                a, b = pickle.loads(args[0])
+
+                args = a
+                kwargs = b
+
             out = function(*args, **kwargs)
             return out
 
         def delayed_function(*args, **kwargs):
             run = mlflow.active_run()
             if run:
-                kwargs["_pypads"] = current_pads
-                kwargs["_pypads_active_run_id"] = run.info.run_id
-                kwargs["_pypads_tracking_uri"] = mlflow.get_tracking_uri()
+                pickled_params = (_parameter_pickle(args, kwargs),)
+                kwargs = {"_pypads": current_pads, "_pypads_active_run_id": run.info.run_id,
+                          "_pypads_tracking_uri": mlflow.get_tracking_uri()}
+                args = pickled_params
             return wrapped_function, args, kwargs
 
         try:
@@ -346,7 +358,7 @@ class PyPads:
 
     def __init__(self, uri=None, name=None, mapping_paths=None, mapping=None, init_run_fns=None,
                  include_default_mappings=True,
-                 logging_fns=None, config=None, mod_globals=None, reload_modules=False):
+                 logging_fns=None, config=None, reload_modules=False):
         """
         TODO
         :param uri:
@@ -375,7 +387,7 @@ class PyPads:
         self._init_mapping_registry(*mapping_paths, mapping=mapping, include_defaults=include_default_mappings)
 
         from pypads.autolog.pypads_import import activate_tracking
-        activate_tracking(mod_globals=mod_globals, reload_modules=reload_modules)
+        activate_tracking(reload_modules=reload_modules)
 
     def _init_mlflow_backend(self, uri=None, name=None, config=None):
         """

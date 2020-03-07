@@ -175,8 +175,7 @@ class MappingRegistry:
             name = os.path.basename(json_file.name)
             info("Added mapping file with name: " + str(name))
             content = json.load(json_file)
-            mapping_file = MappingFile(name, json=content)
-            self._mappings[mapping_file.lib] = mapping_file
+            self.add_mapping(MappingFile(name, json=content))
 
     def add_found_class(self, mapping):
         if mapping.reference not in self.found_classes:

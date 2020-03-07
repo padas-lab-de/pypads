@@ -3,10 +3,9 @@ import sys
 import types
 from functools import wraps
 from importlib._bootstrap_external import PathFinder
-from logging import warning, info, debug
+from logging import warning, debug
 # noinspection PyUnresolvedReferences
 from multiprocessing import Value
-from types import ModuleType
 
 from pypads.autolog.mappings import AlgorithmMapping
 from pypads.autolog.wrapping import wrap_module, wrap_class, wrap_function, punched_classes, punched_module
@@ -32,6 +31,9 @@ def _add_inherited_mapping(clazz, super_class):
 
 
 def duck_punch_loader(spec):
+    if not spec.loader:
+        return spec
+
     original_exec = spec.loader.exec_module
 
     @wraps(original_exec)
@@ -117,7 +119,7 @@ class PyPadsFinder(PathFinder):
                         spec = importer.find_spec(fullname, path)
 
                 # Use the importer as a real importer but wrap it in the PyPadsLoader
-                if spec and importer:
+                if spec and importer and spec.loader:
                     return duck_punch_loader(spec)
             except StopIteration:
                 pass
@@ -137,7 +139,7 @@ def extend_import_module():
     sys.meta_path.insert(path_finder.pop(), PyPadsFinder())
 
 
-def activate_tracking(mod_globals=None, reload_modules=False):
+def activate_tracking(reload_modules=False):
     """
     Function to duck punch all objects defined in the mapping files. This should at best be called before importing
     any libraries.
@@ -146,7 +148,6 @@ def activate_tracking(mod_globals=None, reload_modules=False):
     """
     global active
     if not active:
-        active = True
 
         # Add our loader to the meta_path
         extend_import_module()
@@ -156,37 +157,28 @@ def activate_tracking(mod_globals=None, reload_modules=False):
 
         import sys
         if reload_modules:
-            tmp_modules = sys.modules
-
-            # reimport modules
+            # TODO This might break. See inheritance of DummyClasses in test_classes
             import importlib
-            for module in tmp_modules:
-                try:
-                    importlib.reload(module)
-                except:
-                    pass
+            loaded_modules = [(name, module) for name, module in sys.modules.items()]
+
+            for name, module in loaded_modules:
+                if name.startswith("sklearn") or name.startswith("test_classes"):
+                    try:
+                        spec = importlib.util.find_spec(module.__name__)
+                        duck_punch_loader(spec)
+                        loader = spec.loader
+                        module = loader.load_module(module.__name__)
+                        loader.exec_module(module)
+                        importlib.reload(module)
+                    except Exception as e:
+                        debug("Couldn't reload module " + str(e))
         else:
             import importlib
-            # TODO cleanup the mapping reference rsplit checks
             for i in set(mapping.reference.rsplit('.', 1)[0] for mapping in
                          get_current_pads().mapping_registry.get_algorithms() if
                          mapping.reference.rsplit('.', 1)[0] in sys.modules
                          and mapping.reference.rsplit('.', 1)[0] not in punched_module):
-                spec = importlib.util.find_spec(i)
-                duck_punch_loader(spec)
-                loader = spec.loader
-                module = loader.load_module(i)
-                loader.exec_module(module)
-                sys.modules[i] = module
-                warning(i + " was imported before PyPads. PyPads has to be imported before importing tracked libraries."
-                            " Otherwise it can only try to wrap classes on global level.")
-                if mod_globals:
-                    for k, l in mod_globals.items():
-                        if isinstance(l, ModuleType) and i in str(l):
-                            mod_globals[k] = module
-                        elif inspect.isclass(l) and i in str(l) and hasattr(module, l.__name__):
-                            if k not in mod_globals:
-                                warning(i + " was imported before PyPads, but couldn't be modified on globals.")
-                            else:
-                                info("Modded " + i + " after importing it. This might fail.")
-                                mod_globals[k] = getattr(module, l.__name__)
+                warning(
+                    i + " was imported before PyPads. To enable tracking import PyPads before or use reload_modules. Every already created instance is not tracked.")
+
+        active = True
