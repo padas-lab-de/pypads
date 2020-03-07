@@ -535,7 +535,7 @@ def wrap_function(fn, ctx, mapping):
             if len(hooks) > 0:
                 return wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=ctx)
         else:
-            warning(ctx + " is no class or module. Couldn't access " + fn_name + " on it.")
+            warning(str(ctx) + " is no class or module. Couldn't access " + fn_name + " on it.")
     else:
         class DummyClass:
             pass
