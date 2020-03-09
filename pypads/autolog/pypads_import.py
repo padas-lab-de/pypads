@@ -3,12 +3,12 @@ import sys
 import types
 from functools import wraps
 from importlib._bootstrap_external import PathFinder
-from logging import warning, debug
+from logging import debug
 # noinspection PyUnresolvedReferences
 from multiprocessing import Value
 
 from pypads.autolog.mappings import AlgorithmMapping
-from pypads.autolog.wrapping import wrap_module, wrap_class, wrap_function, punched_classes, punched_module
+from pypads.autolog.wrapping import wrap_module, wrap_class, wrap_function, punched_classes
 
 
 def _add_found_class(mapping):
@@ -125,10 +125,6 @@ class PyPadsFinder(PathFinder):
                 pass
 
 
-active = False
-is_recursive = False
-
-
 def extend_import_module():
     """
     Function to add the custom import logic to the python importlib execution
@@ -137,48 +133,3 @@ def extend_import_module():
     path_finder = [i for i in range(len(sys.meta_path)) if
                    "_frozen_importlib_external.PathFinder" in str(sys.meta_path[i])]
     sys.meta_path.insert(path_finder.pop(), PyPadsFinder())
-
-
-def activate_tracking(reload_modules=False):
-    """
-    Function to duck punch all objects defined in the mapping files. This should at best be called before importing
-    any libraries.
-    :param mod_globals: globals() object used to duckpunch already loaded classes
-    :return:
-    """
-    global active
-    if not active:
-
-        # Add our loader to the meta_path
-        extend_import_module()
-
-        # Try to punch if we already imported modules before starting to track
-        from pypads.base import get_current_pads
-
-        import sys
-        if reload_modules:
-            # TODO This might break. See inheritance of DummyClasses in test_classes
-            import importlib
-            loaded_modules = [(name, module) for name, module in sys.modules.items()]
-
-            for name, module in loaded_modules:
-                if name.startswith("sklearn") or name.startswith("test_classes"):
-                    try:
-                        spec = importlib.util.find_spec(module.__name__)
-                        duck_punch_loader(spec)
-                        loader = spec.loader
-                        module = loader.load_module(module.__name__)
-                        loader.exec_module(module)
-                        importlib.reload(module)
-                    except Exception as e:
-                        debug("Couldn't reload module " + str(e))
-        else:
-            import importlib
-            for i in set(mapping.reference.rsplit('.', 1)[0] for mapping in
-                         get_current_pads().mapping_registry.get_algorithms() if
-                         mapping.reference.rsplit('.', 1)[0] in sys.modules
-                         and mapping.reference.rsplit('.', 1)[0] not in punched_module):
-                warning(
-                    i + " was imported before PyPads. To enable tracking import PyPads before or use reload_modules. Every already created instance is not tracked.")
-
-        active = True

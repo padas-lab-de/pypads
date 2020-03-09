@@ -125,7 +125,15 @@ class MappingCollection:
 class MappingFile(MappingCollection):
 
     def __init__(self, name, json):
-        super().__init__(name, json['default_hooks'], json["algorithms"])
+        super().__init__(name, json['default_hooks'] if 'default_hooks' in json else {
+            "modules": {
+                "fns": {}
+            },
+            "classes": {
+                "fns": {}
+            },
+            "fns": {}
+        }, json["algorithms"] if 'algorithms' in json else [])
         self._lib = json['metadata']['library']
         self._lib_version = json['metadata']['library_version']
         self._version = json['metadata']['mapping_version']
