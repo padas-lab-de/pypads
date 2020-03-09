@@ -20,8 +20,20 @@
         "torch": "torch.optim.optimizer.Optimizer"
       },
       "hooks": {
-        "pypads_fit": [
+        "pypads_grad": [
           "step"
+        ]
+      }
+    },
+    {
+      "name": "base torch parameter",
+      "other_names": [],
+      "implementation": {
+        "torch": "torch.nn.parameter.Parameter"
+      },
+      "hooks": {
+        "pypads_grad": [
+          "backward"
         ]
       }
     },
@@ -41,7 +53,7 @@
       "name": "torch dataloader",
       "other_names": [],
       "implementation": {
-        "torch": "torch.utils.data.DataLoader"
+        "torch": "torch.utils.data.dataLoader.DataLoader"
       },
       "hooks": {
         "pypads_split": [
@@ -50,10 +62,10 @@
       }
     },
     {
-      "name": "Sequential torch model",
+      "name": "Base torch module",
       "other_names": [],
       "implementation": {
-        "torch": "torch.nn.modules.module.Module"
+        "torch": "torch.nn.modules.container.Sequential"
       },
       "hooks": {
         "pypads_predict": [
@@ -62,14 +74,14 @@
       }
     },
     {
-      "name": "torch loss",
+      "name": "torch loss functions",
       "other_names": [],
       "implementation": {
-        "torch": "torch.nn.functional"
+        "torch": "torch.nn.modules.loss._Loss"
       },
       "hooks": {
         "pypads_metric": [
-          "*_loss"
+          "forward"
         ]
       }
     }

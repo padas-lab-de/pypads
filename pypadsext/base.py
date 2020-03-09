@@ -8,8 +8,7 @@ from pypadsext.analysis.parameter_search import parameter_search_executor, param
 from pypadsext.concepts.splitter import default_split
 from pypadsext.concepts.util import _create_ctx
 from pypadsext.functions.logging import dataset, predictions, split, hyperparameters, keras_probabilities, \
-    sklearn_probabilities, torch_metric
-from pypadsext.functions.management.randomness import set_random_seed
+    sklearn_probabilities, torch_metric, torch_predictions
 from pypadsext.functions.run_init import git_meta
 from pypadsext.util import get_class_that_defined_method
 
@@ -23,11 +22,12 @@ DEFAULT_PYPADRE_LOGGING_FNS = {
     "predictions": predictions,
     "parameter_search": parameter_search,
     "parameter_search_executor": parameter_search_executor,
-    ("predictions", "keras"): keras_probabilities,
-    ("predictions", "scikit-learn"): sklearn_probabilities,
     "splits": split,
     "hyperparameters": hyperparameters,
     "doc": doc,
+    ("predictions", "keras"): keras_probabilities,
+    ("predictions", "scikit-learn"): sklearn_probabilities,
+    ("predictions", "torch"): torch_predictions,
     ("metric", "torch"): torch_metric
 }
 
@@ -44,7 +44,7 @@ DEFAULT_PYPADRE_CONFIG = {"events": {
     "parameter_search": {"on": ["pypads_param_search"]},
     "parameter_search_executor": {"on": ["pypads_param_search_exec"]},
     "doc": {"on": ["pypads_init", "pypads_dataset", "pypads_fit", "pypads_transform", "pypads_predict"]},
-    "metric": {"on": ["pypads_metric"], "with": {"artifact_fallback": True}}
+    "metric": {"on": ["pypads_metric", "pypads_grad"], "with": {"artifact_fallback": True}}
 },
     "mirror_git": True
 }
@@ -65,6 +65,7 @@ class PyPadrePadsActuators:
         self._pypads = pypads
 
     def set_random_seed(self, seed=None):
+        from pypadsext.functions.management.randomness import set_random_seed
         # Set seed if needed
         if seed is None:
             import random
@@ -142,7 +143,7 @@ class PyPadrePadsDecorators(PypadsDecorators):
 
 class PyPadrePads(PyPads):
     def __init__(self, *args, config=None, logging_fns=None, init_run_fns=None, remote_provider=None, **kwargs):
-        config = config or util.dict_merge(DEFAULT_CONFIG, DEFAULT_PYPADRE_CONFIG)
+        config = config or util.dict_merge(DEFAULT_PYPADRE_CONFIG, DEFAULT_CONFIG)
         run_init = init_run_fns or DEFAULT_INIT_RUN_FNS + DEFAULT_PYPADRE_INIT_RUN_FNS
         logging_fns = logging_fns or util.dict_merge(DEFAULT_LOGGING_FNS, DEFAULT_PYPADRE_LOGGING_FNS)
 
