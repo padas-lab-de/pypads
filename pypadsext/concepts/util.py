@@ -88,7 +88,7 @@ def get_by_tag(tag=None, value=None, experiment_id=None):
         if tag:
             tags = run.data.tags
             if value:
-                if tags[tag] == value:
+                if tag in tags and tags[tag] == value:
                     selection.append(run)
             else:
                 selection.append(run)
