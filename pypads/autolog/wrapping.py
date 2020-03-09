@@ -7,7 +7,7 @@ from boltons.funcutils import wraps
 
 from pypads.autolog.mappings import AlgorithmMapping
 
-punched_module = set()
+punched_module_names = set()
 punched_classes = set()
 
 # stack of calls to a tracked class
@@ -69,7 +69,7 @@ def wrap_module(module, mapping: AlgorithmMapping):
     :return:
     """
     if not hasattr(module, "_pypads_wrapped"):
-        punched_module.add(module)
+        punched_module_names.add(module.__name__)
         if not mapping.hooks:
             mapping.hooks = mapping.in_collection.get_default_module_hooks()
 
@@ -99,6 +99,8 @@ def wrap_class(clazz, ctx, mapping):
     :return:
     """
     if clazz not in punched_classes:
+        if hasattr(clazz, "__module__"):
+            punched_module_names.add(clazz.__module__)
         if not mapping.hooks:
             mapping.hooks = mapping.in_collection.get_default_class_hooks()
 
@@ -237,8 +239,9 @@ def _wrapped_inner_function(ctx, *args, _pypads_hooked_fn, _pypads_hook_params, 
 
             from pypads.base import get_current_pads
             pads = get_current_pads()
+            config = _get_current_config()
 
-            if _get_current_config()["retry_on_fail"]:
+            if "retry_on_fail" in config and config["retry_on_fail"]:
             # TODO check tracking stack
                 exception("Tracking failed for " + str(_pypads_callback) + " with: " + str(e))
                 original_fn = _get_original(_pypads_callback.__name__, _pypads_context)
@@ -250,7 +253,7 @@ def _wrapped_inner_function(ctx, *args, _pypads_hooked_fn, _pypads_hook_params, 
                     retry_cache.remove(e.args[0])
                     return out
 
-            if _get_current_config()["log_on_failure"] and pads.cache.run_exists("stdout"):
+            if "log_on_failure" in config and config["log_on_failure"] and pads.cache.run_exists("stdout"):
                 pads.api.log_mem_artifact("stdout.txt", pads.cache.run_get("stdout"))
 
         # clear cache
@@ -472,6 +475,8 @@ def wrap_function(fn, ctx, mapping):
         fn_name = fn
     if ctx is not None:
         if inspect.isclass(ctx):
+            if hasattr(ctx, "__module__"):
+                punched_module_names.add(ctx.__module__)
             defining_class = None
             if not hasattr(ctx, "__dict__") or fn_name not in ctx.__dict__:
                 try:
@@ -489,6 +494,8 @@ def wrap_function(fn, ctx, mapping):
                 defining_class = ctx
 
             if defining_class:
+                if hasattr(defining_class, "__module__"):
+                    punched_module_names.add(defining_class.__module__)
 
                 fn = None
                 try:
@@ -527,6 +534,8 @@ def wrap_function(fn, ctx, mapping):
                     return wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=ctx,
                                               fn_type=function_type)
         elif hasattr(ctx, fn_name):
+            if hasattr(ctx, "__module__"):
+                punched_module_names.add(ctx.__name__)
             if hasattr(ctx, _to_original_name(fn_name, ctx)):
                 fn = getattr(ctx, _to_original_name(fn_name, ctx))
             else:
@@ -535,12 +544,15 @@ def wrap_function(fn, ctx, mapping):
             if len(hooks) > 0:
                 return wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=ctx)
         else:
-            warning(str(ctx) + " is no class or module. Couldn't access " + fn_name + " on it.")
+            warning(str(
+                ctx) + " is no class and doesn't provide attribute with fn_name. Couldn't access " + fn_name + " on it.")
     else:
         class DummyClass:
             pass
 
         setattr(DummyClass, _to_original_name(fn.__name__, ctx), fn)
+
+        # TODO what about punched_module_names
 
         hooks = _get_hooked_fns(fn, mapping)
         return wrap_method_helper(fn=fn, hooks=hooks, mapping=mapping, ctx=DummyClass)

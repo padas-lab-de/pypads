@@ -6,7 +6,6 @@ import pickle
 from contextlib import contextmanager
 from functools import wraps
 from logging import warning, debug
-from multiprocessing import Process
 from os.path import expanduser
 from types import FunctionType
 from typing import List
@@ -18,7 +17,7 @@ from pypads.analysis.pipeline_detection import pipeline
 from pypads.autolog.hook import Hook
 from pypads.autolog.mappings import AlgorithmMapping, MappingRegistry, AlgorithmMeta
 from pypads.autolog.pypads_import import extend_import_module, duck_punch_loader
-from pypads.autolog.wrapping import punched_module
+from pypads.autolog.wrapping import punched_module_names
 from pypads.caches import PypadsCache, Cache
 from pypads.functions.logging import output, input, cpu, metric, log, log_init
 from pypads.functions.run_init import isystem, iram, icpu, idisk, ipid
@@ -78,35 +77,36 @@ def _parameter_cloudpickle(args, kwargs):
     return dumps((args, kwargs))
 
 
-original_init_ = Process.__init__
-
-
-def punched_init_(self, group=None, target=None, name=None, args=(), kwargs={}):
-    if target:
-        run = mlflow.active_run()
-        if run:
-            @wraps(target)
-            def new_target(*args, _pypads=None, _pypads_active_run_id=None, _pypads_tracking_uri=None, **kwargs):
-                import mlflow
-                import pypads.base
-                pypads.base.current_pads = _pypads
-                mlflow.set_tracking_uri(_pypads_tracking_uri)
-                mlflow.start_run(run_id=_pypads_active_run_id)
-                _pypads.activate_tracking(reload_warnings=False)
-                out = target(*args, **kwargs)
-                # TODO find other way to not close run after process finishes
-                if len(mlflow.tracking.fluent._active_run_stack) > 0:
-                    mlflow.tracking.fluent._active_run_stack.pop()
-                return out
-
-            target = new_target
-            kwargs["_pypads"] = current_pads
-            kwargs["_pypads_active_run_id"] = run.info.run_id
-            kwargs["_pypads_tracking_uri"] = mlflow.get_tracking_uri()
-    return original_init_(*self, group=group, target=target, name=name, args=args, kwargs=kwargs)
-
-
-Process.__init__ = punched_init_
+# original_init_ = Process.__init__
+#
+#
+# def punched_init_(self, group=None, target=None, name=None, args=(), kwargs={}):
+#     if target:
+#         run = mlflow.active_run()
+#         if run:
+#             @wraps(target)
+#             def new_target(*args, _pypads=None, _pypads_active_run_id=None, _pypads_tracking_uri=None, _pypads_affected_modules=None, **kwargs):
+#                 import mlflow
+#                 import pypads.base
+#                 pypads.base.current_pads = _pypads
+#                 mlflow.set_tracking_uri(_pypads_tracking_uri)
+#                 mlflow.start_run(run_id=_pypads_active_run_id)
+#                 _pypads.activate_tracking(reload_warnings=False, affected_modules=_pypads_affected_modules, clear_imports=True)
+#                 out = target(*args, **kwargs)
+#                 # TODO find other way to not close run after process finishes
+#                 if len(mlflow.tracking.fluent._active_run_stack) > 0:
+#                     mlflow.tracking.fluent._active_run_stack.pop()
+#                 return out
+#
+#             target = new_target
+#             kwargs["_pypads"] = current_pads
+#             kwargs["_pypads_active_run_id"] = run.info.run_id
+#             kwargs["_pypads_tracking_uri"] = mlflow.get_tracking_uri()
+#             kwargs["_pypads_affected_modules"] = punched_module_names
+#     return original_init_(*self, group=group, target=target, name=name, args=args, kwargs=kwargs)
+#
+#
+# Process.__init__ = punched_init_
 
 if _is_package_available("joblib"):
     import joblib
@@ -118,18 +118,35 @@ if _is_package_available("joblib"):
         """Decorator used to capture the arguments of a function."""
 
         @wraps(function)
-        def wrapped_function(*args, _pypads=None, _pypads_active_run_id=None, _pypads_tracking_uri=None, **kwargs):
+        def wrapped_function(*args, _pypads=None, _pypads_active_run_id=None, _pypads_tracking_uri=None,
+                             _pypads_affected_modules=None, **kwargs):
             if _pypads:
                 # noinspection PyUnresolvedReferences
                 import pypads.base
                 import mlflow
-                if not pypads.base.current_pads:
+
+                is_own_process = not pypads.base.current_pads
+                if is_own_process:
                     import pypads
                     pypads.base.current_pads = _pypads
+                    _pypads.activate_tracking(reload_warnings=False, affected_modules=_pypads_affected_modules,
+                                              clear_imports=True)
+                    # reactivate this run in the foreign process
                     mlflow.set_tracking_uri(_pypads_tracking_uri)
-                    _pypads.activate_tracking(reload_warnings=False, clear_imports=True)
+                    mlflow.start_run(run_id=_pypads_active_run_id, nested=True)
 
-                from joblib.externals.cloudpickle import loads
+                    def clear_mlflow():
+                        """
+                        Don't close run. This function clears the run which was reactivated from the stack to stop a closing of it.
+                        :return:
+                        """
+                        if len(mlflow.tracking.fluent._active_run_stack) == 1:
+                            mlflow.tracking.fluent._active_run_stack.pop()
+
+                    import atexit
+                    atexit.register(clear_mlflow)
+
+                from pickle import loads
                 a, b = loads(args[0])
 
                 # import pickle
@@ -139,10 +156,6 @@ if _is_package_available("joblib"):
                 kwargs = b
 
                 out = function(*args, **kwargs)
-
-                # TODO find other way to not close run after process finishes
-                if len(mlflow.tracking.fluent._active_run_stack) > 0:
-                    mlflow.tracking.fluent._active_run_stack.pop()
                 return out
             else:
                 return function(*args, **kwargs)
@@ -150,9 +163,10 @@ if _is_package_available("joblib"):
         def delayed_function(*args, **kwargs):
             run = mlflow.active_run()
             if run:
-                pickled_params = (_parameter_cloudpickle(args, kwargs),)
+                pickled_params = (_parameter_pickle(args, kwargs),)
                 kwargs = {"_pypads": current_pads, "_pypads_active_run_id": run.info.run_id,
-                          "_pypads_tracking_uri": mlflow.get_tracking_uri()}
+                          "_pypads_tracking_uri": mlflow.get_tracking_uri(),
+                          "_pypads_affected_modules": punched_module_names}
                 args = pickled_params
             return wrapped_function, args, kwargs
 
@@ -367,22 +381,6 @@ class PypadsDecorators:
         return track_decorator
 
 
-def _important_module_fn():
-    # TODO maybe invert that? Define modules to reimport instead
-    import sys
-    return ["sys", "__main__", "importlib", "pypads", "builtins", "_frozen_importlib", "numpy", "mlflow", "pip",
-            "boltons", "docker", "networkx", "pandas", "joblib", "pickle"] + list(sys.builtin_module_names)
-
-
-def _is_important_module_gen(name, module_fn):
-    for module in module_fn():
-        yield name.startswith(module + ".") or name == module or name.startswith("_")
-
-
-def _is_imporant_module(name, module_fn):
-    return any(_is_important_module_gen(name, module_fn))
-
-
 class PyPads:
     """
     PyPads app. Enable automatic logging for all libs in mapping files.
@@ -391,7 +389,7 @@ class PyPads:
 
     def __init__(self, uri=None, name=None, mapping_paths=None, mapping=None, init_run_fns=None,
                  include_default_mappings=True,
-                 logging_fns=None, config=None, reload_modules=False, important_module_fn=_important_module_fn):
+                 logging_fns=None, config=None, reload_modules=False, affected_modules=None):
         """
         TODO
         :param uri:
@@ -413,21 +411,29 @@ class PyPads:
         self._api = PypadsApi(self)
         self._decorators = PypadsDecorators(self)
         self._cache = PypadsCache()
-        self._important_module_fn = important_module_fn
 
         self._init_run_fns = init_run_fns
         self._init_mlflow_backend(uri, name, config)
         self._function_registry = FunctionRegistry(logging_fns or DEFAULT_LOGGING_FNS)
         self._init_mapping_registry(*mapping_paths, mapping=mapping, include_defaults=include_default_mappings)
-        self.activate_tracking(reload_modules=reload_modules)
+        self.activate_tracking(reload_modules=reload_modules, affected_modules=affected_modules)
 
-    def activate_tracking(self, reload_modules=False, reload_warnings=True, clear_imports=False):
+    def activate_tracking(self, reload_modules=False, reload_warnings=True, clear_imports=False, affected_modules=None):
         """
         Function to duck punch all objects defined in the mapping files. This should at best be called before importing
         any libraries.
         :param mod_globals: globals() object used to duckpunch already loaded classes
         :return:
         """
+        if affected_modules is None:
+            affected_modules = punched_module_names | self.mapping_registry.get_libraries()
+
+        def _is_affected_module(name):
+            affected = set([module.split(".", 1)[0] for module in affected_modules])
+            return any([name.startswith(module + ".") or name == module for module in affected]) or any(
+                [name.startswith(module + ".") or name == module for module in
+                 affected_modules])
+
         global tracking_active
         if not tracking_active:
 
@@ -435,13 +441,16 @@ class PyPads:
             extend_import_module()
 
             import sys
-            if reload_modules:
-                # TODO This might break. See inheritance of DummyClasses in test_classes
-                import importlib
-                loaded_modules = [(name, module) for name, module in sys.modules.items()]
+            import importlib
+            loaded_modules = [(name, module) for name, module in sys.modules.items()]
+            for name, module in loaded_modules:
+                if _is_affected_module(name):
+                    if reload_warnings:
+                        warning(
+                            name + "was imported before PyPads. To enable tracking import PyPads before or use "
+                                   "reload_modules. Every already created instance is not tracked.")
 
-                for name, module in loaded_modules:
-                    if not _is_imporant_module(name, self._important_module_fn):
+                    if reload_modules:
                         try:
                             spec = importlib.util.find_spec(module.__name__)
                             duck_punch_loader(spec)
@@ -451,23 +460,10 @@ class PyPads:
                             importlib.reload(module)
                         except Exception as e:
                             debug("Couldn't reload module " + str(e))
-            else:
-                if reload_warnings:
-                    import importlib
-                    for i in set(mapping.reference.rsplit('.', 1)[0] for mapping in
-                                 self.mapping_registry.get_algorithms() if
-                                 mapping.reference.rsplit('.', 1)[0] in sys.modules
-                                 and mapping.reference.rsplit('.', 1)[0] not in punched_module):
-                        warning(
-                            i + " was imported before PyPads. To enable tracking import PyPads before or use reload_modules. Every already created instance is not tracked.")
-                if clear_imports:
-                    import importlib
-                    loaded_modules = [(name, module) for name, module in sys.modules.items()]
 
-                    for name, module in loaded_modules:
-                        if not _is_imporant_module(name, self._important_module_fn):
-                            del sys.modules[name]
-                tracking_active = True
+                    if clear_imports:
+                        del sys.modules[name]
+            tracking_active = True
 
     def _init_mlflow_backend(self, uri=None, name=None, config=None):
         """
@@ -597,11 +593,11 @@ def get_current_pads() -> PyPads:
         if config:
             warning(
                 "PyPads seems to be missing on given run with saved configuration. Reinitializing.")
-            return PyPads(config=config, reload_modules=True)
+            return PyPads(config=config)
         else:
             warning(
                 "PyPads has to be initialized before logging can be used. Initializing for your with default values.")
-            return PyPads(reload_modules=True)
+            return PyPads()
     return current_pads
 
 

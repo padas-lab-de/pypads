@@ -193,6 +193,12 @@ class MappingRegistry:
         for i, mapping in self.found_classes.items():
             yield mapping
 
+    def get_libraries(self):
+        all_libs = set()
+        for key, mapping in self._mappings.items():
+            all_libs.add(mapping.lib)
+        return all_libs
+
     def get_relevant_mappings(self):
         """
         Function to find all relevant mappings. This produces a generator getting extended with found subclasses
