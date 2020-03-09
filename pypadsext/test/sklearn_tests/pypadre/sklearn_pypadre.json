@@ -17,7 +17,7 @@
       "name": "base sklearn estimator",
       "other_names": [],
       "implementation": {
-        "scikit-learn": "sklearn.base.BaseEstimator"
+        "sklearn": "sklearn.base.BaseEstimator"
       },
       "hooks": {
         "pypads_fit": [
@@ -39,7 +39,7 @@
       "name": "sklearn classification metrics",
       "other_names": [],
       "implementation": {
-        "scikit-learn": "sklearn.metrics.classification"
+        "sklearn": "sklearn.metrics.classification"
       },
       "hooks": {
         "pypads_metric": [
@@ -51,7 +51,7 @@
       "name": "sklearn datasets",
       "other_names": [],
       "implementation": {
-        "scikit-learn": "sklearn.datasets"
+        "sklearn": "sklearn.datasets"
       },
       "hooks": {
         "pypads_dataset": [
@@ -63,7 +63,7 @@
       "name": "sklearn cross validation",
       "other_names": [],
       "implementation": {
-        "scikit-learn": "sklearn.model_selection._search.BaseSearchCV"
+        "sklearn": "sklearn.model_selection._search.BaseSearchCV"
       },
       "hooks": {
         "pypads_param_search": [
@@ -75,7 +75,7 @@
       "name": "sklearn cross validation",
       "other_names": [],
       "implementation": {
-        "scikit-learn": "sklearn.model_selection._validation._fit_and_score"
+        "sklearn": "sklearn.model_selection._validation._fit_and_score"
       },
       "hooks": {
         "pypads_param_search_exec": "always"
@@ -85,7 +85,7 @@
       "name": "sklearn cross validation",
       "other_names": [],
       "implementation": {
-        "scikit-learn": "sklearn.model_selection._split.BaseCrossValidator"
+        "sklearn": "sklearn.model_selection._split.BaseCrossValidator"
       },
       "hooks": {
         "pypads_split": [
@@ -97,7 +97,7 @@
       "name": "sklearn shuffle split",
       "other_names": [],
       "implementation": {
-        "scikit-learn": "sklearn.model_selection._split.BaseShuffleSplit"
+        "sklearn": "sklearn.model_selection._split.BaseShuffleSplit"
       },
       "hooks": {
         "pypads_split": [
@@ -109,7 +109,7 @@
       "name": "base sklearn estimator",
       "other_names": [],
       "implementation": {
-        "scikit-learn": "sklearn.base.RegressorMixin"
+        "sklearn": "sklearn.base.RegressorMixin"
       },
       "hooks": {
         "pypads_metric": [
@@ -121,7 +121,7 @@
       "name": "base sklearn estimator",
       "other_names": [],
       "implementation": {
-        "scikit-learn": "sklearn.base.ClassifierMixin"
+        "sklearn": "sklearn.base.ClassifierMixin"
       },
       "hooks": {
         "pypads_metric": [
@@ -133,7 +133,7 @@
       "name": "base sklearn estimator",
       "other_names": [],
       "implementation": {
-        "scikit-learn": "sklearn.base.DensityMixin"
+        "sklearn": "sklearn.base.DensityMixin"
       },
       "hooks": {
         "pypads_metric": [
@@ -144,7 +144,7 @@
   ],
   "metadata": {
     "author": "Thomas Weißgerber",
-    "library": "scikit-learn",
+    "library": "sklearn",
     "library_version": "0.19.1",
     "mapping_version": "0.1"
   }
