@@ -113,6 +113,14 @@ class PyPadrePadsTest(BaseSklearnTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypadsext.base import PyPadrePads
+        # tracker = PyPadrePads(mapping=MappingFile("empty", {
+        #     "metadata": {"library": "empty", "library_version": "0.0.1", "mapping_version": "0.1"}}),
+        #                       include_default_mappings=False)
+        # tracker = PyPadrePads(mapping=sklearn_padre, config={"events": {"parameter_search": {"on": ["pypads_param_search"]},
+        #     "parameter_search_executor": {"on": ["pypads_param_search_exec"]}, "doc": {"on": ["pypads_init", "pypads_dataset", "pypads_fit", "pypads_transform", "pypads_predict"]}}, "recursion_identity": False,
+        #                                                      "recursion_depth": -1,
+        #                                                      "retry_on_fail": False,
+        #                                                      "log_on_failure": True})
         tracker = PyPadrePads(mapping=sklearn_padre)
 
         import timeit
