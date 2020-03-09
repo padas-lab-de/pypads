@@ -87,7 +87,7 @@ def get_by_tag(tag=None, value=None, experiment_id=None):
         run = client.get_run(run.run_id)
         if tag:
             tags = run.data.tags
-            if value:
+            if value and tag in tags:
                 if tags[tag] == value:
                     selection.append(run)
             else:

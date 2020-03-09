@@ -35,3 +35,24 @@ def git_mirror(pads):
         if repo:
             # TODO mirror the given repo to our git remote server
             pass
+
+# # TODO find a good usage
+# def source_code_parsing(pads):
+#     pads.api.register_post_fn("tag_extraction", tag_extraction)
+#     run = pads.api.active_run()
+#     tags = run.data.tags
+#     source_name = tags.get("mlflow.source.name", None)
+#     code = None
+#     if source_name:
+#         with open(source_name) as f:
+#             code = f.read()
+#     else:
+#         import sys
+#         source = sys.argv[0]
+#         if "unittest" not in source.split('.')[-2]:
+#             with open(source) as f:
+#                 code = f.read()
+#         else:
+#             warning("The source code is being run from a unit test")
+#     if code:
+#         pads.cache.add("source_code", code)

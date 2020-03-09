@@ -31,6 +31,18 @@
       }
     },
     {
+      "name": "keras mnist dataset",
+      "other_names": [],
+      "implementation": {
+        "scikit-learn": "keras.datasets.mnist"
+      },
+      "hooks": {
+        "pypads_dataset": [
+          "load_data"
+        ]
+      }
+    },
+    {
       "name": "base keras model",
       "other_names": [],
       "implementation": {

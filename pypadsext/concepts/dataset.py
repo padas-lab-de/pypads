@@ -222,6 +222,21 @@ if _is_package_available("torch"):
     Crawler.register_fn(modules.torch.value, torch_crawler)
 
 
+# --- Keras datasets ---
+def keras_crawler(obj: Crawler, *args, **kwargs):
+    (X_train, y_train), (X_test, y_test) = obj.data
+    import numpy as np
+    targets = np.concatenate([y_train, y_test])
+    data = np.concatenate([np.concatenate([X_train, X_test]), targets.reshape(len(targets), 1)], axis=1)
+    metadata = {"format": obj.format, "shape": data.shape}
+    metadata = {**metadata, **kwargs}
+    return data, metadata, targets
+
+
+if _is_package_available("keras"):
+    Crawler.register_fn(modules.keras.value, keras_crawler)
+
+
 # --- networkx graph object ---
 def graph_crawler(obj: Crawler, **kwargs):
     graph = obj.data
