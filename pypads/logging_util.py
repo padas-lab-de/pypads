@@ -103,7 +103,3 @@ def try_write_artifact(file_name, obj, write_format, preserve_folder=True):
             try_mlflow_log(mlflow.log_artifact, path)
     else:
         try_mlflow_log(mlflow.log_artifact, path)
-
-
-def to_folder_name(self, _pypads_context, _pypads_wrappe):
-    return os.path.join(_pypads_context.__name__, str(id(self)), _pypads_wrappe.__name__)

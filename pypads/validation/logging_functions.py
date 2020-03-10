@@ -3,10 +3,12 @@ from logging import warning
 import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 
-from pypads.functions.logging import _get_now
+from pypads.analysis.call_objects import get_current_call_str
+from pypads.analysis.time_keeper import time_kept
 from pypads.validation.generic_visitor import default_visitor
 
 
+@time_kept
 def parameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
                **kwargs):
     """
@@ -28,7 +30,7 @@ def parameters(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, 
 
         for k, v in visitor[0]["steps"][0]["hyper_parameters"]["model_parameters"].items():
             try_mlflow_log(mlflow.log_param,
-                           _pypads_mapped_by.reference + "." + str(id(self)) + "." + _get_now() + "." + k + ".txt", v)
+                           get_current_call_str(self, _pypads_context, _pypads_wrappe) + "." + k + ".txt", v)
     except Exception as e:
         warning("Couldn't use visitor for parameter extraction. " + str(e) + " Omit logging for now.")
         # for i in range(len(args)):

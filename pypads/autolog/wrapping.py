@@ -1,8 +1,7 @@
 import inspect
 import types
-from logging import warning, debug, info, error, exception
+from logging import warning, debug, info, error
 
-import mlflow
 from boltons.funcutils import wraps
 
 from pypads.autolog.mappings import AlgorithmMapping
@@ -37,6 +36,14 @@ def wrap(wrappee, ctx, mapping):
 
 
 def make_hook_applicable_filter(hook, ctx, mapping):
+    """
+    Create a filter to check if hook is applicable
+    :param hook:
+    :param ctx:
+    :param mapping:
+    :return:
+    """
+
     def hook_applicable_filter(name):
         if hasattr(ctx, name):
             if not name.startswith("__") or name == "__init__":
@@ -158,7 +165,7 @@ def _get_hooked_fns(fn, mapping):
             order = DEFAULT_ORDER
 
         # If one configured_hook_events is in this config.
-        if set(configured_hook_events) & set(hook_events_of_mapping):
+        if configured_hook_events == "always" or set(configured_hook_events) & set(hook_events_of_mapping):
             from pypads.base import get_current_pads
             pads = get_current_pads()
             fn = pads.function_registry.find_function(log_event, lib=library, version=version)
@@ -178,9 +185,6 @@ def _get_original(name, ctx):
         for attr in dir(ctx):
             if attr.endswith("_" + name) and attr.startswith("_pypads_original_"):
                 return getattr(ctx, attr)
-
-
-retry_cache = set()
 
 
 def _wrapped_inner_function(ctx, *args, _pypads_hooked_fn, _pypads_hook_params, _pypads_wrappe, _pypads_context,
@@ -205,11 +209,14 @@ def _wrapped_inner_function(ctx, *args, _pypads_hooked_fn, _pypads_hook_params, 
     if ctx is not None:
 
         # Track hook execution to stop multiple exections of the same hook
+        active_call = _pypads_hooked_fn
+
+        # Track hook execution to stop multiple exections of the same hook
         if not hasattr(ctx, "_pypads_active_calls"):
             setattr(ctx, "_pypads_active_calls", set())
-        elif _pypads_hooked_fn in getattr(ctx, "_pypads_active_calls"):
+        elif active_call in getattr(ctx, "_pypads_active_calls"):
             return _pypads_callback(*args, **kwargs)
-        getattr(ctx, "_pypads_active_calls").add(_pypads_hooked_fn)
+        getattr(ctx, "_pypads_active_calls").add(active_call)
 
     try:
 
@@ -223,44 +230,21 @@ def _wrapped_inner_function(ctx, *args, _pypads_hooked_fn, _pypads_hook_params, 
             out = _pypads_hooked_fn(ctx, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
                                     _pypads_callback=_pypads_callback,
                                     _pypads_mapped_by=_pypads_mapped_by,
+                                    _pypads_hook_params=_pypads_hook_params,
                                     *args,
-                                    **{**kwargs, **_pypads_hook_params})
+                                    **kwargs)
         else:
             out = _pypads_callback(*args, **kwargs)
         if ctx is not None:
-            getattr(ctx, "_pypads_active_calls").remove(_pypads_hooked_fn)
+            getattr(ctx, "_pypads_active_calls").remove(active_call)
         return out
     except Exception as e:
-
-        # retry on failure
-        global retry_cache
-        if e.args[0] not in retry_cache:
-            retry_cache.add(e.args[0])
-
-            from pypads.base import get_current_pads
-            pads = get_current_pads()
-            config = _get_current_config()
-
-            if "retry_on_fail" in config and config["retry_on_fail"]:
-            # TODO check tracking stack
-                exception("Tracking failed for " + str(_pypads_callback) + " with: " + str(e))
-                original_fn = _get_original(_pypads_callback.__name__, _pypads_context)
-                if original_fn and not original_fn == _pypads_callback:
-                    # TODO maybe retry only if the exception wasn't raised in the original function
-                    error("Retrying normal call. " + str(original_fn))
-                    mlflow.set_tag("pypads_retry", True)
-                    out = original_fn(*args, **kwargs)
-                    retry_cache.remove(e.args[0])
-                    return out
-
-            if "log_on_failure" in config and config["log_on_failure"] and pads.cache.run_exists("stdout"):
-                pads.api.log_mem_artifact("stdout.txt", pads.cache.run_get("stdout"))
 
         # clear cache
         debug("Cleared cache entry for " + str(_pypads_wrappe) + " because of exception: " + str(e))
         if ctx is not None:
             if hasattr(ctx, "_pypads_active_calls"):
-                getattr(ctx, "_pypads_active_calls").remove(_pypads_hooked_fn)
+                getattr(ctx, "_pypads_active_calls").remove(active_call)
 
         raise e
 
@@ -315,7 +299,7 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
                                                _pypads_hook_params=_pypads_hook_params, _pypads_wrappe=_pypads_wrappe,
                                                _pypads_context=_pypads_context,
                                                _pypads_callback=_pypads_callback, _pypads_mapped_by=_pypads_mapped_by,
-                                               **kwargs)  #
+                                               **kwargs)
 
             return ctx_setter
         elif "sklearn_IffHasAttrDescriptor" == str(fn_type):
@@ -347,7 +331,13 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
         def entry(*args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
             debug("Call to tracked static method or function " + str(fn))
             current_tracking_stack.append((_pypads_mapped_by, ctx, fn, None))
+
+            # add the function to the callback stack
             callback = fn
+
+            # # track the execution time of the tracked function
+            # callback = get_wrapper(_pypads_hooked_fn=time_keeper, _pypads_hook_params={"_pypads_time_kept": callback}, _pypads_wrappe=fn,
+            #                                  _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping)
             if hooks:
                 if _is_skip_recursion(None, _pypads_mapped_by):
                     info("Skipping " + str(ctx.__name__) + "." + str(fn.__name__))
@@ -355,9 +345,12 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
                     current_tracking_stack.pop()
                     return out
 
+                # For every hook we defined on the given function in out mapping file execute it before running the code
                 for (hook, params, order) in hooks:
                     callback = get_wrapper(_pypads_hooked_fn=hook, _pypads_hook_params=params, _pypads_wrappe=fn,
-                                           _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping)
+                                           _pypads_context=ctx, _pypads_callback=callback,
+                                           _pypads_mapped_by=mapping)
+            # start executing the stack
             out = callback(*args, **kwargs)
             current_tracking_stack.pop()
             return out
@@ -366,7 +359,13 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
         def entry(self, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
             debug("Call to tracked method " + str(fn))
             current_tracking_stack.append((_pypads_mapped_by, ctx, fn, self))
+
+            # add the function to the callback stack
             callback = types.MethodType(fn, self)
+
+            # # track the execution time of the tracked function
+            # callback = types.MethodType(get_wrapper(_pypads_hooked_fn=time_keeper, _pypads_hook_params={"_pypads_time_kept": callback}, _pypads_wrappe=fn,
+            #                                  _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping), self)
             if hooks:
                 if _is_skip_recursion(self, _pypads_mapped_by):
                     info("Skipping " + str(ctx.__name__) + ": " + str(fn.__name__))
@@ -388,7 +387,13 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
         def entry(cls, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, fn_type=fn_type, **kwargs):
             debug("Call to tracked class method " + str(fn))
             current_tracking_stack.append((_pypads_mapped_by, ctx, fn, cls))
+
+            # add the function to the callback stack
             callback = types.MethodType(fn, cls)
+
+            # # track the execution time of the tracked function
+            # callback = types.MethodType(get_wrapper(_pypads_hooked_fn=time_keeper, _pypads_hook_params={"_pypads_time_kept": callback}, _pypads_wrappe=fn,
+            #                                  _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping), cls)
             if hooks:
                 if _is_skip_recursion(cls, _pypads_mapped_by):
                     info("Skipping " + str(ctx.__name__) + ": " + str(fn.__name__))
@@ -410,7 +415,13 @@ def wrap_method_helper(fn, hooks, mapping, ctx, fn_type=None):
         def entry(self, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
             debug("Call to tracked method " + str(fn))
             current_tracking_stack.append((_pypads_mapped_by, ctx, fn, self))
+
+            # add the function to the callback stack
             callback = fn.__get__(self)
+
+            # # track the execution time of the tracked function
+            # callback = types.MethodType(get_wrapper(_pypads_hooked_fn=time_keeper, _pypads_hook_params={"_pypads_time_kept": callback}, _pypads_wrappe=fn,
+            #                                  _pypads_context=ctx, _pypads_callback=callback, _pypads_mapped_by=mapping), self)
 
             if hooks:
                 if _is_skip_recursion(self, _pypads_mapped_by):

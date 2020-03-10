@@ -3,6 +3,7 @@ import glob
 import io
 import os
 import pickle
+import sys
 from contextlib import contextmanager
 from functools import wraps
 from logging import warning, debug
@@ -13,13 +14,17 @@ from typing import List
 import mlflow
 from mlflow.tracking import MlflowClient
 
+from pypads.analysis.call_objects import track_call_object
 from pypads.analysis.pipeline_detection import pipeline
 from pypads.autolog.hook import Hook
 from pypads.autolog.mappings import AlgorithmMapping, MappingRegistry, AlgorithmMeta
 from pypads.autolog.pypads_import import extend_import_module, duck_punch_loader
 from pypads.autolog.wrapping import punched_module_names
 from pypads.caches import PypadsCache, Cache
-from pypads.functions.logging import output, input, cpu, metric, log, log_init
+from pypads.functions.loggers.data_flow import Output, Input
+from pypads.functions.loggers.debug import LogInit, Log
+from pypads.functions.loggers.hardware import Disk, Ram, Cpu
+from pypads.functions.loggers.metric import Metric
 from pypads.functions.run_init import isystem, iram, icpu, idisk, ipid
 from pypads.logging_util import WriteFormats, try_write_artifact
 from pypads.mlflow.mlflow_autolog import autologgers, _is_package_available
@@ -188,14 +193,15 @@ DEFAULT_INIT_RUN_FNS = [isystem, iram, icpu, idisk, ipid]
 # Default event mappings. We allow to log parameters, output or input
 DEFAULT_LOGGING_FNS = {
     "parameters": parameters,
-    "output": output,
-    "input": input,
-    "hardware": cpu,
-    "metric": metric,
+    "output": Output(pipeline_type="normal"),
+    "input": Input(),
+    "hardware": [Cpu(), Ram(), Disk()],
+    "metric": Metric(),
     "autolog": autologgers,
     "pipeline": pipeline,
-    "log": log,
-    "init": log_init
+    "log": Log(),
+    "init": LogInit(),
+    "call_object": track_call_object
 }
 
 # Default config.
@@ -205,6 +211,7 @@ DEFAULT_LOGGING_FNS = {
 # {"recursive": track functions recursively. Otherwise check the callstack to only track the top level function.}
 DEFAULT_CONFIG = {"events": {
     "init": {"on": ["pypads_init"]},
+    "call_object": {"on": "always", "order": sys.maxsize},
     "parameters": {"on": ["pypads_fit"]},
     "hardware": {"on": ["pypads_fit"]},
     "output": {"on": ["pypads_fit", "pypads_predict"],

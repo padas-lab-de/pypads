@@ -48,8 +48,7 @@ config = {"events": {
     "third": {"on": ["order"], "order": 1},
 },
     "recursion_identity": False,
-    "recursion_depth": -1,
-    "retry_on_fail": True}
+    "recursion_depth": -1}
 
 
 class PypadsOrderTest(unittest.TestCase):
