@@ -13,7 +13,7 @@ punch_dummy_mapping = {
             "name": "punchtest",
             "other_names": [],
             "implementation": {
-                "scikit-learn": "test_classes.dummy_classes.PunchDummy"
+                "sklearn": "test_classes.dummy_classes.PunchDummy"
             },
             "hooks": {
                 "pypads_dummy_hook": "always"

@@ -13,7 +13,7 @@ name_mappings = {}
 alternate_name_mappings = {}
 version_mappings = {}
 
-path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../bindings/resources/mapping"))
+path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../bindings/resources/mapping"))
 mapping_files = os.listdir(path)
 
 # For every file verify whether it is a json file and then add to the current type_mappings and name_mappings

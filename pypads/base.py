@@ -6,30 +6,30 @@ import pickle
 import sys
 from contextlib import contextmanager
 from functools import wraps
-from logging import warning, debug
+from logging import warning, debug, info
 from os.path import expanduser
 from types import FunctionType
-from typing import List
+from typing import List, Iterable
 
 import mlflow
 from mlflow.tracking import MlflowClient
 
-from pypads.analysis.call_objects import track_call_object
-from pypads.analysis.pipeline_detection import pipeline
 from pypads.autolog.hook import Hook
 from pypads.autolog.mappings import AlgorithmMapping, MappingRegistry, AlgorithmMeta
 from pypads.autolog.pypads_import import extend_import_module, duck_punch_loader
 from pypads.autolog.wrapping import punched_module_names
 from pypads.caches import PypadsCache, Cache
+from pypads.functions.analysis.call_objects import ObjectTracker
+from pypads.functions.analysis.validation.parameters import Parameter
 from pypads.functions.loggers.data_flow import Output, Input
 from pypads.functions.loggers.debug import LogInit, Log
 from pypads.functions.loggers.hardware import Disk, Ram, Cpu
 from pypads.functions.loggers.metric import Metric
-from pypads.functions.run_init import isystem, iram, icpu, idisk, ipid
+from pypads.functions.loggers.mlflow.mlflow_autolog import MlflowAutologger
+from pypads.functions.loggers.pipeline_detection import PipelineTracker
+from pypads.functions.run_init_loggers.hardware import ISystem, IRam, ICpu, IDisk, IPid
 from pypads.logging_util import WriteFormats, try_write_artifact
-from pypads.mlflow.mlflow_autolog import autologgers, _is_package_available
-from pypads.util import get_class_that_defined_method
-from pypads.validation.logging_functions import parameters
+from pypads.util import get_class_that_defined_method, is_package_available, dict_merge
 
 current_pads = None
 tracking_active = None
@@ -48,9 +48,20 @@ class FunctionRegistry:
     def __init__(self, mapping=None):
         if mapping is None:
             mapping = {}
-        self.fns = mapping
+        self.fns = {}
+        for key, value in mapping.items():
+            if isinstance(value, Iterable):
+                self._add_functions(key, value)
+            elif callable(value):
+                self._add_functions(key, {value})
 
-    def find_function(self, name, lib=None, version=None):
+        # Tracking of objects is by default activated
+        if "_pypads_call_object" not in self.fns:
+            self._add_functions("_pypads_call_object", {ObjectTracker()})
+        else:
+            info("Default object tracker overwritten. Make sure this is intended.")
+
+    def find_functions(self, name, lib=None, version=None):
         if (name, lib, version) in self.fns:
             return self.fns[(name, lib, version)]
         elif (name, lib) in self.fns:
@@ -60,14 +71,21 @@ class FunctionRegistry:
         else:
             warning("Function call with name '" + name + "' is not linked with any logging functionality.")
 
-    def add_function(self, name, fn: FunctionType, lib=None, version=None):
+    def add_functions(self, name, lib=None, version=None, *args: FunctionType):
         if lib:
             if version:
-                self.fns[(name, lib, version)] = fn
+                key = (name, lib, version)
             else:
-                self.fns[(name, lib)] = fn
+                key = (name, lib)
         else:
-            self.fns[name] = fn
+            key = name
+        self._add_functions(key, args)
+
+    def _add_functions(self, key, fns):
+        if key not in self.fns:
+            self.fns[key] = set()
+        for fn in fns:
+            self.fns[key].add(fn)
 
 
 def _parameter_pickle(args, kwargs):
@@ -113,7 +131,7 @@ def _parameter_cloudpickle(args, kwargs):
 #
 # Process.__init__ = punched_init_
 
-if _is_package_available("joblib"):
+if is_package_available("joblib"):
     import joblib
 
     original_delayed = joblib.delayed
@@ -188,20 +206,19 @@ if _is_package_available("joblib"):
 # --- Pypads App ---
 
 # Default init_run fns
-DEFAULT_INIT_RUN_FNS = [isystem, iram, icpu, idisk, ipid]
+DEFAULT_INIT_RUN_FNS = [ISystem(), IRam(), ICpu(), IDisk(), IPid()]
 
 # Default event mappings. We allow to log parameters, output or input
 DEFAULT_LOGGING_FNS = {
-    "parameters": parameters,
-    "output": Output(pipeline_type="normal"),
-    "input": Input(),
-    "hardware": [Cpu(), Ram(), Disk()],
+    "parameters": Parameter(),
+    "output": Output(_pypads_write_format=WriteFormats.text.name),
+    "input": Input(_pypads_write_format=WriteFormats.text.name),
+    "hardware": {Cpu(), Ram(), Disk()},
     "metric": Metric(),
-    "autolog": autologgers,
-    "pipeline": pipeline,
+    "autolog": MlflowAutologger(),
+    "pipeline": PipelineTracker(_pypads_pipeline_type="normal", _pypads_pipeline_args=False),
     "log": Log(),
-    "init": LogInit(),
-    "call_object": track_call_object
+    "init": LogInit()
 }
 
 # Default config.
@@ -211,20 +228,16 @@ DEFAULT_LOGGING_FNS = {
 # {"recursive": track functions recursively. Otherwise check the callstack to only track the top level function.}
 DEFAULT_CONFIG = {"events": {
     "init": {"on": ["pypads_init"]},
-    "call_object": {"on": "always", "order": sys.maxsize},
     "parameters": {"on": ["pypads_fit"]},
     "hardware": {"on": ["pypads_fit"]},
-    "output": {"on": ["pypads_fit", "pypads_predict"],
-               "with": {"write_format": WriteFormats.text.name}},
-    "input": {"on": ["pypads_fit"], "with": {"write_format": WriteFormats.text.name}},
+    "output": {"on": ["pypads_fit", "pypads_predict"]},
+    "input": {"on": ["pypads_fit"], "with": {"_pypads_write_format": WriteFormats.text.name}},
     "metric": {"on": ["pypads_metric"]},
-    "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"],
-                 "with": {"pipeline_type": "normal", "pipeline_args": False}},
+    "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"]},
     "log": {"on": ["pypads_log"]}
 },
     "recursion_identity": False,
     "recursion_depth": -1,
-    "retry_on_fail": False,
     "log_on_failure": True}
 
 # Tag name to save the config to in mlflow context.
@@ -498,9 +511,11 @@ class PyPads:
         self._experiment = self.mlf.get_experiment_by_name(name) if name else self.mlf.get_experiment(
             run.info.experiment_id)
         if config:
-            self.config = {**DEFAULT_CONFIG, **config}
+            self.config = dict_merge({"events": {"_pypads_call_object": {"on": "always", "order": sys.maxsize}}},
+                                     DEFAULT_CONFIG, config)
         else:
-            self.config = DEFAULT_CONFIG
+            self.config = dict_merge({"events": {"_pypads_call_object": {"on": "always", "order": sys.maxsize}}},
+                                     DEFAULT_CONFIG)
 
         # override active run if used
         if name and run.info.experiment_id is not self._experiment.experiment_id:

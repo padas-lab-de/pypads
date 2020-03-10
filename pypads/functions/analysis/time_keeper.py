@@ -1,8 +1,7 @@
 import time
 from collections import OrderedDict
 
-from pypads.analysis.call_objects import get_current_call_str
-from pypads.logging_util import WriteFormats
+from pypads.logging_util import WriteFormats, get_current_call_str
 
 
 def timed(f):

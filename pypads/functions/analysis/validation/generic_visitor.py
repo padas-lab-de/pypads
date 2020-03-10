@@ -1,6 +1,7 @@
-from pypads.validation.visitors.experimentschema import default_pipeline_schema
-from pypads.validation.visitors.generalvisitor import generalize_visitor
-from pypads.validation.visitors.visitor import ListVisitor, AlgorithmVisitor, SubpathVisitor, SelectVisitor
+from pypads.functions.analysis.validation.visitors.experimentschema import default_pipeline_schema
+from pypads.functions.analysis.validation.visitors.generalvisitor import generalize_visitor
+from pypads.functions.analysis.validation.visitors.visitor import ListVisitor, AlgorithmVisitor, SubpathVisitor, \
+    SelectVisitor
 
 SciKitPipelineVisitor = {
                 "steps":

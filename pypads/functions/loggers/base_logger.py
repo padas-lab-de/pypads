@@ -1,13 +1,42 @@
 from _py_abc import ABCMeta
-from logging import exception
+from logging import exception, warning
 
 import mlflow
 
-from pypads.analysis.call_objects import get_current_call_str
+from pypads.logging_util import get_current_call_str
+from pypads.util import is_package_available
+
+
+class MissingDependencyError(Exception):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+class DependencyMixin(object):
+    @staticmethod
+    def _needed_packages():
+        """
+        List of needed packages
+        :return:
+        """
+        return []
+
+    def _check_dependencies(self):
+        """
+        Raise error if dependencies are missing
+        :return:
+        """
+        missing = []
+        for package in self._needed_packages():
+            if not is_package_available(package):
+                missing.append(package)
+        if len(missing) > 0:
+            raise MissingDependencyError("Can't log " + str(self) + ". Missing dependencies: " + ", ".join(missing))
 
 
 # noinspection PyBroadException
-class LoggingFunction(object):
+class LoggingFunction(DependencyMixin):
     __metaclass__ = ABCMeta
     """
     This class should be used to define new loggers
@@ -58,33 +87,48 @@ class LoggingFunction(object):
         _pypads_hook_params = {**self._static_parameters, **_pypads_hook_params}
 
         # Call function to be executed before the tracked function
+        _pypads_pre_return = None
+        dependency_error = None
         try:
-            self.__pre__(ctx, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
+            self._check_dependencies()
+            _pypads_pre_return = self.__pre__(ctx, *args, _pypads_wrappe=_pypads_wrappe,
+                                              _pypads_context=_pypads_context,
                          _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback,
                          **{**_pypads_hook_params, **kwargs})
-        except Exception as e:
-            self._handle_failure(e)
-
-        # Call the output producing code
-        out = self.call_wrapped(ctx, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
-                                _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback,
-                                **{**_pypads_hook_params, **kwargs})
-
-        # Call function to be executed after the tracked function
-        try:
-            self.__post__(ctx, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
-                          _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback, _pypads_result=out,
-                          **{**_pypads_hook_params, **kwargs})
+        except MissingDependencyError as e:
+            dependency_error = e
         except Exception as e:
             self._handle_failure(ctx, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
                                  _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback,
-                                 _pypads_error=e,
-                                 **{**_pypads_hook_params, **kwargs})
+                                 _pypads_error=e, _pypads_hook_params=_pypads_hook_params,
+                                 **kwargs)
+
+        # Call the output producing code
+        out = self.call_wrapped(ctx, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
+                                _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback, _kwargs=kwargs,
+                                **_pypads_hook_params)
+
+        # Call function to be executed after the tracked function
+        try:
+            self._check_dependencies()
+            self.__post__(ctx, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
+                          _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback, _pypads_result=out,
+                          _pypads_pre_return=_pypads_pre_return, **{**_pypads_hook_params, **kwargs})
+        except MissingDependencyError as e:
+            dependency_error = e
+        except Exception as e:
+            self._handle_failure(ctx, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
+                                 _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback,
+                                 _pypads_error=e, _pypads_hook_params=_pypads_hook_params,
+                                 **kwargs)
+
+        if dependency_error:
+            warning(str(dependency_error))
         return out
 
     # noinspection PyMethodMayBeStatic
     def call_wrapped(self, ctx, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
-                     _pypads_hook_params, **kwargs):
+                     _kwargs, **_pypads_hook_params):
         """
         The real call of the wrapped function. Be carefull when you change this.
         Exceptions here will not be catched automatically and might break your workflow.
@@ -98,7 +142,7 @@ class LoggingFunction(object):
         :param kwargs:
         :return:
         """
-        return _pypads_callback(*args, **kwargs)
+        return _pypads_callback(*args, **_kwargs)
 
     def __post__(self, ctx, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, _pypads_result,
                  **kwargs):

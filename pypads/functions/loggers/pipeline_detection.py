@@ -7,8 +7,9 @@ from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
 from pypads.autolog.wrapping import current_tracking_stack
+from pypads.functions.loggers.base_logger import LoggingFunction
 from pypads.logging_util import WriteFormats, get_base_folder, try_write_artifact
-from pypads.mlflow.mlflow_autolog import _is_package_available
+from pypads.util import is_package_available
 
 last_pipeline_tracking = None
 
@@ -22,12 +23,12 @@ def end_run(*args, **kwargs):
     if network is not None and len(network.nodes) > 0:
         try_write_artifact("_pypads_pipeline", network, WriteFormats.pickle)
 
-        if _is_package_available("networkx"):
+        if is_package_available("networkx"):
             base_folder = get_base_folder()
             folder = base_folder + "pipeline_graph.png"
             if not os.path.exists(base_folder):
                 os.mkdir(base_folder)
-            if _is_package_available("agraph") and _is_package_available("graphviz"):
+            if is_package_available("agraph") and is_package_available("graphviz"):
                 try:
                     if _pipeline_type == "simple":
                         agraph = to_agraph(DiGraph(network))
@@ -74,7 +75,7 @@ def end_run(*args, **kwargs):
                     agraph.draw(folder)
                 except ValueError as e:
                     warning("Failed plotting pipeline: " + str(e))
-            elif _is_package_available("matplotlib"):
+            elif is_package_available("matplotlib"):
                 import matplotlib.pyplot as plt
                 import networkx as nx
                 pos = nx.spring_layout(network)
@@ -127,30 +128,31 @@ def _step_number(label):
     return str(network.number_of_edges()) + ": " + label
 
 
-def pipeline(self, *args, _pypads_autologgers=None, pipeline_type="normal", pipeline_args=False, _pypads_wrappe,
-             _pypads_context,
-             _pypads_mapped_by,
-             _pypads_callback, **kwargs):
-    global last_pipeline_tracking
-    global network
-    global _pipeline_type
-    _pipeline_type = pipeline_type
+class PipelineTracker(LoggingFunction):
 
-    from pypads.base import get_current_pads
-    pads = get_current_pads()
-    pads.api.register_post_fn("pipeline_clean_up", end_run)
+    def _needed_packages(self):
+        return ["networkx"]
 
-    if _is_package_available("networkx"):
+    def __pre__(self, ctx, *args, _pypads_pipeline_type="normal", _pypads_pipeline_args=False, **kwargs):
+        global last_pipeline_tracking
+        global network
+        global _pipeline_type
+        _pipeline_type = _pypads_pipeline_type
+
+        from pypads.base import get_current_pads
+        pads = get_current_pads()
+        pads.api.register_post_fn("pipeline_clean_up", end_run)
+
         import networkx as nx
         if network is None:
             network = nx.MultiDiGraph()
 
-        node_id = _to_node_id(_pypads_mapped_by, _pypads_context, _pypads_wrappe, self)
-        label = _to_node_label(_pypads_mapped_by, _pypads_context, _pypads_wrappe, self)
+        node_id = _to_node_id(kwargs["_pypads_mapped_by"], kwargs["_pypads_context"], kwargs["_pypads_wrappe"], ctx)
+        label = _to_node_label(kwargs["_pypads_mapped_by"], kwargs["_pypads_context"], kwargs["_pypads_wrappe"], ctx)
         if not network.has_node(node_id):
             network.add_node(node_id, label=label)
 
-        label = _to_edge_label(_pypads_wrappe, pipeline_args, args, kwargs)
+        label = _to_edge_label(kwargs["_pypads_wrappe"], _pypads_pipeline_args, args, kwargs)
         # If the current stack holds only the call itself
         if len(current_tracking_stack) == 1:
 
@@ -169,10 +171,11 @@ def pipeline(self, *args, _pypads_autologgers=None, pipeline_type="normal", pipe
                 network.add_node(containing_node_id, label=containing_node_label)
             # Add an edge from the tracked function to the current function call
             network.add_edge(containing_node_id, node_id, plain_label=label, label=_step_number(label))
+        return node_id
 
-        output = _pypads_callback(*args, **kwargs)
-
-        label = "return " + _to_edge_label(_pypads_wrappe, pipeline_args, args, kwargs)
+    def __post__(self, ctx, *args, _pypads_pipeline_args=False, _pypads_pre_return, **kwargs):
+        node_id = _pypads_pre_return
+        label = "return " + _to_edge_label(kwargs["_pypads_wrappe"], _pypads_pipeline_args, args, kwargs)
         if len(current_tracking_stack) == 1:
             network.add_edge(node_id, -1, plain_label=label, label=_step_number(label))
         elif len(current_tracking_stack) > 1:
@@ -180,10 +183,4 @@ def pipeline(self, *args, _pypads_autologgers=None, pipeline_type="normal", pipe
             if not network.has_node(containing_node_id):
                 containing_node_label = _to_node_label(*current_tracking_stack[-2])
                 network.add_node(containing_node_id, label=containing_node_label)
-            # network.add_edge(node_id, containing_node_id, plain_label=label, label=_step_number(label + " args: " + str(args) + " kwargs: " + str(kwargs)))
             network.add_edge(node_id, containing_node_id, plain_label=label, label=_step_number(label))
-    else:
-        warning("Pipeline tracking currently needs networkx")
-        output = _pypads_callback(*args, **kwargs)
-
-    return output

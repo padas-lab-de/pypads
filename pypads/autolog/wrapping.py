@@ -140,7 +140,6 @@ def _get_hooked_fns(fn, mapping):
     if not mapping.hooks:
         mapping.hooks = mapping.in_collection.get_default_fn_hooks()
 
-    # TODO filter for types, package name contains, etc. instead of only fn names
     library = None
     version = None
     if mapping.in_collection is not None:
@@ -168,8 +167,9 @@ def _get_hooked_fns(fn, mapping):
         if configured_hook_events == "always" or set(configured_hook_events) & set(hook_events_of_mapping):
             from pypads.base import get_current_pads
             pads = get_current_pads()
-            fn = pads.function_registry.find_function(log_event, lib=library, version=version)
-            output.append((fn, hook_params, order))
+            fns = pads.function_registry.find_functions(log_event, lib=library, version=version)
+            for fn in fns:
+                output.append((fn, hook_params, order))
     output.sort(key=lambda t: t[2])
     return output
 

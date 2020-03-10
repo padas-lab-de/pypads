@@ -1,7 +1,7 @@
 from logging import debug, info
 
-from pypads.analysis.call_objects import get_current_call_str
 from pypads.functions.loggers.base_logger import LoggingFunction
+from pypads.logging_util import get_current_call_str
 
 
 class Log(LoggingFunction):
@@ -22,4 +22,4 @@ class LogInit(LoggingFunction):
     """
 
     def __pre__(self, ctx, *args, **kwargs):
-        info("Pypads tracked class " + str(self.__class__) + " initialized.")
+        info("Pypads tracked class " + str(ctx.__class__) + " initialized.")

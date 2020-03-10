@@ -106,6 +106,7 @@ class PypadsKerasTest(unittest.TestCase):
         DEFAULT_keras_CONFIG = {"events": {
             "predictions": {"on": ["pypads_predict"]}
         }}
+
         # Activate tracking of pypads
         from pypads.base import PyPads
         from pypads.base import DEFAULT_LOGGING_FNS, DEFAULT_CONFIG

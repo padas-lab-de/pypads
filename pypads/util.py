@@ -15,26 +15,17 @@ def get_class_that_defined_method(meth):
     return getattr(meth, '__objclass__', None)  # handle special descriptor objects
 
 
-def dict_merge(source, destination):
-    """
-    run me with nosetests --with-doctest file.py
-
-    >>> a = { 'first' : { 'all_rows' : { 'pass' : 'dog', 'number' : '1' } } }
-    >>> b = { 'first' : { 'all_rows' : { 'fail' : 'cat', 'number' : '5' } } }
-    >>> dict_merge(b, a) == { 'first' : { 'all_rows' : { 'pass' : 'dog', 'fail' : 'cat', 'number' : '5' } } }
-    https://stackoverflow.com/questions/20656135/python-deep-merge-dictionary-data
-    True
-    """
-    if isinstance(source, dict) and isinstance(destination, dict):
-        for key, value in source.items():
-            if isinstance(value, dict):
-                # get node or create one
-                node = destination.setdefault(key, {})
-                dict_merge(value, node)
-            else:
-                destination[key] = value
-
-    return destination
+def dict_merge(*dicts):
+    merged = {}
+    for d in dicts:
+        if isinstance(d, dict):
+            for key, value in d.items():
+                if isinstance(value, dict):
+                    node = merged.setdefault(key, {})
+                    merged[key] = dict_merge(node, value)
+                else:
+                    merged[key] = value
+    return merged
 
 
 def sizeof_fmt(num, suffix='B'):
@@ -53,3 +44,9 @@ def local_uri_to_path(uri):
     from six.moves import urllib
     path = urllib.parse.urlparse(uri).path if uri.startswith("file:") else uri
     return urllib.request.url2pathname(path)
+
+
+def is_package_available(name):
+    import importlib
+    spam_loader = importlib.util.find_spec(name)
+    return spam_loader is not None

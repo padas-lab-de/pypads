@@ -27,7 +27,7 @@
       "name": "keras classification metrics",
       "other_names": [],
       "implementation": {
-        "scikit-learn": "keras.metrics"
+        "keras": "keras.metrics"
       },
       "hooks": {
         "pypads_metric": []
