@@ -5,7 +5,7 @@ def git_meta(pads):
     run = pads.api.active_run()
     tags = run.data.tags
     source_name = tags.get("mlflow.source.name", None)
-    repo = get_git_repo(source_name) if source_name else None
+    repo = get_git_repo(source_name, pads=pads) if source_name else None
     if repo:
         # Disable pager for returns
         repo.git.set_persistent_git_options(no_pager=True)
@@ -36,7 +36,7 @@ def git_mirror(pads):
             # TODO mirror the given repo to our git remote server
             pass
 
-# # TODO find a good usage
+# TODO find a good usage
 # def source_code_parsing(pads):
 #     pads.api.register_post_fn("tag_extraction", tag_extraction)
 #     run = pads.api.active_run()

@@ -153,11 +153,15 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
 
     result = _pypads_callback(*args, **kwargs)
 
-    predictions = result
+    preds = result
     if pads.cache.run_exists("predictions"):
-        predictions = pads.cache.run_get("predictions")
+        preds = pads.cache.run_get("predictions")
+    # check if there is info about decision scores
+    probabilities = None
+    if pads.cache.run_exists("probabilities"):
+        probabilities = pads.cache.run_get("probabilities")
 
-    # check if there exists information of the current split
+    # check if there exists information about the current split
     num = 0
     split_info = None
     if pads.cache.run_exists("current_split"):
@@ -165,17 +169,12 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
     if pads.cache.run_exists(num):
         split_info = pads.cache.run_get(num).get("split_info", None)
 
-    # check if there is info about decision scores
-    probabilities = None
-    if pads.cache.run_exists("probabilities"):
-        pads.cache.run_get("probabilities")
-
     # depending on available info log the predictions
     if split_info is None:
         warning("No split information were found in the cache of the current run, "
                 "individual decision tracking might be missing Truth values, try to decorate you splitter!")
         pads.cache.run_add(num,
-                           {'predictions': {str(i): {'predicted': predictions[i]} for i in range(len(predictions))}})
+                           {'predictions': {str(i): {'predicted': preds[i]} for i in range(len(preds))}})
         if probabilities is not None:
             for i in pads.cache.run_get(num).get('predictions').keys():
                 pads.cache.run_get(num).get('predictions').get(str(i)).update(
@@ -183,7 +182,7 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
         if pads.cache.run_exists("targets"):
             try:
                 targets = pads.cache.run_get("targets")
-                if isinstance(targets, Iterable) and len(targets) == len(predictions):
+                if isinstance(targets, Iterable) and len(targets) == len(preds):
                     for i in pads.cache.run_get(num).get('predictions').keys():
                         pads.cache.run_get(num).get('predictions').get(str(i)).update(
                             {'truth': targets[int(i)]})
@@ -192,7 +191,7 @@ def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by,
     else:
         try:
             for i, sample in enumerate(split_info.get('test')):
-                pads.cache.run_get(num).get('predictions').get(str(sample)).update({'predicted': predictions[i]})
+                pads.cache.run_get(num).get('predictions').get(str(sample)).update({'predicted': preds[i]})
 
             if probabilities is not None:
                 for i, sample in enumerate(split_info.get('test')):
