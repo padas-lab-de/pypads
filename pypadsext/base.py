@@ -7,8 +7,10 @@ from pypadsext.analysis.doc_parsing import doc
 from pypadsext.analysis.parameter_search import parameter_search_executor, parameter_search
 from pypadsext.concepts.splitter import default_split
 from pypadsext.concepts.util import _create_ctx
-from pypadsext.functions.logging import dataset, predictions, split, hyperparameters, keras_probabilities, \
-    sklearn_probabilities, torch_metric, torch_predictions
+from pypadsext.functions.loggers.dataset import Dataset
+from pypadsext.functions.loggers.decision_tracking import Decisions, Decisions_keras, Decisions_sklearn, Decisions_torch
+from pypadsext.functions.loggers.metric import Metric_torch
+from pypadsext.functions.logging import split, hyperparameters
 from pypadsext.functions.run_init import git_meta
 from pypadsext.util import get_class_that_defined_method
 
@@ -18,17 +20,17 @@ DEFAULT_PYPADRE_INIT_RUN_FNS = [git_meta]
 
 # Extended mappings. We allow to log parameters, output or input, datasets
 DEFAULT_PYPADRE_LOGGING_FNS = {
-    "dataset": dataset,
-    "predictions": predictions,
+    "dataset": Dataset(),
+    "predictions": Decisions(),
     "parameter_search": parameter_search,
     "parameter_search_executor": parameter_search_executor,
     "splits": split,
     "hyperparameters": hyperparameters,
     "doc": doc,
-    ("predictions", "keras"): keras_probabilities,
-    ("predictions", "scikit-learn"): sklearn_probabilities,
-    ("predictions", "torch"): torch_predictions,
-    ("metric", "torch"): torch_metric
+    ("predictions", "keras"): Decisions_keras(),
+    ("predictions", "scikit-learn"): Decisions_sklearn(),
+    ("predictions", "torch"): Decisions_torch(),
+    ("metric", "torch"): Metric_torch()
 }
 
 # Extended config.
