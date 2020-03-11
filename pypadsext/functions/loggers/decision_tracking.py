@@ -2,6 +2,7 @@ import os
 from logging import warning
 from typing import Iterable
 
+from pypads.autolog.wrapping import _to_original_name
 from pypads.functions.loggers.base_logger import LoggingFunction
 from pypads.logging_util import get_current_call_folder
 
@@ -98,13 +99,20 @@ class Decisions_sklearn(Decisions):
         # check if the estimator computes decision scores
         probabilities = None
         if hasattr(ctx, "predict_proba"):
+            # TODO find a cleaner way to invoke the original predict_proba in case it is wrapped
+            predict_proba = ctx.predict_proba
+            if hasattr(ctx, _to_original_name(predict_proba.__name__, ctx._pypads_wrapped)):
+                predict_proba = getattr(ctx, _to_original_name(predict_proba.__name__, ctx._pypads_wrapped))
             try:
-                probabilities = ctx.predict_proba(*args, **kwargs)
+                probabilities = predict_proba(*args, **kwargs)
             except Exception as e:
                 warning("Couldn't compute probabilities because %s" % str(e))
         elif hasattr(ctx, "_predict_proba"):
+            _predict_proba = ctx.predict_proba
+            if hasattr(ctx, _to_original_name(_predict_proba.__name__, ctx._pypads_wrapped)):
+                _predict_proba = getattr(ctx, _to_original_name(_predict_proba.__name__, ctx._pypads_wrapped))
             try:
-                probabilities = ctx._predict_proba(*args, **kwargs)
+                probabilities = _predict_proba(*args, **kwargs)
             except Exception as e:
                 warning("Couldn't compute probabilities because %s" % str(e))
 

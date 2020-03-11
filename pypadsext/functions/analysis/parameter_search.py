@@ -44,6 +44,12 @@ class ParameterSearch(LoggingFunction):
 
 class ParameterSearchExecutor(LoggingFunction):
 
+    def __pre__(self, ctx, *args, **kwargs):
+        pass
+
+    def __post__(self, ctx, *args, **kwargs):
+        pass
+
     def call_wrapped(self, ctx, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
                      _kwargs, **_pypads_hook_params):
         from pypads.base import get_current_pads
