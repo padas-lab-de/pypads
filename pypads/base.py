@@ -10,7 +10,7 @@ from logging import warning, debug, info
 from os.path import expanduser
 from types import FunctionType
 from typing import List, Iterable
-
+import atexit
 import mlflow
 from mlflow.tracking import MlflowClient
 
@@ -657,3 +657,13 @@ def get_current_config(default=None):
         configs[active_run] = ast.literal_eval(run.data.tags[CONFIG_NAME])
         return configs[active_run]
     return default
+
+
+# --- Enfore end_run() at code exit ---
+def cleanup():
+    pads: PyPads = get_current_pads()
+    if pads.api.active_run():
+        pads.api.end_run()
+
+
+atexit.register(cleanup)
