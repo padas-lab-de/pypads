@@ -82,11 +82,11 @@ def wrap_module(module, mapping: AlgorithmMapping):
 
         for _name in dir(module):
             wrap(getattr(module, _name), module, mapping)
-
+        # TODO check here
         for hook in mapping.hooks:
-            for name in list(filter(lambda x: make_hook_applicable_filter(hook, module, mapping), dir(module))):
+            for name in list(filter(make_hook_applicable_filter(hook, module, mapping), dir(module))):
                 algorithm_mapping = AlgorithmMapping(mapping.reference + "." + name, mapping.library, mapping.algorithm,
-                                                     mapping.file, None)
+                                                     mapping.file, mapping.hooks)
                 algorithm_mapping.in_collection = mapping.in_collection
                 _add_found_class(algorithm_mapping)
 
