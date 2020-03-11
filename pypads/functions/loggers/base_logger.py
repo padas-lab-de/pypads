@@ -3,7 +3,7 @@ from logging import exception, warning
 
 import mlflow
 
-from pypads.functions.analysis.time_keeper import timed, add_run_time
+from pypads.functions.analysis.time_keeper import timed, add_run_time, TimingDefined
 from pypads.logging_util import get_current_call_str
 from pypads.util import is_package_available
 
@@ -101,6 +101,9 @@ class LoggingFunction(DependencyMixin):
             add_run_time(
                 get_current_call_str(ctx, _pypads_context, _pypads_wrappe) + "." + self.__class__.__name__ + ".__pre__",
                 time)
+        except TimingDefined:
+            # TODO multithreading fails
+            pass
         except NotImplementedError:
             pass
         except MissingDependencyError as e:
@@ -120,7 +123,7 @@ class LoggingFunction(DependencyMixin):
 
         try:
             add_run_time(get_current_call_str(ctx, _pypads_context, _pypads_wrappe), time)
-        except ValueError as e:
+        except TimingDefined as e:
             pass
 
         # Call function to be executed after the tracked function
@@ -133,6 +136,8 @@ class LoggingFunction(DependencyMixin):
                                       _pypads_pre_return=_pypads_pre_return, **{**_pypads_hook_params, **kwargs}))
             add_run_time(get_current_call_str(ctx, _pypads_context,
                                               _pypads_wrappe) + "." + self.__class__.__name__ + ".__post__", time)
+        except TimingDefined:
+            pass
         except NotImplementedError:
             pass
         except MissingDependencyError as e:

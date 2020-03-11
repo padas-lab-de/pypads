@@ -23,8 +23,13 @@ class Parameter(LoggingFunction):
             visitor = default_visitor(ctx)
 
             for k, v in visitor[0]["steps"][0]["hyper_parameters"]["model_parameters"].items():
-                try_mlflow_log(mlflow.log_param,
-                               get_current_call_str(ctx, kwargs["_pypads_context"],
-                                                    kwargs["_pypads_wrappe"]) + "." + k + ".txt", v)
+                try:
+                    try_mlflow_log(mlflow.log_param, kwargs["_pypads_mapped_by"].reference + "." + k + ".txt", v)
+                except Exception as e:
+                    warning("Couldn't track parameter. " + str(e) + " Trying to track with another name.")
+                    try_mlflow_log(mlflow.log_param,
+                                   get_current_call_str(ctx, kwargs["_pypads_context"],
+                                                        kwargs["_pypads_wrappe"]) + "." + k + ".txt", v)
+
         except Exception as e:
             warning("Couldn't use visitor for parameter extraction. " + str(e) + " Omit logging for now.")

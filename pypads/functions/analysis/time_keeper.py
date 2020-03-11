@@ -5,6 +5,12 @@ from logging import info
 from pypads.logging_util import WriteFormats
 
 
+class TimingDefined(Exception):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
 def timed(f):
     start = time.time()
     ret = f()
@@ -43,4 +49,4 @@ def add_run_time(name, time):
         timings[name] = value + " " + name + ": " + str(time)
         info(name + " done after: " + str(time) + "s")
     else:
-        raise ValueError("Timing already defined for " + name)
+        raise TimingDefined("Timing already defined for " + name)
