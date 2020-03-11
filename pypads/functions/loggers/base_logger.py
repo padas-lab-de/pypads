@@ -3,6 +3,7 @@ from logging import exception, warning
 
 import mlflow
 
+from pypads.functions.analysis.time_keeper import timed, add_run_time
 from pypads.logging_util import get_current_call_str
 from pypads.util import is_package_available
 
@@ -57,7 +58,7 @@ class LoggingFunction(DependencyMixin):
         :param kwargs:
         :return:
         """
-        pass
+        raise NotImplementedError()
 
     # noinspection PyMethodMayBeStatic
     def _handle_failure(self, ctx, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
@@ -89,12 +90,19 @@ class LoggingFunction(DependencyMixin):
         # Call function to be executed before the tracked function
         _pypads_pre_return = None
         dependency_error = None
+
         try:
             self._check_dependencies()
-            _pypads_pre_return = self.__pre__(ctx, *args, _pypads_wrappe=_pypads_wrappe,
-                                              _pypads_context=_pypads_context,
-                         _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback,
-                         **{**_pypads_hook_params, **kwargs})
+            _pypads_pre_return, time = timed(lambda: self.__pre__(ctx, *args, _pypads_wrappe=_pypads_wrappe,
+                                                                  _pypads_context=_pypads_context,
+                                                                  _pypads_mapped_by=_pypads_mapped_by,
+                                                                  _pypads_callback=_pypads_callback,
+                                                                  **{**_pypads_hook_params, **kwargs}))
+            add_run_time(
+                get_current_call_str(ctx, _pypads_context, _pypads_wrappe) + "." + self.__class__.__name__ + ".__pre__",
+                time)
+        except NotImplementedError:
+            pass
         except MissingDependencyError as e:
             dependency_error = e
         except Exception as e:
@@ -104,16 +112,29 @@ class LoggingFunction(DependencyMixin):
                                  **kwargs)
 
         # Call the output producing code
-        out = self.call_wrapped(ctx, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
-                                _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback, _kwargs=kwargs,
-                                **_pypads_hook_params)
+        out, time = timed(
+            lambda: self.call_wrapped(ctx, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
+                                      _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback,
+                                      _kwargs=kwargs,
+                                      **_pypads_hook_params))
+
+        try:
+            add_run_time(get_current_call_str(ctx, _pypads_context, _pypads_wrappe), time)
+        except ValueError as e:
+            pass
 
         # Call function to be executed after the tracked function
         try:
             self._check_dependencies()
-            self.__post__(ctx, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
-                          _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback, _pypads_result=out,
-                          _pypads_pre_return=_pypads_pre_return, **{**_pypads_hook_params, **kwargs})
+            _, time = timed(
+                lambda: self.__post__(ctx, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
+                                      _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback,
+                                      _pypads_result=out,
+                                      _pypads_pre_return=_pypads_pre_return, **{**_pypads_hook_params, **kwargs}))
+            add_run_time(get_current_call_str(ctx, _pypads_context,
+                                              _pypads_wrappe) + "." + self.__class__.__name__ + ".__post__", time)
+        except NotImplementedError:
+            pass
         except MissingDependencyError as e:
             dependency_error = e
         except Exception as e:
@@ -157,4 +178,4 @@ class LoggingFunction(DependencyMixin):
         :param kwargs:
         :return:
         """
-        pass
+        raise NotImplementedError()

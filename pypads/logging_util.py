@@ -107,15 +107,15 @@ def try_write_artifact(file_name, obj, write_format, preserve_folder=True):
         try_mlflow_log(mlflow.log_artifact, path)
 
 
-def get_current_call_dict(self, ctx, wrapped):
+def get_current_call_dict(ctx, _pypads_ctx, _pypads_wrappe):
     from pypads.base import get_current_pads
     pads = get_current_pads()
     call_objects: dict = pads.cache.run_get("call_objects")
     if call_objects is None:
         raise ValueError("Call objects have to be tracked before a call dict can be extracted.")
-    function_calls: OrderedDict = call_objects[get_function_id(ctx, wrapped)]
+    function_calls: OrderedDict = call_objects[get_function_id(_pypads_ctx, _pypads_wrappe)]
     call_items = list(function_calls.items())
-    instance_id = get_instance_id(self)
+    instance_id = get_instance_id(_pypads_ctx)
 
     instance_number = -1
     call_number = -1
@@ -126,15 +126,15 @@ def get_current_call_dict(self, ctx, wrapped):
             return value[-1]
 
 
-def get_current_call_str(self, ctx, wrapped):
+def get_current_call_str(ctx, _pypads_ctx, _pypads_wrappe):
     from pypads.base import get_current_pads
     pads = get_current_pads()
     call_objects: dict = pads.cache.run_get("call_objects")
     if call_objects is None:
         raise ValueError("Call objects have to be tracked before a call str can be extracted.")
-    function_calls: OrderedDict = call_objects[get_function_id(ctx, wrapped)]
+    function_calls: OrderedDict = call_objects[get_function_id(_pypads_ctx, _pypads_wrappe)]
     call_items = list(function_calls.items())
-    instance_id = get_instance_id(self)
+    instance_id = get_instance_id(ctx)
 
     instance_number = -1
     call_number = -1
@@ -147,20 +147,20 @@ def get_current_call_str(self, ctx, wrapped):
 
     from pypads.functions.analysis.call_objects import _get_local_index
     return "thread_" + str(
-        threading.get_ident()) + "." + "context_" + ctx.__name__ + ".instance_" + str(
-        instance_number) + "." + "function_" + wrapped.__name__ + ".call_" + str(
-        _get_local_index(str(id(get_current_call_dict(self, ctx, wrapped)))))
+        threading.get_ident()) + "." + "context_" + _pypads_ctx.__name__ + ".instance_" + str(
+        instance_number) + "." + "function_" + _pypads_wrappe.__name__ + ".call_" + str(
+        _get_local_index(str(id(get_current_call_dict(ctx, _pypads_ctx, _pypads_wrappe)))))
 
 
-def get_current_call_folder(self, ctx, wrapped):
+def get_current_call_folder(ctx, _pypads_ctx, _pypads_wrappe):
     from pypads.base import get_current_pads
     pads = get_current_pads()
     call_objects: dict = pads.cache.run_get("call_objects")
     if call_objects is None:
         raise ValueError("Call objects have to be tracked before a call folder can be extracted.")
-    function_calls: OrderedDict = call_objects[get_function_id(ctx, wrapped)]
+    function_calls: OrderedDict = call_objects[get_function_id(_pypads_ctx, _pypads_wrappe)]
     call_items = list(function_calls.items())
-    instance_id = get_instance_id(self)
+    instance_id = get_instance_id(ctx)
 
     instance_number = -1
     call_number = -1
@@ -172,9 +172,10 @@ def get_current_call_folder(self, ctx, wrapped):
             break
 
     from pypads.functions.analysis.call_objects import _get_local_index
-    return os.path.join("thread_" + str(threading.get_ident()), "context_" + ctx.__name__,
-                        "instance_" + str(instance_number), "function_" + wrapped.__name__,
-                        "call_" + str(_get_local_index(str(id(get_current_call_dict(self, ctx, wrapped))))))
+    return os.path.join("thread_" + str(threading.get_ident()), "context_" + _pypads_ctx.__name__,
+                        "instance_" + str(instance_number), "function_" + _pypads_wrappe.__name__,
+                        "call_" + str(_get_local_index(str(id(
+                            get_current_call_dict(ctx, _pypads_ctx, _pypads_wrappe))))))
 
 
 def get_function_id(ctx, wrapped):

@@ -49,7 +49,9 @@ def new_call_object(ctx, wrapped, self):
     if instance_id not in function_calls:
         function_calls[instance_id] = []
 
-    function_calls[instance_id].append({"started": time.time()})
+    call_dict = {"started": time.time()}
+    function_calls[instance_id].append(call_dict)
+    return call_dict
 
 
 class ObjectTracker(LoggingFunction):
