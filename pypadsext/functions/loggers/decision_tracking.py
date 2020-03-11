@@ -2,8 +2,8 @@ import os
 from logging import warning
 from typing import Iterable
 
-from pypads.analysis.call_objects import get_current_call_folder
 from pypads.functions.loggers.base_logger import LoggingFunction
+from pypads.logging_util import get_current_call_folder
 
 
 class Decisions(LoggingFunction):
@@ -12,6 +12,14 @@ class Decisions(LoggingFunction):
     """
 
     def __post__(self, ctx, *args, _pypads_result, **kwargs):
+        """
+
+        :param ctx:
+        :param args:
+        :param _pypads_result:
+        :param kwargs:
+        :return:
+        """
         from pypads.base import get_current_pads
         from pypadsext.base import PyPadrePads
         pads: PyPadrePads = get_current_pads()
@@ -74,7 +82,15 @@ class Decisions_sklearn(Decisions):
     """
     Function getting the prediction scores from sklearn estimators
     """
-    def __pre__(self, ctx, *args, **kwargs):
+
+    def __pre__(self, ctx, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
+        """
+
+        :param ctx:
+        :param args:
+        :param kwargs:
+        :return:
+        """
         from pypads.base import get_current_pads
         from pypadsext.base import PyPadrePads
         pads: PyPadrePads = get_current_pads()
@@ -99,7 +115,15 @@ class Decisions_keras(Decisions):
     """
     Function getting the prediction scores from keras models
     """
+
     def __pre__(self, ctx, *args, **kwargs):
+        """
+
+        :param ctx:
+        :param args:
+        :param kwargs:
+        :return:
+        """
         from pypads.base import get_current_pads
         from pypadsext.base import PyPadrePads
         pads: PyPadrePads = get_current_pads()
@@ -118,7 +142,7 @@ class Decisions_torch(Decisions):
     Function getting the prediction scores from torch models
     """
 
-    def __post__(self, ctx, *args,_pypads_result, **kwargs):
+    def __post__(self, ctx, *args, _pypads_result, **kwargs):
         from pypads.base import get_current_pads
         from pypadsext.base import PyPadrePads
         pads: PyPadrePads = get_current_pads()
@@ -126,4 +150,4 @@ class Decisions_torch(Decisions):
         pads.cache.run_add("probabilities", _pypads_result.data.numpy())
         pads.cache.run_add("predictions", _pypads_result.argmax(dim=1).data.numpy())
 
-        return super().__post__(ctx, *args,_pypads_result, **kwargs)
+        return super().__post__(ctx, *args, _pypads_result, **kwargs)

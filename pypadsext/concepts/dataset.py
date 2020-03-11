@@ -2,11 +2,13 @@ from abc import ABCMeta
 from enum import Enum
 from typing import Any, Tuple, Callable, Iterable
 
+from pypads.base import tracking_active
+
 from pypadsext.util import _is_package_available
 
 
 class Types(Enum):
-    if _is_package_available('sklearn'):
+    if _is_package_available('sklearn') and tracking_active:
         from sklearn.utils import Bunch
         bunch = Bunch
     else:
@@ -32,7 +34,7 @@ class Types(Enum):
     tuple = Tuple
 
 
-class modules(Enum):
+class Modules(Enum):
     if _is_package_available('sklearn'):
         sklearn = "sklearn.datasets"
     if _is_package_available('keras'):
@@ -44,7 +46,7 @@ class modules(Enum):
 class Crawler:
     __metaclass__ = ABCMeta
     _formats = Types
-    _modules = modules
+    _modules = Modules
     _format = None
     _fns = {}
 
@@ -75,8 +77,8 @@ class Crawler:
         """
         self._format = None
         for _type in self._formats:
-            if type(_type.value) == "str":
-                if type(self._data) == _type.value:
+            if isinstance(_type.value, str):
+                if _type.value in str(type(self._data)):
                     self._format = _type.value
                     break
             else:
@@ -205,7 +207,7 @@ def sklearn_crawler(obj: Crawler, *args, **kwargs):
 
 
 Crawler.register_fn(Types.bunch.value, bunch_crawler)
-Crawler.register_fn(modules.sklearn.value, sklearn_crawler)
+Crawler.register_fn(Modules.sklearn.value, sklearn_crawler)
 
 
 # --- TorchVision Dataset object ---
@@ -219,7 +221,7 @@ def torch_crawler(obj: Crawler, *args, **kwargs):
 
 
 if _is_package_available("torch"):
-    Crawler.register_fn(modules.torch.value, torch_crawler)
+    Crawler.register_fn(Modules.torch.value, torch_crawler)
 
 
 # --- Keras datasets ---
@@ -234,7 +236,7 @@ def keras_crawler(obj: Crawler, *args, **kwargs):
 
 
 if _is_package_available("keras"):
-    Crawler.register_fn(modules.keras.value, keras_crawler)
+    Crawler.register_fn(Modules.keras.value, keras_crawler)
 
 
 # --- networkx graph object ---

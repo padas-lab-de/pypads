@@ -3,32 +3,33 @@ from pypads.autolog.mappings import AlgorithmMapping
 from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG, \
     DEFAULT_INIT_RUN_FNS, DEFAULT_LOGGING_FNS
 
-from pypadsext.analysis.doc_parsing import doc
-from pypadsext.analysis.parameter_search import parameter_search_executor, parameter_search
 from pypadsext.concepts.splitter import default_split
 from pypadsext.concepts.util import _create_ctx
+from pypadsext.functions.analysis.doc_parsing import Doc
+from pypadsext.functions.analysis.parameter_search import ParameterSearch, ParameterSearchExecutor
+from pypadsext.functions.loggers.data_splitting import SplitsTracker
 from pypadsext.functions.loggers.dataset import Dataset
 from pypadsext.functions.loggers.decision_tracking import Decisions, Decisions_keras, Decisions_sklearn, Decisions_torch
+from pypadsext.functions.loggers.hyperparameters import HyperParameters
 from pypadsext.functions.loggers.metric import Metric_torch
-from pypadsext.functions.logging import split, hyperparameters
-from pypadsext.functions.run_init import git_meta
+from pypadsext.functions.run_init_loggers.run_init import GitMeta
 from pypadsext.util import get_class_that_defined_method
 
 # --- Pypads App ---
 
-DEFAULT_PYPADRE_INIT_RUN_FNS = [git_meta]
+DEFAULT_PYPADRE_INIT_RUN_FNS = [GitMeta()]
 
 # Extended mappings. We allow to log parameters, output or input, datasets
 DEFAULT_PYPADRE_LOGGING_FNS = {
     "dataset": Dataset(),
     "predictions": Decisions(),
-    "parameter_search": parameter_search,
-    "parameter_search_executor": parameter_search_executor,
-    "splits": split,
-    "hyperparameters": hyperparameters,
-    "doc": doc,
+    "parameter_search": ParameterSearch(),
+    "parameter_search_executor": ParameterSearchExecutor(),
+    "splits": SplitsTracker(),
+    "hyperparameters": HyperParameters(),
+    "doc": Doc(),
     ("predictions", "keras"): Decisions_keras(),
-    ("predictions", "scikit-learn"): Decisions_sklearn(),
+    ("predictions", "sklearn"): Decisions_sklearn(),
     ("predictions", "torch"): Decisions_torch(),
     ("metric", "torch"): Metric_torch()
 }

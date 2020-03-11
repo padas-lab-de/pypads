@@ -1,9 +1,8 @@
 import os
 from logging import warning
 
-from pypads.analysis.call_objects import get_current_call_folder
 from pypads.functions.loggers.base_logger import LoggingFunction
-from pypads.logging_util import WriteFormats
+from pypads.logging_util import WriteFormats, get_current_call_folder
 
 from pypadsext.concepts.dataset import Crawler
 from pypadsext.concepts.util import persistent_hash, get_by_tag
@@ -50,6 +49,10 @@ class Dataset(LoggingFunction):
         if pads.cache.run_exists("dataset_meta"):
             metadata = {**metadata, **pads.cache.run_get("dataset_meta")}
 
+        # get the name before switching the active run
+        name = os.path.join(get_current_call_folder(ctx, kwargs["_pypads_context"], kwargs["_pypads_wrappe"]),
+                            "data", str(id(kwargs["_pypads_callback"])))
+
         # get the repo or create new where datasets are stored
         repo = pads.mlf.get_experiment_by_name(self.DATASETS)
         if repo is None:
@@ -70,9 +73,7 @@ class Dataset(LoggingFunction):
                 pads.cache.run_add("dataset_id", dataset_id, current_run.info.run_id)
                 pads.api.set_tag("pypads.dataset", ds_name)
                 pads.api.set_tag("pypads.dataset.hash", _hash)
-                name = os.path.join(get_current_call_folder(ctx, kwargs["_pypads_context"], kwargs["_pypads_wrappe"]),
-                            "data",
-                            str(id(kwargs["_pypads_callback"])))
+
                 pads.api.log_mem_artifact(name, data, write_format=_pypads_write_format, meta=metadata)
 
             pads.api.set_tag("pypads.datasetID", dataset_id)
@@ -83,4 +84,3 @@ class Dataset(LoggingFunction):
             else:
                 dataset_id = _stored.pop().info.run_id
                 pads.api.set_tag("pypads.datasetID", dataset_id)
-
