@@ -1,25 +1,25 @@
 import ast
+import atexit
 import glob
 import io
 import os
 import pickle
-import sys
 from contextlib import contextmanager
 from functools import wraps
-from logging import warning, debug, info
+from logging import warning, debug
 from os.path import expanduser
 from types import FunctionType
 from typing import List, Iterable
-import atexit
+
 import mlflow
 from mlflow.tracking import MlflowClient
 
 from pypads.autolog.hook import Hook
 from pypads.autolog.mappings import AlgorithmMapping, MappingRegistry, AlgorithmMeta
 from pypads.autolog.pypads_import import extend_import_module, duck_punch_loader
-from pypads.autolog.wrapping import punched_module_names
+from pypads.autolog.wrapping.module_wrapping import punched_module_names
 from pypads.caches import PypadsCache, Cache
-from pypads.functions.analysis.call_objects import ObjectTracker
+from pypads.functions.analysis.call_tracker import CallTracker
 from pypads.functions.analysis.validation.parameters import Parameter
 from pypads.functions.loggers.data_flow import Output, Input
 from pypads.functions.loggers.debug import LogInit, Log
@@ -54,12 +54,6 @@ class FunctionRegistry:
                 self._add_functions(key, value)
             elif callable(value):
                 self._add_functions(key, {value})
-
-        # Tracking of objects is by default activated
-        if "_pypads_call_object" not in self.fns:
-            self._add_functions("_pypads_call_object", {ObjectTracker()})
-        else:
-            info("Default object tracker overwritten. Make sure this is intended.")
 
     def find_functions(self, name, lib=None, version=None):
         if (name, lib, version) in self.fns:
@@ -295,7 +289,7 @@ class PypadsApi:
             hooks = [Hook(e) for e in events]
             mapping = AlgorithmMapping(ctx_path + "." + fn.__name__, lib, AlgorithmMeta(fn.__name__, []), None,
                                        hooks=hooks)
-        from pypads.autolog.wrapping import wrap
+        from pypads.autolog.wrapping.wrapping import wrap
         return wrap(fn, ctx=ctx, mapping=mapping)
 
     def start_run(self, run_id=None, experiment_id=None, run_name=None, nested=False):
@@ -431,6 +425,7 @@ class PyPads:
         self._api = PypadsApi(self)
         self._decorators = PypadsDecorators(self)
         self._cache = PypadsCache()
+        self._call_tracker = CallTracker(self)
 
         self._init_run_fns = init_run_fns
         self._init_mlflow_backend(uri, name, config)
@@ -511,11 +506,9 @@ class PyPads:
         self._experiment = self.mlf.get_experiment_by_name(name) if name else self.mlf.get_experiment(
             run.info.experiment_id)
         if config:
-            self.config = dict_merge({"events": {"_pypads_call_object": {"on": "always", "order": sys.maxsize}}},
-                                     DEFAULT_CONFIG, config)
+            self.config = dict_merge({"events": {}}, DEFAULT_CONFIG, config)
         else:
-            self.config = dict_merge({"events": {"_pypads_call_object": {"on": "always", "order": sys.maxsize}}},
-                                     DEFAULT_CONFIG)
+            self.config = dict_merge({"events": {}}, DEFAULT_CONFIG)
 
         # override active run if used
         if name and run.info.experiment_id is not self._experiment.experiment_id:
@@ -565,7 +558,7 @@ class PyPads:
 
     @property
     def config(self):
-        return self.mlf.get_run(mlflow.active_run().info.run_id).data.tags[CONFIG_NAME]
+        return ast.literal_eval(self.mlf.get_run(mlflow.active_run().info.run_id).data.tags[CONFIG_NAME])
 
     @config.setter
     def config(self, value: dict):
@@ -591,6 +584,10 @@ class PyPads:
     @property
     def decorators(self):
         return self._decorators
+
+    @property
+    def call_tracker(self):
+        return self._call_tracker
 
     @property
     def cache(self):

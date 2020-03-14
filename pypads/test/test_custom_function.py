@@ -26,11 +26,9 @@ class PypadsCustomFunctionTest(unittest.TestCase):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        import mlflow
         # TODO
         # !-------------------------- asserts ---------------------------
-        # End the mlflow run opened by PyPads
-        mlflow.end_run()
+        tracker.api.end_run()
 
     def test_api_inline(self):
         """
@@ -53,11 +51,9 @@ class PypadsCustomFunctionTest(unittest.TestCase):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        import mlflow
         # TODO
         # !-------------------------- asserts ---------------------------
-        # End the mlflow run opened by PyPads
-        mlflow.end_run()
+        tracker.api.end_run()
 
     def test_decorator(self):
         """
@@ -79,11 +75,9 @@ class PypadsCustomFunctionTest(unittest.TestCase):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        import mlflow
         # TODO
         # !-------------------------- asserts ---------------------------
-        # End the mlflow run opened by PyPads
-        mlflow.end_run()
+        tracker.api.end_run()
 
     def test_fit_decorator(self):
         """
@@ -105,11 +99,9 @@ class PypadsCustomFunctionTest(unittest.TestCase):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        import mlflow
         # TODO
         # !-------------------------- asserts ---------------------------
-        # End the mlflow run opened by PyPads
-        mlflow.end_run()
+        tracker.api.end_run()
 
     def test_fail_decorator(self):
         """
@@ -131,11 +123,9 @@ class PypadsCustomFunctionTest(unittest.TestCase):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        import mlflow
         # TODO
         # !-------------------------- asserts ---------------------------
-        # End the mlflow run opened by PyPads
-        mlflow.end_run()
+        tracker.api.end_run()
 
     def test_retry(self):
         """
@@ -164,8 +154,6 @@ class PypadsCustomFunctionTest(unittest.TestCase):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        import mlflow
         # TODO
         # !-------------------------- asserts ---------------------------
-        # End the mlflow run opened by PyPads
-        mlflow.end_run()
+        tracker.api.end_run()

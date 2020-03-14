@@ -6,7 +6,6 @@ from mlflow.utils.autologging_utils import try_mlflow_log
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
-from pypads.autolog.wrapping import current_tracking_stack
 from pypads.functions.loggers.base_logger import LoggingFunction
 from pypads.logging_util import WriteFormats, get_base_folder, try_write_artifact
 from pypads.util import is_package_available
@@ -134,53 +133,54 @@ class PipelineTracker(LoggingFunction):
         return ["networkx"]
 
     def __pre__(self, ctx, *args, _pypads_pipeline_type="normal", _pypads_pipeline_args=False, **kwargs):
-        global last_pipeline_tracking
-        global network
-        global _pipeline_type
-        _pipeline_type = _pypads_pipeline_type
-
-        from pypads.base import get_current_pads
-        pads = get_current_pads()
-        pads.api.register_post_fn("pipeline_clean_up", end_run)
-
-        import networkx as nx
-        if network is None:
-            network = nx.MultiDiGraph()
-
-        node_id = _to_node_id(kwargs["_pypads_mapped_by"], kwargs["_pypads_context"], kwargs["_pypads_wrappe"], ctx)
-        label = _to_node_label(kwargs["_pypads_mapped_by"], kwargs["_pypads_context"], kwargs["_pypads_wrappe"], ctx)
-        if not network.has_node(node_id):
-            network.add_node(node_id, label=label)
-
-        label = _to_edge_label(kwargs["_pypads_wrappe"], _pypads_pipeline_args, args, kwargs)
-        # If the current stack holds only the call itself
-        if len(current_tracking_stack) == 1:
-
-            # If there where no nodes until now
-            if len(network.nodes) == 1:
-                network.add_node(-1, label="entry")
-                last_pipeline_tracking = -1
-            network.add_edge(last_pipeline_tracking, node_id, plain_label=label, label=_step_number(label))
-
-        # If the tracked function was called from another tracked function
-        elif len(current_tracking_stack) > 1:
-
-            containing_node_id = _to_node_id(*current_tracking_stack[-2])
-            if not network.has_node(containing_node_id):
-                containing_node_label = _to_node_label(*current_tracking_stack[-2])
-                network.add_node(containing_node_id, label=containing_node_label)
-            # Add an edge from the tracked function to the current function call
-            network.add_edge(containing_node_id, node_id, plain_label=label, label=_step_number(label))
-        return node_id
-
-    def __post__(self, ctx, *args, _pypads_pipeline_args=False, _pypads_pre_return, **kwargs):
-        node_id = _pypads_pre_return
-        label = "return " + _to_edge_label(kwargs["_pypads_wrappe"], _pypads_pipeline_args, args, kwargs)
-        if len(current_tracking_stack) == 1:
-            network.add_edge(node_id, -1, plain_label=label, label=_step_number(label))
-        elif len(current_tracking_stack) > 1:
-            containing_node_id = _to_node_id(*current_tracking_stack[-2])
-            if not network.has_node(containing_node_id):
-                containing_node_label = _to_node_label(*current_tracking_stack[-2])
-                network.add_node(containing_node_id, label=containing_node_label)
-            network.add_edge(node_id, containing_node_id, plain_label=label, label=_step_number(label))
+        pass
+    #     global last_pipeline_tracking
+    #     global network
+    #     global _pipeline_type
+    #     _pipeline_type = _pypads_pipeline_type
+    #
+    #     from pypads.base import get_current_pads
+    #     pads = get_current_pads()
+    #     pads.api.register_post_fn("pipeline_clean_up", end_run)
+    #
+    #     import networkx as nx
+    #     if network is None:
+    #         network = nx.MultiDiGraph()
+    #
+    #     node_id = _to_node_id(kwargs["_pypads_mapped_by"], kwargs["_pypads_context"], kwargs["_pypads_wrappe"], ctx)
+    #     label = _to_node_label(kwargs["_pypads_mapped_by"], kwargs["_pypads_context"], kwargs["_pypads_wrappe"], ctx)
+    #     if not network.has_node(node_id):
+    #         network.add_node(node_id, label=label)
+    #
+    #     label = _to_edge_label(kwargs["_pypads_wrappe"], _pypads_pipeline_args, args, kwargs)
+    #     # If the current stack holds only the call itself
+    #     if len(current_tracking_stack) == 1:
+    #
+    #         # If there where no nodes until now
+    #         if len(network.nodes) == 1:
+    #             network.add_node(-1, label="entry")
+    #             last_pipeline_tracking = -1
+    #         network.add_edge(last_pipeline_tracking, node_id, plain_label=label, label=_step_number(label))
+    #
+    #     # If the tracked function was called from another tracked function
+    #     elif len(current_tracking_stack) > 1:
+    #
+    #         containing_node_id = _to_node_id(*current_tracking_stack[-2])
+    #         if not network.has_node(containing_node_id):
+    #             containing_node_label = _to_node_label(*current_tracking_stack[-2])
+    #             network.add_node(containing_node_id, label=containing_node_label)
+    #         # Add an edge from the tracked function to the current function call
+    #         network.add_edge(containing_node_id, node_id, plain_label=label, label=_step_number(label))
+    #     return node_id
+    #
+    # def __post__(self, ctx, *args, _pypads_pipeline_args=False, _pypads_pre_return, **kwargs):
+    #     node_id = _pypads_pre_return
+    #     label = "return " + _to_edge_label(kwargs["_pypads_wrappe"], _pypads_pipeline_args, args, kwargs)
+    #     if len(current_tracking_stack) == 1:
+    #         network.add_edge(node_id, -1, plain_label=label, label=_step_number(label))
+    #     elif len(current_tracking_stack) > 1:
+    #         containing_node_id = _to_node_id(*current_tracking_stack[-2])
+    #         if not network.has_node(containing_node_id):
+    #             containing_node_label = _to_node_label(*current_tracking_stack[-2])
+    #             network.add_node(containing_node_id, label=containing_node_label)
+    #         network.add_edge(node_id, containing_node_id, plain_label=label, label=_step_number(label))

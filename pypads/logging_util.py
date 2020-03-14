@@ -1,8 +1,6 @@
 import os
 import pickle
 import shutil
-import threading
-from collections.__init__ import OrderedDict
 from enum import Enum
 from logging import warning
 from os.path import expanduser
@@ -105,85 +103,3 @@ def try_write_artifact(file_name, obj, write_format, preserve_folder=True):
             try_mlflow_log(mlflow.log_artifact, path)
     else:
         try_mlflow_log(mlflow.log_artifact, path)
-
-
-def get_current_call_dict(ctx, _pypads_ctx, _pypads_wrappe):
-    from pypads.base import get_current_pads
-    pads = get_current_pads()
-    call_objects: dict = pads.cache.run_get("call_objects")
-    if call_objects is None:
-        raise ValueError("Call objects have to be tracked before a call dict can be extracted.")
-    function_calls: OrderedDict = call_objects[get_function_id(_pypads_ctx, _pypads_wrappe)]
-    call_items = list(function_calls.items())
-    instance_id = get_instance_id(_pypads_ctx)
-
-    instance_number = -1
-    call_number = -1
-    for instance_number in range(0, len(call_items)):
-        # noinspection PyUnresolvedReferences
-        key, value = call_items[instance_number]
-        if key == instance_id:
-            return value[-1]
-
-
-def get_current_call_str(ctx, _pypads_ctx, _pypads_wrappe):
-    from pypads.base import get_current_pads
-    pads = get_current_pads()
-    call_objects: dict = pads.cache.run_get("call_objects")
-    if call_objects is None:
-        raise ValueError("Call objects have to be tracked before a call str can be extracted.")
-    function_calls: OrderedDict = call_objects[get_function_id(_pypads_ctx, _pypads_wrappe)]
-    call_items = list(function_calls.items())
-    instance_id = get_instance_id(ctx)
-
-    instance_number = -1
-    call_number = -1
-    for instance_number in range(0, len(call_items)):
-        # noinspection PyUnresolvedReferences
-        key, value = call_items[instance_number]
-        if key == instance_id:
-            call_number = len(value)
-            break
-
-    from pypads.functions.analysis.call_objects import _get_local_index
-    return "thread_" + str(
-        threading.get_ident()) + "." + "context_" + _pypads_ctx.__name__ + ".instance_" + str(
-        instance_number) + "." + "function_" + _pypads_wrappe.__name__ + ".call_" + str(
-        _get_local_index(str(id(get_current_call_dict(ctx, _pypads_ctx, _pypads_wrappe)))))
-
-
-def get_current_call_folder(ctx, _pypads_ctx, _pypads_wrappe):
-    from pypads.base import get_current_pads
-    pads = get_current_pads()
-    call_objects: dict = pads.cache.run_get("call_objects")
-    if call_objects is None:
-        raise ValueError("Call objects have to be tracked before a call folder can be extracted.")
-    function_calls: OrderedDict = call_objects[get_function_id(_pypads_ctx, _pypads_wrappe)]
-    call_items = list(function_calls.items())
-    instance_id = get_instance_id(ctx)
-
-    instance_number = -1
-    call_number = -1
-    for instance_number in range(0, len(call_items)):
-        # noinspection PyUnresolvedReferences
-        key, value = call_items[instance_number]
-        if key == instance_id:
-            call_number = len(value)
-            break
-
-    from pypads.functions.analysis.call_objects import _get_local_index
-    return os.path.join("thread_" + str(threading.get_ident()), "context_" + _pypads_ctx.__name__,
-                        "instance_" + str(instance_number), "function_" + _pypads_wrappe.__name__,
-                        "call_" + str(_get_local_index(str(id(
-                            get_current_call_dict(ctx, _pypads_ctx, _pypads_wrappe))))))
-
-
-def get_function_id(ctx, wrapped):
-    if hasattr(wrapped, "__name__"):
-        if hasattr(ctx, wrapped.__name__):
-            return id(getattr(ctx, wrapped.__name__))
-    return str(id(ctx)) + "." + str(id(wrapped))
-
-
-def get_instance_id(self):
-    return id(self)

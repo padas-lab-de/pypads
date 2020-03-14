@@ -8,7 +8,8 @@ from logging import debug
 from multiprocessing import Value
 
 from pypads.autolog.mappings import AlgorithmMapping
-from pypads.autolog.wrapping import wrap_module, wrap_class, wrap_function, punched_classes
+from pypads.autolog.wrapping.class_wrapping import punched_classes
+from pypads.autolog.wrapping.wrapping import wrap
 
 
 def _add_found_class(mapping):
@@ -69,7 +70,7 @@ def duck_punch_loader(spec):
         for mapping in _get_algorithm_mappings():
             if mapping.reference.startswith(module.__name__):
                 if mapping.reference == module.__name__:
-                    wrap_module(module, mapping)
+                    wrap(module, None, mapping)
                 else:
                     ref = mapping.reference
                     path = ref[len(module.__name__) + 1:].rsplit(".")
@@ -86,13 +87,13 @@ def duck_punch_loader(spec):
                     if obj:
                         if inspect.isclass(obj):
                             if mapping.reference == obj.__module__ + "." + obj.__name__:
-                                wrap_class(obj, ctx, mapping)
+                                wrap(obj, ctx, mapping)
                                 if obj in mro_entry_history:
                                     for clazz in mro_entry_history[obj]:
                                         _add_inherited_mapping(clazz, obj)
 
                         elif inspect.isfunction(obj):
-                            wrap_function(obj.__name__, ctx, mapping)
+                            wrap(obj, ctx, mapping)
         return out
 
     spec.loader.exec_module = types.MethodType(exec_module, spec.loader)

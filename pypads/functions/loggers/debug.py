@@ -1,7 +1,6 @@
 from logging import debug, info
 
 from pypads.functions.loggers.base_logger import LoggingFunction
-from pypads.logging_util import get_current_call_str
 
 
 class Log(LoggingFunction):
@@ -9,11 +8,11 @@ class Log(LoggingFunction):
     Function just logging the execution into debug.
     """
 
-    def __pre__(self, ctx, *args, **kwargs):
-        debug("Entered " + get_current_call_str(ctx, kwargs["_pypads_context"], kwargs["_pypads_wrappe"]))
+    def __pre__(self, ctx, *args, _pypads_env, **kwargs):
+        debug("Entered " + str(_pypads_env.call))
 
-    def __post__(self, ctx, *args, **kwargs):
-        debug("Exited " + get_current_call_str(ctx, kwargs["_pypads_context"], kwargs["_pypads_wrappe"]))
+    def __post__(self, ctx, *args, _pypads_env, **kwargs):
+        debug("Exited " + str(_pypads_env.call))
 
 
 class LogInit(LoggingFunction):

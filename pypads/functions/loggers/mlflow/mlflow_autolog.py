@@ -3,6 +3,7 @@ import sys
 import gorilla
 from mlflow.utils import experimental
 
+from pypads.functions.analysis.call_tracker import LoggingEnv
 from pypads.functions.loggers.base_logger import LoggingFunction
 from pypads.util import is_package_available
 
@@ -34,7 +35,7 @@ gorilla.get_original_attribute = fake_gorilla_get_original_attribute
 class MlflowAutologger(LoggingFunction):
 
     @experimental
-    def call_wrapped(self, ctx, *args, _kwargs, _pypads_autologgers=None, **kwargs):
+    def call_wrapped(self, ctx, *args, _kwargs, _pypads_autologgers=None, _pypads_env=LoggingEnv, **kwargs):
         """
             Function used to enable autologgers of mlflow.
             :param _kwargs: Real kwargs to pass to the callback
@@ -90,13 +91,14 @@ class MlflowAutologger(LoggingFunction):
 
         # If the function is to be logged call the related mlflow autolog function which would have
         #  been applied via gorilla
-        if kwargs["_pypads_wrappe"].__name__ in mlflow_autolog_fns:
-            for ctx, patch in mlflow_autolog_fns[kwargs["_pypads_wrappe"].__name__].items():
-                if ctx == kwargs["_pypads_context"] or issubclass(kwargs["_pypads_context"], ctx):
-                    mlflow_autolog_callbacks.append(kwargs["_pypads_callback"])
+        if _pypads_env.call.call_id.function.__name__ in mlflow_autolog_fns:
+            for ctx, patch in mlflow_autolog_fns[_pypads_env.call.call_id.function.__name__].items():
+                if ctx == _pypads_env.call.call_id.context.container or issubclass(
+                        _pypads_env.call.call_id.context.container, ctx):
+                    mlflow_autolog_callbacks.append(_pypads_env.callback)
 
                     # TODO hacky fix for keras. Unsure why this is needed. This might hint some problem with our wrappers
-                    if 'keras' in str(kwargs["_pypads_mapped_by"].library) and args[5] is None:
+                    if 'keras' in str(_pypads_env.mapping.library) and args[5] is None:
                         tmp_args = list(args)
                         tmp_args[5] = []
                         args = tuple(tmp_args)
@@ -108,7 +110,7 @@ class MlflowAutologger(LoggingFunction):
                             return unbound
 
                         mlflow_autolog_callbacks.pop()
-                        mlflow_autolog_callbacks.append(wrap_bound_function(kwargs["_pypads_callback"]))
+                        mlflow_autolog_callbacks.append(wrap_bound_function(_pypads_env.callback))
 
                     return patch.obj(ctx, *args, **_kwargs)
-        return kwargs["_pypads_callback"](*args, **_kwargs)
+        return _pypads_env.callback(*args, **_kwargs)

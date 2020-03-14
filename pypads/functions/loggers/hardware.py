@@ -1,7 +1,8 @@
 import os
 
+from pypads.functions.analysis.call_tracker import LoggingEnv
 from pypads.functions.loggers.base_logger import LoggingFunction
-from pypads.logging_util import try_write_artifact, WriteFormats, get_current_call_folder
+from pypads.logging_util import try_write_artifact, WriteFormats
 from pypads.util import local_uri_to_path, sizeof_fmt
 
 
@@ -13,21 +14,16 @@ class Cpu(LoggingFunction):
     def _needed_packages(self):
         return ["psutil"]
 
-    def __pre__(self, ctx, *args, **kwargs):
-        name = os.path.join(
-            get_current_call_folder(ctx, kwargs["_pypads_context"], kwargs["_pypads_wrappe"]), "pre_cpu_usage")
+    def __pre__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
+        name = os.path.join(_pypads_env.call.to_folder(), "pre_cpu_usage")
         try_write_artifact(name, _get_cpu_usage(), WriteFormats.text)
 
-    def call_wrapped(self, ctx, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
-                     _kwargs, **_pypads_hook_params):
+    def call_wrapped(self, ctx, *args, _pypads_env, _kwargs, **_pypads_hook_params):
         # TODO track while executing
-        return super().call_wrapped(ctx, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
-                                    _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback,
-                                    _kwargs=_kwargs, **_pypads_hook_params)
+        return super().call_wrapped(ctx, *args, _pypads_env=_pypads_env, _kwargs=_kwargs, **_pypads_hook_params)
 
-    def __post__(self, ctx, *args, **kwargs):
-        name = os.path.join(
-            get_current_call_folder(ctx, kwargs["_pypads_context"], kwargs["_pypads_wrappe"]), "post_cpu_usage")
+    def __post__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
+        name = os.path.join(_pypads_env.call.to_folder(), "post_cpu_usage")
         try_write_artifact(name, _get_cpu_usage(), WriteFormats.text)
 
 
@@ -49,21 +45,16 @@ class Ram(LoggingFunction):
     def _needed_packages(self):
         return ["psutil"]
 
-    def __pre__(self, ctx, *args, **kwargs):
-        name = os.path.join(get_current_call_folder(ctx, kwargs["_pypads_context"], kwargs["_pypads_wrappe"]),
-                            "pre_memory_usage")
+    def __pre__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
+        name = os.path.join(_pypads_env.call.to_folder(), "pre_memory_usage")
         try_write_artifact(name, _get_memory_usage(), WriteFormats.text)
 
-    def call_wrapped(self, ctx, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
-                     _kwargs, **_pypads_hook_params):
+    def call_wrapped(self, ctx, *args, _pypads_env, _kwargs, **_pypads_hook_params):
         # TODO track while executing
-        return super().call_wrapped(ctx, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
-                                    _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback,
-                                    _kwargs=_kwargs, **_pypads_hook_params)
+        return super().call_wrapped(ctx, *args, _pypads_env=_pypads_env, _kwargs=_kwargs, **_pypads_hook_params)
 
-    def __post__(self, ctx, *args, **kwargs):
-        name = os.path.join(get_current_call_folder(ctx, kwargs["_pypads_context"], kwargs["_pypads_wrappe"]),
-                            "post_memory_usage")
+    def __post__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
+        name = os.path.join(_pypads_env.call.to_folder(), "post_memory_usage")
         try_write_artifact(name, _get_memory_usage(), WriteFormats.text)
 
 
@@ -91,27 +82,22 @@ class Disk(LoggingFunction):
     def _needed_packages(self):
         return ["psutil"]
 
-    def __pre__(self, ctx, *args, **kwargs):
+    def __pre__(self, ctx, *args, _pypads_env, **kwargs):
         from pypads.base import PyPads, get_current_pads
         pads: PyPads = get_current_pads()
         path = local_uri_to_path(pads._uri)
-        name = os.path.join(get_current_call_folder(ctx, kwargs["_pypads_context"], kwargs["_pypads_wrappe"]),
-                            "pre_disk_usage")
+        name = os.path.join(_pypads_env.call.to_folder(), "pre_disk_usage")
         try_write_artifact(name, _get_disk_usage(path), WriteFormats.text)
 
-    def call_wrapped(self, ctx, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
-                     _kwargs, **_pypads_hook_params):
+    def call_wrapped(self, ctx, *args, _pypads_env, _kwargs, **_pypads_hook_params):
         # TODO track while executing
-        return super().call_wrapped(ctx, *args, _pypads_wrappe=_pypads_wrappe, _pypads_context=_pypads_context,
-                                    _pypads_mapped_by=_pypads_mapped_by, _pypads_callback=_pypads_callback,
-                                    _kwargs=_kwargs, **_pypads_hook_params)
+        return super().call_wrapped(ctx, *args, _pypads_env=_pypads_env, _kwargs=_kwargs, **_pypads_hook_params)
 
-    def __post__(self, ctx, *args, **kwargs):
+    def __post__(self, ctx, *args, _pypads_env, **kwargs):
         from pypads.base import PyPads, get_current_pads
         pads: PyPads = get_current_pads()
         path = local_uri_to_path(pads._uri)
-        name = os.path.join(get_current_call_folder(ctx, kwargs["_pypads_context"], kwargs["_pypads_wrappe"]),
-                            "post_disk_usage")
+        name = os.path.join(_pypads_env.call.to_folder(), "post_disk_usage")
         try_write_artifact(name, _get_disk_usage(path), WriteFormats.text)
 
 

@@ -30,7 +30,6 @@ def print_timings():
 
 
 def add_run_time(name, time):
-    from pypads.autolog.wrapping import current_tracking_stack
     from pypads.base import get_current_pads
     pads = get_current_pads()
 
@@ -44,7 +43,7 @@ def add_run_time(name, time):
     if name not in timings:
         value = ""
         # dashes
-        for i in range(1, len(current_tracking_stack)):
+        for i in range(1, pads.call_tracker.call_depth()):
             value += "\t"
         timings[name] = value + " " + name + ": " + str(time)
         info(name + " done after: " + str(time) + "s")
