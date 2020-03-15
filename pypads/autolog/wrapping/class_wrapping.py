@@ -9,19 +9,18 @@ punched_classes = set()
 class ClassWrapper(BaseWrapper):
 
     @classmethod
-    def wrap(cls, clazz, ctx, mapping):
+    def wrap(cls, clazz, context, mapping):
         """
             Wrap a class in given ctx with pypads functionality
             :param clazz:
-            :param ctx:
+            :param context:
             :param mapping:
             :return:
             """
         global punched_classes
         if clazz not in punched_classes:
             punched_classes.add(clazz)
-            ctx.store_wrap_meta(mapping, clazz)
-            ctx.store_original(clazz)
+            context.store_wrap_meta(mapping, clazz)
 
             # Module was changed and should be added to the list of modules which have been changed
             if hasattr(clazz, "__module__"):
@@ -40,8 +39,7 @@ class ClassWrapper(BaseWrapper):
 
             # Override class on module
             reference_name = mapping.reference.rsplit('.', 1)[-1]
-            if ctx is not None:
-                setattr(ctx, reference_name, clazz)
+            context.overwrite(reference_name, clazz)
         else:
             debug("Class " + str(clazz) + "already duck-puched.")
         return clazz

@@ -2,7 +2,7 @@ import types
 from functools import wraps
 from logging import warning, debug, info
 
-from pypads.autolog.wrapping.base_wrapper import BaseWrapper
+from pypads.autolog.wrapping.base_wrapper import BaseWrapper, Context
 from pypads.autolog.wrapping.module_wrapping import punched_module_names
 from pypads.functions.analysis.call_tracker import CallAccessor, FunctionReference, add_call, LoggingEnv, finish_call, \
     Call
@@ -11,46 +11,41 @@ from pypads.functions.analysis.call_tracker import CallAccessor, FunctionReferen
 class FunctionWrapper(BaseWrapper):
 
     @classmethod
-    def wrap(cls, fn, ctx, mapping):
-        ctx.store_wrap_meta(mapping, fn)
-        ctx.store_original(fn)
-        if ctx.is_class():
-            return cls._wrap_on_class(fn, ctx, mapping)
-        elif hasattr(ctx, fn.__name__):
-            return cls._wrap_on_object(fn, ctx, mapping)
+    def wrap(cls, fn, context: Context, mapping):
+        context.store_wrap_meta(mapping, fn)
+        if context.is_class():
+            return cls._wrap_on_class(fn, context, mapping)
+        elif hasattr(context.container, fn.__name__):
+            return cls._wrap_on_object(fn, context, mapping)
         else:
             warning(str(
-                ctx) + " is no class and doesn't provide attribute with fn_name. Couldn't access " + str(
+                context) + " is no class and doesn't provide attribute with fn_name. Couldn't access " + str(
                 fn) + " on it.")
 
     @classmethod
-    def _wrap_on_object(cls, fn, ctx, mapping):
+    def _wrap_on_object(cls, fn, context: Context, mapping):
         # Add module of class to the changed modules
-        if hasattr(ctx, "__module__"):
-            punched_module_names.add(ctx.__name__)
+        if hasattr(context.container, "__module__"):
+            punched_module_names.add(context.container.__module__)
 
         # If we are already punched get original function instead of punched function
-        if ctx.has_original(fn):
-            fn = ctx.original(fn.__name__)
+        if context.has_original(fn):
+            fn = context.original(fn)
         else:
-            fn = getattr(ctx, fn.__name__)
+            fn = getattr(context.container, fn.__name__)
 
         # Get and add hooks
         hooks = cls._get_hooked_fns(fn, mapping)
         if len(hooks) > 0:
-            fn_reference = FunctionReference(ctx, fn)
+            fn_reference = FunctionReference(context, fn)
             return cls.wrap_method_helper(fn_reference=fn_reference, hooks=hooks, mapping=mapping)
 
     @classmethod
-    def _wrap_on_class(cls, fn, ctx, mapping):
+    def _wrap_on_class(cls, fn, context: Context, mapping):
         fn_name = fn.__name__
 
-        # Add module of class to the changed modules
-        if hasattr(ctx, "__module__"):
-            punched_module_names.add(ctx.__module__)
-
         # Find the real defining class
-        defining_class = ctx.real_context(fn)
+        defining_class = context.real_context(fn)
 
         # If there is no defining class we can't wrap on class
         if not defining_class:
@@ -58,13 +53,13 @@ class FunctionWrapper(BaseWrapper):
             return None
 
         # Add the module to the list of modules which where changed
-        if hasattr(defining_class, "__module__"):
-            punched_module_names.add(defining_class.__module__)
+        if hasattr(defining_class.container, "__module__"):
+            punched_module_names.add(defining_class.container.__module__)
 
         # Get fn from defining class
         fn = None
         try:
-            fn = getattr(defining_class, fn_name)
+            fn = getattr(defining_class.container, fn_name)
         except Exception as e:
             warning(str(e))
 
@@ -86,7 +81,7 @@ class FunctionWrapper(BaseWrapper):
 
         hooks = cls._get_hooked_fns(fn, mapping)
         if len(hooks) > 0:
-            fn_reference = FunctionReference(ctx, fn)
+            fn_reference = FunctionReference(defining_class, fn)
             return cls.wrap_method_helper(fn_reference=fn_reference, hooks=hooks, mapping=mapping)
 
     @classmethod

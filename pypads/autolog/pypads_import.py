@@ -8,6 +8,7 @@ from logging import debug
 from multiprocessing import Value
 
 from pypads.autolog.mappings import AlgorithmMapping
+from pypads.autolog.wrapping.base_wrapper import Context
 from pypads.autolog.wrapping.class_wrapping import punched_classes
 from pypads.autolog.wrapping.wrapping import wrap
 
@@ -24,11 +25,13 @@ def _get_algorithm_mappings():
 
 def _add_inherited_mapping(clazz, super_class):
     if clazz not in punched_classes:
-        found_mapping = AlgorithmMapping(
-            clazz.__module__ + "." + clazz.__qualname__, super_class._pypads_mapping.library,
-            super_class._pypads_mapping.algorithm, super_class._pypads_mapping.file, super_class._pypads_mapping.hooks)
-        found_mapping.in_collection = super_class._pypads_mapping.in_collection
-        _add_found_class(mapping=found_mapping)
+        if hasattr(super_class, "_pypads_mapping"):
+            for mapping in getattr(super_class, "_pypads_mapping"):
+                found_mapping = AlgorithmMapping(
+                    clazz.__module__ + "." + clazz.__qualname__, mapping.library,
+                    mapping.algorithm, mapping.file, mapping.hooks)
+                found_mapping.in_collection = mapping.in_collection
+                _add_found_class(mapping=found_mapping)
 
 
 def duck_punch_loader(spec):
@@ -87,13 +90,13 @@ def duck_punch_loader(spec):
                     if obj:
                         if inspect.isclass(obj):
                             if mapping.reference == obj.__module__ + "." + obj.__name__:
-                                wrap(obj, ctx, mapping)
+                                wrap(obj, Context(ctx), mapping)
                                 if obj in mro_entry_history:
                                     for clazz in mro_entry_history[obj]:
                                         _add_inherited_mapping(clazz, obj)
 
                         elif inspect.isfunction(obj):
-                            wrap(obj, ctx, mapping)
+                            wrap(obj, Context(ctx), mapping)
         return out
 
     spec.loader.exec_module = types.MethodType(exec_module, spec.loader)

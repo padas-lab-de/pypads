@@ -19,7 +19,8 @@ def wrap(wrappee, ctx, mapping):
     :param kwargs:
     :return:
     """
-    ctx = Context(ctx)
+    if not isinstance(ctx, Context):
+        ctx = Context(ctx)
 
     if inspect.ismodule(wrappee):
         return ModuleWrapper.wrap(wrappee, ctx, mapping)

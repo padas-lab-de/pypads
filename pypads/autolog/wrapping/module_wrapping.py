@@ -1,7 +1,7 @@
 import inspect
 from logging import debug
 
-from pypads.autolog.hook import find_applicable_hooks
+from pypads.autolog.hook import make_hook_applicable_filter
 from pypads.autolog.wrapping.base_wrapper import BaseWrapper
 
 punched_module_names = set()
@@ -10,7 +10,7 @@ punched_module_names = set()
 class ModuleWrapper(BaseWrapper):
 
     @classmethod
-    def wrap(cls, module, ctx, mapping):
+    def wrap(cls, module, context, mapping):
         """
         Function to wrap modules with pypads functionality
         :param module:
@@ -19,8 +19,7 @@ class ModuleWrapper(BaseWrapper):
         """
         if module.__name__ not in punched_module_names:
             punched_module_names.add(module.__name__)
-            ctx.store_wrap_meta(mapping, module)
-            ctx.store_original(module)
+            context.store_wrap_meta(mapping, module)
 
             # Get default hooks
             if not mapping.hooks:
@@ -29,12 +28,18 @@ class ModuleWrapper(BaseWrapper):
             # Try to wrap every attr of the module
             from pypads.autolog.wrapping.wrapping import wrap
 
-            for name, m, mapping in find_applicable_hooks(module, mapping):
-                attr = getattr(module, name)
+            if mapping.hooks:
+                for hook in mapping.hooks:
+                    # Only get entries defined directly in this module
+                    # https://stackoverflow.com/questions/22578509/python-get-only-classes-defined-in-imported-module-with-dir
+                    for name in list(filter(make_hook_applicable_filter(hook, module, mapping),
+                                            [m[0] for m in inspect.getmembers(module) if
+                                             hasattr(m[1], "__module__") and m[1].__module__ == module.__name__])):
+                        attr = getattr(module, name)
 
-                # Don't track imported modules
-                if not inspect.ismodule(attr):
-                    wrap(attr, m, mapping)
+                        # Don't track imported modules
+                        if not inspect.ismodule(attr):
+                            wrap(attr, module, mapping)
 
             # Add found classes to the tracking
             # for name in find_applicable_hooks(ctx, mapping):

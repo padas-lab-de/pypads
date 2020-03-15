@@ -1,6 +1,7 @@
 import inspect
 from _py_abc import ABCMeta
 from abc import abstractmethod
+from copy import copy
 from logging import debug, warning
 
 DEFAULT_ORDER = 1
@@ -20,37 +21,56 @@ class Context:
     def overwrite(self, key, obj):
         setattr(self._c, key, obj)
 
-    def store_wrap_meta(self, mapping, ref):
+    def store_wrap_meta(self, mapping, wrappee):
         try:
-            if not hasattr(self._c, "_pypads_mapping_" + ref.__name__):
-                setattr(self._c, "_pypads_mapping_" + ref.__name__, [])
-            getattr(self._c, "_pypads_mapping_" + ref.__name__).append(mapping)
+            if not inspect.isfunction(wrappee):
+                # Set self reference
+                if not hasattr(wrappee, "_pypads_mapping"):
+                    setattr(wrappee, "_pypads_mapping", [])
+                getattr(wrappee, "_pypads_mapping").append(mapping)
 
-            if not hasattr(self._c, "_pypads_wrapped" + ref.__name__):
-                setattr(self._c, "_pypads_name_" + ref.__name__, ref)
+                if not hasattr(wrappee, "_pypads_wrapped"):
+                    setattr(wrappee, "_pypads_wrapped", wrappee)
+
+                setattr(wrappee, self.original_name(wrappee), copy(wrappee))
+            else:
+                if not hasattr(self._c, "_pypads_mapping_" + wrappee.__name__):
+                    setattr(self._c, "_pypads_mapping_" + wrappee.__name__, [])
+                getattr(self._c, "_pypads_mapping_" + wrappee.__name__).append(mapping)
+
+                if not hasattr(self._c, "_pypads_wrapped_" + wrappee.__name__):
+                    setattr(self._c, "_pypads_wrapped_" + wrappee.__name__, wrappee)
+
+                setattr(self._c, self.original_name(wrappee), copy(wrappee))
         except TypeError as e:
-            debug("Can't set attribute '" + ref.__name__ + "' on '" + str(self._c) + "'. Omit wrapping.")
+            debug("Can't set attribute '" + wrappee.__name__ + "' on '" + str(self._c) + "'.")
             return self._c
 
-    def has_wrap_meta(self):
-        return hasattr(self._c, "_pypads_wrapped")
-
-    def store_original(self, wrappee):
-        setattr(self._c, self.original_name(wrappee.__name__), wrappee)
+    def has_wrap_meta(self, ref):
+        return hasattr(self._c, "_pypads_wrapped_" + ref.__name__)
 
     def has_original(self, wrappee):
-        return hasattr(self._c, self.original_name(wrappee.__name__))
+        return hasattr(self._c, self.original_name(wrappee)) or hasattr(wrappee,
+                                                                        self.original_name(wrappee))
 
-    def original_name(self, wrappee_name):
-        return "_pypads_original_" + str(id(self._c)) + "_" + wrappee_name
+    def original_name(self, wrappee):
+        return "_pypads_original_" + str(id(self._c)) + "_" + str(wrappee.__name__)
 
-    def original(self, wrappee_name):
-        try:
-            return getattr(self._c, self.original_name(wrappee_name))
-        except AttributeError:
-            for attr in dir(self._c):
-                if attr.endswith("_" + wrappee_name) and attr.startswith("_pypads_original_"):
-                    return getattr(self._c, attr)
+    def original(self, wrappee):
+        if not inspect.isfunction(wrappee):
+            try:
+                return getattr(wrappee, self.original_name(wrappee))
+            except AttributeError:
+                for attr in dir(wrappee):
+                    if attr.endswith("_" + wrappee) and attr.startswith("_pypads_original_"):
+                        return getattr(wrappee, attr)
+        else:
+            try:
+                return getattr(self._c, self.original_name(wrappee))
+            except AttributeError:
+                for attr in dir(self._c):
+                    if attr.endswith("_" + wrappee) and attr.startswith("_pypads_original_"):
+                        return getattr(self._c, attr)
 
     def is_class(self):
         return inspect.isclass(self._c)
@@ -78,7 +98,7 @@ class Context:
         try:
             mro = self._c.mro()
             for clazz in mro[0:]:
-                defining_class = self._c
+                defining_class = clazz
                 if hasattr(clazz, "__dict__") and fn.__name__ in defining_class.__dict__ and callable(
                         defining_class.__dict__[fn.__name__]):
                     break
