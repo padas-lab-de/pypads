@@ -111,8 +111,9 @@ class FunctionWrapper(BaseWrapper):
                     out = callback(*args, **kwargs)
                     return out
 
-                for callback in cls._add_hooks_to_callback(hooks, callback, call, mapping):
-                    callback = callback
+                for (h, params, order) in hooks:
+                    c = cls._add_hook(h, params, callback, call, mapping)
+                    callback = c
 
                 # start executing the stack
                 out = callback(*args, **kwargs)
@@ -134,8 +135,9 @@ class FunctionWrapper(BaseWrapper):
                     out = callback(*args, **kwargs)
                     return out
 
-                for callback in cls._add_hooks_to_callback(hooks, callback, call, mapping):
-                    callback = types.MethodType(callback, self)
+                for (h, params, order) in hooks:
+                    c = cls._add_hook(h, params, callback, call, mapping)
+                    callback = types.MethodType(c, self)
 
                 # start executing the stack
                 out = callback(*args, **kwargs)
@@ -158,8 +160,9 @@ class FunctionWrapper(BaseWrapper):
                     out = callback(*args, **kwargs)
                     return out
 
-                for callback in cls._add_hooks_to_callback(hooks, callback, call, mapping):
-                    callback = types.MethodType(callback, cls)
+                for (h, params, order) in hooks:
+                    c = cls._add_hook(h, params, callback, call, mapping)
+                    callback = types.MethodType(c, cls)
 
                 # start executing the stack
                 out = callback(*args, **kwargs)
@@ -183,8 +186,9 @@ class FunctionWrapper(BaseWrapper):
                     out = callback(*args, **kwargs)
                     return out
 
-                for callback in cls._add_hooks_to_callback(hooks, callback, call, mapping):
-                    callback = types.MethodType(callback, self)
+                for (h, params, order) in hooks:
+                    c = cls._add_hook(h, params, callback, call, mapping)
+                    callback = types.MethodType(c, self)
 
                 # start executing the stack
                 out = callback(*args, **kwargs)
@@ -196,13 +200,12 @@ class FunctionWrapper(BaseWrapper):
         return entry
 
     @classmethod
-    def _add_hooks_to_callback(cls, hooks, callback, call: Call, mapping):
+    def _add_hook(cls, hook, params, callback, call: Call, mapping):
         # For every hook we defined on the given function in out mapping file execute it before running the code
-        for (hook, params, order) in hooks:
-            if not call.has_hook(hook):
-                yield cls._get_env_setter(_pypads_env=LoggingEnv(mapping, hook, params, callback, call))
-            else:
-                warning(str(hook) + " is tracked multiple times on " + str(call) + ". Ignoring second hooking.")
+        if not call.has_hook(hook):
+            return cls._get_env_setter(_pypads_env=LoggingEnv(mapping, hook, params, callback, call))
+        else:
+            warning(str(hook) + " is tracked multiple times on " + str(call) + ". Ignoring second hooking.")
 
     @classmethod
     def _get_env_setter(cls, _pypads_env: LoggingEnv):
@@ -213,6 +216,7 @@ class FunctionWrapper(BaseWrapper):
         env = _pypads_env
         call: Call = env.call
         cid = call.call_id
+
         if cid.is_static_method():
             @wraps(cid.function)
             def env_setter(*args, _pypads_env=env, **kwargs):

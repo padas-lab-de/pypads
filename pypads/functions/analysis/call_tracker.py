@@ -147,7 +147,7 @@ class CallId(CallAccessor):
         return self._call_number
 
     def to_folder(self):
-        os.path.join("process_" + str(self._process), "thread_" + str(self._thread),
+        return os.path.join("process_" + str(self._process), "thread_" + str(self._thread),
                      "context_" + self.context.container.__name__,
                      "instance_" + str(
                          self.instance_number), "function_" + self.function.__name__, "call_" + str(self._call_number))
@@ -256,7 +256,7 @@ class CallTracker:
         :param accessor:
         :return:
         """
-        return len(self.calls(accessor)) - 1
+        return len(self.calls(accessor))
 
     def make_call_id(self, accessor: CallAccessor) -> CallId:
         """
@@ -327,19 +327,10 @@ class CallTracker:
         :return: A dict for holding information about the call.
         """
         self._call_stack.append(call)
-        call_objects = self.call_objects()
 
-        # Get an id for our function. The id is compromised of the wrapped function and it's context holder
-        function_id = call.call_id.function_id()
-        function_calls = call_objects[function_id]
-
-        # For our instance get an ID
-        instance_id = call.call_id.instance_id()
-
-        # For now just add a started flag to the
-        call_dict = call
-        function_calls[instance_id].append(call_dict)
-        return call_dict
+        calls = self.calls(call.call_id)
+        calls.append(call)
+        return call
 
     def finish(self, call):
         if call in self._call_stack:
