@@ -367,7 +367,7 @@ class AlgorithmVisitor(Visitor):
         :return: a dictionary containing all extracted padre-information
         """
 
-        fullName = object._pypads_mapping.reference
+        fullName = object._pypads_mapping[0].reference
         if fullName in type_mappings:
             description, lib = type_mappings[fullName]
         else:

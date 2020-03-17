@@ -103,6 +103,7 @@ class LoggingFunction(DependencyMixin):
             self._handle_failure(ctx, *args, _pypads_env=_pypads_env, _pypads_error=e, **kwargs)
 
         # Call the output producing code
+        # print(_pypads_env.callback)
         out, time = timed(
             lambda: self.call_wrapped(ctx, *args, _pypads_env=_pypads_env, _kwargs=kwargs, **_pypads_hook_params))
 

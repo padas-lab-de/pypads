@@ -332,7 +332,7 @@ class CallTracker:
 
     def has_call_identity(self, accessor):
         for stored in self._call_stack:
-            if accessor.instance == stored.instance:
+            if accessor.instance_id == stored.instance_id:
                 return True
         return False
 
