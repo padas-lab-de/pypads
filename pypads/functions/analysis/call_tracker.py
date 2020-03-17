@@ -147,17 +147,16 @@ class CallId(CallAccessor):
         return self._call_number
 
     def to_folder(self):
-        return os.path.join("process_" + str(self._process), "thread_" + str(self._thread),
-                     "context_" + self.context.container.__name__,
-                     "instance_" + str(
-                         self.instance_number), "function_" + self.function.__name__, "call_" + str(self._call_number))
+        return os.path.join(*self.to_fragements())
 
     def __str__(self):
-        return ".".join(
-            ("process_" + str(self._process), "thread_" + str(self._thread),
+        return ".".join(self.to_fragements())
+
+    def to_fragements(self):
+        return ("process_" + str(self._process), "thread_" + str(self._thread),
              "context_" + self.context.container.__name__,
              "instance_" + str(
-                 self.instance_number), "function_" + self.function.__name__, "call_" + str(self._call_number)))
+                 self.instance_number), "function_" + self.function.__name__, "call_" + str(self._call_number))
 
 
 class Call:
@@ -192,6 +191,23 @@ class Call:
 
     def to_folder(self):
         return self.call_id.to_folder()
+
+    def __getstate__(self):
+        """
+        Overwrite standard pickling by excluding the functions
+        :return:
+        """
+        # TODO can't pickle call_ids here
+        self.call_id_fragments = str(self.call_id.to_fragements())
+        state = self.__dict__.copy()
+        del state["_call_id"]
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        state["_call_id"] = None
+        # Todo can we rebuild call_id?
+        return state
 
 
 class LoggingEnv:

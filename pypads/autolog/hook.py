@@ -123,21 +123,12 @@ def make_hook_applicable_filter(hook, ctx, mapping):
 
     def hook_applicable_filter(name):
         if hasattr(ctx, name):
-            if not name.startswith("__") or name == "__init__":
-                if not name.startswith("_pypads"):
-                    try:
-                        fn = getattr(ctx, name)
-                        return hook.is_applicable(mapping=mapping, fn=fn)
-                    except RecursionError as re:
-                        error("Recursion error on '" + str(
-                            ctx) + "'. This might be because __get_attr__ is being wrapped. " + str(re))
-                else:
-                    pass
-                    # debug("Tried to wrap pypads function '" + name + "' on '" + str(ctx) + "'. Omit logging.")
-            else:
-                pass
-                # debug(
-                #     "Tried to wrap non-constructor native function '" + name + "' on '" + str(ctx) + "'. Omit logging.")
+            try:
+                fn = getattr(ctx, name)
+                return hook.is_applicable(mapping=mapping, fn=fn)
+            except RecursionError as re:
+                error("Recursion error on '" + str(
+                    ctx) + "'. This might be because __get_attr__ is being wrapped. " + str(re))
         else:
             warning("Can't access attribute '" + str(name) + "' on '" + str(ctx) + "'. Skipping.")
         return False

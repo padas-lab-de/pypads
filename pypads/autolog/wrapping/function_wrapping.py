@@ -12,15 +12,19 @@ class FunctionWrapper(BaseWrapper):
 
     @classmethod
     def wrap(cls, fn, context: Context, mapping):
-        context.store_wrap_meta(mapping, fn)
-        if context.is_class():
-            return cls._wrap_on_class(fn, context, mapping)
-        elif hasattr(context.container, fn.__name__):
-            return cls._wrap_on_object(fn, context, mapping)
+        # Only wrap functions not starting with "__"
+        if not fn.__name__.startswith("__") or fn.__name__ is "__init__":
+            context.store_wrap_meta(mapping, fn)
+            if context.is_class():
+                return cls._wrap_on_class(fn, context, mapping)
+            elif hasattr(context.container, fn.__name__):
+                return cls._wrap_on_object(fn, context, mapping)
+            else:
+                warning(str(
+                    context) + " is no class and doesn't provide attribute with fn_name. Couldn't access " + str(
+                    fn) + " on it.")
         else:
-            warning(str(
-                context) + " is no class and doesn't provide attribute with fn_name. Couldn't access " + str(
-                fn) + " on it.")
+            return fn
 
     @classmethod
     def _wrap_on_object(cls, fn, context: Context, mapping):
