@@ -19,7 +19,7 @@ class FunctionReference:
         return self._context
 
     @property
-    def function(self):
+    def wrappee(self):
         return self._function
 
     def real_context(self):
@@ -81,10 +81,10 @@ class FunctionReference:
         return "wrapped" in str(self.function_type())
 
     def function_id(self):
-        if hasattr(self.function, "__name__"):
-            if hasattr(self.context, self.function.__name__):
-                return id(getattr(self.context, self.function.__name__))
-        return str(id(self.context)) + "." + str(id(self.function))
+        if hasattr(self.wrappee, "__name__"):
+            if hasattr(self.context, self.wrappee.__name__):
+                return id(getattr(self.context, self.wrappee.__name__))
+        return str(id(self.context)) + "." + str(id(self.wrappee))
 
 
 class CallAccessor(FunctionReference):
@@ -102,7 +102,7 @@ class CallAccessor(FunctionReference):
 
     @classmethod
     def from_function_reference(cls, function_reference: FunctionReference, instance):
-        return CallAccessor(instance, function_reference.context, function_reference.function)
+        return CallAccessor(instance, function_reference.context, function_reference.wrappee)
 
 
 # class CallMapping(CallAccessor):
@@ -128,7 +128,7 @@ class CallId(CallAccessor):
 
     @classmethod
     def from_accessor(cls, accessor: CallAccessor, instance_number, call_number):
-        return CallId(accessor.instance, accessor.context, accessor.function, instance_number, call_number)
+        return CallId(accessor.instance, accessor.context, accessor.wrappee, instance_number, call_number)
 
     @property
     def process(self):
@@ -156,7 +156,7 @@ class CallId(CallAccessor):
         return ("process_" + str(self._process), "thread_" + str(self._thread),
              "context_" + self.context.container.__name__,
              "instance_" + str(
-                 self.instance_number), "function_" + self.function.__name__, "call_" + str(self._call_number))
+                 self.instance_number), "function_" + self.wrappee.__name__, "call_" + str(self._call_number))
 
 
 class Call:
@@ -281,7 +281,7 @@ class CallTracker:
         :param accessor:
         :return:
         """
-        return CallId(accessor.instance, accessor.context, accessor.function, self.instance_call_number(accessor),
+        return CallId(accessor.instance, accessor.context, accessor.wrappee, self.instance_call_number(accessor),
                       self.call_number(accessor))
 
     def current_call_number(self):

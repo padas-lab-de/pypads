@@ -99,16 +99,20 @@ class Context:
             mro = self._c.mro()
             for clazz in mro[0:]:
                 defining_class = clazz
-                if hasattr(clazz, "__dict__") and fn.__name__ in defining_class.__dict__ and callable(
-                        defining_class.__dict__[fn.__name__]):
-                    break
+                if hasattr(clazz, "__dict__") and fn.__name__ in defining_class.__dict__:
+                    if callable(defining_class.__dict__[fn.__name__]):
+                        break
+                    else:
+                        # TODO workaround for <sklearn.utils.metaestimators._IffHasAttrDescriptor object at 0x121e56810> again
+                        break
         except Exception as e:
             warning("Couldn't get defining class of context '" + str(
                 self._c) + ". " + str(e))
             return None
 
-        if defining_class:
+        if defining_class and defining_class is not object:
             return Context(defining_class)
+        return None
 
     @property
     def container(self):

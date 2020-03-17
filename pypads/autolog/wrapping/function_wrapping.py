@@ -53,8 +53,8 @@ class FunctionWrapper(BaseWrapper):
 
         # If there is no defining class we can't wrap on class
         if not defining_class:
-            warning("Defining class is None. Omit logging.")
-            return None
+            warning("Defining class is None on context '" + str(context) + "' for fn '" + str(fn) + "' Omit logging.")
+            return fn
 
         # Add the module to the list of modules which where changed
         if hasattr(defining_class.container, "__module__"):
@@ -65,7 +65,8 @@ class FunctionWrapper(BaseWrapper):
         try:
             fn = getattr(defining_class.container, fn_name)
         except Exception as e:
-            warning(str(e))
+            context.real_context(fn)
+            warning("Defining class doesn't define our function. Extraction failed: " + str(e))
 
         # skip wrong extractions
         if not fn or not callable(fn):
@@ -97,7 +98,7 @@ class FunctionWrapper(BaseWrapper):
         :param mapping:
         :return:
         """
-        fn = fn_reference.function
+        fn = fn_reference.wrappee
 
         if fn_reference.is_static_method():
             @wraps(fn)
@@ -107,11 +108,11 @@ class FunctionWrapper(BaseWrapper):
                 call = add_call(accessor)
 
                 # add the function to the callback stack
-                callback = accessor.function
+                callback = accessor.wrappee
 
                 # for every hook add
                 if cls._is_skip_recursion(accessor):
-                    info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.function.__name__))
+                    info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
                     out = callback(*args, **kwargs)
                     return out
 
@@ -131,11 +132,11 @@ class FunctionWrapper(BaseWrapper):
                 call = add_call(accessor)
 
                 # add the function to the callback stack
-                callback = types.MethodType(accessor.function, self)
+                callback = types.MethodType(accessor.wrappee, self)
 
                 # for every hook add
                 if cls._is_skip_recursion(accessor):
-                    info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.function.__name__))
+                    info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
                     out = callback(*args, **kwargs)
                     return out
 
@@ -156,11 +157,11 @@ class FunctionWrapper(BaseWrapper):
                 call = add_call(accessor)
 
                 # add the function to the callback stack
-                callback = types.MethodType(accessor.function, cls)
+                callback = types.MethodType(accessor.wrappee, cls)
 
                 # for every hook add
                 if cls._is_skip_recursion(accessor):
-                    info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.function.__name__))
+                    info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
                     out = callback(*args, **kwargs)
                     return out
 
@@ -173,20 +174,20 @@ class FunctionWrapper(BaseWrapper):
                 finish_call(call)
                 return out
         elif fn_reference.is_wrapped():
-            tmp_fn = getattr(fn_reference.context, fn.__name__)
+            tmp_fn = getattr(fn_reference.context.container, fn.__name__)
 
             @wraps(tmp_fn)
             def entry(self, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
-                debug("Call to tracked method " + str(fn))
+                debug("Call to tracked _IffHasAttrDescriptor " + str(fn))
                 accessor = CallAccessor.from_function_reference(fn_reference, None)
                 call = add_call(accessor)
 
                 # add the function to the callback stack
-                callback = types.MethodType(accessor.function, self)
+                callback = types.MethodType(accessor.wrappee, self)
 
                 # for every hook add
                 if cls._is_skip_recursion(accessor):
-                    info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.function.__name__))
+                    info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
                     out = callback(*args, **kwargs)
                     return out
 
@@ -222,33 +223,33 @@ class FunctionWrapper(BaseWrapper):
         cid = call.call_id
 
         if cid.is_static_method():
-            @wraps(cid.function)
+            @wraps(cid.wrappee)
             def env_setter(*args, _pypads_env=env, **kwargs):
-                debug("Static method hook " + str(cid.context) + str(cid.function) + str(env.hook))
+                debug("Static method hook " + str(cid.context) + str(cid.wrappee) + str(env.hook))
                 return cls._wrapped_inner_function(None, *args, _pypads_env=_pypads_env, **kwargs)
 
             return env_setter
         elif cid.is_function():
-            @wraps(cid.function)
+            @wraps(cid.wrappee)
             def env_setter(self, *args, _pypads_env=env, **kwargs):
-                debug("Method hook " + str(cid.context) + str(cid.function) + str(env.hook))
+                debug("Method hook " + str(cid.context) + str(cid.wrappee) + str(env.hook))
                 return cls._wrapped_inner_function(self, *args, _pypads_env=_pypads_env, **kwargs)
 
             return env_setter
         elif cid.is_class_method():
-            @wraps(cid.function)
+            @wraps(cid.wrappee)
             def env_setter(cls, *args, _pypads_env=env, **kwargs):
-                debug("Class method hook " + str(cid.context) + str(cid.function) + str(env.hook))
+                debug("Class method hook " + str(cid.context) + str(cid.wrappee) + str(env.hook))
                 return cls._wrapped_inner_function(cls, *args, _pypads_env=_pypads_env,
                                                    **kwargs)
 
             return env_setter
         elif cid.is_wrapped():
-            tmp_fn = getattr(cid.context, cid.function.__name__)
+            tmp_fn = getattr(cid.context, cid.wrappee.__name__)
 
             @wraps(tmp_fn)
             def env_setter(self, *args, _pypads_env=env, **kwargs):
-                debug("Method hook " + str(cid.context) + str(cid.function) + str(env.hook))
+                debug("Method hook " + str(cid.context) + str(cid.wrappee) + str(env.hook))
                 return cls._wrapped_inner_function(self, *args, _pypads_env=_pypads_env, **kwargs)
 
             return env_setter

@@ -182,6 +182,7 @@ if is_package_available("joblib"):
                 except Exception as e:
                     print(e)
 
+                print(out)
                 return out
             else:
                 return function(*args, **kwargs)

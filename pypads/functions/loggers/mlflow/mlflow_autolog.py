@@ -91,8 +91,8 @@ class MlflowAutologger(LoggingFunction):
 
         # If the function is to be logged call the related mlflow autolog function which would have
         #  been applied via gorilla
-        if _pypads_env.call.call_id.function.__name__ in mlflow_autolog_fns:
-            for ctx, patch in mlflow_autolog_fns[_pypads_env.call.call_id.function.__name__].items():
+        if _pypads_env.call.call_id.wrappee.__name__ in mlflow_autolog_fns:
+            for ctx, patch in mlflow_autolog_fns[_pypads_env.call.call_id.wrappee.__name__].items():
                 if ctx == _pypads_env.call.call_id.context.container or issubclass(
                         _pypads_env.call.call_id.context.container, ctx):
                     mlflow_autolog_callbacks.append(_pypads_env.callback)

@@ -40,7 +40,7 @@ def sklearn_pipeline_experiment():
 
     # Parameters of pipelines can be set using ‘__’ separated parameter names:
     param_grid = {
-        'pca__n_components': [5, 15, 30, 45, 64],
+        'pca__n_components': [5, 15],
         'logistic__C': np.logspace(-4, 4, 4),
     }
     search = GridSearchCV(pipe, param_grid, n_jobs=-1)
