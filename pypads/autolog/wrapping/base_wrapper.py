@@ -117,9 +117,6 @@ class Context:
     def get_dict(self):
         return self._c.__dict__
 
-    def __getattr__(self, item):
-        return getattr(self._c, item)
-
     def __str__(self):
         return str(self._c)
 

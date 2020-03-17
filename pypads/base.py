@@ -145,6 +145,8 @@ if is_package_available("joblib"):
                 is_own_process = not pypads.base.current_pads
                 if is_own_process:
                     import pypads
+                    from cloudpickle import loads
+                    _pypads = loads(_pypads)
                     pypads.base.current_pads = _pypads
                     _pypads.activate_tracking(reload_warnings=False, affected_modules=_pypads_affected_modules,
                                               clear_imports=True)
@@ -180,8 +182,9 @@ if is_package_available("joblib"):
         def delayed_function(*args, **kwargs):
             run = mlflow.active_run()
             if run:
+                from joblib.externals.cloudpickle import dumps
                 pickled_params = (_parameter_pickle(args, kwargs),)
-                kwargs = {"_pypads": current_pads, "_pypads_active_run_id": run.info.run_id,
+                kwargs = {"_pypads": dumps(current_pads), "_pypads_active_run_id": run.info.run_id,
                           "_pypads_tracking_uri": mlflow.get_tracking_uri(),
                           "_pypads_affected_modules": punched_module_names}
                 args = pickled_params

@@ -192,22 +192,22 @@ class Call:
     def to_folder(self):
         return self.call_id.to_folder()
 
-    def __getstate__(self):
-        """
-        Overwrite standard pickling by excluding the functions
-        :return:
-        """
-        # TODO can't pickle call_ids here
-        self.call_id_fragments = str(self.call_id.to_fragements())
-        state = self.__dict__.copy()
-        del state["_call_id"]
-        return state
-
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        state["_call_id"] = None
-        # Todo can we rebuild call_id?
-        return state
+    # def __getstate__(self):
+    #     """
+    #     Overwrite standard pickling by excluding the functions
+    #     :return:
+    #     """
+    #     # TODO can't pickle call_ids here
+    #     self.call_id_fragments = str(self.call_id.to_fragements())
+    #     state = self.__dict__.copy()
+    #     del state["_call_id"]
+    #     return state
+    #
+    # def __setstate__(self, state):
+    #     self.__dict__.update(state)
+    #     state["_call_id"] = None
+    #     # Todo can we rebuild call_id?
+    #     return state
 
 
 class LoggingEnv:

@@ -37,21 +37,21 @@ class Cache:
     def clear(self):
         self._cache = {}
 
-    def __getstate__(self):
-        """
-        Overwrite standard pickling by excluding the functions
-        :return:
-        """
-        # TODO can't pickle functions
-        state = self.__dict__.copy()
-        if "cache_cleanup" in self._cache:
-            del state["_cache"]
-        return state
-
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        if hasattr(self, "_cache") or self._cache is None:
-            self._cache = {}
+    # def __getstate__(self):
+    #     """
+    #     Overwrite standard pickling by excluding the functions
+    #     :return:
+    #     """
+    #     # TODO can't pickle functions
+    #     state = self.__dict__.copy()
+    #     if "cache_cleanup" in self._cache:
+    #         del state["_cache"]
+    #     return state
+    #
+    # def __setstate__(self, state):
+    #     self.__dict__.update(state)
+    #     if hasattr(self, "_cache") or self._cache is None:
+    #         self._cache = {}
 
 
 class PypadsRunCache(Cache):
