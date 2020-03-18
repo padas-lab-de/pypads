@@ -25,8 +25,8 @@ class Cache:
             return self.cache.pop(key, default)
         return None
 
-    def get(self, item):
-        return self._cache.get(item)
+    def get(self, item, default=None):
+        return self._cache.get(item,default)
 
     def items(self):
         return self._cache.items()
