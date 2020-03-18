@@ -254,7 +254,7 @@ class AlgorithmSchema(object):
 
         alg = name_mappings[data['algorithm']]
 
-        for param_type in alg['hyper_parameters']:
+        for param_type in alg.get('hyper_parameters', []):
             if not param_type in data['hyper_parameters']:
                 return (False, "Missing parameter-set '" + param_type + "'!")
             for param in alg['hyper_parameters'][param_type]:

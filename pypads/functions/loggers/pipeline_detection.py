@@ -5,20 +5,30 @@ import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
+from pypads.functions.analysis.call_tracker import LoggingEnv
 
 from pypads.functions.loggers.base_logger import LoggingFunction
 from pypads.logging_util import WriteFormats, get_base_folder, try_write_artifact
 from pypads.util import is_package_available
 
-last_pipeline_tracking = None
-
-_pipeline_type = None
-network = None
+# last_pipeline_tracking = None
+#
+# _pipeline_type = None
+# network = None
 
 
 # --- Clean nodes after run ---
 def end_run(*args, **kwargs):
-    global network
+    from pypads.base import get_current_pads
+    pads = get_current_pads()
+
+    # curr_call = pads.call_tracker.current_call()
+    # Todo should we track the pipeline per process
+    pipeline_cache = pads.cache.get("pipeline", {})
+
+    network = pipeline_cache.get("network", None)
+    _pipeline_type = pipeline_cache.get("pipeline_type")
+    # global network
     if network is not None and len(network.nodes) > 0:
         try_write_artifact("_pypads_pipeline", network, WriteFormats.pickle)
 
@@ -84,20 +94,23 @@ def end_run(*args, **kwargs):
                 plt.savefig(folder)
             try_mlflow_log(mlflow.log_artifact, folder)
 
-    network = None
-    global last_pipeline_tracking
-    last_pipeline_tracking = None
+    pads.cache.pop("pipeline")
+    # # global last_pipeline_tracking
+    # # last_pipeline_tracking = None
+    # pads.cache.pop(curr_call)
+
+
 # !--- Clean nodes after run ---
 
 
-def _to_node_id(mapping, ctx, wrappe, ref):
+def _to_node_id(wrappe, ref):
     if ref is not None:
         return id(ref)
     else:
         return id(wrappe)
 
 
-def _to_node_label(mapping, ctx, wrappe, ref):
+def _to_node_label(wrappe, ref):
     if ref is not None:
         try:
             return str(ref)
@@ -123,7 +136,7 @@ def _to_edge_label(wrappe, include_args, args, kwargs):
     return str(wrappe)
 
 
-def _step_number(label):
+def _step_number(network, label):
     return str(network.number_of_edges()) + ": " + label
 
 
@@ -132,55 +145,82 @@ class PipelineTracker(LoggingFunction):
     def _needed_packages(self):
         return ["networkx"]
 
-    def __pre__(self, ctx, *args, _pypads_pipeline_type="normal", _pypads_pipeline_args=False, **kwargs):
-        pass
-    #     global last_pipeline_tracking
-    #     global network
-    #     global _pipeline_type
-    #     _pipeline_type = _pypads_pipeline_type
-    #
-    #     from pypads.base import get_current_pads
-    #     pads = get_current_pads()
-    #     pads.api.register_post_fn("pipeline_clean_up", end_run)
-    #
-    #     import networkx as nx
-    #     if network is None:
-    #         network = nx.MultiDiGraph()
-    #
-    #     node_id = _to_node_id(kwargs["_pypads_mapped_by"], kwargs["_pypads_context"], kwargs["_pypads_wrappe"], ctx)
-    #     label = _to_node_label(kwargs["_pypads_mapped_by"], kwargs["_pypads_context"], kwargs["_pypads_wrappe"], ctx)
-    #     if not network.has_node(node_id):
-    #         network.add_node(node_id, label=label)
-    #
-    #     label = _to_edge_label(kwargs["_pypads_wrappe"], _pypads_pipeline_args, args, kwargs)
-    #     # If the current stack holds only the call itself
-    #     if len(current_tracking_stack) == 1:
-    #
-    #         # If there where no nodes until now
-    #         if len(network.nodes) == 1:
-    #             network.add_node(-1, label="entry")
-    #             last_pipeline_tracking = -1
-    #         network.add_edge(last_pipeline_tracking, node_id, plain_label=label, label=_step_number(label))
-    #
-    #     # If the tracked function was called from another tracked function
-    #     elif len(current_tracking_stack) > 1:
-    #
-    #         containing_node_id = _to_node_id(*current_tracking_stack[-2])
-    #         if not network.has_node(containing_node_id):
-    #             containing_node_label = _to_node_label(*current_tracking_stack[-2])
-    #             network.add_node(containing_node_id, label=containing_node_label)
-    #         # Add an edge from the tracked function to the current function call
-    #         network.add_edge(containing_node_id, node_id, plain_label=label, label=_step_number(label))
-    #     return node_id
-    #
-    # def __post__(self, ctx, *args, _pypads_pipeline_args=False, _pypads_pre_return, **kwargs):
-    #     node_id = _pypads_pre_return
-    #     label = "return " + _to_edge_label(kwargs["_pypads_wrappe"], _pypads_pipeline_args, args, kwargs)
-    #     if len(current_tracking_stack) == 1:
-    #         network.add_edge(node_id, -1, plain_label=label, label=_step_number(label))
-    #     elif len(current_tracking_stack) > 1:
-    #         containing_node_id = _to_node_id(*current_tracking_stack[-2])
-    #         if not network.has_node(containing_node_id):
-    #             containing_node_label = _to_node_label(*current_tracking_stack[-2])
-    #             network.add_node(containing_node_id, label=containing_node_label)
-    #         network.add_edge(node_id, containing_node_id, plain_label=label, label=_step_number(label))
+    def __pre__(self, ctx, *args, _pypads_env: LoggingEnv, _pypads_pipeline_type="normal", _pypads_pipeline_args=False,
+                **kwargs):
+        # print("pre:", self._static_parameters)
+        # pass
+
+        from pypads.base import get_current_pads
+        pads = get_current_pads()
+        pads.api.register_post_fn("pipeline_clean_up", end_run)
+
+        # global last_pipeline_tracking
+        # global network
+        # global _pipeline_type
+        # _pipeline_type = _pypads_pipeline_type
+
+        # print(str(pads.call_tracker.current_call()))
+        # key = pads.call_tracker.current_process()
+
+        if pads.cache.exists("pipeline"):
+            pipeline_cache = pads.cache.get("pipeline")
+        else:
+            pipeline_cache = {"network": None, "last_pipeline_tracking":None, "pipeline_type":_pypads_pipeline_type}
+
+        network = pipeline_cache.get("network")
+        last_pipeline_tracking = pipeline_cache.get("last_pipeline_tracking")
+        _pipeline_type = pipeline_cache.get("pipeline_type")
+
+        import networkx as nx
+        if network is None:
+            network = nx.MultiDiGraph()
+
+        node_id = _to_node_id(_pypads_env.call.call_id.wrappee, ctx)
+        label = _to_node_label(_pypads_env.call.call_id.wrappee, ctx)
+        if not network.has_node(node_id):
+            network.add_node(node_id, label=label)
+
+        label = _to_edge_label(_pypads_env.call.call_id.wrappee, _pypads_pipeline_args, args, kwargs)
+        # If the current stack holds only the call itself
+        if pads.call_tracker.call_depth() == 1:
+
+            # If there where no nodes until now
+            if len(network.nodes) == 1:
+                network.add_node(-1, label="entry")
+                last_pipeline_tracking = -1
+                pipeline_cache["last_pipeline_tracking"] = -1
+            network.add_edge(last_pipeline_tracking, node_id, plain_label=label, label=_step_number(network,label))
+
+        # If the tracked function was called from another tracked function
+        elif pads.call_tracker.call_depth() > 1:
+
+            containing_node_id = _to_node_id(pads.call_tracker.call_stack[-2].call_id.wrappee, ctx)
+            if not network.has_node(containing_node_id):
+                containing_node_label = _to_node_label(pads.call_tracker.call_stack[-2].call_id.wrappee, ctx)
+                network.add_node(containing_node_id, label=containing_node_label)
+            # Add an edge from the tracked function to the current function call
+            network.add_edge(containing_node_id, node_id, plain_label=label, label=_step_number(network,label))
+
+        pipeline_cache["network"] = network
+        pads.cache.add("pipeline",pipeline_cache)
+        return node_id
+
+    def __post__(self, ctx, *args, _pypads_pipeline_args=False, _pypads_env: LoggingEnv, _pypads_pre_return, **kwargs):
+        print("post", self._static_parameters)
+        from pypads.base import get_current_pads
+        pads = get_current_pads()
+        # key = pads.call_tracker.current_process()
+        pipeline_cache = pads.cache.get("pipeline")
+        network = pipeline_cache.get("network")
+        node_id = _pypads_pre_return
+        label = "return " + _to_edge_label(_pypads_env.call.call_id.wrappee, _pypads_pipeline_args, args, kwargs)
+        if pads.call_tracker.call_depth() == 1:
+            network.add_edge(node_id, -1, plain_label=label, label=_step_number(network,label))
+        elif pads.call_tracker.call_depth() > 1:
+            containing_node_id = _to_node_id(pads.call_tracker.call_stack[-2].call_id.wrappee, ctx)
+            if not network.has_node(containing_node_id):
+                containing_node_label = _to_node_label(pads.call_tracker.call_stack[-2].call_id.wrappee, ctx)
+                network.add_node(containing_node_id, label=containing_node_label)
+            network.add_edge(node_id, containing_node_id, plain_label=label, label=_step_number(network,label))
+        pipeline_cache["network"] = network
+        pads.cache.add("pipeline", pipeline_cache)

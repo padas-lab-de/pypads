@@ -368,14 +368,18 @@ class AlgorithmVisitor(Visitor):
         """
 
         fullName = object._pypads_mapping[0].reference
-        if fullName in type_mappings:
+        fullName_ = object.__class__.__module__ + "." + object.__class__.__name__ if hasattr(object,
+                                                                                             "__module__") else fullName
+        if fullName_ in type_mappings:
+            description, lib = type_mappings[fullName_]
+        elif fullName != fullName_ and fullName in type_mappings:
             description, lib = type_mappings[fullName]
         else:
-            raise ValueError("The algorithm described by class '" + fullName + "' is not registered!")
+            raise ValueError("The algorithm described by class '" + fullName +"/" + fullName_ + "' is not registered!")
 
         result['algorithm'] = Parameter(description['name'], {"path": path})
 
-        params = description['hyper_parameters']
+        params = description.get('hyper_parameters', [])
         result['hyper_parameters'] = {}
         for param_type in params:
             param_list = {}

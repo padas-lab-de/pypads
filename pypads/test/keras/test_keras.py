@@ -127,7 +127,7 @@ class PypadsKerasTest(unittest.TestCase):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
-        PyPads()
+        tracker = PyPads()
 
         import timeit
         t = timeit.Timer(keras_simple_sequential_experiment)
@@ -136,7 +136,7 @@ class PypadsKerasTest(unittest.TestCase):
         # --------------------------- asserts ---------------------------
         # TODO
         # !-------------------------- asserts ---------------------------
-        mlflow.end_run()
+        tracker.api.end_run()
 
     def test_keras_mlp(self):
         # --------------------------- setup of the tracking ---------------------------

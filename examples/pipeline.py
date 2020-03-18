@@ -29,3 +29,5 @@ search.fit(X_digits, y_digits)
 print("Best parameter (CV score=%0.3f):" % search.best_score_)
 print(search.best_params_)
 search.predict(X_digits)
+
+tracker.api.end_run()

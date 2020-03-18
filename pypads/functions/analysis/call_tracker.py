@@ -146,6 +146,9 @@ class CallId(CallAccessor):
     def call_number(self):
         return self._call_number
 
+    def to_parent_folder(self):
+        return os.path.join("process_" + str(self._process) + str(self._thread))
+
     def to_folder(self):
         return os.path.join(*self.to_fragements())
 
@@ -154,9 +157,9 @@ class CallId(CallAccessor):
 
     def to_fragements(self):
         return ("process_" + str(self._process), "thread_" + str(self._thread),
-             "context_" + self.context.container.__name__,
-             "instance_" + str(
-                 self.instance_number), "function_" + self.wrappee.__name__, "call_" + str(self._call_number))
+                "context_" + self.context.container.__name__,
+                "instance_" + str(
+                    self.instance_number), "function_" + self.wrappee.__name__, "call_" + str(self._call_number))
 
 
 class Call:
@@ -267,6 +270,10 @@ class CallTracker:
                 return instance_number
         return 0
 
+    @property
+    def call_stack(self):
+        return self._call_stack
+
     def call_depth(self):
         return len(self._call_stack)
 
@@ -302,6 +309,9 @@ class CallTracker:
         :return:
         """
         return self._call_stack[-1]
+
+    def current_process(self):
+        return str(self._call_stack[-1].call_id.process) + "." + str(self._call_stack[-1].call_id.thread)
 
     def call_objects(self):
         """
