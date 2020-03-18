@@ -174,6 +174,10 @@ class Call:
     def finished(self):
         return self._finished
 
+    @property
+    def active_hooks(self):
+        return self._active_hooks
+
     def finish(self):
         self._finished = True
 

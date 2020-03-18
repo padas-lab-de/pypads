@@ -54,22 +54,22 @@ class Context:
                                                                         self.original_name(wrappee))
 
     def original_name(self, wrappee):
-        return "_pypads_original_" + str(id(self._c)) + "_" + str(wrappee.__name__)
+        return "_pypads_original_" + str(wrappee.__name__)
 
     def original(self, wrappee):
-        if not inspect.isfunction(wrappee):
+        if not inspect.isfunction(wrappee) and not inspect.ismethod(wrappee):
             try:
                 return getattr(wrappee, self.original_name(wrappee))
             except AttributeError:
                 for attr in dir(wrappee):
-                    if attr.endswith("_" + wrappee) and attr.startswith("_pypads_original_"):
+                    if attr.endswith("_" + wrappee.__name__) and attr.startswith("_pypads_original_"):
                         return getattr(wrappee, attr)
         else:
             try:
                 return getattr(self._c, self.original_name(wrappee))
             except AttributeError:
                 for attr in dir(self._c):
-                    if attr.endswith("_" + wrappee) and attr.startswith("_pypads_original_"):
+                    if attr.endswith("_" + wrappee.__name__) and attr.startswith("_pypads_original_"):
                         return getattr(self._c, attr)
 
     def is_class(self):

@@ -1,5 +1,5 @@
 from _py_abc import ABCMeta
-from logging import exception, warning
+from logging import exception, warning, error
 
 import mlflow
 
@@ -103,14 +103,16 @@ class LoggingFunction(DependencyMixin):
             self._handle_failure(ctx, *args, _pypads_env=_pypads_env, _pypads_error=e, **kwargs)
 
         # Call the output producing code
-        # print(_pypads_env.callback)
-        out, time = timed(
-            lambda: self.call_wrapped(ctx, *args, _pypads_env=_pypads_env, _kwargs=kwargs, **_pypads_hook_params))
-
         try:
-            add_run_time(str(_pypads_env.call), time)
-        except TimingDefined as e:
-            pass
+            out, time = timed(
+                lambda: self.call_wrapped(ctx, *args, _pypads_env=_pypads_env, _kwargs=kwargs, **_pypads_hook_params))
+            try:
+                add_run_time(str(_pypads_env.call), time)
+            except TimingDefined as e:
+                pass
+        except Exception as e:
+            error("Logging failed. " + str(e))
+            return _pypads_env.call.call_id.context.original(_pypads_env.callback)(self, *args, **kwargs)
 
         # Call function to be executed after the tracked function
         try:

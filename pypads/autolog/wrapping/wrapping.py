@@ -19,14 +19,17 @@ def wrap(wrappee, ctx, mapping):
     :param kwargs:
     :return:
     """
-    if not isinstance(ctx, Context):
-        ctx = Context(ctx)
+    if not str(wrappee).startswith("_pypads"):
+        if not isinstance(ctx, Context):
+            ctx = Context(ctx)
 
-    if inspect.ismodule(wrappee):
-        return ModuleWrapper.wrap(wrappee, ctx, mapping)
+        if inspect.ismodule(wrappee):
+            return ModuleWrapper.wrap(wrappee, ctx, mapping)
 
-    elif inspect.isclass(wrappee):
-        return ClassWrapper.wrap(wrappee, ctx, mapping)
+        elif inspect.isclass(wrappee):
+            return ClassWrapper.wrap(wrappee, ctx, mapping)
 
-    elif inspect.isfunction(wrappee):
-        return FunctionWrapper.wrap(wrappee, ctx, mapping)
+        elif inspect.isfunction(wrappee):
+            return FunctionWrapper.wrap(wrappee, ctx, mapping)
+    else:
+        return wrappee

@@ -20,13 +20,9 @@ from pypads.autolog.pypads_import import extend_import_module, duck_punch_loader
 from pypads.autolog.wrapping.module_wrapping import punched_module_names
 from pypads.caches import PypadsCache, Cache
 from pypads.functions.analysis.call_tracker import CallTracker
-from pypads.functions.analysis.validation.parameters import Parameter
-from pypads.functions.loggers.data_flow import Output, Input
 from pypads.functions.loggers.debug import LogInit, Log
 from pypads.functions.loggers.hardware import Disk, Ram, Cpu
 from pypads.functions.loggers.metric import Metric
-from pypads.functions.loggers.mlflow.mlflow_autolog import MlflowAutologger
-from pypads.functions.loggers.pipeline_detection import PipelineTracker
 from pypads.functions.run_init_loggers.hardware import ISystem, IRam, ICpu, IDisk, IPid
 from pypads.logging_util import WriteFormats, try_write_artifact
 from pypads.util import get_class_that_defined_method, is_package_available, dict_merge
@@ -63,7 +59,8 @@ class FunctionRegistry:
         elif name in self.fns:
             return self.fns[name]
         else:
-            warning("Function call with name '" + name + "' is not linked with any logging functionality.")
+            pass
+            # warning("Function call with name '" + name + "' is not linked with any logging functionality.")
 
     def add_functions(self, name, lib=None, version=None, *args: FunctionType):
         if lib:
@@ -131,10 +128,11 @@ if is_package_available("joblib"):
     original_delayed = joblib.delayed
 
 
-    def punched_delayed(function):
+    @wraps(original_delayed)
+    def punched_delayed(fn):
         """Decorator used to capture the arguments of a function."""
 
-        @wraps(function)
+        @wraps(fn)
         def wrapped_function(*args, _pypads=None, _pypads_active_run_id=None, _pypads_tracking_uri=None,
                              _pypads_affected_modules=None, **kwargs):
             if _pypads:
@@ -174,18 +172,10 @@ if is_package_available("joblib"):
                 args = a
                 kwargs = b
 
-                out = function(*args, **kwargs)
-
-                try:
-                    with io.BytesIO() as file:
-                        pickle.dump(out, file)
-                except Exception as e:
-                    print(e)
-
-                print(out)
-                return out
+                out = fn(*args, **kwargs)
+                return out, _pypads.cache
             else:
-                return function(*args, **kwargs)
+                return fn(*args, **kwargs)
 
         def delayed_function(*args, **kwargs):
             run = mlflow.active_run()
@@ -203,13 +193,35 @@ if is_package_available("joblib"):
 
         try:
             import functools
-            delayed_function = functools.wraps(function)(delayed_function)
+            delayed_function = functools.wraps(fn)(delayed_function)
         except AttributeError:
             " functools.wraps fails on some callable objects "
         return delayed_function
 
 
     setattr(joblib, "delayed", punched_delayed)
+
+    original_call = joblib.Parallel.__call__
+
+
+    @wraps(original_call)
+    def joblib_call(*args, **kwargs):
+        out = original_call(*args, **kwargs)
+        if isinstance(out, List):
+            real_out = []
+            for entry in out:
+                if isinstance(entry, tuple) and len(entry) == 2 and isinstance(entry[1], PypadsCache):
+                    real_out.append(entry[0])
+                    cache = entry[1]
+                    pads = get_current_pads()
+                    pads.cache.merge(cache)
+                else:
+                    real_out.append(entry)
+            out = real_out
+        return out
+
+
+    setattr(joblib.Parallel, "__call__", joblib_call)
 
 # --- Pypads App ---
 
@@ -218,13 +230,13 @@ DEFAULT_INIT_RUN_FNS = [ISystem(), IRam(), ICpu(), IDisk(), IPid()]
 
 # Default event mappings. We allow to log parameters, output or input
 DEFAULT_LOGGING_FNS = {
-    "parameters": Parameter(),
-    "output": Output(_pypads_write_format=WriteFormats.text.name),
-    "input": Input(_pypads_write_format=WriteFormats.text.name),
+    # "parameters": Parameter(),
+    # "output": Output(_pypads_write_format=WriteFormats.text.name),
+    # "input": Input(_pypads_write_format=WriteFormats.text.name),
     "hardware": {Cpu(), Ram(), Disk()},
     "metric": Metric(),
-    "autolog": MlflowAutologger(),
-    "pipeline": PipelineTracker(_pypads_pipeline_type="normal", _pypads_pipeline_args=False),
+    # "autolog": MlflowAutologger(),
+    # "pipeline": PipelineTracker(_pypads_pipeline_type="normal", _pypads_pipeline_args=False),
     "log": Log(),
     "init": LogInit()
 }
@@ -365,19 +377,21 @@ class PypadsApi:
             self._pypads.cache.run_add("post_run_fns", post_run_fn_cache)
         return self._pypads.cache.run_get("post_run_fns")
 
-    def register_post_fn(self, name, fn):
+    def register_post_fn(self, name, fn, order=0):
         cache = self._get_post_run()
         if cache.exists(name):
             debug("Post run fn with name '" + name + "' already exists. Skipped.")
         else:
-            cache.add(name, fn)
+            cache.add(name, (fn, order))
 
     def active_run(self):
         return mlflow.active_run()
 
     def end_run(self):
-        cache = self._get_post_run()
-        for name, fn in cache.items():
+        chached_fns = self._get_post_run()
+        fn_list = [v for i, v in chached_fns.items()]
+        fn_list.sort(key=lambda t: t[1])
+        for fn, _ in fn_list:
             fn()
         # TODO alternatively punch mlflow end_run
         mlflow.end_run()
