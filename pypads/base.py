@@ -12,6 +12,7 @@ from types import FunctionType
 from typing import List, Iterable
 
 import mlflow
+from ipywidgets import Output
 from mlflow.tracking import MlflowClient
 
 from pypads.autolog.hook import Hook
@@ -20,9 +21,13 @@ from pypads.autolog.pypads_import import extend_import_module, duck_punch_loader
 from pypads.autolog.wrapping.module_wrapping import punched_module_names
 from pypads.caches import PypadsCache, Cache
 from pypads.functions.analysis.call_tracker import CallTracker
+from pypads.functions.analysis.validation.parameters import Parameter
+from pypads.functions.loggers.data_flow import Input
 from pypads.functions.loggers.debug import LogInit, Log
 from pypads.functions.loggers.hardware import Disk, Ram, Cpu
 from pypads.functions.loggers.metric import Metric
+from pypads.functions.loggers.mlflow.mlflow_autolog import MlflowAutologger
+from pypads.functions.loggers.pipeline_detection import PipelineTracker
 from pypads.functions.run_init_loggers.hardware import ISystem, IRam, ICpu, IDisk, IPid
 from pypads.logging_util import WriteFormats, try_write_artifact
 from pypads.util import get_class_that_defined_method, is_package_available, dict_merge
@@ -173,7 +178,10 @@ if is_package_available("joblib"):
                 kwargs = b
 
                 out = fn(*args, **kwargs)
-                return out, _pypads.cache
+                if is_own_process:
+                    return out, _pypads.cache
+                else:
+                    return out
             else:
                 return fn(*args, **kwargs)
 
@@ -181,6 +189,7 @@ if is_package_available("joblib"):
             run = mlflow.active_run()
             if run:
                 from joblib.externals.cloudpickle import dumps
+                # TODO only if this is going to be a process and not a thread (how can we know?)
                 pickled_params = (_parameter_pickle(args, kwargs),)
                 # kwargs = {"_pypads": dumps(current_pads), "_pypads_active_run_id": run.info.run_id,
                 #           "_pypads_tracking_uri": mlflow.get_tracking_uri(),
@@ -205,8 +214,8 @@ if is_package_available("joblib"):
 
 
     @wraps(original_call)
-    def joblib_call(*args, **kwargs):
-        out = original_call(*args, **kwargs)
+    def joblib_call(self, *args, **kwargs):
+        out = original_call(self, *args, **kwargs)
         if isinstance(out, List):
             real_out = []
             for entry in out:
