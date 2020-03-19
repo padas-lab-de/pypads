@@ -2,9 +2,8 @@ import os
 from logging import warning
 from typing import Iterable
 
-from pypads.autolog.wrapping import _to_original_name
+from pypads.functions.analysis.call_tracker import LoggingEnv
 from pypads.functions.loggers.base_logger import LoggingFunction
-from pypads.logging_util import get_current_call_folder
 
 
 class Decisions(LoggingFunction):
@@ -12,7 +11,7 @@ class Decisions(LoggingFunction):
     Function logging individual decisions
     """
 
-    def __post__(self, ctx, *args, _pypads_result, **kwargs):
+    def __post__(self, ctx, *args, _pypads_env:LoggingEnv,_pypads_result, **kwargs):
         """
 
         :param ctx:
@@ -73,9 +72,9 @@ class Decisions(LoggingFunction):
             except Exception as e:
                 print(e)
 
-        name = os.path.join(get_current_call_folder(ctx, kwargs["_pypads_context"], kwargs["_pypads_wrappe"]),
+        name = os.path.join(_pypads_env.call.to_folder(),
                             "decisions",
-                            str(id(kwargs["_pypads_callback"])))
+                            str(id(_pypads_env.callback)))
         pads.api.log_mem_artifact(name, pads.cache.run_get(num))
 
 
@@ -84,7 +83,7 @@ class Decisions_sklearn(Decisions):
     Function getting the prediction scores from sklearn estimators
     """
 
-    def __pre__(self, ctx, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
+    def __pre__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
         """
 
         :param ctx:
@@ -101,16 +100,16 @@ class Decisions_sklearn(Decisions):
         if hasattr(ctx, "predict_proba"):
             # TODO find a cleaner way to invoke the original predict_proba in case it is wrapped
             predict_proba = ctx.predict_proba
-            if hasattr(ctx, _to_original_name(predict_proba.__name__, ctx._pypads_wrapped)):
-                predict_proba = getattr(ctx, _to_original_name(predict_proba.__name__, ctx._pypads_wrapped))
+            if _pypads_env.call.call_id.context.has_original(predict_proba):
+                predict_proba = getattr(ctx, _pypads_env.call.call_id.context.original_name(predict_proba))
             try:
                 probabilities = predict_proba(*args, **kwargs)
             except Exception as e:
                 warning("Couldn't compute probabilities because %s" % str(e))
         elif hasattr(ctx, "_predict_proba"):
-            _predict_proba = ctx.predict_proba
-            if hasattr(ctx, _to_original_name(_predict_proba.__name__, ctx._pypads_wrapped)):
-                _predict_proba = getattr(ctx, _to_original_name(_predict_proba.__name__, ctx._pypads_wrapped))
+            _predict_proba = ctx._predict_proba
+            if _pypads_env.call.call_id.context.has_original(_predict_proba):
+                _predict_proba = getattr(ctx, _pypads_env.call.call_id.context.original_name(_predict_proba))
             try:
                 probabilities = _predict_proba(*args, **kwargs)
             except Exception as e:
@@ -124,7 +123,7 @@ class Decisions_keras(Decisions):
     Function getting the prediction scores from keras models
     """
 
-    def __pre__(self, ctx, *args, **kwargs):
+    def __pre__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
         """
 
         :param ctx:
@@ -150,7 +149,7 @@ class Decisions_torch(Decisions):
     Function getting the prediction scores from torch models
     """
 
-    def __post__(self, ctx, *args, _pypads_result, **kwargs):
+    def __post__(self, ctx, *args, _pypads_env:LoggingEnv,_pypads_result, **kwargs):
         from pypads.base import get_current_pads
         from pypadsext.base import PyPadrePads
         pads: PyPadrePads = get_current_pads()

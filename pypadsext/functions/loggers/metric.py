@@ -1,5 +1,6 @@
 import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
+from pypads.functions.analysis.call_tracker import LoggingEnv
 from pypads.functions.loggers.metric import Metric
 
 from pypadsext.util import _is_package_available
@@ -10,7 +11,7 @@ class Metric_torch(Metric):
     Function logging wrapped metrics of PyTroch
     """
 
-    def __post__(self, ctx, *args, _pypads_artifact_fallback=False, _pypads_result, **kwargs):
+    def __post__(self, ctx, *args, _pypads_artifact_fallback=False, _pypads_env: LoggingEnv, _pypads_result, **kwargs):
         """
 
         :param ctx:
@@ -39,6 +40,6 @@ class Metric_torch(Metric):
                             if weights_by_layer and isinstance(weights_by_layer, list):
                                 for layer, weights in enumerate(weights_by_layer):
                                     try_mlflow_log(mlflow.log_metric,
-                                                   kwargs['_pypads_context'].__name__ + ".Layer_" + str(
+                                                   _pypads_env.call.call_id.context.container.__name__+ ".Layer_" + str(
                                                        layer) + "_MEAN_GRADIENT.txt",
                                                    weights.grad.mean().item())

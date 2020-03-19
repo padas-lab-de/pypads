@@ -1,8 +1,8 @@
 import os
 import re
 
+from pypads.functions.analysis.call_tracker import LoggingEnv
 from pypads.functions.loggers.base_logger import LoggingFunction
-from pypads.logging_util import get_current_call_folder
 
 from pypadsext.util import _is_package_available
 
@@ -49,7 +49,7 @@ def tag_extraction():
 
 class Doc(LoggingFunction):
 
-    def __pre__(self, ctx, *args, **kwargs):
+    def __pre__(self, ctx, *args, _pypads_env: LoggingEnv,**kwargs):
 
         from pypads.base import get_current_pads
         from pypadsext.base import PyPadrePads
@@ -63,24 +63,24 @@ class Doc(LoggingFunction):
         else:
             doc_map = pads.cache.get("doc_map")
 
-        if kwargs['_pypads_wrappe'].__doc__:
-            name = os.path.join(get_current_call_folder(ctx, kwargs["_pypads_context"], kwargs["_pypads_wrappe"]),
-                                kwargs['_pypads_wrappe'].__name__ + ".__doc__")
-            pads.api.log_mem_artifact(name, kwargs['_pypads_wrappe'].__doc__)
-            doc_map[name] = kwargs['_pypads_wrappe'].__doc__
+        if _pypads_env.call.call_id.wrappee.__doc__:
+            name = os.path.join(_pypads_env.call.to_folder(),
+                                _pypads_env.call.call_id.wrappee.__name__ + ".__doc__")
+            pads.api.log_mem_artifact(name, _pypads_env.call.call_id.wrappee.__doc__)
+            doc_map[name] = _pypads_env.call.call_id.wrappee.__doc__
 
-        if kwargs["_pypads_context"].__doc__:
-            name = os.path.join(get_current_call_folder(ctx, kwargs["_pypads_context"], kwargs["_pypads_wrappe"]),
-                                kwargs["_pypads_context"].__name__ + ".__doc__")
-            pads.api.log_mem_artifact(name, kwargs["_pypads_context"].__doc__)
-            doc_map[name] = kwargs["_pypads_context"].__doc__
+        if _pypads_env.call.call_id.context.container.__doc__:
+            name = os.path.join(_pypads_env.call.to_folder(),
+                                _pypads_env.call.call_id.context.container.__name__ + ".__doc__")
+            pads.api.log_mem_artifact(name, _pypads_env.call.call_id.context.container.__doc__)
+            doc_map[name] = _pypads_env.call.call_id.context.container.__doc__
 
         # Add ctx name to doc_map for named entity searching
-        doc_map[kwargs["_pypads_context"].__name__ + "_exists"] = "The " + name_to_words(
-            kwargs["_pypads_context"].__name__) + " exists."
-        doc_map[kwargs['_pypads_wrappe'].__name__ + "_exists"] = "The " + name_to_words(
-            kwargs['_pypads_wrappe'].__name__) + " exists."
-        doc_map[kwargs['_pypads_wrappe'].__name__ + "_is_in"] = "The " + name_to_words(
-            kwargs['_pypads_wrappe'].__name__) + " is in " + name_to_words(kwargs["_pypads_context"].__name__) + "."
+        doc_map[_pypads_env.call.call_id.context.container.__name__ + "_exists"] = "The " + name_to_words(
+            _pypads_env.call.call_id.context.container.__name__) + " exists."
+        doc_map[_pypads_env.call.call_id.wrappee.__name__ + "_exists"] = "The " + name_to_words(
+            _pypads_env.call.call_id.wrappee.__name__) + " exists."
+        doc_map[_pypads_env.call.call_id.wrappee.__name__ + "_is_in"] = "The " + name_to_words(
+            _pypads_env.call.call_id.wrappee.__name__) + " is in " + name_to_words(_pypads_env.call.call_id.context.container.__name__) + "."
         # !Add ctx name to doc_map for named entity searching
         pads.cache.add("doc_map", doc_map)

@@ -1,6 +1,7 @@
 from types import GeneratorType
 from typing import Tuple, Iterable
 
+from pypads.functions.analysis.call_tracker import LoggingEnv
 from pypads.functions.loggers.base_logger import LoggingFunction
 
 
@@ -59,8 +60,7 @@ class SplitsTracker(LoggingFunction):
     Function that tracks data splits
     """
 
-    def call_wrapped(self, ctx, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
-                     _kwargs, **_pypads_hook_params):
+    def call_wrapped(self, ctx, *args, _pypads_env: LoggingEnv, _kwargs, **_pypads_hook_params):
         """
 
         :param ctx:
@@ -74,7 +74,7 @@ class SplitsTracker(LoggingFunction):
 
         pads: PyPadrePads = get_current_pads()
 
-        result = _pypads_callback(*args, **_kwargs)
+        result = _pypads_env.callback(*args, **_kwargs)
 
         if isinstance(result, GeneratorType):
             def generator():
@@ -82,12 +82,12 @@ class SplitsTracker(LoggingFunction):
                 for r in result:
                     num += 1
                     pads.cache.run_add("current_split", num)
-                    split_info = split_output_inv(r, fn=_pypads_callback)
+                    split_info = split_output_inv(r, fn=_pypads_env.callback)
                     pads.cache.run_add(num, {"split_info": split_info})
                     yield r
         else:
             def generator():
-                split_info = split_output_inv(result, fn=_pypads_callback)
+                split_info = split_output_inv(result, fn=_pypads_env.callback)
                 pads.cache.run_add("current_split", 0)
                 pads.cache.run_add(0, {"split_info": split_info})
 

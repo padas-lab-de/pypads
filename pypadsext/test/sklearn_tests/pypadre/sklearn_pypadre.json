@@ -51,11 +51,11 @@
       "name": "sklearn datasets",
       "other_names": [],
       "implementation": {
-        "sklearn": "sklearn.datasets"
+        "sklearn": "sklearn.datasets.base"
       },
       "hooks": {
         "pypads_dataset": [
-          "load*"
+          "load_iris"
         ]
       }
     },

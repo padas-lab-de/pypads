@@ -1,12 +1,12 @@
 import os
 from logging import warning
 
+from pypads.functions.analysis.call_tracker import LoggingEnv
 from pypads.functions.loggers.base_logger import LoggingFunction
-from pypads.logging_util import WriteFormats, get_current_call_folder
+from pypads.logging_util import WriteFormats
 
 from pypadsext.concepts.dataset import Crawler
 from pypadsext.concepts.util import persistent_hash, get_by_tag
-
 
 class Dataset(LoggingFunction):
     DATASETS = "datasets"
@@ -14,7 +14,7 @@ class Dataset(LoggingFunction):
     Function logging the wrapped dataset loader
     """
 
-    def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.pickle, _pypads_result, **kwargs):
+    def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.pickle, _pypads_env:LoggingEnv,_pypads_result, **kwargs):
         from pypads.base import get_current_pads
         from pypadsext.base import PyPadrePads
         pads: PyPadrePads = get_current_pads()
@@ -28,7 +28,7 @@ class Dataset(LoggingFunction):
             _kwargs = pads.cache.run_get("dataset_kwargs")
 
         # Scrape the data object
-        crawler = Crawler(obj, ctx=kwargs["_pypads_context"], callback=kwargs['_pypads_callback'], kw=args)
+        crawler = Crawler(obj, ctx=_pypads_env.call.call_id.context, callback=_pypads_env.callback, kw=args)
         data, metadata, targets = crawler.crawl(**_kwargs)
         pads.cache.run_add("data", data)
         pads.cache.run_add("shape", metadata.get("shape"))
@@ -43,15 +43,15 @@ class Dataset(LoggingFunction):
         elif pads.cache.run_exists("dataset_name") and pads.cache.run_get("dataset_name") is not None:
             ds_name = pads.cache.run_get("dataset_name")
         else:
-            ds_name = kwargs['_pypads_wrappe'].__qualname__
+            ds_name = _pypads_env.call.call_id.wrappee.__qualname__
 
         # Look for metadata information given by the user when using the decorators
         if pads.cache.run_exists("dataset_meta"):
             metadata = {**metadata, **pads.cache.run_get("dataset_meta")}
 
         # get the name before switching the active run
-        name = os.path.join(get_current_call_folder(ctx, kwargs["_pypads_context"], kwargs["_pypads_wrappe"]),
-                            "data", str(id(kwargs["_pypads_callback"])))
+        name = os.path.join(_pypads_env.call.to_folder(),
+                            "data", str(id(_pypads_env.callback)))
 
         # get the repo or create new where datasets are stored
         repo = pads.mlf.get_experiment_by_name(self.DATASETS)
