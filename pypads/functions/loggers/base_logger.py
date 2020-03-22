@@ -89,9 +89,9 @@ class LoggingFunction(DependencyMixin):
             self._check_dependencies()
             _pypads_pre_return, time = timed(lambda: self.__pre__(ctx, *args, _pypads_env=_pypads_env,
                                                                   **{**_pypads_hook_params, **kwargs}))
-            add_run_time(
-                str(_pypads_env.call) + "." + self.__class__.__name__ + ".__pre__",
-                time)
+            add_run_time(self,
+                         str(_pypads_env.call) + "." + self.__class__.__name__ + ".__pre__",
+                         time)
         except TimingDefined:
             # TODO multithreading fails
             pass
@@ -107,7 +107,7 @@ class LoggingFunction(DependencyMixin):
             out, time = timed(
                 lambda: self.call_wrapped(ctx, *args, _pypads_env=_pypads_env, _kwargs=kwargs, **_pypads_hook_params))
             try:
-                add_run_time(str(_pypads_env.call), time)
+                add_run_time(None, str(_pypads_env.call), time)
             except TimingDefined as e:
                 pass
         except Exception as e:
@@ -121,7 +121,7 @@ class LoggingFunction(DependencyMixin):
                 lambda: self.__post__(ctx, *args, _pypads_env=_pypads_env,
                                       _pypads_result=out,
                                       _pypads_pre_return=_pypads_pre_return, **{**_pypads_hook_params, **kwargs}))
-            add_run_time(str(_pypads_env.call) + "." + self.__class__.__name__ + ".__post__", time)
+            add_run_time(self, str(_pypads_env.call) + "." + self.__class__.__name__ + ".__post__", time)
         except TimingDefined:
             pass
         except NotImplementedError:

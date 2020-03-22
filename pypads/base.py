@@ -239,13 +239,13 @@ DEFAULT_INIT_RUN_FNS = [ISystem(), IRam(), ICpu(), IDisk(), IPid()]
 
 # Default event mappings. We allow to log parameters, output or input
 DEFAULT_LOGGING_FNS = {
-    # "parameters": Parameter(),
-    # "output": Output(_pypads_write_format=WriteFormats.text.name),
-    # "input": Input(_pypads_write_format=WriteFormats.text.name),
+    "parameters": Parameter(),
+    "output": Output(_pypads_write_format=WriteFormats.text.name),
+    "input": Input(_pypads_write_format=WriteFormats.text.name),
     "hardware": {Cpu(), Ram(), Disk()},
     "metric": Metric(),
-    # "autolog": MlflowAutologger(),
-    # "pipeline": PipelineTracker(_pypads_pipeline_type="normal", _pypads_pipeline_args=False),
+    "autolog": MlflowAutologger(),
+    "pipeline": PipelineTracker(_pypads_pipeline_type="normal", _pypads_pipeline_args=False),
     "log": Log(),
     "init": LogInit()
 }
@@ -257,12 +257,12 @@ DEFAULT_LOGGING_FNS = {
 # {"recursive": track functions recursively. Otherwise check the callstack to only track the top level function.}
 DEFAULT_CONFIG = {"events": {
     "init": {"on": ["pypads_init"]},
-    "parameters": {"on": ["pypads_fit"]},
-    "hardware": {"on": ["pypads_fit"]},
-    "output": {"on": ["pypads_fit", "pypads_predict"]},
-    "input": {"on": ["pypads_fit"], "with": {"_pypads_write_format": WriteFormats.text.name}},
+    # "parameters": {"on": ["pypads_fit"]},
+    # "hardware": {"on": ["pypads_fit"]},
+    # "output": {"on": ["pypads_fit", "pypads_predict"]},
+    # "input": {"on": ["pypads_fit"], "with": {"_pypads_write_format": WriteFormats.text.name}},
     "metric": {"on": ["pypads_metric"]},
-    "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"]},
+    # "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"]},
     "log": {"on": ["pypads_log"]}
 },
     "recursion_identity": False,
@@ -386,8 +386,20 @@ class PypadsApi:
             self._pypads.cache.run_add("post_run_fns", post_run_fn_cache)
         return self._pypads.cache.run_get("post_run_fns")
 
-    def register_post_fn(self, name, fn, order=0):
+    def register_post_fn(self, name, fn, logger=None, order=0):
         cache = self._get_post_run()
+
+        # Track timing of post fns of loggers
+        if logger:
+            @wraps(fn)
+            def keep_time(*args, **kwargs):
+                from pypads.functions.analysis.time_keeper import add_run_time
+                from pypads.functions.analysis.time_keeper import timed
+                out, time = timed(lambda: fn(*args, **kwargs))
+                add_run_time(logger, logger.__class__.__name__ + ".__end__." + fn.__name__, time)
+
+            fn = keep_time
+
         if cache.exists(name):
             debug("Post run fn with name '" + name + "' already exists. Skipped.")
         else:

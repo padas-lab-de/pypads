@@ -5,11 +5,12 @@ import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
-from pypads.functions.analysis.call_tracker import LoggingEnv
 
+from pypads.functions.analysis.call_tracker import LoggingEnv
 from pypads.functions.loggers.base_logger import LoggingFunction
 from pypads.logging_util import WriteFormats, get_base_folder, try_write_artifact
 from pypads.util import is_package_available
+
 
 # last_pipeline_tracking = None
 #
@@ -206,7 +207,7 @@ class PipelineTracker(LoggingFunction):
         return node_id
 
     def __post__(self, ctx, *args, _pypads_pipeline_args=False, _pypads_env: LoggingEnv, _pypads_pre_return, **kwargs):
-        print("post", self._static_parameters)
+        # print("post", self._static_parameters)
         from pypads.base import get_current_pads
         pads = get_current_pads()
         # key = pads.call_tracker.current_process()
