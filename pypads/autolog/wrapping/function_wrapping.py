@@ -183,7 +183,7 @@ class FunctionWrapper(BaseWrapper):
                 call = add_call(accessor)
 
                 # add the function to the callback stack
-                callback = types.MethodType(accessor.wrappee, self)
+                callback = accessor.wrappee.__get__(self)
 
                 # for every hook add
                 if cls._is_skip_recursion(accessor):

@@ -379,7 +379,7 @@ class AlgorithmVisitor(Visitor):
 
         result['algorithm'] = Parameter(description['name'], {"path": path})
 
-        params = description.get('hyper_parameters', [])
+        params = description.get('hyper_parameters', {})
         result['hyper_parameters'] = {}
         for param_type in params:
             param_list = {}
