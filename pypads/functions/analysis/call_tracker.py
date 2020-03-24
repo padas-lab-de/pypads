@@ -74,12 +74,16 @@ class FunctionReference:
     def is_function(self):
         return "function" in str(self.function_type())
 
+    def function_name(self):
+        return self.wrappee.__name__
+
     def is_class_method(self):
         return "classmethod" in str(self.function_type())
 
     def is_wrapped(self):
         return "wrapped" in str(self.function_type())
 
+    @property
     def function_id(self):
         if hasattr(self.wrappee, "__name__"):
             if hasattr(self.context, self.wrappee.__name__):
@@ -97,12 +101,23 @@ class CallAccessor(FunctionReference):
     def instance(self):
         return self._instance
 
+    @property
     def instance_id(self):
         return id(self.instance)
 
     @classmethod
     def from_function_reference(cls, function_reference: FunctionReference, instance):
         return CallAccessor(instance, function_reference.context, function_reference.wrappee)
+
+    def is_call_identity(self, other):
+        if other.is_class_method() or other.is_static_method() or other.is_wrapped():
+            if other.context == self.context:
+                if other.wrappee.__name__ == self.wrappee.__name__:
+                    return True
+        if other.is_function():
+            if other.instance_id == self.instance_id:
+                if other.wrappee.__name__ == self.wrappee.__name__:
+                    return True
 
 
 # class CallMapping(CallAccessor):
@@ -259,8 +274,8 @@ class CallTracker:
         self._call_stack = []
 
     def instance_call_number(self, accessor):
-        function_calls: OrderedDict = self.function_call_dict(accessor.function_id())
-        instance_id = accessor.instance_id()
+        function_calls: OrderedDict = self.function_call_dict(accessor.function_id)
+        instance_id = accessor.instance_id
 
         call_items = list(function_calls.items())
         for instance_number in range(0, len(call_items)):
@@ -308,7 +323,7 @@ class CallTracker:
         Get the call_id of the current call
         :return:
         """
-        return self._call_stack[-1]
+        return self._call_stack[-1] if len(self._call_stack) > 0 else None
 
     def current_process(self):
         return str(self._call_stack[-1].call_id.process) + "." + str(self._call_stack[-1].call_id.thread)
@@ -335,8 +350,8 @@ class CallTracker:
         :param accessor:
         :return:
         """
-        instance_id = accessor.instance_id()
-        function_id = accessor.function_id()
+        instance_id = accessor.instance_id
+        function_id = accessor.function_id
 
         function_calls = self.function_call_dict(function_id)
         if instance_id not in function_calls:
@@ -344,9 +359,9 @@ class CallTracker:
 
         return function_calls[instance_id]
 
-    def has_call_identity(self, accessor):
+    def has_call_identity(self, accessor: CallAccessor):
         for stored in self._call_stack:
-            if accessor.instance_id == stored.instance_id:
+            if stored.is_call_identity(accessor):
                 return True
         return False
 

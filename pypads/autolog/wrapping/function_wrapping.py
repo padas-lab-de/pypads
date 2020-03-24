@@ -1,4 +1,5 @@
 import types
+from contextlib import contextmanager
 from functools import wraps
 from logging import warning, debug, info
 
@@ -14,15 +15,16 @@ class FunctionWrapper(BaseWrapper):
     def wrap(cls, fn, context: Context, mapping):
         # Only wrap functions not starting with "__"
         if not fn.__name__.startswith("__") or fn.__name__ is "__init__":
-            context.store_wrap_meta(mapping, fn)
-            if context.is_class():
-                return cls._wrap_on_class(fn, context, mapping)
-            elif hasattr(context.container, fn.__name__):
-                return cls._wrap_on_object(fn, context, mapping)
-            else:
-                warning(str(
-                    context) + " is no class and doesn't provide attribute with fn_name. Couldn't access " + str(
-                    fn) + " on it.")
+            if not context.has_original(fn) or not context.defined_stored_original(fn):
+                context.store_wrap_meta(mapping, fn)
+                if context.is_class():
+                    return cls._wrap_on_class(fn, context, mapping)
+                elif hasattr(context.container, fn.__name__):
+                    return cls._wrap_on_object(fn, context, mapping)
+                else:
+                    warning(str(
+                        context) + " is no class and doesn't provide attribute with fn_name. Couldn't access " + str(
+                        fn) + " on it.")
         else:
             return fn
 
@@ -90,6 +92,27 @@ class FunctionWrapper(BaseWrapper):
             return cls.wrap_method_helper(fn_reference=fn_reference, hooks=hooks, mapping=mapping)
 
     @classmethod
+    @contextmanager
+    def _make_call(cls, instance, fn_reference):
+        accessor = CallAccessor.from_function_reference(fn_reference, instance)
+
+        current_call = None
+        call = None
+        try:
+            from pypads.base import get_current_pads
+            current_call: Call = get_current_pads().call_tracker.current_call()
+            if current_call and accessor.is_call_identity(current_call.call_id):
+                call = current_call
+            else:
+                call = add_call(accessor)
+            yield call
+        finally:
+            if call and not current_call == call:
+                # print("c:" + str(call))
+                # print("cc:" + str(current_call))
+                finish_call(call)
+
+    @classmethod
     def wrap_method_helper(cls, fn_reference: FunctionReference, hooks, mapping):
         """
         Helper to differentiate between functions, classmethods, static methods and wrap them
@@ -104,74 +127,73 @@ class FunctionWrapper(BaseWrapper):
             @wraps(fn)
             def entry(*args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
                 debug("Call to tracked static method or function " + str(fn))
-                accessor = CallAccessor.from_function_reference(fn_reference, None)
-                call = add_call(accessor)
 
-                # add the function to the callback stack
-                callback = accessor.wrappee
+                with cls._make_call(None, fn_reference) as call:
+                    accessor = call.call_id
+                    callback = fn
 
-                # for every hook add
-                if cls._is_skip_recursion(accessor):
-                    info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
+                    # for every hook add
+                    if cls._is_skip_recursion(accessor):
+                        info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
+                        out = callback(*args, **kwargs)
+                        return out
+
+                    for (h, params, order) in hooks:
+                        c = cls._add_hook(h, params, callback, call, mapping)
+                        if c:
+                            callback = c
+
+                    # start executing the stack
                     out = callback(*args, **kwargs)
-                    return out
-
-                for (h, params, order) in hooks:
-                    c = cls._add_hook(h, params, callback, call, mapping)
-                    callback = c
-
-                # start executing the stack
-                out = callback(*args, **kwargs)
-                finish_call(call)
                 return out
         elif fn_reference.is_function():
             @wraps(fn)
             def entry(self, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
+                # print("Call to tracked class method " + str(fn) + str(id(fn)))
                 debug("Call to tracked method " + str(fn))
-                accessor = CallAccessor.from_function_reference(fn_reference, None)
-                call = add_call(accessor)
 
-                # add the function to the callback stack
-                callback = types.MethodType(accessor.wrappee, self)
+                with cls._make_call(self, fn_reference) as call:
+                    accessor = call.call_id
+                    # add the function to the callback stack
+                    callback = types.MethodType(fn, self)
 
-                # for every hook add
-                if cls._is_skip_recursion(accessor):
-                    info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
+                    # for every hook add
+                    if cls._is_skip_recursion(accessor):
+                        info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
+                        out = callback(*args, **kwargs)
+                        return out
+
+                    for (h, params, order) in hooks:
+                        c = cls._add_hook(h, params, callback, call, mapping)
+                        if c:
+                            callback = types.MethodType(c, self)
+
+                    # start executing the stack
                     out = callback(*args, **kwargs)
-                    return out
-
-                for (h, params, order) in hooks:
-                    c = cls._add_hook(h, params, callback, call, mapping)
-                    callback = types.MethodType(c, self)
-
-                # start executing the stack
-                out = callback(*args, **kwargs)
-                finish_call(call)
                 return out
 
         elif fn_reference.is_class_method():
             @wraps(fn)
             def entry(cls, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
                 debug("Call to tracked class method " + str(fn))
-                accessor = CallAccessor.from_function_reference(fn_reference, None)
-                call = add_call(accessor)
+                with cls._make_call(cls, fn_reference) as call:
+                    accessor = call.call_id
+                    # add the function to the callback stack
+                    callback = types.MethodType(fn, cls)
 
-                # add the function to the callback stack
-                callback = types.MethodType(accessor.wrappee, cls)
+                    # for every hook add
+                    if cls._is_skip_recursion(accessor):
+                        info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
+                        out = callback(*args, **kwargs)
+                        return out
 
-                # for every hook add
-                if cls._is_skip_recursion(accessor):
-                    info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
+                    for (h, params, order) in hooks:
+                        c = cls._add_hook(h, params, callback, call, mapping)
+                        if c:
+                            callback = types.MethodType(c, cls)
+
+                    # start executing the stack
                     out = callback(*args, **kwargs)
-                    return out
-
-                for (h, params, order) in hooks:
-                    c = cls._add_hook(h, params, callback, call, mapping)
-                    callback = types.MethodType(c, cls)
-
-                # start executing the stack
-                out = callback(*args, **kwargs)
-                finish_call(call)
                 return out
         elif fn_reference.is_wrapped():
             tmp_fn = getattr(fn_reference.context.container, fn.__name__)
@@ -179,29 +201,29 @@ class FunctionWrapper(BaseWrapper):
             @wraps(tmp_fn)
             def entry(self, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
                 debug("Call to tracked _IffHasAttrDescriptor " + str(fn))
-                accessor = CallAccessor.from_function_reference(fn_reference, None)
-                call = add_call(accessor)
+                with cls._make_call(self, fn_reference) as call:
+                    accessor = call.call_id
+                    # add the function to the callback stack
+                    callback = types.MethodType(tmp_fn, self)
 
-                # add the function to the callback stack
-                callback = types.MethodType(accessor.wrappee, self)
+                    # for every hook add
+                    if cls._is_skip_recursion(accessor):
+                        info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
+                        out = callback(*args, **kwargs)
+                        return out
 
-                # for every hook add
-                if cls._is_skip_recursion(accessor):
-                    info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
+                    for (h, params, order) in hooks:
+                        c = cls._add_hook(h, params, callback, call, mapping)
+                        if c:
+                            callback = types.MethodType(c, self)
+
+                    # start executing the stack
                     out = callback(*args, **kwargs)
-                    return out
-
-                for (h, params, order) in hooks:
-                    c = cls._add_hook(h, params, callback, call, mapping)
-                    callback = types.MethodType(c, self)
-
-                # start executing the stack
-                out = callback(*args, **kwargs)
-                finish_call(call)
                 return out
         else:
             return fn
         fn_reference.context.overwrite(fn.__name__, entry)
+        # print("Wrapped " + str(fn) + str(id(fn)))
         return entry
 
     @classmethod
@@ -211,6 +233,7 @@ class FunctionWrapper(BaseWrapper):
             return cls._get_env_setter(_pypads_env=LoggingEnv(mapping, hook, params, callback, call))
         else:
             warning(str(hook) + " is tracked multiple times on " + str(call) + ". Ignoring second hooking.")
+            return None
 
     @classmethod
     def _get_env_setter(cls, _pypads_env: LoggingEnv):
