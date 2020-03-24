@@ -12,7 +12,6 @@ from types import FunctionType
 from typing import List, Iterable
 
 import mlflow
-from ipywidgets import Output
 from mlflow.tracking import MlflowClient
 
 from pypads.autolog.hook import Hook
@@ -22,7 +21,7 @@ from pypads.autolog.wrapping.module_wrapping import punched_module_names
 from pypads.caches import PypadsCache, Cache
 from pypads.functions.analysis.call_tracker import CallTracker
 from pypads.functions.analysis.validation.parameters import Parameter
-from pypads.functions.loggers.data_flow import Input
+from pypads.functions.loggers.data_flow import Input, Output
 from pypads.functions.loggers.debug import LogInit, Log
 from pypads.functions.loggers.hardware import Disk, Ram, Cpu
 from pypads.functions.loggers.metric import Metric
@@ -262,7 +261,7 @@ DEFAULT_CONFIG = {"events": {
     # "output": {"on": ["pypads_fit", "pypads_predict"]},
     # "input": {"on": ["pypads_fit"], "with": {"_pypads_write_format": WriteFormats.text.name}},
     "metric": {"on": ["pypads_metric"]},
-    # "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"]},
+    "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"]},
     "log": {"on": ["pypads_log"]}
 },
     "recursion_identity": False,
