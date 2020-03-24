@@ -148,20 +148,11 @@ class PipelineTracker(LoggingFunction):
 
     def __pre__(self, ctx, *args, _pypads_env: LoggingEnv, _pypads_pipeline_type="normal", _pypads_pipeline_args=False,
                 **kwargs):
-        # print("pre:", self._static_parameters)
-        # pass
 
         from pypads.base import get_current_pads
         pads = get_current_pads()
         pads.api.register_post_fn("pipeline_clean_up", end_run)
 
-        # global last_pipeline_tracking
-        # global network
-        # global _pipeline_type
-        # _pipeline_type = _pypads_pipeline_type
-
-        # print(str(pads.call_tracker.current_call()))
-        # key = pads.call_tracker.current_process()
 
         if pads.cache.exists("pipeline"):
             pipeline_cache = pads.cache.get("pipeline")
@@ -207,10 +198,9 @@ class PipelineTracker(LoggingFunction):
         return node_id
 
     def __post__(self, ctx, *args, _pypads_pipeline_args=False, _pypads_env: LoggingEnv, _pypads_pre_return, **kwargs):
-        # print("post", self._static_parameters)
         from pypads.base import get_current_pads
         pads = get_current_pads()
-        # key = pads.call_tracker.current_process()
+
         pipeline_cache = pads.cache.get("pipeline")
         network = pipeline_cache.get("network")
         node_id = _pypads_pre_return
