@@ -311,12 +311,15 @@ class FunctionWrapper(BaseWrapper):
     def _is_skip_recursion(cls, accessor):
         from pypads.base import get_current_pads
         pads = get_current_pads()
-        config = pads.config
+        try:
+            config = pads.config
 
-        if 'recursion_depth' in config and config['recursion_depth'] is not -1:
-            if pads.call_tracker.call_depth() > config['recursion_depth'] + 1:
-                return True
-        if 'recursion_identity' in config and config['recursion_identity']:
-            if pads.call_tracker.has_call_identity(accessor):
-                return True
-        return False
+            if 'recursion_depth' in config and config['recursion_depth'] is not -1:
+                if pads.call_tracker.call_depth() > config['recursion_depth'] + 1:
+                    return True
+            if 'recursion_identity' in config and config['recursion_identity']:
+                if pads.call_tracker.has_call_identity(accessor):
+                    return True
+            return False
+        except Exception as e:
+            return False
