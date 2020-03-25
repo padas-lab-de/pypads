@@ -204,9 +204,8 @@ class FunctionWrapper(BaseWrapper):
                 with cls._make_call(self, fn_reference) as call:
                     accessor = call.call_id
                     # add the function to the callback stack
-                    callback = types.MethodType(tmp_fn, self)
-                    # TODO
-                    #callback = accessor.wrappee.__get__(self
+                    # callback = types.MethodType(tmp_fn, self)
+                    callback = accessor.wrappee.__get__(self)
 
                     # for every hook add
                     if cls._is_skip_recursion(accessor):
