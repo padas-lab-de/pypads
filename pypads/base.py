@@ -12,7 +12,6 @@ from types import FunctionType
 from typing import List, Iterable
 
 import mlflow
-from ipywidgets import Output
 from mlflow.tracking import MlflowClient
 
 from pypads.autolog.hook import Hook
@@ -22,7 +21,7 @@ from pypads.autolog.wrapping.module_wrapping import punched_module_names
 from pypads.caches import PypadsCache, Cache
 from pypads.functions.analysis.call_tracker import CallTracker
 from pypads.functions.analysis.validation.parameters import Parameter
-from pypads.functions.loggers.data_flow import Input
+from pypads.functions.loggers.data_flow import Input, Output
 from pypads.functions.loggers.debug import LogInit, Log
 from pypads.functions.loggers.hardware import Disk, Ram, Cpu
 from pypads.functions.loggers.metric import Metric
@@ -607,7 +606,10 @@ class PyPads:
 
     @property
     def config(self):
-        return ast.literal_eval(self.mlf.get_run(mlflow.active_run().info.run_id).data.tags[CONFIG_NAME])
+        try:
+            return ast.literal_eval(self.mlf.get_run(mlflow.active_run().info.run_id).data.tags[CONFIG_NAME])
+        except Exception as e:
+            warning("No saved config for this run")
 
     @config.setter
     def config(self, value: dict):
