@@ -257,10 +257,10 @@ DEFAULT_LOGGING_FNS = {
 # {"recursive": track functions recursively. Otherwise check the callstack to only track the top level function.}
 DEFAULT_CONFIG = {"events": {
     "init": {"on": ["pypads_init"]},
-    # "parameters": {"on": ["pypads_fit"]},
-    # "hardware": {"on": ["pypads_fit"]},
-    # "output": {"on": ["pypads_fit", "pypads_predict"]},
-    # "input": {"on": ["pypads_fit"], "with": {"_pypads_write_format": WriteFormats.text.name}},
+    "parameters": {"on": ["pypads_fit"]},
+    "hardware": {"on": ["pypads_fit"]},
+    "output": {"on": ["pypads_fit", "pypads_predict"]},
+    "input": {"on": ["pypads_fit"], "with": {"_pypads_write_format": WriteFormats.text.name}},
     "metric": {"on": ["pypads_metric"]},
     # "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"]},
     "log": {"on": ["pypads_log"]}
@@ -465,6 +465,9 @@ class PyPads:
         global current_pads
         current_pads = self
 
+        # Init variable to filled later in this constructor
+        self._config = None
+
         if mapping_paths is None:
             mapping_paths = []
 
@@ -607,11 +610,20 @@ class PyPads:
 
     @property
     def config(self):
-        return ast.literal_eval(self.mlf.get_run(mlflow.active_run().info.run_id).data.tags[CONFIG_NAME])
+        if self._config:
+            return self._config
+        tags = self.mlf.get_run(mlflow.active_run().info.run_id).data.tags
+        if CONFIG_NAME not in tags:
+            raise Exception("Config for pypads is not defined.")
+        try:
+            return ast.literal_eval(tags[CONFIG_NAME])
+        except Exception as e:
+            raise Exception("Config for pypads is malformed. " + str(e))
 
     @config.setter
     def config(self, value: dict):
         mlflow.set_tag(CONFIG_NAME, value)
+        self._config = value
 
     @property
     def experiment(self):
