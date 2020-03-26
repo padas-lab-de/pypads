@@ -234,7 +234,7 @@ if is_package_available("joblib"):
 # --- Pypads App ---
 
 # Default init_run fns
-DEFAULT_INIT_RUN_FNS = [ISystem(), IRam(), ICpu(), IDisk(), IPid()]
+DEFAULT_INIT_RUN_FNS = [ISystem(), IRam(), ICpu(), IDisk(), IPid(), os.getpid()]
 
 # Default event mappings. We allow to log parameters, output or input
 DEFAULT_LOGGING_FNS = {

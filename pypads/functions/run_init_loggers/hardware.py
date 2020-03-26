@@ -73,6 +73,7 @@ class IPid(RunInitLoggingFunction):
         import os
         pid = os.getpid()
         process = psutil.Process(pid=pid)
+        pads.api.set_tag("pypads.system.process.id", pid)
         pads.api.set_tag("pypads.system.process.cwd", process.cwd())
         pads.api.set_tag("pypads.system.process.cpu_usage", str(process.cpu_percent()) + "%")
         pads.api.set_tag("pypads.system.process.memory_usage", str(process.memory_percent()) + "%")
