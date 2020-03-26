@@ -25,8 +25,8 @@ def _get_algorithm_mappings():
 
 def _add_inherited_mapping(clazz, super_class):
     if clazz not in punched_classes:
-        if hasattr(super_class, "_pypads_mapping"):
-            for mapping in getattr(super_class, "_pypads_mapping"):
+        if hasattr(super_class, "_pypads_mapping_" + super_class.__name__):
+            for mapping in getattr(super_class, "_pypads_mapping_" + super_class.__name__):
                 found_mapping = AlgorithmMapping(
                     clazz.__module__ + "." + clazz.__qualname__, mapping.library,
                     mapping.algorithm, mapping.file, mapping.hooks)

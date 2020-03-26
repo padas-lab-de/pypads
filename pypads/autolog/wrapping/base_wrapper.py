@@ -124,12 +124,12 @@ class Context:
                         break
         except Exception as e:
             warning("Couldn't get defining class of context '" + str(
-                self._c) + ". " + str(e))
-            return None
+                self._c) + ".")
+            return self._c
 
         if defining_class and defining_class is not object:
             return Context(defining_class)
-        return None
+        return self._c
 
     @property
     def container(self):
