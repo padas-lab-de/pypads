@@ -17,9 +17,12 @@ class ModuleWrapper(BaseWrapper):
         :param mapping:
         :return:
         """
-        if module.__name__ not in punched_module_names:
+        if module.__name__ not in punched_module_names or not context.has_wrap_meta(mapping, module):
             punched_module_names.add(module.__name__)
             context.store_wrap_meta(mapping, module)
+
+            if not context.has_original(module):
+                context.store_original(module)
 
             # Get default hooks
             if not mapping.hooks:

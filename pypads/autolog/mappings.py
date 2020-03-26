@@ -26,6 +26,9 @@ class AlgorithmMeta:
     def concepts(self):
         return self._concepts
 
+    def __eq__(self, other):
+        return self.name == other.name
+
 
 class AlgorithmMapping:
     """
@@ -78,6 +81,11 @@ class AlgorithmMapping:
     def __str__(self):
         return "Mapping[" + str(self.file) + ":" + str(self.reference) + ", lib=" + str(self.library) + ", alg=" + str(
             self.algorithm) + ", hooks=" + str(self.hooks) + "]"
+
+    def __eq__(self, other):
+        # TODO also check for reference, file,, in_collection?
+        return set(self.hooks) == set(
+            other.hooks) and self.algorithm == other.algorithm and self.library == other.library
 
 
 class MappingCollection:

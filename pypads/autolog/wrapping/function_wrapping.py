@@ -14,19 +14,23 @@ class FunctionWrapper(BaseWrapper):
     @classmethod
     def wrap(cls, fn, context: Context, mapping):
         # Only wrap functions not starting with "__"
-        if not fn.__name__.startswith("__") or fn.__name__ is "__init__":
-            if not context.has_original(fn) or not context.defined_stored_original(fn):
-                context.store_wrap_meta(mapping, fn)
-                if context.is_class():
-                    return cls._wrap_on_class(fn, context, mapping)
-                elif hasattr(context.container, fn.__name__):
-                    return cls._wrap_on_object(fn, context, mapping)
-                else:
-                    warning(str(
-                        context) + " is no class and doesn't provide attribute with fn_name. Couldn't access " + str(
-                        fn) + " on it.")
-        else:
+        if (fn.__name__.startswith("__") or fn.__name__.startswith("_pypads")) and fn.__name__ is not "__init__":
             return fn
+
+        if not context.has_wrap_meta(mapping, fn):
+            context.store_wrap_meta(mapping, fn)
+
+            if not context.has_original(fn) or not context.defined_stored_original(fn):
+                context.store_original(fn)
+
+            if context.is_class():
+                return cls._wrap_on_class(fn, context, mapping)
+            elif hasattr(context.container, fn.__name__):
+                return cls._wrap_on_object(fn, context, mapping)
+            else:
+                warning(str(
+                    context) + " is no class and doesn't provide attribute with fn_name. Couldn't access " + str(
+                    fn) + " on it.")
 
     @classmethod
     def _wrap_on_object(cls, fn, context: Context, mapping):
@@ -51,7 +55,7 @@ class FunctionWrapper(BaseWrapper):
         fn_name = fn.__name__
 
         # Find the real defining class
-        defining_class = context.real_context(fn)
+        defining_class = context.real_context(fn.__name__)
 
         # If there is no defining class we can't wrap on class
         if not defining_class:
@@ -67,7 +71,7 @@ class FunctionWrapper(BaseWrapper):
         try:
             fn = getattr(defining_class.container, fn_name)
         except Exception as e:
-            context.real_context(fn)
+            context.real_context(fn.__name__)
             warning("Defining class doesn't define our function. Extraction failed: " + str(e))
 
         # skip wrong extractions
@@ -204,8 +208,7 @@ class FunctionWrapper(BaseWrapper):
                 with cls._make_call(self, fn_reference) as call:
                     accessor = call.call_id
                     # add the function to the callback stack
-                    # callback = types.MethodType(tmp_fn, self)
-                    callback = accessor.wrappee.__get__(self)
+                    callback = fn.__get__(self)
 
                     # for every hook add
                     if cls._is_skip_recursion(accessor):
@@ -233,7 +236,7 @@ class FunctionWrapper(BaseWrapper):
         if not call.has_hook(hook):
             return cls._get_env_setter(_pypads_env=LoggingEnv(mapping, hook, params, callback, call))
         else:
-            warning(str(hook) + " is tracked multiple times on " + str(call) + ". Ignoring second hooking.")
+            debug(str(hook) + " is tracked multiple times on " + str(call) + ". Ignoring second hooking.")
             return None
 
     @classmethod
@@ -269,7 +272,7 @@ class FunctionWrapper(BaseWrapper):
 
             return env_setter
         elif cid.is_wrapped():
-            tmp_fn = getattr(cid.context, cid.wrappee.__name__)
+            tmp_fn = getattr(cid.context.container, cid.wrappee.__name__)
 
             @wraps(tmp_fn)
             def env_setter(self, *args, _pypads_env=env, **kwargs):

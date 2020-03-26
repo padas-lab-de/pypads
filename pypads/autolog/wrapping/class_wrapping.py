@@ -18,9 +18,12 @@ class ClassWrapper(BaseWrapper):
             :return:
             """
         global punched_classes
-        if clazz not in punched_classes:
+        if clazz not in punched_classes or not context.has_wrap_meta(mapping, clazz):
             punched_classes.add(clazz)
             context.store_wrap_meta(mapping, clazz)
+
+            if not context.has_original(clazz):
+                context.store_original(clazz)
 
             # Module was changed and should be added to the list of modules which have been changed
             if hasattr(clazz, "__module__"):

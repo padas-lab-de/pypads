@@ -14,6 +14,9 @@ class FunctionReference:
         self._real_context = None
         self._function_type = None
 
+        if self.is_wrapped():
+            self._function = self.context.container.__dict__[self._function.__name__]
+
     @property
     def context(self):
         return self._context
@@ -31,7 +34,7 @@ class FunctionReference:
         # Return if already found
         if self._real_context:
             return self._real_context
-        self._real_context = self._context.real_context(self._function)
+        self._real_context = self._context.real_context(self._function.__name__)
         return self._real_context
 
     def function_type(self):
