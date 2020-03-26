@@ -112,8 +112,13 @@ class LoggingFunction(DependencyMixin):
                 pass
         except Exception as e:
             error("Logging failed. " + str(e))
-            return _pypads_env.call.call_id.context.original(_pypads_env.callback)(ctx, *args, **kwargs)
-
+            original = _pypads_env.call.call_id.context.original(_pypads_env.callback)
+            if callable(original):
+                return original(ctx, *args, **kwargs)
+            else:
+                raise Exception("Couldn't fall back to original function for " + str(
+                    _pypads_env.call.call_id.context.original_name(_pypads_env.callback)) + " on " + str(
+                    _pypads_env.call.call_id.context) + ". Can't recover from " + str(e))
         # Call function to be executed after the tracked function
         try:
             self._check_dependencies()

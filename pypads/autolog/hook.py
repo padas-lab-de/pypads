@@ -29,6 +29,12 @@ class Hook:
     def is_applicable(self, *args, **kwargs):
         return True
 
+    def __eq__(self, other):
+        return self.event == other.event and type(self) == type(other)
+
+    def __hash__(self):
+        return hash(self.event)
+
 
 class RegexHook(Hook):
     __metaclass__ = ABCMeta
@@ -50,6 +56,12 @@ class RegexHook(Hook):
         :return:
         """
         return self._regex
+
+    def __eq__(self, other):
+        return super().__eq__(other) and self.regex == other.regex
+
+    def __hash__(self):
+        return hash(self.event) + hash(self.regex) + hash(type(self))
 
 
 class QualNameHook(RegexHook):
