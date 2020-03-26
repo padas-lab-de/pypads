@@ -367,7 +367,13 @@ class AlgorithmVisitor(Visitor):
         :return: a dictionary containing all extracted padre-information
         """
 
-        fullName = object._pypads_mapping[0].reference
+        fullName = "Unknown"
+        for entry in object.__dict__:
+            if entry.startswith("_pypads_mapping"):
+                for mapping in entry:
+                    fullName = mapping.reference
+                    break
+                break
         fullName_ = object.__class__.__module__ + "." + object.__class__.__name__ if hasattr(object,
                                                                                              "__module__") else fullName
         if fullName_ in type_mappings:
