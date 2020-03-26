@@ -368,9 +368,9 @@ class AlgorithmVisitor(Visitor):
         """
 
         fullName = "Unknown"
-        for entry in object.__dict__:
-            if entry.startswith("_pypads_mapping"):
-                for mapping in entry:
+        for key, value in inspect.getmembers(object):
+            if key.startswith("_pypads_mapping"):
+                for mapping in value:
                     fullName = mapping.reference
                     break
                 break
