@@ -1,7 +1,7 @@
 import os
 
 from pypads.test.base_test import BaseTest
-from pypads.test.sklearn.mappings.mapping_sklearn_test import _get_mapping
+from pypads.test.sklearn.mappings.test_mapping_sklearn import _get_mapping
 
 torch_padre = _get_mapping(os.path.join(os.path.dirname(__file__), "torch_1_4_0.json"))
 

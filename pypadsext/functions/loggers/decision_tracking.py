@@ -97,21 +97,19 @@ class Decisions_sklearn(Decisions):
 
         # check if the estimator computes decision scores
         probabilities = None
+        predict_proba = None
         if hasattr(ctx, "predict_proba"):
             # TODO find a cleaner way to invoke the original predict_proba in case it is wrapped
             predict_proba = ctx.predict_proba
             if _pypads_env.call.call_id.context.has_original(predict_proba):
-                predict_proba = getattr(ctx, _pypads_env.call.call_id.context.original_name(predict_proba))
+                predict_proba = _pypads_env.call.call_id.context.original(predict_proba)
+        elif hasattr(ctx, "_predict_proba"):
+            predict_proba = ctx._predict_proba
+            if _pypads_env.call.call_id.context.has_original(predict_proba):
+                _pypads_env.call.call_id.context.original(predict_proba)
+        if predict_proba:
             try:
                 probabilities = predict_proba(*args, **kwargs)
-            except Exception as e:
-                warning("Couldn't compute probabilities because %s" % str(e))
-        elif hasattr(ctx, "_predict_proba"):
-            _predict_proba = ctx._predict_proba
-            if _pypads_env.call.call_id.context.has_original(_predict_proba):
-                _predict_proba = getattr(ctx, _pypads_env.call.call_id.context.original_name(_predict_proba))
-            try:
-                probabilities = _predict_proba(*args, **kwargs)
             except Exception as e:
                 warning("Couldn't compute probabilities because %s" % str(e))
 
@@ -157,4 +155,4 @@ class Decisions_torch(Decisions):
         pads.cache.run_add("probabilities", _pypads_result.data.numpy())
         pads.cache.run_add("predictions", _pypads_result.argmax(dim=1).data.numpy())
 
-        return super().__post__(ctx, *args, _pypads_result, **kwargs)
+        return super().__post__(ctx, *args, _pypads_env=_pypads_env, _pypads_result=_pypads_result, **kwargs)

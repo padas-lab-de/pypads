@@ -8,6 +8,7 @@ from pypads.logging_util import WriteFormats
 from pypadsext.concepts.dataset import Crawler
 from pypadsext.concepts.util import persistent_hash, get_by_tag
 
+
 class Dataset(LoggingFunction):
     DATASETS = "datasets"
     """
