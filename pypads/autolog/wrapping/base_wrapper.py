@@ -29,29 +29,26 @@ class Context:
                     setattr(wrappee, "_pypads_mapping", [])
                 getattr(wrappee, "_pypads_mapping").append(mapping)
 
-                if not hasattr(wrappee, "_pypads_wrapped"):
-                    setattr(wrappee, "_pypads_wrapped", wrappee)
-
                 setattr(wrappee, self.original_name(wrappee), copy(wrappee))
             else:
                 if not hasattr(self._c, "_pypads_mapping_" + wrappee.__name__):
                     setattr(self._c, "_pypads_mapping_" + wrappee.__name__, [])
                 getattr(self._c, "_pypads_mapping_" + wrappee.__name__).append(mapping)
 
-                if not hasattr(self._c, "_pypads_wrapped_" + wrappee.__name__):
-                    setattr(self._c, "_pypads_wrapped_" + wrappee.__name__, wrappee)
-
                 setattr(self._c, self.original_name(wrappee), copy(wrappee))
         except TypeError as e:
             debug("Can't set attribute '" + wrappee.__name__ + "' on '" + str(self._c) + "'.")
             return self._c
 
-    def has_wrap_meta(self, ref):
-        return hasattr(self._c, "_pypads_wrapped_" + ref.__name__)
-
     def has_original(self, wrappee):
         return hasattr(self._c, self.original_name(wrappee)) or hasattr(wrappee,
                                                                         self.original_name(wrappee))
+
+    def defined_stored_original(self, wrappee):
+        if not inspect.isfunction(wrappee):
+            return self.original_name(wrappee) in wrappee.__dict__
+        else:
+            return self.original_name(wrappee) in self._c.__dict__
 
     def original_name(self, wrappee):
         return "_pypads_original_" + str(wrappee.__name__)

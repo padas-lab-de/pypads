@@ -112,7 +112,7 @@ class LoggingFunction(DependencyMixin):
                 pass
         except Exception as e:
             error("Logging failed. " + str(e))
-            return _pypads_env.call.call_id.context.original(_pypads_env.callback)(self, *args, **kwargs)
+            return _pypads_env.call.call_id.context.original(_pypads_env.callback)(ctx, *args, **kwargs)
 
         # Call function to be executed after the tracked function
         try:
