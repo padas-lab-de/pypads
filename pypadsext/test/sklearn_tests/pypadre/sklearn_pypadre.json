@@ -27,7 +27,8 @@
         ],
         "pypads_predict": [
           "fit_predict",
-          "predict"
+          "predict",
+          "predict_proba"
         ],
         "pypads_transform": [
           "fit_transform",
@@ -68,6 +69,13 @@
       "hooks": {
         "pypads_param_search": [
           "fit"
+        ],
+        "pypads_fit": [
+          "fit"
+        ],
+        "pypads_predict": [
+          "predict",
+          "predict_proba"
         ]
       }
     },
