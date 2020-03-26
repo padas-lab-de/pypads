@@ -261,7 +261,7 @@ DEFAULT_CONFIG = {"events": {
     "output": {"on": ["pypads_fit", "pypads_predict"]},
     "input": {"on": ["pypads_fit"], "with": {"_pypads_write_format": WriteFormats.text.name}},
     "metric": {"on": ["pypads_metric"]},
-    # "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"]},
+    "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"]},
     "log": {"on": ["pypads_log"]}
 },
     "recursion_identity": False,

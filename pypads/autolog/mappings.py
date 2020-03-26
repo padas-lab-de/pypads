@@ -84,8 +84,13 @@ class AlgorithmMapping:
 
     def __eq__(self, other):
         # TODO also check for reference, file,, in_collection?
-        return set(self.hooks) == set(
-            other.hooks) and self.algorithm == other.algorithm and self.library == other.library
+        if self.hooks and other.hooks:
+            return set(self.hooks) == set(
+                other.hooks) and self.algorithm == other.algorithm and self.library == other.library
+        elif not self.hooks and not other.hooks:
+            return self.algorithm == other.algorithm and self.library == other.library
+        else:
+            return False
 
 
 class MappingCollection:
