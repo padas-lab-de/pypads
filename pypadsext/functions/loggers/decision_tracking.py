@@ -107,13 +107,21 @@ class Decisions_sklearn(Decisions):
             predict_proba = ctx._predict_proba
             if _pypads_env.call.call_id.context.has_original(predict_proba):
                 _pypads_env.call.call_id.context.original(predict_proba)
-        if predict_proba:
-            try:
-                probabilities = predict_proba(*args, **kwargs)
-            except Exception as e:
+        if hasattr(predict_proba, "__wrapped__"):
+            predict_proba = predict_proba.__wrapped__
+        try:
+            probabilities = predict_proba(*args, **kwargs)
+        except Exception as e:
+            if isinstance(e, TypeError):
+                try:
+                    predict_proba = predict_proba.__get__(ctx)
+                    probabilities = predict_proba(*args, **kwargs)
+                except Exception as ee:
+                    warning("Couldn't compute probabilities because %s" % str(ee))
+            else:
                 warning("Couldn't compute probabilities because %s" % str(e))
-
-        pads.cache.run_add("probabilities", probabilities)
+        finally:
+            pads.cache.run_add("probabilities", probabilities)
 
 
 class Decisions_keras(Decisions):
