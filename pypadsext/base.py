@@ -40,6 +40,9 @@ DEFAULT_PYPADRE_LOGGING_FNS = {
 # This config defines such a listening structure.
 # {"recursive": track functions recursively. Otherwise check the callstack to only track the top level function.}
 DEFAULT_PYPADRE_CONFIG = {"events": {
+    "input": {"with": {"no_intermediate": True}},
+    "output": {"with": {"no_intermediate": True}},
+    "hardware": {"with": {"no_intermediate": True}},
     "dataset": {"on": ["pypads_dataset"]},
     "predictions": {"on": ["pypads_predict"]},
     "splits": {"on": ["pypads_split"]},
@@ -146,7 +149,7 @@ class PyPadrePadsDecorators(PypadsDecorators):
 
 class PyPadrePads(PyPads):
     def __init__(self, *args, config=None, logging_fns=None, init_run_fns=None, remote_provider=None, **kwargs):
-        config = config or util.dict_merge(DEFAULT_PYPADRE_CONFIG, DEFAULT_CONFIG)
+        config = config or util.dict_merge(DEFAULT_CONFIG, DEFAULT_PYPADRE_CONFIG)
         run_init = init_run_fns or DEFAULT_INIT_RUN_FNS + DEFAULT_PYPADRE_INIT_RUN_FNS
         logging_fns = logging_fns or util.dict_merge(DEFAULT_LOGGING_FNS, DEFAULT_PYPADRE_LOGGING_FNS)
 

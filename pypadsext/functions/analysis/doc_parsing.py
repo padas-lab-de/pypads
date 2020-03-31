@@ -66,13 +66,15 @@ class Doc(LoggingFunction):
         if _pypads_env.call.call_id.wrappee.__doc__:
             name = os.path.join(_pypads_env.call.to_folder(),
                                 _pypads_env.call.call_id.wrappee.__name__ + ".__doc__")
-            pads.api.log_mem_artifact(name, _pypads_env.call.call_id.wrappee.__doc__)
+            if not pads.api.is_intermediate_run():
+                pads.api.log_mem_artifact(name, _pypads_env.call.call_id.wrappee.__doc__)
             doc_map[name] = _pypads_env.call.call_id.wrappee.__doc__
 
         if _pypads_env.call.call_id.context.container.__doc__:
             name = os.path.join(_pypads_env.call.to_folder(),
                                 _pypads_env.call.call_id.context.container.__name__ + ".__doc__")
-            pads.api.log_mem_artifact(name, _pypads_env.call.call_id.context.container.__doc__)
+            if not pads.api.is_intermediate_run():
+                pads.api.log_mem_artifact(name, _pypads_env.call.call_id.context.container.__doc__)
             doc_map[name] = _pypads_env.call.call_id.context.container.__doc__
 
         # Add ctx name to doc_map for named entity searching
