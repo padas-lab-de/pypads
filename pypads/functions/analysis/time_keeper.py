@@ -47,12 +47,6 @@ def print_timings():
     for k, v in timings.items():
         out += v + "\n"
     pads.api.log_mem_artifact("timings", out, write_format=WriteFormats.text.text)
-
-    logger_time: OrderedDict = pads.cache.run_get("timings")
-    out = ""
-    for k, v in logger_time.items():
-        out += k + " took " + v + ".\t"
-
     pads.api.log_mem_artifact("loggers", get_logger_times(), write_format=WriteFormats.text.text)
 
 

@@ -385,8 +385,13 @@ class PypadsApi:
             self._pypads.cache.run_add("post_run_fns", post_run_fn_cache)
         return self._pypads.cache.run_get("post_run_fns")
 
-    def register_post_fn(self, name, fn, logger=None, order=0):
+    def register_post_fn(self, name, fn, logger=None, nested=True, order=0):
         cache = self._get_post_run()
+
+        def _is_nested_run():
+            pads = get_current_pads()
+            tags = pads.mlf.get_run(pads.api.active_run().info.run_id).data.tags
+            return "mlflow.parentRunId" not in tags
 
         # Track timing of post fns of loggers
         if logger:
@@ -394,8 +399,9 @@ class PypadsApi:
             def keep_time(*args, **kwargs):
                 from pypads.functions.analysis.time_keeper import add_run_time
                 from pypads.functions.analysis.time_keeper import timed
-                out, time = timed(lambda: fn(*args, **kwargs))
-                add_run_time(logger, logger.__class__.__name__ + ".__end__." + fn.__name__, time)
+                if nested or not _is_nested_run():
+                    out, time = timed(lambda: fn(*args, **kwargs))
+                    add_run_time(logger, logger.__class__.__name__ + ".__end__." + fn.__name__, time)
 
             fn = keep_time
 
@@ -406,6 +412,10 @@ class PypadsApi:
 
     def active_run(self):
         return mlflow.active_run()
+
+    def is_intermediate_run(self):
+        enclosing_run = self._pypads.cache.run_get("enclosing_run")
+        return enclosing_run is not None
 
     def end_run(self):
         chached_fns = self._get_post_run()

@@ -78,6 +78,8 @@ class LoggingFunction(DependencyMixin):
         :param kwargs:
         :return:
         """
+        from pypads.base import get_current_pads
+
         # Add the static parameters to our passed parameters
         _pypads_hook_params = {**self._static_parameters, **_pypads_env.parameter}
 
@@ -85,22 +87,24 @@ class LoggingFunction(DependencyMixin):
         _pypads_pre_return = None
         dependency_error = None
 
-        try:
-            self._check_dependencies()
-            _pypads_pre_return, time = timed(lambda: self.__pre__(ctx, *args, _pypads_env=_pypads_env,
-                                                                  **{**_pypads_hook_params, **kwargs}))
-            add_run_time(self,
-                         str(_pypads_env.call) + "." + self.__class__.__name__ + ".__pre__",
-                         time)
-        except TimingDefined:
-            # TODO multithreading fails
-            pass
-        except NotImplementedError:
-            pass
-        except MissingDependencyError as e:
-            dependency_error = e
-        except Exception as e:
-            self._handle_failure(ctx, *args, _pypads_env=_pypads_env, _pypads_error=e, **kwargs)
+        if "no_intermediate" not in _pypads_hook_params or not _pypads_hook_params[
+            "no_intermediate"] or not get_current_pads().api.is_intermediate_run():
+            try:
+                self._check_dependencies()
+                _pypads_pre_return, time = timed(lambda: self.__pre__(ctx, *args, _pypads_env=_pypads_env,
+                                                                      **{**_pypads_hook_params, **kwargs}))
+                add_run_time(self,
+                             str(_pypads_env.call) + "." + self.__class__.__name__ + ".__pre__",
+                             time)
+            except TimingDefined:
+                # TODO multithreading fails
+                pass
+            except NotImplementedError:
+                pass
+            except MissingDependencyError as e:
+                dependency_error = e
+            except Exception as e:
+                self._handle_failure(ctx, *args, _pypads_env=_pypads_env, _pypads_error=e, **kwargs)
 
         # Call the output producing code
         try:
@@ -119,22 +123,25 @@ class LoggingFunction(DependencyMixin):
                 raise Exception("Couldn't fall back to original function for " + str(
                     _pypads_env.call.call_id.context.original_name(_pypads_env.callback)) + " on " + str(
                     _pypads_env.call.call_id.context) + ". Can't recover from " + str(e))
-        # Call function to be executed after the tracked function
-        try:
-            self._check_dependencies()
-            _, time = timed(
-                lambda: self.__post__(ctx, *args, _pypads_env=_pypads_env,
-                                      _pypads_result=out,
-                                      _pypads_pre_return=_pypads_pre_return, **{**_pypads_hook_params, **kwargs}))
-            add_run_time(self, str(_pypads_env.call) + "." + self.__class__.__name__ + ".__post__", time)
-        except TimingDefined:
-            pass
-        except NotImplementedError:
-            pass
-        except MissingDependencyError as e:
-            dependency_error = e
-        except Exception as e:
-            self._handle_failure(ctx, *args, _pypads_env=_pypads_env, _pypads_error=e, **kwargs)
+
+        if "no_intermediate" not in _pypads_hook_params or not _pypads_hook_params[
+            "no_intermediate"] or not get_current_pads().api.is_intermediate_run():
+            # Call function to be executed after the tracked function
+            try:
+                self._check_dependencies()
+                _, time = timed(
+                    lambda: self.__post__(ctx, *args, _pypads_env=_pypads_env,
+                                          _pypads_result=out,
+                                          _pypads_pre_return=_pypads_pre_return, **{**_pypads_hook_params, **kwargs}))
+                add_run_time(self, str(_pypads_env.call) + "." + self.__class__.__name__ + ".__post__", time)
+            except TimingDefined:
+                pass
+            except NotImplementedError:
+                pass
+            except MissingDependencyError as e:
+                dependency_error = e
+            except Exception as e:
+                self._handle_failure(ctx, *args, _pypads_env=_pypads_env, _pypads_error=e, **kwargs)
 
         if dependency_error:
             warning(str(dependency_error))
