@@ -21,19 +21,20 @@ def timed(f):
 def get_logger_times():
     from pypads.base import get_current_pads
     pads = get_current_pads()
-    if not pads.cache.run_exists("logger_times"):
-        pads.cache.run_add("logger_times", OrderedDict())
-    logger_times: OrderedDict = pads.cache.run_get("logger_times")
 
-    aggregated_times = []
-    for k, v in logger_times.items():
-        aggregated = 0
-        for t in v:
-            aggregated += t
-        aggregated_times.append((k, aggregated))
+    timings: OrderedDict = pads.cache.run_get("timings")
+    aggregated_times = {}
+    for k, v in timings.items():
+        splits = k.split(".")
+        # Only loggers and not calls themselves
+        if splits[-1] == "__pre__" or splits[-1] == "__post__":
+            logger = splits[-2]
+            if logger not in aggregated_times:
+                aggregated_times[logger] = 0
+            aggregated_times[logger] += float(v[1])
 
     out = ""
-    for k, v in sorted(aggregated_times, key=lambda x: -x[1]):
+    for k, v in sorted(aggregated_times.items(), key=lambda x: -x[1]):
         out += k + " elapsed " + str(v) + "s.\n"
     return out
 
@@ -45,7 +46,11 @@ def print_timings():
     timings: OrderedDict = pads.cache.run_get("timings")
     out = ""
     for k, v in timings.items():
-        out += v + "\n"
+        tabs = ""
+        # depth
+        for i in range(1, v[0]):
+            tabs += "\t"
+        out += tabs + str(v[1]) + "\n"
     pads.api.log_mem_artifact("timings", out, write_format=WriteFormats.text.text)
     pads.api.log_mem_artifact("loggers", get_logger_times(), write_format=WriteFormats.text.text)
 
@@ -61,21 +66,17 @@ def add_run_time(logger, name, time):
 
     timings: OrderedDict = pads.cache.run_get("timings")
     if name not in timings:
-        value = ""
-        # dashes
-        for i in range(1, pads.call_tracker.call_depth()):
-            value += "\t"
-        timings[name] = value + " " + name + ": " + str(time)
+        timings[name] = (pads.call_tracker.call_depth(), time)
         info(name + " done after: " + str(time) + "s")
     else:
         raise TimingDefined("Timing already defined for " + name)
 
-    # Add to logger time
-    if logger:
-        if not pads.cache.run_exists("logger_times"):
-            pads.cache.run_add("logger_times", OrderedDict())
-        logger_times: OrderedDict = pads.cache.run_get("logger_times")
-        if logger.__class__.__name__ not in logger_times:
-            logger_times[logger.__class__.__name__] = [time]
-        else:
-            logger_times[logger.__class__.__name__].append(time)
+    # # Add to logger time
+    # if logger:
+    #     if not pads.cache.run_exists("logger_times"):
+    #         pads.cache.run_add("logger_times", OrderedDict())
+    #     logger_times: OrderedDict = pads.cache.run_get("logger_times")
+    #     if logger.__class__.__name__ not in logger_times:
+    #         logger_times[logger.__class__.__name__] = [time]
+    #     else:
+    #         logger_times[logger.__class__.__name__].append(time)
