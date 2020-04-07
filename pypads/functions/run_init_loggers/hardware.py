@@ -78,6 +78,21 @@ class IPid(RunInitLoggingFunction):
         pads.api.set_tag("pypads.system.process.cpu_usage", str(process.cpu_percent()) + "%")
         pads.api.set_tag("pypads.system.process.memory_usage", str(process.memory_percent()) + "%")
 
+
+class ISocketInfo(RunInitLoggingFunction):
+
+    def _call(self, pads, *args, **kwargs):
+        import socket
+        pads.api.set_tag("pypads.system.hostname", socket.gethostname())
+        pads.api.set_tag("pypads.system.ip-address", socket.gethostbyname(socket.gethostname()))
+
+
+class IMacAddress(RunInitLoggingFunction):
+
+    def _call(self, pads, *args, **kwargs):
+        import re, uuid
+        pads.api.set_tag("pypads.system.macaddress", ':'.join(re.findall('..', '%012x' % uuid.getnode())))
+
 # def inetw(pads):
 #     if is_package_available("psutil"):
 #         import psutil

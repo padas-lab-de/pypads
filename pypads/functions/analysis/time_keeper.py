@@ -50,7 +50,7 @@ def print_timings():
         # depth
         for i in range(1, v[0]):
             tabs += "\t"
-        out += tabs + str(v[1]) + "\n"
+        out += tabs + str(k) + ": " + str(v[1]) + "\n"
     pads.api.log_mem_artifact("timings", out, write_format=WriteFormats.text.text)
     pads.api.log_mem_artifact("loggers", get_logger_times(), write_format=WriteFormats.text.text)
 

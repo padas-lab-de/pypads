@@ -27,7 +27,8 @@ from pypads.functions.loggers.hardware import Disk, Ram, Cpu
 from pypads.functions.loggers.metric import Metric
 from pypads.functions.loggers.mlflow.mlflow_autolog import MlflowAutologger
 from pypads.functions.loggers.pipeline_detection import PipelineTracker
-from pypads.functions.run_init_loggers.hardware import ISystem, IRam, ICpu, IDisk, IPid
+from pypads.functions.run_init_loggers.base_run_init_logger import RunInfo
+from pypads.functions.run_init_loggers.hardware import ISystem, IRam, ICpu, IDisk, IPid, ISocketInfo, IMacAddress
 from pypads.logging_util import WriteFormats, try_write_artifact
 from pypads.util import get_class_that_defined_method, is_package_available, dict_merge
 
@@ -83,16 +84,16 @@ class FunctionRegistry:
             self.fns[key].add(fn)
 
 
-def _parameter_pickle(args, kwargs):
+def _pickle_tuple(*args):
     with io.BytesIO() as file:
-        pickle.dump((args, kwargs), file)
+        pickle.dump(tuple(args), file)
         file.seek(0)
         return file.read()
 
 
-def _parameter_cloudpickle(args, kwargs):
+def _cloudpickle_tuple(*args):
     from joblib.externals.cloudpickle import dumps
-    return dumps((args, kwargs))
+    return dumps(tuple(args))
 
 
 # original_init_ = Process.__init__
@@ -138,7 +139,7 @@ if is_package_available("joblib"):
 
         @wraps(fn)
         def wrapped_function(*args, _pypads=None, _pypads_active_run_id=None, _pypads_tracking_uri=None,
-                             _pypads_affected_modules=None, **kwargs):
+                             _pypads_affected_modules=None, _pypads_triggering_process=None, **kwargs):
             if _pypads:
                 # noinspection PyUnresolvedReferences
                 import pypads.base
@@ -169,14 +170,13 @@ if is_package_available("joblib"):
 
                 from pickle import loads
                 a, b = loads(args[0])
-
-                # import pickle
-                # a, b = pickle.loads(args[0])
+                from cloudpickle import loads as c_loads
+                wrapped_fn = c_loads(args[1])[0]
 
                 args = a
                 kwargs = b
 
-                out = fn(*args, **kwargs)
+                out = wrapped_fn(*args, **kwargs)
                 if is_own_process:
                     return out, _pypads.cache
                 else:
@@ -189,16 +189,12 @@ if is_package_available("joblib"):
             if run:
                 from joblib.externals.cloudpickle import dumps
                 # TODO only if this is going to be a process and not a thread (how can we know?)
-                pickled_params = (_parameter_pickle(args, kwargs),)
-                # kwargs = {"_pypads": dumps(current_pads), "_pypads_active_run_id": run.info.run_id,
-                #           "_pypads_tracking_uri": mlflow.get_tracking_uri(),
-                #           "_pypads_affected_modules": punched_module_names}
+                pickled_params = (_pickle_tuple(args, kwargs), _cloudpickle_tuple(fn))
+                args = pickled_params
                 kwargs = {"_pypads": current_pads, "_pypads_active_run_id": run.info.run_id,
                           "_pypads_tracking_uri": mlflow.get_tracking_uri(),
-                          "_pypads_affected_modules": punched_module_names}
-                args = pickled_params
+                          "_pypads_affected_modules": punched_module_names, "_pypads_triggering_process": os.getpid()}
             return wrapped_function, args, kwargs
-
         try:
             import functools
             delayed_function = functools.wraps(fn)(delayed_function)
@@ -234,7 +230,7 @@ if is_package_available("joblib"):
 # --- Pypads App ---
 
 # Default init_run fns
-DEFAULT_INIT_RUN_FNS = [ISystem(), IRam(), ICpu(), IDisk(), IPid(), os.getpid()]
+DEFAULT_INIT_RUN_FNS = [RunInfo(), ISystem(), IRam(), ICpu(), IDisk(), IPid(), ISocketInfo(), IMacAddress()]
 
 # Default event mappings. We allow to log parameters, output or input
 DEFAULT_LOGGING_FNS = {
