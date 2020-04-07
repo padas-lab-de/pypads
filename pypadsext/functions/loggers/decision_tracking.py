@@ -11,7 +11,7 @@ class Decisions(LoggingFunction):
     Function logging individual decisions
     """
 
-    def __post__(self, ctx, *args, _pypads_env:LoggingEnv,_pypads_result, **kwargs):
+    def __post__(self, ctx, *args, _pypads_env: LoggingEnv, _pypads_result, **kwargs):
         """
 
         :param ctx:
@@ -51,26 +51,29 @@ class Decisions(LoggingFunction):
                 for i in pads.cache.run_get(num).get('predictions').keys():
                     pads.cache.run_get(num).get('predictions').get(str(i)).update(
                         {'probabilities': probabilities[int(i)]})
-            if pads.cache.run_exists("targets"):
-                try:
-                    targets = pads.cache.run_get("targets")
-                    if isinstance(targets, Iterable) and len(targets) == len(preds):
-                        for i in pads.cache.run_get(num).get('predictions').keys():
-                            pads.cache.run_get(num).get('predictions').get(str(i)).update(
-                                {'truth': targets[int(i)]})
-                except Exception as e:
-                    warning("Could not add the truth values")
         else:
             try:
-                for i, sample in enumerate(split_info.get('test')):
-                    pads.cache.run_get(num).get('predictions').get(str(sample)).update({'predicted': preds[i]})
+                # for i, sample in enumerate(split_info.get('test')):
+                #     pads.cache.run_get(num).get('predictions').get(str(sample)).update({'predicted': preds[i]})
+                pads.cache.run_add(num,
+                                   {'predictions': {str(sample): {'predicted': preds[i]} for i, sample in
+                                                    enumerate(split_info.get('test'))}})
 
                 if probabilities is not None:
                     for i, sample in enumerate(split_info.get('test')):
                         pads.cache.run_get(num).get('predictions').get(str(sample)).update(
                             {'probabilities': probabilities[i]})
             except Exception as e:
-                print(e)
+                warning("Could not log predictions due to this error '%s'" % str(e))
+        if pads.cache.run_exists("targets"):
+            try:
+                targets = pads.cache.run_get("targets")
+                if isinstance(targets, Iterable):
+                    for i in pads.cache.run_get(num).get('predictions').keys():
+                        pads.cache.run_get(num).get('predictions').get(str(i)).update(
+                            {'truth': targets[int(i)]})
+            except Exception as e:
+                warning("Could not add the truth values due to this error '%s'" % str(e))
 
         name = os.path.join(_pypads_env.call.to_folder(),
                             "decisions",
@@ -155,7 +158,7 @@ class Decisions_torch(Decisions):
     Function getting the prediction scores from torch models
     """
 
-    def __post__(self, ctx, *args, _pypads_env:LoggingEnv,_pypads_result, **kwargs):
+    def __post__(self, ctx, *args, _pypads_env: LoggingEnv, _pypads_result, **kwargs):
         from pypads.base import get_current_pads
         from pypadsext.base import PyPadrePads
         pads: PyPadrePads = get_current_pads()

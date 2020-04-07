@@ -55,7 +55,8 @@
       },
       "hooks": {
         "pypads_dataset": [
-          "load_iris"
+          "load_iris",
+          "load_digits"
         ]
       }
     },
