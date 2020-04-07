@@ -20,7 +20,7 @@ from pypads.autolog.pypads_import import extend_import_module, duck_punch_loader
 from pypads.autolog.wrapping.module_wrapping import punched_module_names
 from pypads.caches import PypadsCache, Cache
 from pypads.functions.analysis.call_tracker import CallTracker
-from pypads.functions.analysis.validation.parameters import Parameter
+from pypads.functions.analysis.validation.parameters import Parameters
 from pypads.functions.loggers.data_flow import Input, Output
 from pypads.functions.loggers.debug import LogInit, Log
 from pypads.functions.loggers.hardware import Disk, Ram, Cpu
@@ -234,7 +234,7 @@ DEFAULT_INIT_RUN_FNS = [RunInfo(), ISystem(), IRam(), ICpu(), IDisk(), IPid(), I
 
 # Default event mappings. We allow to log parameters, output or input
 DEFAULT_LOGGING_FNS = {
-    "parameters": Parameter(),
+    "parameters": Parameters(),
     "output": Output(_pypads_write_format=WriteFormats.text.name),
     "input": Input(_pypads_write_format=WriteFormats.text.name),
     "hardware": {Cpu(), Ram(), Disk()},

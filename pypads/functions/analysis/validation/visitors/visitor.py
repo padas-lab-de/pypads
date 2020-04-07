@@ -226,14 +226,14 @@ class SelectVisitor(Visitor):
         :return: a dictionary containing all extracted padre-information
         """
         visitor = None
-        for k in self.visitors.keys():
+        for k, v in self.visitors.items():
             if k:
                 if isinstance(k, str):
                     splits = k.rsplit('.', 1)
                     module = importlib.import_module(splits[0])
                     k = getattr(module, splits[-1])
                 if inspect.isclass(k) and isinstance(object, k):
-                    visitor = self.visitors[k]
+                    visitor = v
                     break
         if visitor is None:
             if None in self.visitors:
