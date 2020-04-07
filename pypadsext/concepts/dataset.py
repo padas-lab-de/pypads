@@ -120,7 +120,7 @@ class Crawler:
 
     def crawl(self, **kwargs):
         if self._use_args:
-            return self._fn(self, *self._callback_kw, **kwargs)
+            return self._fn(self, **{**self._callback_kw, **kwargs})
         else:
             return self._fn(self, **kwargs)
 
@@ -194,9 +194,9 @@ def bunch_crawler(obj: Crawler, **kwargs):
     return data, metadata, bunch.get("target")
 
 
-def sklearn_crawler(obj: Crawler, *args, **kwargs):
+def sklearn_crawler(obj: Crawler, **kwargs):
     import numpy as np
-    if True in args:
+    if "return_X_y" in kwargs and kwargs.get("return_X_y"):
         X, y = obj.data
         data = np.concatenate([X, y.reshape(len(y), 1)], axis=1)
         metadata = {"type": str(obj.format), "features": X, "shape": (X.shape[0], X.shape[1] + 1)}

@@ -29,7 +29,7 @@ class Dataset(LoggingFunction):
             _kwargs = pads.cache.run_get("dataset_kwargs")
 
         # Scrape the data object
-        crawler = Crawler(obj, ctx=_pypads_env.call.call_id.context, callback=_pypads_env.callback, kw=args)
+        crawler = Crawler(obj, ctx=_pypads_env.call.call_id.context, callback=_pypads_env.callback, kw=kwargs)
         data, metadata, targets = crawler.crawl(**_kwargs)
         pads.cache.run_add("data", data)
         pads.cache.run_add("shape", metadata.get("shape"))
