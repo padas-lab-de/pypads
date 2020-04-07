@@ -8,7 +8,7 @@ from pypadsext.util import _is_package_available
 
 
 def name_to_words(label):
-    label = re.sub(".*([a-z])([A-Z]).*", "\g<1> \g<2>", label)
+    label = re.sub(r".*([a-z])([A-Z]).*", r"\g<1> \g<2>", label)
     label = label.replace("_", " ")
     return label.replace(".", " ")
 
@@ -20,9 +20,9 @@ def tag_extraction():
     docs = pads.cache.get("doc_map")
     corpus = " ".join([doc for name, doc in docs.items()])
     corpus = corpus
-    corpus = re.sub('[\s]+', ' ', corpus)
-    corpus = re.sub('[\t]+', '', corpus)
-    corpus = re.sub('[\n]+', '', corpus)
+    corpus = re.sub(r'[\s]+', ' ', corpus)
+    corpus = re.sub(r'[\t]+', '', corpus)
+    corpus = re.sub(r'[\n]+', '', corpus)
     pat = re.compile(r'([a-zA-Z][^\[\]\+\<\>\-\.!?]*[\.!?])', re.M)
     corpus = " ".join(pat.findall(corpus))
 
