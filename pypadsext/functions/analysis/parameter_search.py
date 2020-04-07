@@ -32,7 +32,7 @@ class ParameterSearchExecutor(LoggingFunction):
         pads: PyPadrePads = get_current_pads()
 
         if pads.cache.exists("parameter_search"):
-            with pads.api.intermediate_run():
+            with pads.api.intermediate_run(experiment_id=pads.api.active_run().info.experiment_id):
                 out = _pypads_env.callback(*_args, **_kwargs)
             return out
         else:
