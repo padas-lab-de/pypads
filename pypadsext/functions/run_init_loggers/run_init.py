@@ -1,3 +1,5 @@
+from logging import warning
+
 from pypads.functions.run_init_loggers.base_run_init_logger import RunInitLoggingFunction
 
 from pypadsext.code.storage import get_run_git, get_git_repo
@@ -10,6 +12,7 @@ class GitMeta(RunInitLoggingFunction):
         return ['git']
 
     def _call(self, pads, *args, **kwargs):
+        _pypads_timeout = kwargs.get("_pypads_timeout")
         run = pads.api.active_run()
         tags = run.data.tags
         source_name = tags.get("mlflow.source.name", None)
@@ -21,12 +24,12 @@ class GitMeta(RunInitLoggingFunction):
             pads.api.set_tag("pypads.git.describe", repo.git.describe("--all"))
             from git import GitCommandError
             try:
-                pads.api.set_tag("pypads.git.shortlog", repo.git.shortlog(kill_after_timeout=5))
-            except GitCommandError:
-                pass
+                pads.api.set_tag("pypads.git.shortlog", repo.git.shortlog(kill_after_timeout=_pypads_timeout))
+            except GitCommandError as e:
+                warning("Ignored the execution and tracking of 'git shortlog'. " + str(e))
             try:
-                pads.api.set_tag("pypads.git.log", repo.git.log(kill_after_timeout=5))
-            except GitCommandError:
+                pads.api.set_tag("pypads.git.log", repo.git.log(kill_after_timeout=_pypads_timeout))
+            except GitCommandError as e:
                 pass
             remotes = repo.remotes
             remote_out = "No remotes existing"
