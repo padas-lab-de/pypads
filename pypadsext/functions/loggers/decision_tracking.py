@@ -83,7 +83,7 @@ class Decisions_sklearn(Decisions):
     Function getting the prediction scores from sklearn estimators
     """
 
-    def __pre__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
+    def __pre__(self, ctx, *args, _pypads_env: LoggingEnv, _args, _kwargs, **kwargs):
         """
 
         :param ctx:
@@ -110,12 +110,12 @@ class Decisions_sklearn(Decisions):
         if hasattr(predict_proba, "__wrapped__"):
             predict_proba = predict_proba.__wrapped__
         try:
-            probabilities = predict_proba(*args, **kwargs)
+            probabilities = predict_proba(*_args, **_kwargs)
         except Exception as e:
             if isinstance(e, TypeError):
                 try:
                     predict_proba = predict_proba.__get__(ctx)
-                    probabilities = predict_proba(*args, **kwargs)
+                    probabilities = predict_proba(*_args, **_kwargs)
                 except Exception as ee:
                     warning("Couldn't compute probabilities because %s" % str(ee))
             else:
@@ -129,7 +129,7 @@ class Decisions_keras(Decisions):
     Function getting the prediction scores from keras models
     """
 
-    def __pre__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
+    def __pre__(self, ctx, *args, _pypads_env: LoggingEnv, _args, _kwargs, **kwargs):
         """
 
         :param ctx:
@@ -143,7 +143,7 @@ class Decisions_keras(Decisions):
 
         probabilities = None
         try:
-            probabilities = ctx.predict(*args, **kwargs)
+            probabilities = ctx.predict(*_args, **_kwargs)
         except Exception as e:
             warning("Couldn't compute probabilities because %s" % str(e))
 

@@ -26,14 +26,14 @@ class ParameterSearchExecutor(LoggingFunction):
     def __post__(self, ctx, *args, **kwargs):
         pass
 
-    def call_wrapped(self, ctx, *args, _pypads_env: LoggingEnv, _kwargs, **_pypads_hook_params):
+    def call_wrapped(self, ctx, *args, _pypads_env: LoggingEnv, _args, _kwargs, **_pypads_hook_params):
         from pypads.base import get_current_pads
         from pypadsext.base import PyPadrePads
         pads: PyPadrePads = get_current_pads()
 
         if pads.cache.exists("parameter_search"):
             with pads.api.intermediate_run():
-                out = _pypads_env.callback(*args, **_kwargs)
+                out = _pypads_env.callback(*_args, **_kwargs)
             return out
         else:
-            return _pypads_env.callback(*args, **_kwargs)
+            return _pypads_env.callback(*_args, **_kwargs)

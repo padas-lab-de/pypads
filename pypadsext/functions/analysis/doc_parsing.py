@@ -49,7 +49,7 @@ def tag_extraction():
 
 class Doc(LoggingFunction):
 
-    def __pre__(self, ctx, *args, _pypads_env: LoggingEnv,**kwargs):
+    def __pre__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
 
         from pypads.base import get_current_pads
         from pypadsext.base import PyPadrePads

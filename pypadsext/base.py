@@ -1,3 +1,5 @@
+import sys
+
 from pypads import util
 from pypads.autolog.mappings import AlgorithmMapping
 from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG, \
@@ -16,7 +18,6 @@ from pypadsext.functions.run_init_loggers.run_init import GitMeta
 from pypadsext.util import get_class_that_defined_method
 
 # --- Pypads App ---
-
 DEFAULT_PYPADRE_INIT_RUN_FNS = [GitMeta(_pypads_timeout=5)]
 
 # Extended mappings. We allow to log parameters, output or input, datasets
@@ -47,8 +48,8 @@ DEFAULT_PYPADRE_CONFIG = {"events": {
     "predictions": {"on": ["pypads_predict"]},
     "splits": {"on": ["pypads_split"]},
     "hyperparameters": {"on": ["pypads_params"]},
-    "parameter_search": {"on": ["pypads_param_search"]},
-    "parameter_search_executor": {"on": ["pypads_param_search_exec"]},
+    "parameter_search": {"on": ["pypads_param_search"], "order": sys.maxsize - 1},
+    "parameter_search_executor": {"on": ["pypads_param_search_exec"], "order": sys.maxsize - 2},
     "doc": {"on": ["pypads_init", "pypads_dataset", "pypads_fit", "pypads_transform", "pypads_predict"]},
     "metric": {"on": ["pypads_metric", "pypads_grad"], "with": {"artifact_fallback": True}}
 },

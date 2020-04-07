@@ -21,19 +21,19 @@ class HyperParameters(LoggingFunction):
         # tracer is activated on next call, return or exception
         sys.setprofile(tracer)
 
-    def call_wrapped(self, ctx,*args, _pypads_env: LoggingEnv, _kwargs, **_pypads_hook_params):
+    def call_wrapped(self, ctx, *args, _pypads_env: LoggingEnv, _args, _kwargs, **_pypads_hook_params):
 
         try:
             fn = _pypads_env.callback
             if _pypads_env.call.call_id.is_wrapped():
                 fn = _pypads_env.callback.__wrapped__
-            fn(*args, **_kwargs)
+            fn(*_args, **_kwargs)
             self._fn = fn
         finally:
             # deactivate tracer
             sys.setprofile(None)
 
-        return _pypads_env.callback(*args, **_kwargs)
+        return _pypads_env.callback(*_args, **_kwargs)
 
     def __post__(self, ctx, *args, **kwargs):
         from pypads.base import get_current_pads
