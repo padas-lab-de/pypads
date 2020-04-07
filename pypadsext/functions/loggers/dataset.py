@@ -15,7 +15,8 @@ class Dataset(LoggingFunction):
     Function logging the wrapped dataset loader
     """
 
-    def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.pickle, _pypads_env:LoggingEnv,_pypads_result, **kwargs):
+    def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.pickle, _pypads_env: LoggingEnv, _pypads_result,
+                 _args, _kwargs, **kwargs):
         from pypads.base import get_current_pads
         from pypadsext.base import PyPadrePads
         pads: PyPadrePads = get_current_pads()
@@ -24,13 +25,13 @@ class Dataset(LoggingFunction):
         obj = _pypads_result if _pypads_result else ctx
 
         # Get additional arguments if given by the user
-        _kwargs = dict()
+        _dataset_kwargs = dict()
         if pads.cache.run_exists("dataset_kwargs"):
-            _kwargs = pads.cache.run_get("dataset_kwargs")
+            _dataset_kwargs = pads.cache.run_get("dataset_kwargs")
 
         # Scrape the data object
-        crawler = Crawler(obj, ctx=_pypads_env.call.call_id.context, callback=_pypads_env.callback, kw=kwargs)
-        data, metadata, targets = crawler.crawl(**_kwargs)
+        crawler = Crawler(obj, ctx=_pypads_env.call.call_id.context, callback=_pypads_env.callback, kw=_kwargs)
+        data, metadata, targets = crawler.crawl(**_dataset_kwargs)
         pads.cache.run_add("data", data)
         pads.cache.run_add("shape", metadata.get("shape"))
         pads.cache.run_add("targets", targets)
