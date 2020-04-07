@@ -388,18 +388,13 @@ class PypadsApi:
     def register_post_fn(self, name, fn, logger=None, nested=True, order=0):
         cache = self._get_post_run()
 
-        def _is_nested_run():
-            pads = get_current_pads()
-            tags = pads.mlf.get_run(pads.api.active_run().info.run_id).data.tags
-            return "mlflow.parentRunId" not in tags
-
         # Track timing of post fns of loggers
         if logger:
             @wraps(fn)
             def keep_time(*args, **kwargs):
                 from pypads.functions.analysis.time_keeper import add_run_time
                 from pypads.functions.analysis.time_keeper import timed
-                if nested or not _is_nested_run():
+                if nested or not is_nested_run():
                     out, time = timed(lambda: fn(*args, **kwargs))
                     add_run_time(logger, logger.__class__.__name__ + ".__end__." + fn.__name__, time)
 
@@ -551,6 +546,7 @@ class PyPads:
         """
         self._uri = uri or os.environ.get('MLFLOW_PATH') or 'file:' + os.path.expanduser('~/.mlruns')
         mlflow.set_tracking_uri(self._uri)
+        self._mlf = MlflowClient(self._uri)
 
         # check if there is already an active run
         run = mlflow.active_run()
@@ -563,7 +559,6 @@ class PyPads:
         else:
             # Run init functions if run already exists but tracking is starting for it now
             self.run_init_fns()
-        self._mlf = MlflowClient(self._uri)
         self._experiment = self.mlf.get_experiment_by_name(name) if name else self.mlf.get_experiment(
             run.info.experiment_id)
         if config:
@@ -706,6 +701,11 @@ mlflow.end_run = end_run
 
 
 # !--- Clean the config cache after run ---
+
+def is_nested_run():
+    pads = get_current_pads()
+    tags = pads.mlf.get_run(pads.api.active_run().info.run_id).data.tags
+    return "mlflow.parentRunId" not in tags
 
 
 def get_current_config(default=None):
