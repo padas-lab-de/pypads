@@ -35,7 +35,7 @@ gorilla.get_original_attribute = fake_gorilla_get_original_attribute
 class MlflowAutologger(LoggingFunction):
 
     @experimental
-    def call_wrapped(self, ctx, *args, _kwargs, _pypads_autologgers=None, _pypads_env=LoggingEnv, **kwargs):
+    def call_wrapped(self, ctx, *args, _args, _kwargs, _pypads_autologgers=None, _pypads_env=LoggingEnv, **kwargs):
         """
             Function used to enable autologgers of mlflow.
             :param _kwargs: Real kwargs to pass to the callback

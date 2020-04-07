@@ -46,7 +46,7 @@ class LoggingFunction(DependencyMixin):
     def __init__(self, **static_parameters):
         self._static_parameters = static_parameters
 
-    def __pre__(self, ctx, *args, _pypads_env, **kwargs):
+    def __pre__(self, ctx, *args, _pypads_env, _args, _kwargs, **kwargs):
         """
         The function to be called before executing the log anchor
         :param ctx:
@@ -91,8 +91,9 @@ class LoggingFunction(DependencyMixin):
             "no_intermediate"] or not get_current_pads().api.is_intermediate_run():
             try:
                 self._check_dependencies()
-                _pypads_pre_return, time = timed(lambda: self.__pre__(ctx, *args, _pypads_env=_pypads_env,
-                                                                      **{**_pypads_hook_params, **kwargs}))
+                _pypads_pre_return, time = timed(
+                    lambda: self.__pre__(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs,
+                                         **_pypads_hook_params))
                 add_run_time(self,
                              str(_pypads_env.call) + "." + self.__class__.__name__ + ".__pre__",
                              time)
@@ -109,7 +110,8 @@ class LoggingFunction(DependencyMixin):
         # Call the output producing code
         try:
             out, time = timed(
-                lambda: self.call_wrapped(ctx, *args, _pypads_env=_pypads_env, _kwargs=kwargs, **_pypads_hook_params))
+                lambda: self.call_wrapped(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs,
+                                          **_pypads_hook_params))
             try:
                 add_run_time(None, str(_pypads_env.call), time)
             except TimingDefined as e:
@@ -130,9 +132,10 @@ class LoggingFunction(DependencyMixin):
             try:
                 self._check_dependencies()
                 _, time = timed(
-                    lambda: self.__post__(ctx, *args, _pypads_env=_pypads_env,
+                    lambda: self.__post__(ctx, _pypads_env=_pypads_env,
                                           _pypads_result=out,
-                                          _pypads_pre_return=_pypads_pre_return, **{**_pypads_hook_params, **kwargs}))
+                                          _pypads_pre_return=_pypads_pre_return, _args=args, _kwargs=kwargs,
+                                          **_pypads_hook_params))
                 add_run_time(self, str(_pypads_env.call) + "." + self.__class__.__name__ + ".__post__", time)
             except TimingDefined:
                 pass
@@ -148,7 +151,7 @@ class LoggingFunction(DependencyMixin):
         return out
 
     # noinspection PyMethodMayBeStatic
-    def call_wrapped(self, ctx, *args, _pypads_env: LoggingEnv, _kwargs, **_pypads_hook_params):
+    def call_wrapped(self, ctx, *args, _pypads_env: LoggingEnv, _args, _kwargs, **_pypads_hook_params):
         """
         The real call of the wrapped function. Be carefull when you change this.
         Exceptions here will not be catched automatically and might break your workflow.
@@ -159,9 +162,9 @@ class LoggingFunction(DependencyMixin):
         :param _pypads_hook_params:
         :return:
         """
-        return _pypads_env.callback(*args, **_kwargs)
+        return _pypads_env.callback(*_args, **_kwargs)
 
-    def __post__(self, ctx, *args, _pypads_env, _pypads_pre_return, _pypads_result, **kwargs):
+    def __post__(self, ctx, *args, _pypads_env, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
         """
         The function to be called after executing the log anchor
         :param ctx:

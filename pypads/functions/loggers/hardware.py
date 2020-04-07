@@ -18,9 +18,9 @@ class Cpu(LoggingFunction):
         name = os.path.join(_pypads_env.call.to_folder(), "pre_cpu_usage")
         try_write_artifact(name, _get_cpu_usage(), WriteFormats.text)
 
-    def call_wrapped(self, ctx, *args, _pypads_env, _kwargs, **_pypads_hook_params):
+    def call_wrapped(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
         # TODO track while executing
-        return super().call_wrapped(ctx, *args, _pypads_env=_pypads_env, _kwargs=_kwargs, **_pypads_hook_params)
+        return super().call_wrapped(ctx, _pypads_env=_pypads_env, _args=_args, _kwargs=_kwargs, **_pypads_hook_params)
 
     def __post__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
         name = os.path.join(_pypads_env.call.to_folder(), "post_cpu_usage")
@@ -49,9 +49,9 @@ class Ram(LoggingFunction):
         name = os.path.join(_pypads_env.call.to_folder(), "pre_memory_usage")
         try_write_artifact(name, _get_memory_usage(), WriteFormats.text)
 
-    def call_wrapped(self, ctx, *args, _pypads_env, _kwargs, **_pypads_hook_params):
+    def call_wrapped(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
         # TODO track while executing
-        return super().call_wrapped(ctx, *args, _pypads_env=_pypads_env, _kwargs=_kwargs, **_pypads_hook_params)
+        return super().call_wrapped(ctx, _pypads_env=_pypads_env, _args=_args, _kwargs=_kwargs, **_pypads_hook_params)
 
     def __post__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
         name = os.path.join(_pypads_env.call.to_folder(), "post_memory_usage")
@@ -89,9 +89,9 @@ class Disk(LoggingFunction):
         name = os.path.join(_pypads_env.call.to_folder(), "pre_disk_usage")
         try_write_artifact(name, _get_disk_usage(path), WriteFormats.text)
 
-    def call_wrapped(self, ctx, *args, _pypads_env, _kwargs, **_pypads_hook_params):
+    def call_wrapped(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
         # TODO track while executing
-        return super().call_wrapped(ctx, *args, _pypads_env=_pypads_env, _kwargs=_kwargs, **_pypads_hook_params)
+        return super().call_wrapped(ctx, _pypads_env=_pypads_env, _args=_args, _kwargs=_kwargs, **_pypads_hook_params)
 
     def __post__(self, ctx, *args, _pypads_env, **kwargs):
         from pypads.base import PyPads, get_current_pads
