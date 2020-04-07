@@ -705,7 +705,7 @@ mlflow.end_run = end_run
 def is_nested_run():
     pads = get_current_pads()
     tags = pads.mlf.get_run(pads.api.active_run().info.run_id).data.tags
-    return "mlflow.parentRunId" not in tags
+    return "mlflow.parentRunId" in tags
 
 
 def get_current_config(default=None):
