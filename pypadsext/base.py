@@ -17,7 +17,7 @@ from pypadsext.util import get_class_that_defined_method
 
 # --- Pypads App ---
 
-DEFAULT_PYPADRE_INIT_RUN_FNS = [GitMeta()]
+DEFAULT_PYPADRE_INIT_RUN_FNS = [GitMeta(_pypads_timeout=5)]
 
 # Extended mappings. We allow to log parameters, output or input, datasets
 DEFAULT_PYPADRE_LOGGING_FNS = {
