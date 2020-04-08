@@ -3,13 +3,13 @@ from logging import warning
 
 from pypads.base import get_current_pads
 
-from pypadsext.util import _is_package_available
+from padrepads.util import _is_package_available
 
 
 # Logging
 def log_random_seed(key):
     from pypads.base import get_current_pads
-    from pypadsext.base import PyPadrePads
+    from padrepads.base import PyPadrePads
     pads: PyPadrePads = get_current_pads()
 
     # Get seed information from cache

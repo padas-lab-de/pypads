@@ -113,7 +113,7 @@ class PyPadsTorchTest(BaseTest):
     def test_torch_Sequential_class(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         PyPadrePads(mapping=torch_padre)
 
         import timeit

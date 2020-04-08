@@ -1,4 +1,4 @@
-from pypadsext.base import PyPadrePads
+from padrepads.base import PyPadrePads
 
 tracker = PyPadrePads()
 # just changing stuff

@@ -2,7 +2,7 @@ import os
 
 from pypads.test.base_test import BaseTest
 
-from pypadsext.concepts.util import get_by_tag
+from padrepads.concepts.util import get_by_tag
 
 
 class PyPadrePadsDecoratorsTest(BaseTest):
@@ -13,7 +13,7 @@ class PyPadrePadsDecoratorsTest(BaseTest):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         tracker = PyPadrePads()
         cwd = os.getcwd()
         columns_wine = [
@@ -59,7 +59,7 @@ class PyPadrePadsDecoratorsTest(BaseTest):
     def test_custom_splitter(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         tracker = PyPadrePads()
 
         @tracker.decorators.dataset(name="iris")
@@ -95,7 +95,7 @@ class PyPadrePadsDecoratorsTest(BaseTest):
     def test_default_splitter_with_no_params(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         tracker = PyPadrePads()
 
         @tracker.decorators.dataset(name="iris")
@@ -126,7 +126,7 @@ class PyPadrePadsDecoratorsTest(BaseTest):
     def test_default_splitter_with_params(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         tracker = PyPadrePads()
 
         @tracker.decorators.dataset(name="iris")
@@ -157,7 +157,7 @@ class PyPadrePadsDecoratorsTest(BaseTest):
     def test_hyperparameters(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         tracker = PyPadrePads()
 
         @tracker.decorators.hyperparameters()

@@ -84,7 +84,7 @@ class PyPadrePadsTest(BaseSklearnTest):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         config = {"events": {
             "init": {"on": ["pypads_init"]},
             "splits": {"on": ["pypads_split"]},
@@ -112,7 +112,7 @@ class PyPadrePadsTest(BaseSklearnTest):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         # tracker = PyPadrePads(mapping=MappingFile("empty", {
         #     "metadata": {"library": "empty", "library_version": "0.0.1", "mapping_version": "0.1"}}),
         #                       include_default_mappings=False)
@@ -138,7 +138,7 @@ class PyPadrePadsTest(BaseSklearnTest):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         tracker = PyPadrePads(mapping=sklearn_padre)
 
         import timeit

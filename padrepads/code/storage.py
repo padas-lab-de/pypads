@@ -2,12 +2,12 @@ import os
 from abc import ABCMeta, abstractmethod
 from logging import warning, info
 
-from pypadsext.util import _is_package_available
+from padrepads.util import _is_package_available
 
 
 def get_run_git():
     from pypads.base import get_current_pads
-    from pypadsext.base import PyPadrePads
+    from padrepads.base import PyPadrePads
     pads: PyPadrePads = get_current_pads()
     run = pads.api.active_run()
     tags = run.data.tags
@@ -55,7 +55,7 @@ def init_git_repo(path, pads=None):
 def check_index(repo, message="", init=False, pads=None):
     if not pads:
         from pypads.base import get_current_pads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         pads: PyPadrePads = get_current_pads()
     run = pads.api.active_run()
     if init:

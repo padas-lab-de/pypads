@@ -21,7 +21,7 @@ class Decisions(LoggingFunction):
         :return:
         """
         from pypads.base import get_current_pads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         pads: PyPadrePads = get_current_pads()
 
         preds = _pypads_result
@@ -95,7 +95,7 @@ class Decisions_sklearn(Decisions):
         :return:
         """
         from pypads.base import get_current_pads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         pads: PyPadrePads = get_current_pads()
 
         # check if the estimator computes decision scores
@@ -141,7 +141,7 @@ class Decisions_keras(Decisions):
         :return:
         """
         from pypads.base import get_current_pads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         pads: PyPadrePads = get_current_pads()
 
         probabilities = None
@@ -160,7 +160,7 @@ class Decisions_torch(Decisions):
 
     def __post__(self, ctx, *args, _pypads_env: LoggingEnv, _pypads_result, **kwargs):
         from pypads.base import get_current_pads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         pads: PyPadrePads = get_current_pads()
 
         pads.cache.run_add("probabilities", _pypads_result.data.numpy())

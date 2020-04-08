@@ -2,7 +2,7 @@ from logging import warning
 
 from pypads.functions.run_init_loggers.base_run_init_logger import RunInitLoggingFunction
 
-from pypadsext.code.storage import get_run_git, get_git_repo
+from padrepads.code.storage import get_run_git, get_git_repo
 
 
 class GitMeta(RunInitLoggingFunction):

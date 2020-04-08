@@ -2,7 +2,7 @@ import numpy as np
 from boltons.funcutils import wraps
 from pypads.base import get_current_pads
 
-from pypadsext.util import unpack
+from padrepads.util import unpack
 
 
 def logger():

@@ -8,7 +8,7 @@ class HyperParameters(LoggingFunction):
 
     def __pre__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
         from pypads.base import get_current_pads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         pads: PyPadrePads = get_current_pads()
 
         def tracer(frame, event, arg):
@@ -37,7 +37,7 @@ class HyperParameters(LoggingFunction):
 
     def __post__(self, ctx, *args, **kwargs):
         from pypads.base import get_current_pads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         pads: PyPadrePads = get_current_pads()
         params = pads.cache.run_get(self._fn.__qualname__)
         for key, param in params.items():

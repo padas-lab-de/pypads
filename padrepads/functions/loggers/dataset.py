@@ -5,8 +5,8 @@ from pypads.functions.analysis.call_tracker import LoggingEnv
 from pypads.functions.loggers.base_logger import LoggingFunction
 from pypads.logging_util import WriteFormats
 
-from pypadsext.concepts.dataset import Crawler
-from pypadsext.concepts.util import persistent_hash, get_by_tag
+from padrepads.concepts.dataset import Crawler
+from padrepads.concepts.util import persistent_hash, get_by_tag
 
 
 class Dataset(LoggingFunction):
@@ -18,7 +18,7 @@ class Dataset(LoggingFunction):
     def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.pickle, _pypads_env: LoggingEnv, _pypads_result,
                  _args, _kwargs, **kwargs):
         from pypads.base import get_current_pads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         pads: PyPadrePads = get_current_pads()
 
         # if the return object is None, take the object instance ctx

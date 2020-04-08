@@ -3,7 +3,7 @@ from mlflow.utils.autologging_utils import try_mlflow_log
 from pypads.functions.analysis.call_tracker import LoggingEnv
 from pypads.functions.loggers.metric import Metric
 
-from pypadsext.util import _is_package_available
+from padrepads.util import _is_package_available
 
 
 class Metric_torch(Metric):

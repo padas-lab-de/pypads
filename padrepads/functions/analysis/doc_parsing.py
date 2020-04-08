@@ -4,7 +4,7 @@ import re
 from pypads.functions.analysis.call_tracker import LoggingEnv
 from pypads.functions.loggers.base_logger import LoggingFunction
 
-from pypadsext.util import _is_package_available
+from padrepads.util import _is_package_available
 
 
 def name_to_words(label):
@@ -15,7 +15,7 @@ def name_to_words(label):
 
 def tag_extraction():
     from pypads.base import get_current_pads
-    from pypadsext.base import PyPadrePads
+    from padrepads.base import PyPadrePads
     pads: PyPadrePads = get_current_pads()
     docs = pads.cache.get("doc_map")
     corpus = " ".join([doc for name, doc in docs.items()])
@@ -52,7 +52,7 @@ class Doc(LoggingFunction):
     def __pre__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
 
         from pypads.base import get_current_pads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         pads: PyPadrePads = get_current_pads()
 
         pads.api.register_post_fn("tag_extraction", tag_extraction)

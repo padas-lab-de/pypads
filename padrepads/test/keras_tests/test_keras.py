@@ -1,6 +1,5 @@
 import os
 
-import mlflow
 from pypads.test.base_test import BaseTest
 from pypads.test.sklearn.mappings.test_mapping_sklearn import _get_mapping
 
@@ -79,7 +78,7 @@ class PypadsKerasTest(BaseTest):
     def test_keras_base_class(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         PyPadrePads(mapping=keras_padre)
 
         import timeit
@@ -93,7 +92,7 @@ class PypadsKerasTest(BaseTest):
     def test_keras_mlp(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         PyPadrePads(mapping=keras_padre)
 
         import timeit
@@ -106,7 +105,7 @@ class PypadsKerasTest(BaseTest):
 
     def test_keras_autolog(self):
         # Activate tracking of pypads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
         PyPadrePads(config={"events": {
             "autolog": {"on": ["pypads_fit"]},
             "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metrics"]}

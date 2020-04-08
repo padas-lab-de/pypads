@@ -5,17 +5,17 @@ from pypads.autolog.mappings import AlgorithmMapping
 from pypads.base import PyPads, PypadsApi, PypadsDecorators, DEFAULT_CONFIG, \
     DEFAULT_INIT_RUN_FNS, DEFAULT_LOGGING_FNS
 
-from pypadsext.concepts.splitter import default_split
-from pypadsext.concepts.util import _create_ctx
-from pypadsext.functions.analysis.doc_parsing import Doc
-from pypadsext.functions.analysis.parameter_search import ParameterSearch, ParameterSearchExecutor
-from pypadsext.functions.loggers.data_splitting import SplitsTracker
-from pypadsext.functions.loggers.dataset import Dataset
-from pypadsext.functions.loggers.decision_tracking import Decisions, Decisions_keras, Decisions_sklearn, Decisions_torch
-from pypadsext.functions.loggers.hyperparameters import HyperParameters
-from pypadsext.functions.loggers.metric import Metric_torch
-from pypadsext.functions.run_init_loggers.run_init import GitMeta
-from pypadsext.util import get_class_that_defined_method
+from padrepads.concepts.splitter import default_split
+from padrepads.concepts.util import _create_ctx
+from padrepads.functions.analysis.doc_parsing import Doc
+from padrepads.functions.analysis.parameter_search import ParameterSearch, ParameterSearchExecutor
+from padrepads.functions.loggers.data_splitting import SplitsTracker
+from padrepads.functions.loggers.dataset import Dataset
+from padrepads.functions.loggers.decision_tracking import Decisions, Decisions_keras, Decisions_sklearn, Decisions_torch
+from padrepads.functions.loggers.hyperparameters import HyperParameters
+from padrepads.functions.loggers.metric import Metric_torch
+from padrepads.functions.run_init_loggers.run_init import GitMeta
+from padrepads.util import get_class_that_defined_method
 
 # --- Pypads App ---
 DEFAULT_PYPADRE_INIT_RUN_FNS = [GitMeta(_pypads_timeout=5)]
@@ -72,7 +72,7 @@ class PyPadrePadsActuators:
         self._pypads = pypads
 
     def set_random_seed(self, seed=None):
-        from pypadsext.functions.management.randomness import set_random_seed
+        from padrepads.functions.management.randomness import set_random_seed
         # Set seed if needed
         if seed is None:
             import random

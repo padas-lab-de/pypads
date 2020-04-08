@@ -4,7 +4,7 @@ from typing import Any, Tuple, Callable, Iterable
 
 from pypads.base import tracking_active
 
-from pypadsext.util import _is_package_available
+from padrepads.util import _is_package_available
 
 
 class Types(Enum):

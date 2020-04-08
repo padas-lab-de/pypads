@@ -70,7 +70,7 @@ class SplitsTracker(LoggingFunction):
         :return:
         """
         from pypads.base import get_current_pads
-        from pypadsext.base import PyPadrePads
+        from padrepads.base import PyPadrePads
 
         pads: PyPadrePads = get_current_pads()
 
