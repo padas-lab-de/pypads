@@ -1,7 +1,8 @@
 import os
 import threading
 from collections.__init__ import OrderedDict
-from logging import warning, error
+
+from loguru import logger
 
 from pypads.autolog.wrapping.base_wrapper import Context
 
@@ -57,7 +58,7 @@ class FunctionReference:
                     raise ValueError("Couldn't find real context.")
                 function_type = type(real_ctx.get_dict()[self._function.__name__])
             except Exception as e:
-                warning("Couldn't get function type of '" + str(self._function.__name__) + "' on '" + str(
+                logger.warning("Couldn't get function type of '" + str(self._function.__name__) + "' on '" + str(
                     self.real_context()) + ". Omit logging. " + str(e))
                 return None
 
@@ -386,7 +387,7 @@ class CallTracker:
             self._call_stack.remove(call)
             # TODO clear memory in call_objects?
         else:
-            error("Tried to finish call which is not on the stack. " + str(call))
+            logger.error("Tried to finish call which is not on the stack. " + str(call))
 
 
 def add_call(accessor):

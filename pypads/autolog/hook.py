@@ -1,7 +1,8 @@
 import re
 from _py_abc import ABCMeta
 from abc import abstractmethod
-from logging import warning, error
+
+from loguru import logger
 
 
 class Hook:
@@ -45,7 +46,7 @@ class RegexHook(Hook):
         try:
             self._regex = re.compile(regex)
         except Exception as e:
-            error("Couldn't compile regex: " + str(regex) + "of hook" + str(self) + ". Disabling it.")
+            logger.error("Couldn't compile regex: " + str(regex) + "of hook" + str(self) + ". Disabling it.")
             # Regex to never match anything
             self._regex = re.compile('a^')
 
@@ -116,7 +117,7 @@ def get_hooks(hook_map):
                     elif PackageNameHook.has_type_name(hook['type']):
                         hooks.append(PackageNameHook(event, hook['regex']))
                     else:
-                        warning("Type " + str(hook['type']) + " of hook " + str(hook) + " unknown.")
+                        logger.warning("Type " + str(hook['type']) + " of hook " + str(hook) + " unknown.")
 
                 # If hook is just a string
                 else:
@@ -139,10 +140,10 @@ def make_hook_applicable_filter(hook, ctx, mapping):
                 fn = getattr(ctx, name)
                 return hook.is_applicable(mapping=mapping, fn=fn)
             except RecursionError as re:
-                error("Recursion error on '" + str(
+                logger.error("Recursion error on '" + str(
                     ctx) + "'. This might be because __get_attr__ is being wrapped. " + str(re))
         else:
-            warning("Can't access attribute '" + str(name) + "' on '" + str(ctx) + "'. Skipping.")
+            logger.warning("Can't access attribute '" + str(name) + "' on '" + str(ctx) + "'. Skipping.")
         return False
 
     return hook_applicable_filter

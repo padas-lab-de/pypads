@@ -1,4 +1,4 @@
-from logging import debug, info
+from loguru import logger
 
 from pypads.functions.loggers.base_logger import LoggingFunction
 
@@ -9,10 +9,10 @@ class Log(LoggingFunction):
     """
 
     def __pre__(self, ctx, *args, _pypads_env, **kwargs):
-        debug("Entered " + str(_pypads_env.call))
+        logger.debug("Entered " + str(_pypads_env.call))
 
     def __post__(self, ctx, *args, _pypads_env, **kwargs):
-        debug("Exited " + str(_pypads_env.call))
+        logger.debug("Exited " + str(_pypads_env.call))
 
 
 class LogInit(LoggingFunction):
@@ -21,4 +21,4 @@ class LogInit(LoggingFunction):
     """
 
     def __pre__(self, ctx, *args, **kwargs):
-        info("Pypads tracked class " + str(ctx.__class__) + " initialized.")
+        logger.info("Pypads tracked class " + str(ctx.__class__) + " initialized.")

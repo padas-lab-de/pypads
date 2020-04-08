@@ -1,6 +1,7 @@
 import time
 from collections import OrderedDict
-from logging import info
+
+from loguru import logger
 
 from pypads.logging_util import WriteFormats
 
@@ -28,10 +29,10 @@ def get_logger_times():
         splits = k.split(".")
         # Only loggers and not calls themselves
         if splits[-1] == "__pre__" or splits[-1] == "__post__":
-            logger = splits[-2]
-            if logger not in aggregated_times:
-                aggregated_times[logger] = 0
-            aggregated_times[logger] += float(v[1])
+            log_function = splits[-2]
+            if log_function not in aggregated_times:
+                aggregated_times[log_function] = 0
+            aggregated_times[log_function] += float(v[1])
 
     out = ""
     for k, v in sorted(aggregated_times.items(), key=lambda x: -x[1]):
@@ -55,7 +56,7 @@ def print_timings():
     pads.api.log_mem_artifact("loggers", get_logger_times(), write_format=WriteFormats.text.text)
 
 
-def add_run_time(logger, name, time):
+def add_run_time(log_function, name, time):
     from pypads.base import get_current_pads
     pads = get_current_pads()
 
@@ -67,7 +68,7 @@ def add_run_time(logger, name, time):
     timings: OrderedDict = pads.cache.run_get("timings")
     if name not in timings:
         timings[name] = (pads.call_tracker.call_depth(), time)
-        info(name + " done after: " + str(time) + "s")
+        logger.info(name + " done after: " + str(time) + "s")
     else:
         raise TimingDefined("Timing already defined for " + name)
 

@@ -1,6 +1,5 @@
-from logging import warning, info
-
 import mlflow
+from loguru import logger
 from mlflow.utils.autologging_utils import try_mlflow_log
 
 from pypads.functions.loggers.base_logger import LoggingFunction
@@ -30,12 +29,13 @@ class Metric(LoggingFunction):
                                _pypads_env.call.call_id.context.container.__name__ + "." + _pypads_env.call.call_id.wrappee.__name__ + ".txt",
                                result, step=_pypads_env.call.call_id.call_number)
             else:
-                warning("Mlflow metrics have to be doubles. Could log the return value of type '" + str(
+                logger.warning("Mlflow metrics have to be doubles. Could log the return value of type '" + str(
                     type(
                         result)) + "' of '" + _pypads_env.call.call_id.context.container.__name__ + "." + _pypads_env.call.call_id.wrappee.__name__ + "' as artifact instead.")
 
                 # TODO search callstack for already logged functions and ignore?
                 if _pypads_artifact_fallback:
-                    info("Logging result if '" + _pypads_env.call.call_id.context.container.__name__ + "' as artifact.")
+                    logger.info(
+                        "Logging result if '" + _pypads_env.call.call_id.context.container.__name__ + "' as artifact.")
                     try_write_artifact(_pypads_env.call.call_id.context.container.__name__, str(result),
                                        WriteFormats.text)

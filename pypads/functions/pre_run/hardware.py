@@ -1,8 +1,8 @@
-from pypads.functions.run_init_loggers.base_run_init_logger import RunInitLoggingFunction
+from pypads.functions.pre_run.pre_run import PreRunFunction
 from pypads.util import sizeof_fmt, local_uri_to_path
 
 
-class ISystem(RunInitLoggingFunction):
+class ISystem(PreRunFunction):
 
     @staticmethod
     def _needed_packages():
@@ -19,7 +19,7 @@ class ISystem(RunInitLoggingFunction):
         pads.api.set_tag("pypads.system.processor", uname.processor)
 
 
-class ICpu(RunInitLoggingFunction):
+class ICpu(PreRunFunction):
 
     @staticmethod
     def _needed_packages():
@@ -34,7 +34,7 @@ class ICpu(RunInitLoggingFunction):
         pads.api.set_tag("pypads.system.cpu.min_freq", f"{freq.min:2f}Mhz")
 
 
-class IRam(RunInitLoggingFunction):
+class IRam(PreRunFunction):
 
     @staticmethod
     def _needed_packages():
@@ -48,7 +48,7 @@ class IRam(RunInitLoggingFunction):
         pads.api.set_tag("pypads.system.swap.total", sizeof_fmt(swap.total))
 
 
-class IDisk(RunInitLoggingFunction):
+class IDisk(PreRunFunction):
 
     @staticmethod
     def _needed_packages():
@@ -62,7 +62,7 @@ class IDisk(RunInitLoggingFunction):
         pads.api.set_tag("pypads.system.disk.total", sizeof_fmt(disk_usage.total))
 
 
-class IPid(RunInitLoggingFunction):
+class IPid(PreRunFunction):
 
     @staticmethod
     def _needed_packages():
@@ -79,7 +79,7 @@ class IPid(RunInitLoggingFunction):
         pads.api.set_tag("pypads.system.process.memory_usage", str(process.memory_percent()) + "%")
 
 
-class ISocketInfo(RunInitLoggingFunction):
+class ISocketInfo(PreRunFunction):
 
     def _call(self, pads, *args, **kwargs):
         import socket
@@ -87,7 +87,7 @@ class ISocketInfo(RunInitLoggingFunction):
         pads.api.set_tag("pypads.system.ip-address", socket.gethostbyname(socket.gethostname()))
 
 
-class IMacAddress(RunInitLoggingFunction):
+class IMacAddress(PreRunFunction):
 
     def _call(self, pads, *args, **kwargs):
         import re, uuid
@@ -99,4 +99,4 @@ class IMacAddress(RunInitLoggingFunction):
 #         # TODO
 #
 #     else:
-#         warning("To track network usage you need to install psutil.")
+#         logger.warning("To track network usage you need to install psutil.")

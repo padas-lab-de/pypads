@@ -6,12 +6,12 @@ import os
 import pickle
 from contextlib import contextmanager
 from functools import wraps
-from logging import warning, debug
 from os.path import expanduser
 from types import FunctionType
 from typing import List, Iterable
 
 import mlflow
+from loguru import logger
 from mlflow.tracking import MlflowClient
 
 from pypads.autolog.hook import Hook
@@ -27,8 +27,8 @@ from pypads.functions.loggers.hardware import Disk, Ram, Cpu
 from pypads.functions.loggers.metric import Metric
 from pypads.functions.loggers.mlflow.mlflow_autolog import MlflowAutologger
 from pypads.functions.loggers.pipeline_detection import PipelineTracker
-from pypads.functions.run_init_loggers.base_run_init_logger import RunInfo
-from pypads.functions.run_init_loggers.hardware import ISystem, IRam, ICpu, IDisk, IPid, ISocketInfo, IMacAddress
+from pypads.functions.pre_run.hardware import ISystem, IRam, ICpu, IDisk, IPid, ISocketInfo, IMacAddress
+from pypads.functions.pre_run.pre_run import RunInfo, RunLogger
 from pypads.logging_util import WriteFormats, try_write_artifact
 from pypads.util import get_class_that_defined_method, is_package_available, dict_merge
 
@@ -65,7 +65,7 @@ class FunctionRegistry:
             return self.fns[name]
         else:
             pass
-            # warning("Function call with name '" + name + "' is not linked with any logging functionality.")
+            # logger.warning("Function call with name '" + name + "' is not linked with any logging functionality.")
 
     def add_functions(self, name, lib=None, version=None, *args: FunctionType):
         if lib:
@@ -230,7 +230,8 @@ if is_package_available("joblib"):
 # --- Pypads App ---
 
 # Default init_run fns
-DEFAULT_INIT_RUN_FNS = [RunInfo(), ISystem(), IRam(), ICpu(), IDisk(), IPid(), ISocketInfo(), IMacAddress()]
+DEFAULT_INIT_RUN_FNS = [RunInfo(), RunLogger(), ISystem(), IRam(), ICpu(), IDisk(), IPid(), ISocketInfo(),
+                        IMacAddress()]
 
 # Default event mappings. We allow to log parameters, output or input
 DEFAULT_LOGGING_FNS = {
@@ -298,11 +299,11 @@ class PypadsApi:
         if events is None:
             events = ["pypads_log"]
         if ctx is not None and not hasattr(ctx, fn.__name__):
-            warning("Given context " + str(ctx) + " doesn't define " + str(fn.__name__))
+            logger.warning("Given context " + str(ctx) + " doesn't define " + str(fn.__name__))
             # TODO create dummy context
             ctx = None
         if mapping is None:
-            warning("Tracking a function without a mapping definition. A default mapping will be generated.")
+            logger.warning("Tracking a function without a mapping definition. A default mapping will be generated.")
             if '__file__' in fn.__globals__:
                 lib = fn.__globals__['__file__']
             else:
@@ -381,24 +382,23 @@ class PypadsApi:
             self._pypads.cache.run_add("post_run_fns", post_run_fn_cache)
         return self._pypads.cache.run_get("post_run_fns")
 
-    def register_post_fn(self, name, fn, logger=None, nested=True, order=0):
+    def register_post_fn(self, name, fn, log_function=None, nested=True, order=0, silent=True):
         cache = self._get_post_run()
-
-        # Track timing of post fns of loggers
-        if logger:
-            @wraps(fn)
-            def keep_time(*args, **kwargs):
-                from pypads.functions.analysis.time_keeper import add_run_time
-                from pypads.functions.analysis.time_keeper import timed
-                if nested or not is_nested_run():
-                    out, time = timed(lambda: fn(*args, **kwargs))
-                    add_run_time(logger, logger.__class__.__name__ + ".__end__." + fn.__name__, time)
-
-            fn = keep_time
-
         if cache.exists(name):
-            debug("Post run fn with name '" + name + "' already exists. Skipped.")
+            if not silent:
+                logger.debug("Post run fn with name '" + name + "' already exists. Skipped.")
         else:
+            # Track timing of post fns of loggers
+            if log_function:
+                @wraps(fn)
+                def keep_time(*args, **kwargs):
+                    from pypads.functions.analysis.time_keeper import add_run_time
+                    from pypads.functions.analysis.time_keeper import timed
+                    if nested or not is_nested_run():
+                        out, time = timed(lambda: fn(*args, **kwargs))
+                        add_run_time(log_function, log_function.__class__.__name__ + ".__end__." + fn.__name__, time)
+
+                fn = keep_time
             cache.add(name, (fn, order))
 
     def active_run(self):
@@ -513,7 +513,7 @@ class PyPads:
             for name, module in loaded_modules:
                 if _is_affected_module(name):
                     if reload_warnings:
-                        warning(
+                        logger.warning(
                             name + "was imported before PyPads. To enable tracking import PyPads before or use "
                                    "reload_modules. Every already created instance is not tracked.")
 
@@ -526,7 +526,7 @@ class PyPads:
                             loader.exec_module(module)
                             importlib.reload(module)
                         except Exception as e:
-                            debug("Couldn't reload module " + str(e))
+                            logger.debug("Couldn't reload module " + str(e))
 
                     if clear_imports:
                         del sys.modules[name]
@@ -564,7 +564,7 @@ class PyPads:
 
         # override active run if used
         if name and run.info.experiment_id is not self._experiment.experiment_id:
-            warning("Active run doesn't match given input name " + name + ". Recreating new run.")
+            logger.warning("Active run doesn't match given input name " + name + ". Recreating new run.")
             try:
                 self.api.start_run(experiment_id=self._experiment.experiment_id)
             except Exception:
@@ -655,6 +655,7 @@ class PyPads:
         return self._cache
 
     def run_init_fns(self):
+        self._init_run_fns.sort(key=lambda f: f.order())
         for fn in self._init_run_fns:
             if callable(fn):
                 fn(self)
@@ -671,11 +672,11 @@ def get_current_pads() -> PyPads:
         config = get_current_config()
 
         if config:
-            warning(
+            logger.warning(
                 "PyPads seems to be missing on given run with saved configuration. Reinitializing.")
             return PyPads(config=config)
         else:
-            warning(
+            logger.warning(
                 "PyPads has to be initialized before logging can be used. Initializing for your with default values.")
             return PyPads()
     return current_pads
@@ -702,6 +703,11 @@ def is_nested_run():
     pads = get_current_pads()
     tags = pads.mlf.get_run(pads.api.active_run().info.run_id).data.tags
     return "mlflow.parentRunId" in tags
+
+
+def is_intermediate_run():
+    pads = get_current_pads()
+    return pads.api.is_intermediate_run()
 
 
 def get_current_config(default=None):

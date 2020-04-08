@@ -1,9 +1,9 @@
-# from sphinx.setup_command import BuildDoc
 import re
 
 from setuptools import setup, find_packages
+from sphinx.setup_command import BuildDoc
 
-# cmdclass = {'build_sphinx': BuildDoc}
+cmdclass = {'build_sphinx': BuildDoc}
 
 NAMEFILE = "pypads/_name.py"
 verstrline = open(NAMEFILE, "rt").read()
@@ -46,9 +46,9 @@ setup(
     include_package_data=True,
     url='https://padre-lab.eu',
     license='GPL',
-    author='THomas Weißgerber',
+    author='Thomas Weißgerber',
     author_email='thomas.weissgerber@uni-passau.de',
-    description='PyPaDS aims to solve problems about reproducibility',
+    description='PyPaDS aims to to add tracking functionality to machine learning libraries',
     entry_points='''
        [console_scripts]
        pypads=pypads.cli.pypads:pypads

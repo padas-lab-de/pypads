@@ -3,9 +3,10 @@ import sys
 import types
 from functools import wraps
 from importlib._bootstrap_external import PathFinder
-from logging import debug
 # noinspection PyUnresolvedReferences
 from multiprocessing import Value
+
+from loguru import logger
 
 from pypads.autolog.mappings import AlgorithmMapping
 from pypads.autolog.wrapping.base_wrapper import Context
@@ -67,7 +68,7 @@ def duck_punch_loader(spec):
                         for o in overlap:
                             _add_inherited_mapping(reference, o)
                 except Exception as e:
-                    debug("Skipping superclasses of " + str(reference) + ". " + str(e))
+                    logger.debug("Skipping superclasses of " + str(reference) + ". " + str(e))
 
         # TODO And every mapping.
         for mapping in _get_algorithm_mappings():

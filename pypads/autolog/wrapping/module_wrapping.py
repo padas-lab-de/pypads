@@ -1,5 +1,6 @@
 import inspect
-from logging import debug
+
+from loguru import logger
 
 from pypads.autolog.hook import make_hook_applicable_filter
 from pypads.autolog.wrapping.base_wrapper import BaseWrapper
@@ -53,5 +54,5 @@ class ModuleWrapper(BaseWrapper):
             #     from pypads.autolog.wrapping.wrapping import _add_found_class
             #     _add_found_class(algorithm_mapping)
         else:
-            debug("Module " + str(module) + " already duck-punched.")
+            logger.debug("Module " + str(module) + " already duck-punched.")
         return module

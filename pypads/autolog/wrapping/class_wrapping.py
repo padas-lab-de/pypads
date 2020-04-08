@@ -1,4 +1,4 @@
-from logging import debug
+from loguru import logger
 
 from pypads.autolog.hook import find_applicable_hooks
 from pypads.autolog.wrapping.base_wrapper import BaseWrapper
@@ -44,5 +44,5 @@ class ClassWrapper(BaseWrapper):
             reference_name = mapping.reference.rsplit('.', 1)[-1]
             context.overwrite(reference_name, clazz)
         else:
-            debug("Class " + str(clazz) + "already duck-puched.")
+            logger.debug("Class " + str(clazz) + "already duck-puched.")
         return clazz

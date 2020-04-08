@@ -1,4 +1,4 @@
-from logging import warning
+from loguru import logger
 
 from .mappings import name_mappings
 from .parameter import Parameter
@@ -232,7 +232,7 @@ class Schema(object):
 
         if keyset_was_none:
             for l in keyset:
-                warning("Warning: Attribute '" + path + "." + l + "' is not part of the schema.")
+                logger.warning("Warning: Attribute '" + path + "." + l + "' is not part of the schema.")
 
         return (True, "")
 

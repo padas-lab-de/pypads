@@ -1,7 +1,7 @@
 import sys
-from logging import debug
 
 import mlflow
+from loguru import logger
 
 from pypads.util import dict_merge
 
@@ -110,7 +110,7 @@ class PypadsRunCache(Cache):
             from pypads.base import get_current_pads
             pads = get_current_pads()
             pads.cache.run_delete(run_id)
-            debug("Cleared run cache after run " + run_id)
+            logger.debug("Cleared run cache after run " + run_id)
 
         pads.api.register_post_fn("cache_cleanup", cleanup_cache, order=sys.maxsize)
 

@@ -1,6 +1,5 @@
-from logging import warning
-
 import mlflow
+from loguru import logger
 from mlflow.utils.autologging_utils import try_mlflow_log
 
 from pypads.functions.analysis.call_tracker import LoggingEnv
@@ -30,10 +29,10 @@ class Parameters(LoggingFunction):
                     try:
                         try_mlflow_log(mlflow.log_param, _pypads_env.mapping.reference + "." + k + ".txt", v)
                     except Exception as e:
-                        warning("Couldn't track parameter. " + str(e) + " Trying to track with another name.")
+                        logger.warning("Couldn't track parameter. " + str(e) + " Trying to track with another name.")
                         try_mlflow_log(mlflow.log_param,
                                        str(_pypads_env.call) + "." + k + ".txt", v)
 
         except Exception as e:
-            warning("Couldn't use visitor for parameter extraction on " + str(ctx.__class__) + "Error: " + str(
+            logger.warning("Couldn't use visitor for parameter extraction on " + str(ctx.__class__) + "Error: " + str(
                 e) + ". Omit logging for now.")

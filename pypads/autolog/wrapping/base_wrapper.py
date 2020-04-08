@@ -2,7 +2,8 @@ import inspect
 from _py_abc import ABCMeta
 from abc import abstractmethod
 from copy import copy
-from logging import debug, warning
+
+from loguru import logger
 
 DEFAULT_ORDER = 1
 
@@ -46,7 +47,7 @@ class Context:
                 setattr(holder, "_pypads_mapping_" + wrappee.__name__, [])
             getattr(holder, "_pypads_mapping_" + wrappee.__name__).append(mapping)
         except TypeError as e:
-            debug("Can't set attribute '" + wrappee.__name__ + "' on '" + str(self._c) + "'.")
+            logger.debug("Can't set attribute '" + wrappee.__name__ + "' on '" + str(self._c) + "'.")
             return self._c
 
     def store_original(self, wrappee):
@@ -57,7 +58,7 @@ class Context:
                 holder = self._c
             setattr(holder, self.original_name(wrappee), copy(wrappee))
         except TypeError as e:
-            debug("Can't set attribute '" + wrappee.__name__ + "' on '" + str(self._c) + "'.")
+            logger.debug("Can't set attribute '" + wrappee.__name__ + "' on '" + str(self._c) + "'.")
             return self._c
 
     def has_original(self, wrappee):
@@ -106,7 +107,7 @@ class Context:
             if hasattr(self._c, fn_name):
                 return self
             else:
-                warning("Context " + str(self._c) + " of type " + type(
+                logger.warning("Context " + str(self._c) + " of type " + type(
                     self._c) + " doesn't define " + fn_name)
                 return None
 
@@ -123,7 +124,7 @@ class Context:
                         # TODO workaround for <sklearn.utils.metaestimators._IffHasAttrDescriptor object at 0x121e56810> again
                         break
         except Exception as e:
-            warning("Couldn't get defining class of context '" + str(
+            logger.warning("Couldn't get defining class of context '" + str(
                 self._c) + ".")
             return self._c
 
