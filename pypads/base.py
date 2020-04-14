@@ -28,7 +28,7 @@ from pypads.functions.loggers.pipeline_detection import PipelineTracker
 from pypads.functions.post_run.post_run import PostRunFunction
 from pypads.functions.pre_run.hardware import ISystem, IRam, ICpu, IDisk, IPid, ISocketInfo, IMacAddress
 from pypads.functions.pre_run.pre_run import RunInfo, RunLogger, PreRunFunction
-from pypads.logging_util import WriteFormats, try_write_artifact
+from pypads.logging_util import WriteFormats, try_write_artifact, try_read_artifact
 from pypads.util import get_class_that_defined_method, dict_merge
 
 tracking_active = None
@@ -210,6 +210,19 @@ class PypadsApi:
     def _write_meta(self, name, meta):
         if meta:
             try_write_artifact(name + ".meta", meta, WriteFormats.text, preserve_folder=True)
+
+    def _read_meta(self, name):
+        # TODO format / json / etc?
+        return try_read_artifact(name + ".meta.txt")
+
+    def metric_meta(self, name):
+        return self._read_meta(_to_metric_meta_name(name))
+
+    def param_meta(self, name):
+        return self._read_meta(_to_param_meta_name(name))
+
+    def artifact_meta(self, name):
+        return self._read_meta(_to_artifact_meta_name(name))
 
     # !--- logging ----
 

@@ -56,9 +56,9 @@ test-python-3.8:
 
 # Deploy jobs
 
-check-build:
+publish:
   <<: *deploy
   only:
     - tags
-    - master
-  script: poetry publish
+  script:
+    - poetry publish

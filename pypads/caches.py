@@ -166,9 +166,9 @@ class PypadsCache(Cache):
         run = self.run_init(run_id)
         return self._run_caches[run.info.run_id].get(key)
 
-    def run_exists(self, key, run_id=None):
+    def run_exists(self, *keys, run_id=None):
         run = self.run_init(run_id)
-        return self._run_caches[run.info.run_id].exists(key)
+        return all([self._run_caches[run.info.run_id].exists(key) for key in keys])
 
     def run_clear(self, run_id=None):
         run = self.run_init(run_id)

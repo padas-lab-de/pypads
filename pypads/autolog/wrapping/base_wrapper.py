@@ -170,7 +170,12 @@ class BaseWrapper:
         hook_events_of_mapping = [hook.event for hook in mapping.hooks if hook.is_applicable(mapping=mapping, fn=fn)]
         output = []
         config = cls._get_current_config()
-        for log_event, event_config in config["events"].items():
+        events = [[k, v] for k, v in config["events"].items()]
+
+        # sort event order
+        events.sort(key=lambda e: e[1]["order"] if "order" in e[1] else DEFAULT_ORDER)
+
+        for log_event, event_config in events:
             configured_hook_events = event_config["on"]
 
             # Add by config defined parameters
@@ -179,21 +184,17 @@ class BaseWrapper:
             else:
                 hook_params = {}
 
-            # Add an order
-            if "order" in event_config:
-                order = event_config["order"]
-            else:
-                order = DEFAULT_ORDER
-
             # If one configured_hook_events is in this config.
             if configured_hook_events == "always" or set(configured_hook_events) & set(hook_events_of_mapping):
                 from pypads.pypads import get_current_pads
                 pads = get_current_pads()
                 fns = pads.function_registry.find_functions(log_event, lib=library, version=version)
                 if fns:
+                    # sort logger order
+                    fns = list(fns)
+                    fns.sort(key=lambda f: f.order())
                     for fn in fns:
-                        output.append((fn, hook_params, order))
-        output.sort(key=lambda t: t[2])
+                        output.append((fn, hook_params))
         return output
 
     @classmethod

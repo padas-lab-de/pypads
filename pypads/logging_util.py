@@ -21,6 +21,18 @@ def get_base_folder():
     return os.path.join(expanduser("~"), ".pypads", run.info.experiment_id, run.info.run_id) + os.path.sep
 
 
+def get_run_folder():
+    """
+    Get the folder holding the run information.
+    :return:
+    """
+    run = mlflow.active_run()
+    if run is None:
+        raise ValueError("No active run is defined.")
+    # TODO use artifact download if needed or load artifact. Don't hardcode .mlflow
+    return os.path.join(expanduser("~"), ".mlruns", run.info.experiment_id, run.info.run_id)
+
+
 # --- Clean tmp files after run ---
 original_end = mlflow.end_run
 
@@ -47,6 +59,15 @@ def all_tags(experiment_id):
     ds_infos = client.list_run_infos(experiment_id)
     for i in ds_infos:
         yield mlflow.get_run(i.run_id).data.tags
+
+
+def try_read_artifact(file_name):
+    # TODO defensive
+    base_path = get_run_folder()
+    path = os.path.join(base_path, "artifacts", file_name)
+    with open(path, "r") as meta:
+        data = meta.readlines()
+    return data
 
 
 def try_write_artifact(file_name, obj, write_format, preserve_folder=True):

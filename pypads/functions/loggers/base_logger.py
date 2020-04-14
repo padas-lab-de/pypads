@@ -11,6 +11,15 @@ from pypads.functions.loggers.mixins import DependencyMixin, DefensiveCallableMi
     IntermediateCallableMixin, NoCallAllowedError, OrderMixin, ConfigurableCallableMixin
 
 
+class PassThroughException(Exception):
+    """
+    Exception to be passed from _pre / _post and not be caught by the defensive logger.
+    """
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+
 class FunctionWrapper(TimedCallableMixin):
     """
     Holds the given function in a timed callable.
@@ -48,7 +57,7 @@ class LoggingExecutor(DefensiveCallableMixin, FunctionWrapper, ConfigurableCalla
 
             # Ignore if only pre or post where defined
             return None, 0
-        except NoCallAllowedError as e:
+        except (NoCallAllowedError, PassThroughException) as e:
 
             # Pass No Call Allowed Error through
             raise e
@@ -61,6 +70,7 @@ class LoggingExecutor(DefensiveCallableMixin, FunctionWrapper, ConfigurableCalla
                     "Tracking failed for " + str(_pypads_env.call) + " with: " + str(error))
             except Exception as e:
                 logger.error("Tracking failed for " + str(_pypads_env.call.call_id.instance) + " with: " + str(error))
+            return None, 0
 
 
 # noinspection PyBroadException
@@ -96,7 +106,17 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
             # Try to call the original unwrapped function if something broke
             original = _pypads_env.call.call_id.context.original(_pypads_env.callback)
             if callable(original):
-                return original(ctx, *args, **kwargs)
+                try:
+                    logger.error("Trying to recover from: " + str(e))
+                    out = original(ctx, *args, **kwargs)
+                    logger.success("Succeeded recovering on error : " + str(e))
+                    return out
+                except TypeError as e:
+                    logger.error("Recovering failed due to: " + str(
+                        e) + ". Trying to call without passed ctx. This might be due to an error in the wrapping.")
+                    out = original(*args, **kwargs)
+                    logger.success("Succeeded recovering on error : " + str(e))
+                    return out
             else:
 
                 # Original function was not accessiblete
@@ -128,25 +148,31 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
         """
         raise NotImplementedError()
 
+    def _extract_runtime(self, out, _pypads_env, label):
+        if type(out) is tuple and len(out) is 2:
+            _return = out[0]
+            time = out[1]
+            if time != 0:
+                add_run_time(self, str(_pypads_env.call) + "." + self.__class__.__name__ + "." + label, time)
+
     def __real_call__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
         # Add the static parameters to our passed parameters
         _pypads_hook_params = {**self._static_parameters, **_pypads_env.parameter}
 
         _pre_result = None
         try:
-            _pre_result, time = self._pre(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs,
-                                          **_pypads_hook_params)
-            if time != 0:
-                add_run_time(self, str(_pypads_env.call) + "." + self.__class__.__name__ + ".__post__", time)
+
+            out = self._pre(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs,
+                            **_pypads_hook_params)
+            self._extract_runtime(out, _pypads_env, "__pre__")
         except TimingDefined:
             pass
         _return = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs, **_pypads_hook_params)
 
         try:
-            _, time = self._post(ctx, _pypads_pre_return=_pre_result, _pypads_result=_return, _pypads_env=_pypads_env,
-                                 _args=args, _kwargs=kwargs, **_pypads_hook_params)
-            if time != 0:
-                add_run_time(self, str(_pypads_env.call) + "." + self.__class__.__name__ + ".__post__", time)
+            out = self._post(ctx, _pypads_pre_return=_pre_result, _pypads_result=_return, _pypads_env=_pypads_env,
+                             _args=args, _kwargs=kwargs, **_pypads_hook_params)
+            self._extract_runtime(out, _pypads_env, "__post__")
         except TimingDefined:
             pass
         return _return

@@ -147,7 +147,7 @@ class FunctionWrapper(BaseWrapper):
                         out = callback(*args, **kwargs)
                         return out
 
-                    for (h, params, order) in hooks:
+                    for (h, params) in hooks:
                         c = cls._add_hook(h, params, callback, call, mapping)
                         if c:
                             callback = c
@@ -169,10 +169,10 @@ class FunctionWrapper(BaseWrapper):
                     # for every hook add
                     if cls._is_skip_recursion(accessor):
                         logger.info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
-                        out = callback(*args, **kwargs)
+                        out = callback(self, *args, **kwargs)
                         return out
 
-                    for (h, params, order) in hooks:
+                    for (h, params) in hooks:
                         c = cls._add_hook(h, params, callback, call, mapping)
                         if c:
                             callback = types.MethodType(c, self)
@@ -193,10 +193,10 @@ class FunctionWrapper(BaseWrapper):
                     # for every hook add
                     if cls._is_skip_recursion(accessor):
                         logger.info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
-                        out = callback(*args, **kwargs)
+                        out = callback(cls, *args, **kwargs)
                         return out
 
-                    for (h, params, order) in hooks:
+                    for (h, params) in hooks:
                         c = cls._add_hook(h, params, callback, call, mapping)
                         if c:
                             callback = types.MethodType(c, cls)
@@ -218,10 +218,10 @@ class FunctionWrapper(BaseWrapper):
                     # for every hook add
                     if cls._is_skip_recursion(accessor):
                         logger.info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
-                        out = callback(*args, **kwargs)
+                        out = callback(self, *args, **kwargs)
                         return out
 
-                    for (h, params, order) in hooks:
+                    for (h, params) in hooks:
                         c = cls._add_hook(h, params, callback, call, mapping)
                         if c:
                             callback = types.MethodType(c, self)

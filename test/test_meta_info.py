@@ -8,18 +8,24 @@ class PypadsHookTest(unittest.TestCase):
         # Activate tracking of pypads
         from pypads.base import PyPads
         tracker = PyPads()
+        meta = "{'url': 'https://some.param.url'}"
+        tracker.api.log_param("some_param", 1, meta=meta)
 
-        tracker.api.log_param("some_param", 1, meta="{'url': 'https://some.param.url'}")
-        tracker.api.end_run()
+        # --------------------------- asserts ---------------------------
+        assert tracker.api.param_meta("some_param")[0] == meta
+        # !-------------------------- asserts ---------------------------
 
     def test_track_metric(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
         tracker = PyPads()
+        meta = "{'url': 'https://some.metric.url'}"
+        tracker.api.log_metric("some_metric", 1, meta=meta)
 
-        tracker.api.log_metric("some_metric", 1, meta="{'url': 'https://some.param.url'}")
-        tracker.api.end_run()
+        # --------------------------- asserts ---------------------------
+        assert tracker.api.metric_meta("some_metric")[0] == meta
+        # !-------------------------- asserts ---------------------------
 
     def test_track_artifact(self):
         # --------------------------- setup of the tracking ---------------------------
@@ -28,6 +34,9 @@ class PypadsHookTest(unittest.TestCase):
         tracker = PyPads()
 
         obj = object()
+        meta = "{'url': 'https://some.atrifact.url'}"
+        tracker.api.log_mem_artifact("some_artifact", obj, meta=meta)
 
-        tracker.api.log_mem_artifact("some_artifact", obj, meta="{'url': 'https://some.atrifact.url'}")
-        tracker.api.end_run()
+        # --------------------------- asserts ---------------------------
+        assert tracker.api.artifact_meta("some_artifact")[0] == meta
+        # !-------------------------- asserts ---------------------------
