@@ -22,7 +22,7 @@ class MappingSklearnTest(unittest.TestCase):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
-        tracker = PyPads(mapping=minimal)
+        tracker = PyPads(uri=TEST_FOLDER, mapping=minimal)
 
         import timeit
         t = timeit.Timer(sklearn_pipeline_experiment)
@@ -36,7 +36,7 @@ class MappingSklearnTest(unittest.TestCase):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
-        tracker = PyPads(mapping=regex)
+        tracker = PyPads(uri=TEST_FOLDER, mapping=regex)
 
         import timeit
         t = timeit.Timer(sklearn_simple_decision_tree_experiment)

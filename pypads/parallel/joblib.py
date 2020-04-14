@@ -3,8 +3,6 @@ import time
 from functools import wraps
 from typing import List
 
-from loguru import logger
-
 from pypads.util import is_package_available
 
 if is_package_available("joblib"):
@@ -18,10 +16,11 @@ if is_package_available("joblib"):
         """Decorator used to capture the arguments of a function."""
 
         @wraps(fn)
-        def wrapped_function(*args, _pypads_cache=None, _pypads_active_run_id=None, _pypads_tracking_uri=None,
+        def wrapped_function(*args, _pypads=None, _pypads_active_run_id=None, _pypads_tracking_uri=None,
                              _pypads_affected_modules=None, _pypads_triggering_process=None, **kwargs):
             from pypads.parallel.util import _pickle_tuple, _cloudpickle_tuple
-            if _pypads_cache:
+            from pypads import logger
+            if _pypads:
                 # noinspection PyUnresolvedReferences
                 import pypads.pypads
                 import mlflow
@@ -36,10 +35,7 @@ if is_package_available("joblib"):
 
                     # TODO pickling _pypads takes a long time
                     start_time = time.time()
-                    from pypads.base import PyPads
-                    _pypads = PyPads(reload_warnings=False, affected_modules=_pypads_affected_modules,
-                                     clear_imports=True)
-                    print("Init Pypads:" + str(time.time() - start_time))
+                    logger.debug("Init Pypads in:" + str(time.time() - start_time))
                     pypads.pypads.current_pads = _pypads
 
                     def clear_mlflow():
@@ -56,25 +52,17 @@ if is_package_available("joblib"):
                 from pickle import loads
 
                 start_time = time.time()
-                l = _pickle_tuple(args[0])
-                loads(l)
-                print("Pickle of pickle:" + str(time.time() - start_time))
-
-                start_time = time.time()
                 a, b = loads(args[0])
-                print("Pickle:" + str(time.time() - start_time))
+                logger.debug("Loading args from pickle in:" + str(time.time() - start_time))
                 from cloudpickle import loads as c_loads
                 start_time = time.time()
                 wrapped_fn = c_loads(args[1])[0]
-                print("Cloudpickle:" + str(time.time() - start_time))
+                logger.debug("Loading punched function from pickle in:" + str(time.time() - start_time))
 
                 args = a
                 kwargs = b
 
-                logger.warning("Started wrapped function on process: " + str(os.getpid()))
-
-                def wrapped_fn(*args, **kwargs):
-                    print("Done")
+                logger.info("Started wrapped function on process: " + str(os.getpid()))
 
                 out = wrapped_fn(*args, **kwargs)
                 if is_new_process:
@@ -95,7 +83,7 @@ if is_package_available("joblib"):
                 args = pickled_params
                 from pypads.pypads import get_current_pads
 
-                kwargs = {"_pypads_cache": get_current_pads().cache, "_pypads_active_run_id": run.info.run_id,
+                kwargs = {"_pypads": get_current_pads(), "_pypads_active_run_id": run.info.run_id,
                           "_pypads_tracking_uri": mlflow.get_tracking_uri(),
                           "_pypads_affected_modules": punched_module_names, "_pypads_triggering_process": os.getpid()}
             return wrapped_function, args, kwargs
@@ -116,6 +104,8 @@ if is_package_available("joblib"):
     @wraps(original_call)
     def joblib_call(self, *args, **kwargs):
         from pypads.caches import PypadsCache
+        from pypads import logger
+        logger.remove()
         out = original_call(self, *args, **kwargs)
         if isinstance(out, List):
             real_out = []

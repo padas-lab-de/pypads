@@ -1,8 +1,7 @@
 import time
 from collections import OrderedDict
 
-from loguru import logger
-
+from pypads import logger
 from pypads.logging_util import WriteFormats
 
 

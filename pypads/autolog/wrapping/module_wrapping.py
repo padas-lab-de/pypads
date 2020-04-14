@@ -1,7 +1,6 @@
 import inspect
 
-from loguru import logger
-
+from pypads import logger
 from pypads.autolog.hook import make_hook_applicable_filter
 from pypads.autolog.wrapping.base_wrapper import BaseWrapper
 

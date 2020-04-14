@@ -2,8 +2,7 @@ import os
 import threading
 from collections.__init__ import OrderedDict
 
-from loguru import logger
-
+from pypads import logger
 from pypads.autolog.wrapping.base_wrapper import Context
 
 

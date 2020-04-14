@@ -2,16 +2,16 @@ import ast
 import atexit
 import glob
 import os
-import sys
 from contextlib import contextmanager
 from os.path import expanduser
 from types import FunctionType
 from typing import List, Iterable
 
 import mlflow
-from loguru import logger
 from mlflow.tracking import MlflowClient
+from mlflow.utils.autologging_utils import try_mlflow_log
 
+from pypads import logger
 from pypads.autolog.hook import Hook
 from pypads.autolog.mappings import AlgorithmMapping, MappingRegistry, AlgorithmMeta
 from pypads.autolog.pypads_import import extend_import_module, duck_punch_loader
@@ -33,9 +33,10 @@ from pypads.util import get_class_that_defined_method, dict_merge
 
 tracking_active = None
 
+
 # TODO make configurable
-logger.remove(0)
-logger.add(sys.stderr, level="WARNING")
+# logger.remove(0)
+# logger.add(sys.stderr, level="WARNING")
 
 
 class FunctionRegistry:
@@ -188,9 +189,9 @@ class PypadsApi:
         return out
 
     # ---- logging ----
-    def log_artifact(self, local_path, artifact_path, meta=None):
-        mlflow.log_artifact(local_path=local_path, artifact_path=artifact_path)
-        self._write_meta(_to_artifact_meta_name(os.path.basename(artifact_path)), meta)
+    def log_artifact(self, local_path, meta=None):
+        try_mlflow_log(mlflow.log_artifact, local_path)
+        self._write_meta(_to_artifact_meta_name(os.path.basename(local_path)), meta)
 
     def log_mem_artifact(self, name, obj, write_format=WriteFormats.text.name, preserve_folder=True, meta=None):
         try_write_artifact(name, obj, write_format, preserve_folder)
@@ -299,6 +300,7 @@ class PypadsApi:
             fn()
         # TODO alternatively punch mlflow end_run
         mlflow.end_run()
+        # TODO Loguru has a problem with pydev: sys.stdout.flush() -> ValueError: I/O operation on closed file.
     # !--- run management ----
 
 

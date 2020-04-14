@@ -3,8 +3,8 @@ from _py_abc import ABCMeta
 from abc import abstractmethod
 
 import mlflow
-from loguru import logger
 
+from pypads import logger
 from pypads.functions.analysis.call_tracker import LoggingEnv
 from pypads.functions.analysis.time_keeper import TimingDefined, add_run_time
 from pypads.functions.loggers.mixins import DependencyMixin, DefensiveCallableMixin, TimedCallableMixin, \
@@ -20,7 +20,7 @@ class PassThroughException(Exception):
         super().__init__(*args)
 
 
-class FunctionWrapper(TimedCallableMixin):
+class FunctionHolder(TimedCallableMixin):
     """
     Holds the given function in a timed callable.
     """
@@ -37,7 +37,7 @@ class FunctionWrapper(TimedCallableMixin):
         return self._fn(*args, **kwargs)
 
 
-class LoggingExecutor(DefensiveCallableMixin, FunctionWrapper, ConfigurableCallableMixin):
+class LoggingExecutor(DefensiveCallableMixin, FunctionHolder, ConfigurableCallableMixin):
     __metaclass__ = ABCMeta
     """
     Pre or Post executor for the logging function.
@@ -188,7 +188,7 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
         :param _pypads_hook_params:
         :return:
         """
-        _return, time = FunctionWrapper(fn=_pypads_env.callback)(*_args, **_kwargs)
+        _return, time = FunctionHolder(fn=_pypads_env.callback)(*_args, **_kwargs)
         try:
             add_run_time(None, str(_pypads_env.call), time)
         except TimingDefined as e:

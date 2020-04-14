@@ -1,4 +1,4 @@
-from loguru import logger
+from pypads import logger
 
 from .mappings import name_mappings
 from .parameter import Parameter

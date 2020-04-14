@@ -1,4 +1,5 @@
 import inspect
+from types import ModuleType
 
 from pypads.autolog.wrapping.base_wrapper import Context
 from pypads.autolog.wrapping.class_wrapping import ClassWrapper
@@ -21,7 +22,14 @@ def wrap(wrappee, ctx, mapping):
     """
     if not str(wrappee).startswith("_pypads"):
         if not isinstance(ctx, Context):
-            ctx = Context(ctx)
+            try:
+                ctx = Context(ctx)
+            except ValueError as e:
+
+                dummy = ModuleType("dummy_module")
+                if inspect.isfunction(wrappee):
+                    setattr(dummy, wrappee.__name__, wrappee)
+                ctx = Context(dummy)
 
         if inspect.ismodule(wrappee):
             return ModuleWrapper.wrap(wrappee, ctx, mapping)

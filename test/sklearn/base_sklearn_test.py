@@ -1,4 +1,5 @@
 # ---- Experiments ----
+
 from test.base_test import BaseTest
 
 
@@ -52,8 +53,8 @@ def sklearn_pipeline_experiment():
 
 # !---- Experiments ----
 
-
 class BaseSklearnTest(BaseTest):
 
     def setUp(self):
         print("Starting sklearn test...")
+        super().setUp()

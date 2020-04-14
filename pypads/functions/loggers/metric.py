@@ -1,7 +1,7 @@
 import mlflow
-from loguru import logger
 from mlflow.utils.autologging_utils import try_mlflow_log
 
+from pypads import logger
 from pypads.functions.loggers.base_logger import LoggingFunction
 from pypads.logging_util import try_write_artifact, WriteFormats
 

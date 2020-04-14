@@ -2,6 +2,7 @@ import os
 from _py_abc import ABCMeta
 from abc import abstractmethod
 
+from pypads import logger
 from pypads.functions.loggers.mixins import DependencyMixin, OrderMixin, TimedCallableMixin, IntermediateCallableMixin, \
     ConfigurableCallableMixin
 
@@ -21,6 +22,10 @@ class PreRunFunction(IntermediateCallableMixin, TimedCallableMixin, DependencyMi
     def _call(self, pads, *args, **kwargs):
         pass
 
+    def __real_call__(self, *args, **kwargs):
+        from pypads.pypads import get_current_pads
+        return self._call(get_current_pads(), *args, **kwargs)
+
 
 class RunInfo(PreRunFunction):
 
@@ -29,7 +34,7 @@ class RunInfo(PreRunFunction):
         return ["pip"]
 
     def _call(self, pads, *args, **kwargs):
-        print("Tracking execution to run with id " + pads.api.active_run().info.run_id)
+        logger.info("Tracking execution to run with id " + pads.api.active_run().info.run_id)
 
         # Execute pip freeze
         try:
@@ -49,13 +54,17 @@ class RunLogger(PreRunFunction):
         from pypads.logging_util import get_base_folder
         folder = get_base_folder()
 
-        from loguru import logger
-        lid = logger.add(os.path.join(folder, "run_" + _api.active_run().info.run_id + ".log"), rotation="10 KB")
+        # TODO loguru has problems with multiprocessing / make rotation configurable etc
+        lid = logger.add(os.path.join(folder, "run_" + _api.active_run().info.run_id + ".log"), rotation="50 MB",
+                         enqueue=True)
 
         import glob
 
         def remove_logger():
-            logger.remove(lid)
+            try:
+                logger.remove(lid)
+            except Exception:
+                pass
             for file in glob.glob(os.path.join(folder, "run_*.log")):
                 pads.api.log_artifact(file)
 

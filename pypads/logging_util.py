@@ -5,9 +5,10 @@ from enum import Enum
 from os.path import expanduser
 
 import mlflow
-from loguru import logger
 from mlflow.tracking import MlflowClient
 from mlflow.utils.autologging_utils import try_mlflow_log
+
+from pypads import logger
 
 
 def get_base_folder():
@@ -30,7 +31,7 @@ def get_run_folder():
     if run is None:
         raise ValueError("No active run is defined.")
     # TODO use artifact download if needed or load artifact. Don't hardcode .mlflow
-    return os.path.join(expanduser("~"), ".mlruns", run.info.experiment_id, run.info.run_id)
+    return os.path.join(mlflow.get_tracking_uri(), run.info.experiment_id, run.info.run_id)
 
 
 # --- Clean tmp files after run ---

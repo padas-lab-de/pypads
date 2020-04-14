@@ -3,7 +3,7 @@ from _py_abc import ABCMeta
 from abc import abstractmethod
 from copy import copy
 
-from loguru import logger
+from pypads import logger
 
 DEFAULT_ORDER = 1
 
@@ -13,10 +13,7 @@ class Context:
 
     def __init__(self, context):
         if context is None:
-            class DummyClass:
-                pass
-
-            context = DummyClass
+            raise ValueError("A context has to be passed for a object to be wrapped.")
         self._c = context
 
     def overwrite(self, key, obj):
@@ -130,7 +127,7 @@ class Context:
 
         if defining_class and defining_class is not object:
             return Context(defining_class)
-        return self._c
+        return None
 
     @property
     def container(self):

@@ -1,8 +1,8 @@
 import ast
 
 import mlflow
-from loguru.__init__ import logger
 
+from pypads import logger
 from pypads.base import PyPads, CONFIG_NAME
 
 # Cache configs for runs. Each run could is for now static in it's config.
@@ -59,7 +59,6 @@ def is_nested_run():
 def is_intermediate_run():
     pads = get_current_pads()
     return pads.api.is_intermediate_run()
-
 
 def get_current_config(default=None):
     """

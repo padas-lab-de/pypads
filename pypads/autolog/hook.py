@@ -2,7 +2,7 @@ import re
 from _py_abc import ABCMeta
 from abc import abstractmethod
 
-from loguru import logger
+from pypads import logger
 
 
 class Hook:

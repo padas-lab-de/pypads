@@ -5,8 +5,7 @@ from itertools import chain
 from os.path import expanduser
 from typing import List
 
-from loguru import logger
-
+from pypads import logger
 from pypads.autolog.hook import get_hooks
 
 mapping_files = glob.glob(expanduser("~") + ".pypads/bindings/**.json")

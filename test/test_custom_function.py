@@ -1,23 +1,38 @@
 import sys
 import unittest
 
+from test.base_test import RanLogger, TEST_FOLDER
+
 
 def experiment():
     print("I'm an module level experiment")
     return "I'm a return value."
 
 
+logger = RanLogger()
+
+event_mapping = {
+    "ran_logger": logger
+}
+
+config = {"events": {
+    "ran_logger": {"on": ["pypads_log"]},
+},
+    "recursion_identity": False,
+    "recursion_depth": -1}
+
+
 class PypadsCustomFunctionTest(unittest.TestCase):
 
     def test_api(self):
         """
-        This example will track the experiment exection with the default configuration.
+        This example will track the experiment call and default event and context.
         :return:
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
-        tracker = PyPads()
+        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
 
         tracker.api.track(experiment, ctx=sys.modules[__name__])
 
@@ -26,44 +41,46 @@ class PypadsCustomFunctionTest(unittest.TestCase):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        # TODO
+        from pypads.pypads import get_current_pads
+        pads = get_current_pads()
+        assert pads.cache.run_exists(id(logger))
         # !-------------------------- asserts ---------------------------
-        tracker.api.end_run()
 
     def test_api_inline(self):
         """
-        This example will track the experiment exection with the default configuration.
+        This example will track the experiment with call and passed event and no context.
         :return:
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
-        tracker = PyPads()
+        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
 
         def experiment():
             print("I'm an function level experiment")
             return "I'm a return value."
 
-        experiment = tracker.api.track(experiment, events=["pypads_fit"])
+        experiment = tracker.api.track(experiment, events=["pypads_log"])
 
         import timeit
         t = timeit.Timer(experiment)
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        # TODO
+        from pypads.pypads import get_current_pads
+        pads = get_current_pads()
+        assert pads.cache.run_exists(id(logger))
         # !-------------------------- asserts ---------------------------
-        tracker.api.end_run()
 
     def test_decorator(self):
         """
-        This example will track the experiment exection with the default configuration.
+        This example will track the experiment exection with the default event.
         :return:
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
-        tracker = PyPads()
+        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
 
         @tracker.decorators.track()
         def experiment():
@@ -75,21 +92,22 @@ class PypadsCustomFunctionTest(unittest.TestCase):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        # TODO
+        from pypads.pypads import get_current_pads
+        pads = get_current_pads()
+        assert pads.cache.run_exists(id(logger))
         # !-------------------------- asserts ---------------------------
-        tracker.api.end_run()
 
     def test_fit_decorator(self):
         """
-        This example will track the experiment exection with the default configuration.
+        This example will track the experiment exection with passed event.
         :return:
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
-        tracker = PyPads()
+        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
 
-        @tracker.decorators.track(event="pypads_fit")
+        @tracker.decorators.track(event="pypads_log")
         def experiment():
             print("I'm an function level experiment")
             return "I'm a return value."
@@ -99,47 +117,44 @@ class PypadsCustomFunctionTest(unittest.TestCase):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        # TODO
+        from pypads.pypads import get_current_pads
+        pads = get_current_pads()
+        assert pads.cache.run_exists(id(logger))
         # !-------------------------- asserts ---------------------------
-        tracker.api.end_run()
 
     def test_fail_decorator(self):
         """
-        This example will track the experiment exection with the default configuration.
+        This example will track a failure in a decorated function.
         :return:
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
-        tracker = PyPads()
+        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
 
-        @tracker.decorators.track(event="pypads_fit")
+        @tracker.decorators.track(event="pypads_log")
         def experiment():
             print("I'm an function level experiment")
             raise Exception("Planed failure")
 
-        import timeit
-        t = timeit.Timer(experiment)
-        print(t.timeit(1))
-
         # --------------------------- asserts ---------------------------
-        # TODO
+        with self.assertRaises(Exception):
+            experiment()
         # !-------------------------- asserts ---------------------------
-        tracker.api.end_run()
 
     def test_retry(self):
         """
-        This example will track the experiment exection with the default configuration.
+        This example will track a failure and only work on the second run.
         :return:
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
-        tracker = PyPads()
+        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
 
         i = 0
 
-        @tracker.decorators.track(event="pypads_fit")
+        @tracker.decorators.track(event="pypads_log")
         def experiment():
             print("I'm an function level experiment")
             nonlocal i
@@ -154,6 +169,8 @@ class PypadsCustomFunctionTest(unittest.TestCase):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
+        from pypads.pypads import get_current_pads
+        pads = get_current_pads()
+        assert pads.cache.run_exists(id(logger))
         # TODO
         # !-------------------------- asserts ---------------------------
-        tracker.api.end_run()

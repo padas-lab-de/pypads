@@ -1,4 +1,4 @@
-from loguru import logger
+from pypads import logger
 
 from pypads.autolog.hook import find_applicable_hooks
 from pypads.autolog.wrapping.base_wrapper import BaseWrapper

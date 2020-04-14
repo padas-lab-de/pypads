@@ -6,8 +6,7 @@ from importlib._bootstrap_external import PathFinder
 # noinspection PyUnresolvedReferences
 from multiprocessing import Value
 
-from loguru import logger
-
+from pypads import logger
 from pypads.autolog.mappings import AlgorithmMapping
 from pypads.autolog.wrapping.base_wrapper import Context
 from pypads.autolog.wrapping.class_wrapping import punched_classes

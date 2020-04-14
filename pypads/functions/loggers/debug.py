@@ -1,4 +1,4 @@
-from loguru import logger
+from pypads import logger
 
 from pypads.functions.loggers.base_logger import LoggingFunction
 

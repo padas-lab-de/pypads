@@ -1,7 +1,7 @@
 import mlflow
-from loguru import logger
 from mlflow.utils.autologging_utils import try_mlflow_log
 
+from pypads import logger
 from pypads.functions.analysis.call_tracker import LoggingEnv
 from pypads.functions.analysis.validation.generic_visitor import default_visitor
 from pypads.functions.loggers.base_logger import LoggingFunction

@@ -48,15 +48,15 @@ class Third(LoggingFunction):
 
 
 event_mapping = {
-    "first": First(order=3),
-    "second": Second(order=2),
-    "third": Third(order=1)
+    "first": First(),
+    "second": Second(),
+    "third": Third()
 }
 
 config = {"events": {
-    "first": {"on": ["order"]},
-    "second": {"on": ["order"]},
-    "third": {"on": ["order"]},
+    "first": {"on": ["order"], "order": 3},
+    "second": {"on": ["order"], "order": 2},
+    "third": {"on": ["order"], "order": 1},
 },
     "recursion_identity": False,
     "recursion_depth": -1}
@@ -72,7 +72,7 @@ class PypadsOrderTest(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
-        tracker = PyPads(config=config, logging_fns=event_mapping)
+        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
         tracker.api.track(experiment, events=["order"], ctx=sys.modules[__name__])
 
         import timeit

@@ -110,7 +110,7 @@ class PypadsKerasTest(unittest.TestCase):
         # Activate tracking of pypads
         from pypads.base import PyPads
         from pypads.base import DEFAULT_LOGGING_FNS, DEFAULT_CONFIG
-        PyPads(config=dict_merge(DEFAULT_CONFIG, DEFAULT_keras_CONFIG),
+        PyPads(uri=TEST_FOLDER, config=dict_merge(DEFAULT_CONFIG, DEFAULT_keras_CONFIG),
                logging_fns=dict_merge(DEFAULT_LOGGING_FNS, DEFAULT_Keras_MAPPING))
 
         import timeit
@@ -127,7 +127,7 @@ class PypadsKerasTest(unittest.TestCase):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
-        tracker = PyPads()
+        tracker = PyPads(uri=TEST_FOLDER)
 
         import timeit
         t = timeit.Timer(keras_simple_sequential_experiment)
@@ -142,7 +142,7 @@ class PypadsKerasTest(unittest.TestCase):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
-        PyPads()
+        PyPads(uri=TEST_FOLDER)
 
         import timeit
         t = timeit.Timer(keras_mlp_for_multi_class_softmax_classification)
@@ -156,7 +156,7 @@ class PypadsKerasTest(unittest.TestCase):
     def test_keras_autolog(self):
         # Activate tracking of pypads
         from pypads.base import PyPads
-        PyPads(config={"events": {
+        PyPads(uri=TEST_FOLDER, config={"events": {
             "autolog": {"on": ["pypads_fit"]},
             "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metrics"]}
         }

@@ -2,15 +2,11 @@ import types
 from contextlib import contextmanager
 from functools import wraps
 
-from loguru import logger
-
+from pypads import logger
 from pypads.autolog.wrapping.base_wrapper import BaseWrapper, Context
 from pypads.autolog.wrapping.module_wrapping import punched_module_names
 from pypads.functions.analysis.call_tracker import CallAccessor, FunctionReference, add_call, LoggingEnv, finish_call, \
     Call
-
-
-# from boltons.funcutils import wraps
 
 
 class FunctionWrapper(BaseWrapper):
@@ -63,21 +59,20 @@ class FunctionWrapper(BaseWrapper):
 
         # If there is no defining class we can't wrap on class
         if not defining_class:
-            logger.warning(
-                "Defining class is None on context '" + str(context) + "' for fn '" + str(fn) + "' Omit logging.")
-            return fn
+            logger.warning("Defining class is None on context '" + str(context) + "' for fn '" + str(
+                fn) + "'. Class punching might be lost in newly spawned processes.")
+        else:
+            # Add the module to the list of modules which where changed
+            if hasattr(defining_class.container, "__module__"):
+                punched_module_names.add(defining_class.container.__module__)
 
-        # Add the module to the list of modules which where changed
-        if hasattr(defining_class.container, "__module__"):
-            punched_module_names.add(defining_class.container.__module__)
-
-        # Get fn from defining class
-        fn = None
-        try:
-            fn = getattr(defining_class.container, fn_name)
-        except Exception as e:
-            context.real_context(fn.__name__)
-            logger.warning("Defining class doesn't define our function. Extraction failed: " + str(e))
+            # Get real fn from defining class
+            fn = None
+            try:
+                fn = getattr(defining_class.container, fn_name)
+            except Exception as e:
+                context.real_context(fn.__name__)
+                logger.warning("Defining class doesn't define our function. Extraction failed: " + str(e))
 
         # skip wrong extractions
         if not fn or not callable(fn):
@@ -97,7 +92,7 @@ class FunctionWrapper(BaseWrapper):
 
         hooks = cls._get_hooked_fns(fn, mapping)
         if len(hooks) > 0:
-            fn_reference = FunctionReference(defining_class, fn)
+            fn_reference = FunctionReference(context, fn)
             return cls.wrap_method_helper(fn_reference=fn_reference, hooks=hooks, mapping=mapping)
 
     @classmethod
@@ -204,6 +199,7 @@ class FunctionWrapper(BaseWrapper):
                     # start executing the stack
                     out = callback(*args, **kwargs)
                 return out
+
         elif fn_reference.is_wrapped():
             tmp_fn = getattr(fn_reference.context.container, fn.__name__)
 
@@ -307,7 +303,7 @@ class FunctionWrapper(BaseWrapper):
             if set([k for k, v in kwargs.items()]) & set(
                     [k for k, v in env.parameter.items()]):
                 logger.warning("Hook parameter is overwriting a parameter in the standard "
-                        "model call. This most likely will produce side effects.")
+                               "model call. This most likely will produce side effects.")
 
             if env.hook:
                 return env.hook(_self, _pypads_env=_pypads_env, *args, **kwargs)

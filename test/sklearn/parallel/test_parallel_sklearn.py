@@ -49,7 +49,7 @@ def parallel_tracking(min_samples_leaf=1):
     # --------------------------- setup of the tracking ---------------------------
     # Activate tracking of pypads
     from pypads.base import PyPads
-    tracker = PyPads()
+    tracker = PyPads(uri=TEST_FOLDER)
     sklearn_simple_decision_tree_experiment(min_samples_leaf=min_samples_leaf)
     tracker.api.end_run()
     return min_samples_leaf
@@ -87,7 +87,7 @@ class ParallelSklearnTest(unittest.TestCase):
 
     def test_pool_execution_single_tracker(self):
         from pypads.base import PyPads
-        tracker = PyPads()
+        tracker = PyPads(uri=TEST_FOLDER)
         import timeit
         t = timeit.Timer(pool_execution(parallel_no_tracking, punch_dummy_gen()))
         print(t.timeit(1))
@@ -99,7 +99,7 @@ class ParallelSklearnTest(unittest.TestCase):
 
     def test_process_execution_single_tracker(self):
         from pypads.base import PyPads
-        tracker = PyPads()
+        tracker = PyPads(uri=TEST_FOLDER)
         import timeit
         t = timeit.Timer(process_execution(parallel_no_tracking, punch_dummy_gen()))
         print(t.timeit(1))
@@ -111,9 +111,9 @@ class ParallelSklearnTest(unittest.TestCase):
 
     def test_joblib_execution_single_tracker(self):
         # from pypads.base import PyPads
-        # tracker = PyPads()
+        # tracker = PyPads(uri=TEST_FOLDER)
         from pypads.base import PyPads
-        tracker = PyPads(reload_modules=True)
+        tracker = PyPads(uri=TEST_FOLDER, reload_modules=True)
         import timeit
         t = timeit.Timer(joblib_execution(parallel_no_tracking, punch_dummy_gen()))
         print(t.timeit(1))
@@ -125,7 +125,7 @@ class ParallelSklearnTest(unittest.TestCase):
         from pypads.base import PyPads
         from test.test_classes.dummy_classes import _get_punch_dummy_mapping
         # TODO PunchDummy2 has PunchDummy as reference
-        tracker = PyPads(mapping=_get_punch_dummy_mapping(), reload_modules=True)
+        tracker = PyPads(uri=TEST_FOLDER, mapping=_get_punch_dummy_mapping(), reload_modules=True)
         assert PunchDummy._pypads_wrapped
         assert PunchDummy2._pypads_wrapped
         assert dummy2._pypads_wrapped
@@ -136,7 +136,7 @@ class ParallelSklearnTest(unittest.TestCase):
         from sklearn.pipeline import Pipeline
         pipeline = Pipeline(steps=[('pca', pca)])
         from pypads.base import PyPads
-        tracker = PyPads(reload_modules=True)
+        tracker = PyPads(uri=TEST_FOLDER, reload_modules=True)
         assert PCA._pypads_wrapped
         assert pca._pypads_wrapped
         assert Pipeline._pypads_wrapped

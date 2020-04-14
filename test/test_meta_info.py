@@ -1,13 +1,13 @@
-import unittest
+from test.base_test import BaseTest, TEST_FOLDER
 
 
-class PypadsHookTest(unittest.TestCase):
+class PypadsHookTest(BaseTest):
 
     def test_track_param(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
-        tracker = PyPads()
+        tracker = PyPads(uri=TEST_FOLDER)
         meta = "{'url': 'https://some.param.url'}"
         tracker.api.log_param("some_param", 1, meta=meta)
 
@@ -19,7 +19,7 @@ class PypadsHookTest(unittest.TestCase):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
-        tracker = PyPads()
+        tracker = PyPads(uri=TEST_FOLDER)
         meta = "{'url': 'https://some.metric.url'}"
         tracker.api.log_metric("some_metric", 1, meta=meta)
 
@@ -31,7 +31,7 @@ class PypadsHookTest(unittest.TestCase):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
-        tracker = PyPads()
+        tracker = PyPads(uri=TEST_FOLDER)
 
         obj = object()
         meta = "{'url': 'https://some.atrifact.url'}"

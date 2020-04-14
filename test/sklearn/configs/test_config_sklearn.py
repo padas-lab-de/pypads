@@ -10,7 +10,7 @@ class ConfigSklearnTest(BaseSklearnTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.base import PyPads
-        tracker = PyPads(config={"recursion_depth": 0})
+        tracker = PyPads(uri=TEST_FOLDER, config={"recursion_depth": 0})
 
         import timeit
         t = timeit.Timer(sklearn_simple_decision_tree_experiment)

@@ -1,8 +1,8 @@
 import sys
 
 import mlflow
-from loguru import logger
 
+from pypads import logger
 from pypads.util import dict_merge
 
 
