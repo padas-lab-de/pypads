@@ -2,9 +2,10 @@ import glob
 import json
 import os
 from itertools import chain
-from logging import info, error
 from os.path import expanduser
 from typing import List
+
+from loguru import logger
 
 from pypads.autolog.hook import get_hooks
 
@@ -25,6 +26,9 @@ class AlgorithmMeta:
     @property
     def concepts(self):
         return self._concepts
+
+    def __eq__(self, other):
+        return self.name == other.name
 
 
 class AlgorithmMapping:
@@ -78,6 +82,16 @@ class AlgorithmMapping:
     def __str__(self):
         return "Mapping[" + str(self.file) + ":" + str(self.reference) + ", lib=" + str(self.library) + ", alg=" + str(
             self.algorithm) + ", hooks=" + str(self.hooks) + "]"
+
+    def __eq__(self, other):
+        # TODO also check for reference, file,, in_collection?
+        if self.hooks and other.hooks:
+            return set(self.hooks) == set(
+                other.hooks) and self.algorithm == other.algorithm and self.library == other.library
+        elif not self.hooks and not other.hooks:
+            return self.algorithm == other.algorithm and self.library == other.library
+        else:
+            return False
 
 
 class MappingCollection:
@@ -174,14 +188,15 @@ class MappingRegistry:
             key = mapping.lib
 
         if key is None:
-            error("Couldn't add mapping " + str(mapping) + " to the pypads mapping registry. Lib or key are undefined.")
+            logger.error(
+                "Couldn't add mapping " + str(mapping) + " to the pypads mapping registry. Lib or key are undefined.")
         else:
             self._mappings[key] = mapping
 
     def load_mapping(self, path):
         with open(path) as json_file:
             name = os.path.basename(json_file.name)
-            info("Added mapping file with name: " + str(name))
+            logger.info("Added mapping file with name: " + str(name))
             content = json.load(json_file)
             self.add_mapping(MappingFile(name, json=content))
 

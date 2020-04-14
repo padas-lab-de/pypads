@@ -1,33 +1,41 @@
 import ast
+import atexit
 import glob
-import io
 import os
-import pickle
+import sys
 from contextlib import contextmanager
-from functools import wraps
-from logging import warning, debug
 from os.path import expanduser
 from types import FunctionType
-from typing import List
+from typing import List, Iterable
 
 import mlflow
+from loguru import logger
 from mlflow.tracking import MlflowClient
 
-from pypads.analysis.pipeline_detection import pipeline
 from pypads.autolog.hook import Hook
 from pypads.autolog.mappings import AlgorithmMapping, MappingRegistry, AlgorithmMeta
 from pypads.autolog.pypads_import import extend_import_module, duck_punch_loader
-from pypads.autolog.wrapping import punched_module_names
+from pypads.autolog.wrapping.module_wrapping import punched_module_names
 from pypads.caches import PypadsCache, Cache
-from pypads.functions.logging import output, input, cpu, metric, log, log_init
-from pypads.functions.run_init import isystem, iram, icpu, idisk, ipid
+from pypads.functions.analysis.call_tracker import CallTracker
+from pypads.functions.analysis.validation.parameters import Parameters
+from pypads.functions.loggers.data_flow import Input, Output
+from pypads.functions.loggers.debug import LogInit, Log
+from pypads.functions.loggers.hardware import Disk, Ram, Cpu
+from pypads.functions.loggers.metric import Metric
+from pypads.functions.loggers.mlflow.mlflow_autolog import MlflowAutologger
+from pypads.functions.loggers.pipeline_detection import PipelineTracker
+from pypads.functions.post_run.post_run import PostRunFunction
+from pypads.functions.pre_run.hardware import ISystem, IRam, ICpu, IDisk, IPid, ISocketInfo, IMacAddress
+from pypads.functions.pre_run.pre_run import RunInfo, RunLogger, PreRunFunction
 from pypads.logging_util import WriteFormats, try_write_artifact
-from pypads.mlflow.mlflow_autolog import autologgers, _is_package_available
-from pypads.util import get_class_that_defined_method
-from pypads.validation.logging_functions import parameters
+from pypads.util import get_class_that_defined_method, dict_merge
 
-current_pads = None
 tracking_active = None
+
+# TODO make configurable
+logger.remove(0)
+logger.add(sys.stderr, level="WARNING")
 
 
 class FunctionRegistry:
@@ -43,9 +51,14 @@ class FunctionRegistry:
     def __init__(self, mapping=None):
         if mapping is None:
             mapping = {}
-        self.fns = mapping
+        self.fns = {}
+        for key, value in mapping.items():
+            if isinstance(value, Iterable):
+                self._add_functions(key, value)
+            elif callable(value):
+                self._add_functions(key, {value})
 
-    def find_function(self, name, lib=None, version=None):
+    def find_functions(self, name, lib=None, version=None):
         if (name, lib, version) in self.fns:
             return self.fns[(name, lib, version)]
         elif (name, lib) in self.fns:
@@ -53,149 +66,43 @@ class FunctionRegistry:
         elif name in self.fns:
             return self.fns[name]
         else:
-            warning("Function call with name '" + name + "' is not linked with any logging functionality.")
+            pass
+            # logger.warning("Function call with name '" + name + "' is not linked with any logging functionality.")
 
-    def add_function(self, name, fn: FunctionType, lib=None, version=None):
+    def add_functions(self, name, lib=None, version=None, *args: FunctionType):
         if lib:
             if version:
-                self.fns[(name, lib, version)] = fn
+                key = (name, lib, version)
             else:
-                self.fns[(name, lib)] = fn
+                key = (name, lib)
         else:
-            self.fns[name] = fn
+            key = name
+        self._add_functions(key, args)
 
+    def _add_functions(self, key, fns):
+        if key not in self.fns:
+            self.fns[key] = set()
+        for fn in fns:
+            self.fns[key].add(fn)
 
-def _parameter_pickle(args, kwargs):
-    with io.BytesIO() as file:
-        pickle.dump((args, kwargs), file)
-        file.seek(0)
-        return file.read()
-
-
-def _parameter_cloudpickle(args, kwargs):
-    from joblib.externals.cloudpickle import dumps
-    return dumps((args, kwargs))
-
-
-# original_init_ = Process.__init__
-#
-#
-# def punched_init_(self, group=None, target=None, name=None, args=(), kwargs={}):
-#     if target:
-#         run = mlflow.active_run()
-#         if run:
-#             @wraps(target)
-#             def new_target(*args, _pypads=None, _pypads_active_run_id=None, _pypads_tracking_uri=None, _pypads_affected_modules=None, **kwargs):
-#                 import mlflow
-#                 import pypads.base
-#                 pypads.base.current_pads = _pypads
-#                 mlflow.set_tracking_uri(_pypads_tracking_uri)
-#                 mlflow.start_run(run_id=_pypads_active_run_id)
-#                 _pypads.activate_tracking(reload_warnings=False, affected_modules=_pypads_affected_modules, clear_imports=True)
-#                 out = target(*args, **kwargs)
-#                 # TODO find other way to not close run after process finishes
-#                 if len(mlflow.tracking.fluent._active_run_stack) > 0:
-#                     mlflow.tracking.fluent._active_run_stack.pop()
-#                 return out
-#
-#             target = new_target
-#             kwargs["_pypads"] = current_pads
-#             kwargs["_pypads_active_run_id"] = run.info.run_id
-#             kwargs["_pypads_tracking_uri"] = mlflow.get_tracking_uri()
-#             kwargs["_pypads_affected_modules"] = punched_module_names
-#     return original_init_(*self, group=group, target=target, name=name, args=args, kwargs=kwargs)
-#
-#
-# Process.__init__ = punched_init_
-
-if _is_package_available("joblib"):
-    import joblib
-
-    original_delayed = joblib.delayed
-
-
-    def punched_delayed(function):
-        """Decorator used to capture the arguments of a function."""
-
-        @wraps(function)
-        def wrapped_function(*args, _pypads=None, _pypads_active_run_id=None, _pypads_tracking_uri=None,
-                             _pypads_affected_modules=None, **kwargs):
-            if _pypads:
-                # noinspection PyUnresolvedReferences
-                import pypads.base
-                import mlflow
-
-                is_own_process = not pypads.base.current_pads
-                if is_own_process:
-                    import pypads
-                    pypads.base.current_pads = _pypads
-                    _pypads.activate_tracking(reload_warnings=False, affected_modules=_pypads_affected_modules,
-                                              clear_imports=True)
-                    # reactivate this run in the foreign process
-                    mlflow.set_tracking_uri(_pypads_tracking_uri)
-                    mlflow.start_run(run_id=_pypads_active_run_id, nested=True)
-
-                    def clear_mlflow():
-                        """
-                        Don't close run. This function clears the run which was reactivated from the stack to stop a closing of it.
-                        :return:
-                        """
-                        if len(mlflow.tracking.fluent._active_run_stack) == 1:
-                            mlflow.tracking.fluent._active_run_stack.pop()
-
-                    import atexit
-                    atexit.register(clear_mlflow)
-
-                from pickle import loads
-                a, b = loads(args[0])
-
-                # import pickle
-                # a, b = pickle.loads(args[0])
-
-                args = a
-                kwargs = b
-
-                out = function(*args, **kwargs)
-                return out
-            else:
-                return function(*args, **kwargs)
-
-        def delayed_function(*args, **kwargs):
-            run = mlflow.active_run()
-            if run:
-                pickled_params = (_parameter_pickle(args, kwargs),)
-                kwargs = {"_pypads": current_pads, "_pypads_active_run_id": run.info.run_id,
-                          "_pypads_tracking_uri": mlflow.get_tracking_uri(),
-                          "_pypads_affected_modules": punched_module_names}
-                args = pickled_params
-            return wrapped_function, args, kwargs
-
-        try:
-            import functools
-            delayed_function = functools.wraps(function)(delayed_function)
-        except AttributeError:
-            " functools.wraps fails on some callable objects "
-        return delayed_function
-
-
-    setattr(joblib, "delayed", punched_delayed)
 
 # --- Pypads App ---
-
 # Default init_run fns
-DEFAULT_INIT_RUN_FNS = [isystem, iram, icpu, idisk, ipid]
+DEFAULT_INIT_RUN_FNS = [RunInfo(), RunLogger(), ISystem(), IRam(), ICpu(), IDisk(), IPid(), ISocketInfo(),
+                        IMacAddress()]
+
 
 # Default event mappings. We allow to log parameters, output or input
 DEFAULT_LOGGING_FNS = {
-    "parameters": parameters,
-    "output": output,
-    "input": input,
-    "hardware": cpu,
-    "metric": metric,
-    "autolog": autologgers,
-    "pipeline": pipeline,
-    "log": log,
-    "init": log_init
+    "parameters": Parameters(),
+    "output": Output(_pypads_write_format=WriteFormats.text.name),
+    "input": Input(_pypads_write_format=WriteFormats.text.name),
+    "hardware": {Cpu(), Ram(), Disk()},
+    "metric": Metric(),
+    "autolog": MlflowAutologger(),
+    "pipeline": PipelineTracker(_pypads_pipeline_type="normal", _pypads_pipeline_args=False),
+    "log": Log(),
+    "init": LogInit()
 }
 
 # Default config.
@@ -207,17 +114,14 @@ DEFAULT_CONFIG = {"events": {
     "init": {"on": ["pypads_init"]},
     "parameters": {"on": ["pypads_fit"]},
     "hardware": {"on": ["pypads_fit"]},
-    "output": {"on": ["pypads_fit", "pypads_predict"],
-               "with": {"write_format": WriteFormats.text.name}},
-    "input": {"on": ["pypads_fit"], "with": {"write_format": WriteFormats.text.name}},
+    "output": {"on": ["pypads_fit", "pypads_predict"]},
+    "input": {"on": ["pypads_fit"], "with": {"_pypads_write_format": WriteFormats.text.name}},
     "metric": {"on": ["pypads_metric"]},
-    "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"],
-                 "with": {"pipeline_type": "normal", "pipeline_args": False}},
+    "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"]},
     "log": {"on": ["pypads_log"]}
 },
     "recursion_identity": False,
     "recursion_depth": -1,
-    "retry_on_fail": False,
     "log_on_failure": True}
 
 # Tag name to save the config to in mlflow context.
@@ -254,11 +158,11 @@ class PypadsApi:
         if events is None:
             events = ["pypads_log"]
         if ctx is not None and not hasattr(ctx, fn.__name__):
-            warning("Given context " + str(ctx) + " doesn't define " + str(fn.__name__))
+            logger.warning("Given context " + str(ctx) + " doesn't define " + str(fn.__name__))
             # TODO create dummy context
             ctx = None
         if mapping is None:
-            warning("Tracking a function without a mapping definition. A default mapping will be generated.")
+            logger.warning("Tracking a function without a mapping definition. A default mapping will be generated.")
             if '__file__' in fn.__globals__:
                 lib = fn.__globals__['__file__']
             else:
@@ -275,7 +179,7 @@ class PypadsApi:
             hooks = [Hook(e) for e in events]
             mapping = AlgorithmMapping(ctx_path + "." + fn.__name__, lib, AlgorithmMeta(fn.__name__, []), None,
                                        hooks=hooks)
-        from pypads.autolog.wrapping import wrap
+        from pypads.autolog.wrapping.wrapping import wrap
         return wrap(fn, ctx=ctx, mapping=mapping)
 
     def start_run(self, run_id=None, experiment_id=None, run_name=None, nested=False):
@@ -331,25 +235,54 @@ class PypadsApi:
                 #     mlflow.end_run()
                 #     mlflow.start_run(run_id=enclosing_run.info.run_id)
 
-    def _get_post_run(self):
+    def _get_pre_run_cache(self):
+        if not self._pypads.cache.exists("pre_run_fns"):
+            pre_run_fn_cache = Cache()
+            self._pypads.cache.run_add("pre_run_fns", pre_run_fn_cache)
+        return self._pypads.cache.get("pre_run_fns")
+
+    def register_pre(self, name, pre_fn: PreRunFunction, silent=True):
+        cache = self._get_pre_run_cache()
+        if cache.exists(name):
+            if not silent:
+                logger.debug("Pre run fn with name '" + name + "' already exists. Skipped.")
+        else:
+            cache.add(name, pre_fn)
+
+    def register_pre_fn(self, name, fn, log_function=None, nested=True, intermediate=True, order=0, silent=True):
+        self.register_pre(name, PreRunFunction(fn=fn, nested=nested, intermediate=intermediate, order=order,
+                                               log_function=log_function), silent=silent)
+
+    def _get_post_run_cache(self):
         if not self._pypads.cache.run_exists("post_run_fns"):
             post_run_fn_cache = Cache()
             self._pypads.cache.run_add("post_run_fns", post_run_fn_cache)
         return self._pypads.cache.run_get("post_run_fns")
 
-    def register_post_fn(self, name, fn):
-        cache = self._get_post_run()
+    def register_post(self, name, post_fn: PostRunFunction, silent=True):
+        cache = self._get_post_run_cache()
         if cache.exists(name):
-            debug("Post run fn with name '" + name + "' already exists. Skipped.")
+            if not silent:
+                logger.debug("Post run fn with name '" + name + "' already exists. Skipped.")
         else:
-            cache.add(name, fn)
+            cache.add(name, post_fn)
+
+    def register_post_fn(self, name, fn, log_function=None, nested=True, intermediate=True, order=0, silent=True):
+        self.register_post(name, post_fn=PostRunFunction(fn=fn, nested=nested, intermediate=intermediate, order=order,
+                                                         log_function=log_function), silent=silent)
 
     def active_run(self):
         return mlflow.active_run()
 
+    def is_intermediate_run(self):
+        enclosing_run = self._pypads.cache.run_get("enclosing_run")
+        return enclosing_run is not None
+
     def end_run(self):
-        cache = self._get_post_run()
-        for name, fn in cache.items():
+        chached_fns = self._get_post_run_cache()
+        fn_list = [v for i, v in chached_fns.items()]
+        fn_list.sort(key=lambda t: t.order())
+        for fn in fn_list:
             fn()
         # TODO alternatively punch mlflow end_run
         mlflow.end_run()
@@ -381,6 +314,8 @@ class PypadsDecorators:
         return track_decorator
 
 
+# TODO pypads isn't allowed to hold a state anymore (Everything with state should be part of the caching system) - We want to be able to rebuild PyPads from the config and cache alone if possible to stop the need for pickeling pypads as a whole.
+
 class PyPads:
     """
     PyPads app. Enable automatic logging for all libs in mapping files.
@@ -389,18 +324,20 @@ class PyPads:
 
     def __init__(self, uri=None, name=None, mapping_paths=None, mapping=None, init_run_fns=None,
                  include_default_mappings=True,
-                 logging_fns=None, config=None, reload_modules=False, affected_modules=None):
+                 logging_fns=None, config=None, reload_modules=False, reload_warnings=True, clear_imports=False,
+                 affected_modules=None):
         """
         TODO
         :param uri:
         :param name:
         :param logging_fns:
         :param config:
-        :param mod_globals:
         """
+        from pypads.pypads import set_current_pads
+        set_current_pads(self)
 
-        global current_pads
-        current_pads = self
+        # Init variable to filled later in this constructor
+        self._config = None
 
         if mapping_paths is None:
             mapping_paths = []
@@ -411,12 +348,14 @@ class PyPads:
         self._api = PypadsApi(self)
         self._decorators = PypadsDecorators(self)
         self._cache = PypadsCache()
+        self._call_tracker = CallTracker(self)
 
         self._init_run_fns = init_run_fns
         self._init_mlflow_backend(uri, name, config)
         self._function_registry = FunctionRegistry(logging_fns or DEFAULT_LOGGING_FNS)
         self._init_mapping_registry(*mapping_paths, mapping=mapping, include_defaults=include_default_mappings)
-        self.activate_tracking(reload_modules=reload_modules, affected_modules=affected_modules)
+        self.activate_tracking(reload_modules=reload_modules, reload_warnings=reload_warnings,
+                               clear_imports=clear_imports, affected_modules=affected_modules)
 
     def activate_tracking(self, reload_modules=False, reload_warnings=True, clear_imports=False, affected_modules=None):
         """
@@ -446,7 +385,7 @@ class PyPads:
             for name, module in loaded_modules:
                 if _is_affected_module(name):
                     if reload_warnings:
-                        warning(
+                        logger.warning(
                             name + "was imported before PyPads. To enable tracking import PyPads before or use "
                                    "reload_modules. Every already created instance is not tracked.")
 
@@ -459,7 +398,7 @@ class PyPads:
                             loader.exec_module(module)
                             importlib.reload(module)
                         except Exception as e:
-                            debug("Couldn't reload module " + str(e))
+                            logger.debug("Couldn't reload module " + str(e))
 
                     if clear_imports:
                         del sys.modules[name]
@@ -487,22 +426,21 @@ class PyPads:
         else:
             # Run init functions if run already exists but tracking is starting for it now
             self.run_init_fns()
-        self._mlf = MlflowClient(self._uri)
-        self._experiment = self.mlf.get_experiment_by_name(name) if name else self.mlf.get_experiment(
+        _experiment = self.mlf.get_experiment_by_name(name) if name else self.mlf.get_experiment(
             run.info.experiment_id)
         if config:
-            self.config = {**DEFAULT_CONFIG, **config}
+            self.config = dict_merge({"events": {}}, DEFAULT_CONFIG, config)
         else:
-            self.config = DEFAULT_CONFIG
+            self.config = dict_merge({"events": {}}, DEFAULT_CONFIG)
 
         # override active run if used
-        if name and run.info.experiment_id is not self._experiment.experiment_id:
-            warning("Active run doesn't match given input name " + name + ". Recreating new run.")
+        if name and run.info.experiment_id is not _experiment.experiment_id:
+            logger.warning("Active run doesn't match given input name " + name + ". Recreating new run.")
             try:
-                self.api.start_run(experiment_id=self._experiment.experiment_id)
+                self.api.start_run(experiment_id=_experiment.experiment_id)
             except Exception:
                 mlflow.end_run()
-                self.api.start_run(experiment_id=self._experiment.experiment_id)
+                self.api.start_run(experiment_id=_experiment.experiment_id)
 
     def _init_mapping_registry(self, *paths, mapping=None, include_defaults=True):
         """
@@ -535,7 +473,7 @@ class PyPads:
 
     @property
     def mlf(self) -> MlflowClient:
-        return self._mlf
+        return MlflowClient(self._uri)
 
     @property
     def function_registry(self) -> FunctionRegistry:
@@ -543,24 +481,20 @@ class PyPads:
 
     @property
     def config(self):
-        return self.mlf.get_run(mlflow.active_run().info.run_id).data.tags[CONFIG_NAME]
+        if self._config:
+            return self._config
+        tags = self.mlf.get_run(mlflow.active_run().info.run_id).data.tags
+        if CONFIG_NAME not in tags:
+            raise Exception("Config for pypads is not defined.")
+        try:
+            return ast.literal_eval(tags[CONFIG_NAME])
+        except Exception as e:
+            raise Exception("Config for pypads is malformed. " + str(e))
 
     @config.setter
     def config(self, value: dict):
         mlflow.set_tag(CONFIG_NAME, value)
-
-    @property
-    def experiment(self):
-        return self._experiment
-
-    @experiment.setter
-    def experiment(self, value):
-        # noinspection PyAttributeOutsideInit
-        self._experiment = value
-
-    @property
-    def experiment_id(self):
-        return self.experiment.experiment_id
+        self._config = value
 
     @property
     def api(self):
@@ -571,67 +505,26 @@ class PyPads:
         return self._decorators
 
     @property
+    def call_tracker(self):
+        return self._call_tracker
+
+    @property
     def cache(self):
         return self._cache
 
     def run_init_fns(self):
+        self._init_run_fns.sort(key=lambda f: f.order())
         for fn in self._init_run_fns:
             if callable(fn):
                 fn(self)
 
 
-def get_current_pads() -> PyPads:
-    """
-    Get the currently active pypads instance. All duck punched objects use this function for interacting with pypads.
-    :return:
-    """
-    global current_pads
-    if not current_pads:
-        # Try to reload pads if it was already defined in the active run
-        config = get_current_config()
-
-        if config:
-            warning(
-                "PyPads seems to be missing on given run with saved configuration. Reinitializing.")
-            return PyPads(config=config)
-        else:
-            warning(
-                "PyPads has to be initialized before logging can be used. Initializing for your with default values.")
-            return PyPads()
-    return current_pads
+# --- Enfore end_run() at code exit ---
+def cleanup():
+    from pypads.pypads import get_current_pads
+    pads: PyPads = get_current_pads()
+    if pads.api.active_run():
+        pads.api.end_run()
 
 
-# Cache configs for runs. Each run could is for now static in it's config.
-configs = {}
-
-# --- Clean the config cache after run ---
-original_end = mlflow.end_run
-
-
-def end_run(*args, **kwargs):
-    configs.clear()
-    return original_end(*args, **kwargs)
-
-
-mlflow.end_run = end_run
-
-
-# !--- Clean the config cache after run ---
-
-
-def get_current_config(default=None):
-    """
-    Get configuration defined in the current mlflow run
-    :return:
-    """
-    global configs
-    active_run = mlflow.active_run()
-    if active_run in configs.keys():
-        return configs[active_run]
-    if not active_run:
-        return default
-    run = mlflow.get_run(active_run.info.run_id)
-    if CONFIG_NAME in run.data.tags:
-        configs[active_run] = ast.literal_eval(run.data.tags[CONFIG_NAME])
-        return configs[active_run]
-    return default
+atexit.register(cleanup)

@@ -1,0 +1,61 @@
+variables:
+  PIP_CACHE_DIR: "${CI_PROJECT_DIR}/.cache/pip"
+
+cache:
+  key: "pypads-${CI_JOB_NAME}"
+  paths:
+    - .cache/pip
+    - .venv
+
+stages:
+  - tests
+  - deploy
+
+# Jobs templates
+
+.install-deps-template: &install-deps
+  before_script:
+    - pip install poetry
+    - poetry --version
+    - poetry config virtualenvs.in-project true
+    - poetry install --verbose
+
+.deploy-template: &deploy
+  <<: *install-deps
+  image: python:3.8
+  stage: deploy
+
+.test-template: &test
+  <<: *install-deps
+  stage: tests
+  coverage: '/TOTAL.*\s(\d+\.\d+\%)/'
+  script:
+    - poetry run pytest test/
+  artifacts:
+    paths:
+      - tests/logs
+    when: always
+    expire_in: 1 week
+
+# Test with different python versions
+test-python-3.5:
+  <<: *test
+  image: python:3.5
+
+test-python-3.6:
+  <<: *test
+  image: python:3.6
+
+test-python-3.7:
+  <<: *test
+  image: python:3.7
+
+test-python-3.8:
+  <<: *test
+  image: python:3.8
+
+# Deploy jobs
+
+check-build:
+  <<: *deploy
+  script: poetry publish

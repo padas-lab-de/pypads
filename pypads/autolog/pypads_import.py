@@ -3,31 +3,36 @@ import sys
 import types
 from functools import wraps
 from importlib._bootstrap_external import PathFinder
-from logging import debug
 # noinspection PyUnresolvedReferences
 from multiprocessing import Value
 
+from loguru import logger
+
 from pypads.autolog.mappings import AlgorithmMapping
-from pypads.autolog.wrapping import wrap_module, wrap_class, wrap_function, punched_classes
+from pypads.autolog.wrapping.base_wrapper import Context
+from pypads.autolog.wrapping.class_wrapping import punched_classes
+from pypads.autolog.wrapping.wrapping import wrap
 
 
 def _add_found_class(mapping):
-    from pypads.base import get_current_pads
+    from pypads.pypads import get_current_pads
     return get_current_pads().mapping_registry.add_found_class(mapping)
 
 
 def _get_algorithm_mappings():
-    from pypads.base import get_current_pads
+    from pypads.pypads import get_current_pads
     return get_current_pads().mapping_registry.get_relevant_mappings()
 
 
 def _add_inherited_mapping(clazz, super_class):
     if clazz not in punched_classes:
-        found_mapping = AlgorithmMapping(
-            clazz.__module__ + "." + clazz.__qualname__, super_class._pypads_mapping.library,
-            super_class._pypads_mapping.algorithm, super_class._pypads_mapping.file, super_class._pypads_mapping.hooks)
-        found_mapping.in_collection = super_class._pypads_mapping.in_collection
-        _add_found_class(mapping=found_mapping)
+        if hasattr(super_class, "_pypads_mapping_" + super_class.__name__):
+            for mapping in getattr(super_class, "_pypads_mapping_" + super_class.__name__):
+                found_mapping = AlgorithmMapping(
+                    clazz.__module__ + "." + clazz.__qualname__, mapping.library,
+                    mapping.algorithm, mapping.file, mapping.hooks)
+                found_mapping.in_collection = mapping.in_collection
+                _add_found_class(mapping=found_mapping)
 
 
 def duck_punch_loader(spec):
@@ -63,13 +68,13 @@ def duck_punch_loader(spec):
                         for o in overlap:
                             _add_inherited_mapping(reference, o)
                 except Exception as e:
-                    debug("Skipping superclasses of " + str(reference) + ". " + str(e))
+                    logger.debug("Skipping superclasses of " + str(reference) + ". " + str(e))
 
         # TODO And every mapping.
         for mapping in _get_algorithm_mappings():
             if mapping.reference.startswith(module.__name__):
                 if mapping.reference == module.__name__:
-                    wrap_module(module, mapping)
+                    wrap(module, None, mapping)
                 else:
                     ref = mapping.reference
                     path = ref[len(module.__name__) + 1:].rsplit(".")
@@ -86,13 +91,13 @@ def duck_punch_loader(spec):
                     if obj:
                         if inspect.isclass(obj):
                             if mapping.reference == obj.__module__ + "." + obj.__name__:
-                                wrap_class(obj, ctx, mapping)
+                                wrap(obj, Context(ctx), mapping)
                                 if obj in mro_entry_history:
                                     for clazz in mro_entry_history[obj]:
                                         _add_inherited_mapping(clazz, obj)
 
                         elif inspect.isfunction(obj):
-                            wrap_function(obj.__name__, ctx, mapping)
+                            wrap(obj, Context(ctx), mapping)
         return out
 
     spec.loader.exec_module = types.MethodType(exec_module, spec.loader)

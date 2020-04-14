@@ -1,0 +1,52 @@
+{
+  "default_hooks": {
+    "modules": {
+      "fns": {}
+    },
+    "classes": {
+      "fns": {}
+    },
+    "fns": {}
+  },
+  "algorithms": [
+    {
+      "name": "sklearn classification metrics",
+      "other_names": [],
+      "implementation": {
+        "sklearn": "sklearn.metrics.classification"
+      },
+      "hooks": {
+        "pypads_metric": "always"
+      }
+    },
+    {
+      "name": "base sklearn estimator",
+      "other_names": [],
+      "implementation": {
+        "sklearn": "sklearn.base.BaseEstimator"
+      },
+      "hooks": {
+        "pypads_fit": [
+          "fit",
+          "fit_predict",
+          "fit_transform"
+        ],
+        "pypads_predict": [
+          "fit_predict",
+          "predict",
+          "score"
+        ],
+        "pypads_transform": [
+          "fit_transform",
+          "transform"
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "author": "Thomas Weißgerber",
+    "library": "sklearn",
+    "library_version": "0.19.1",
+    "mapping_version": "0.1"
+  }
+}

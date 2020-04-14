@@ -79,7 +79,7 @@ For example, "pypads_fit" is an event listener on any fit, fit_predict and fit_t
       "name": "sklearn classification metrics",
       "other_names": [],
       "implementation": {
-        "scikit-learn": "sklearn.metrics.classification"
+        "sklearn": "sklearn.metrics.classification"
       },
       "hooks": {
         "pypads_metric": "always"
@@ -92,7 +92,7 @@ This hook triggers always. If you annotate a module with this hook, all its func
       "name": "sklearn classification metrics",
       "other_names": [],
       "implementation": {
-        "scikit-learn": "sklearn.metrics.classification"
+        "sklearn": "sklearn.metrics.classification"
       },
       "hooks": {
         "pypads_metric": ["f1_score"]
@@ -105,7 +105,7 @@ Tracks function with a name matching the given Regex.
       "name": "sklearn classification metrics",
       "other_names": [],
       "implementation": {
-        "scikit-learn": "sklearn.metrics"
+        "sklearn": "sklearn.metrics"
       },
       "hooks": {
         "pypads_metric": [{"type": "package_name", "name":".*classification.*"}]

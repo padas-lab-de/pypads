@@ -2,10 +2,10 @@ import os
 import pickle
 import shutil
 from enum import Enum
-from logging import warning
 from os.path import expanduser
 
 import mlflow
+from loguru import logger
 from mlflow.tracking import MlflowClient
 from mlflow.utils.autologging_utils import try_mlflow_log
 
@@ -76,7 +76,7 @@ def try_write_artifact(file_name, obj, write_format, preserve_folder=True):
                 pickle.dump(o, fd)
                 return fd.name
         except Exception as e:
-            warning("Couldn't pickle output. Trying to save toString instead. " + str(e))
+            logger.warning("Couldn't pickle output. Trying to save toString instead. " + str(e))
             return write_text(p, o)
 
     # Options to write to
@@ -90,7 +90,7 @@ def try_write_artifact(file_name, obj, write_format, preserve_folder=True):
         if WriteFormats[write_format]:
             write_format = WriteFormats[write_format]
         else:
-            warning("Configured write format " + write_format + " not supported! ")
+            logger.warning("Configured write format " + write_format + " not supported! ")
             return
 
     path = options[write_format](path, obj)
@@ -103,7 +103,3 @@ def try_write_artifact(file_name, obj, write_format, preserve_folder=True):
             try_mlflow_log(mlflow.log_artifact, path)
     else:
         try_mlflow_log(mlflow.log_artifact, path)
-
-
-def to_folder_name(self, _pypads_context, _pypads_wrappe):
-    return os.path.join(_pypads_context.__name__, str(id(self)), _pypads_wrappe.__name__)
