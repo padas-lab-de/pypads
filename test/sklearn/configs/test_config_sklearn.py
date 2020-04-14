@@ -1,4 +1,4 @@
-from pypads.test.sklearn.base_sklearn_test import BaseSklearnTest, sklearn_simple_decision_tree_experiment
+from test.sklearn.base_sklearn_test import BaseSklearnTest, sklearn_simple_decision_tree_experiment
 
 
 class ConfigSklearnTest(BaseSklearnTest):

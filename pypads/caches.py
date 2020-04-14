@@ -103,11 +103,11 @@ class PypadsRunCache(Cache):
         return self._run.info.run_id
 
     def register_cleanup_fn(self):
-        from pypads.base import get_current_pads
+        from pypads.pypads import get_current_pads
         pads = get_current_pads()
 
         def cleanup_cache(run_id=self.run_id()):
-            from pypads.base import get_current_pads
+            from pypads.pypads import get_current_pads
             pads = get_current_pads()
             pads.cache.run_delete(run_id)
             logger.debug("Cleared run cache after run " + run_id)

@@ -1,5 +1,5 @@
 # ---- Experiments ----
-from pypads.test.base_test import BaseTest
+from test.base_test import BaseTest
 
 
 def sklearn_simple_decision_tree_experiment(min_samples_leaf=1):

@@ -187,7 +187,7 @@ class BaseWrapper:
 
             # If one configured_hook_events is in this config.
             if configured_hook_events == "always" or set(configured_hook_events) & set(hook_events_of_mapping):
-                from pypads.base import get_current_pads
+                from pypads.pypads import get_current_pads
                 pads = get_current_pads()
                 fns = pads.function_registry.find_functions(log_event, lib=library, version=version)
                 if fns:
@@ -198,5 +198,5 @@ class BaseWrapper:
 
     @classmethod
     def _get_current_config(cls):
-        from pypads.base import get_current_config
+        from pypads.pypads import get_current_config
         return get_current_config(default={"events": {}, "recursive": True})

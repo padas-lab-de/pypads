@@ -8,7 +8,7 @@ def experiment():
 
 
 def first(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
-    from pypads.base import get_current_pads
+    from pypads.pypads import get_current_pads
     pads = get_current_pads()
     print("first")
     pads.cache.run_add(0, True)
@@ -16,7 +16,7 @@ def first(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypa
 
 
 def second(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
-    from pypads.base import get_current_pads
+    from pypads.pypads import get_current_pads
     pads = get_current_pads()
     print("second")
     if not pads.cache.run_exists(0):
@@ -27,7 +27,7 @@ def second(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pyp
 
 
 def third(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
-    from pypads.base import get_current_pads
+    from pypads.pypads import get_current_pads
     pads = get_current_pads()
     print("third")
     if not pads.cache.run_exists(1):

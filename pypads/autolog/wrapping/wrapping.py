@@ -7,7 +7,7 @@ from pypads.autolog.wrapping.module_wrapping import ModuleWrapper
 
 
 def _add_found_class(mapping):
-    from pypads.base import get_current_pads
+    from pypads.pypads import get_current_pads
     get_current_pads().mapping_registry.add_found_class(mapping)
 
 

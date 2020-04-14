@@ -15,12 +15,12 @@ from pypads.autolog.wrapping.wrapping import wrap
 
 
 def _add_found_class(mapping):
-    from pypads.base import get_current_pads
+    from pypads.pypads import get_current_pads
     return get_current_pads().mapping_registry.add_found_class(mapping)
 
 
 def _get_algorithm_mappings():
-    from pypads.base import get_current_pads
+    from pypads.pypads import get_current_pads
     return get_current_pads().mapping_registry.get_relevant_mappings()
 
 

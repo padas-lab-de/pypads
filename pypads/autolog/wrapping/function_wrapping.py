@@ -108,7 +108,7 @@ class FunctionWrapper(BaseWrapper):
         current_call = None
         call = None
         try:
-            from pypads.base import get_current_pads
+            from pypads.pypads import get_current_pads
             current_call: Call = get_current_pads().call_tracker.current_call()
             if current_call and accessor.is_call_identity(current_call.call_id):
                 call = current_call
@@ -317,7 +317,7 @@ class FunctionWrapper(BaseWrapper):
 
     @classmethod
     def _is_skip_recursion(cls, accessor):
-        from pypads.base import get_current_pads
+        from pypads.pypads import get_current_pads
         pads = get_current_pads()
         try:
             config = pads.config

@@ -1,4 +1,4 @@
-from pypads.test.sklearn.base_sklearn_test import BaseSklearnTest
+from test.sklearn.base_sklearn_test import BaseSklearnTest
 
 
 def autosklearn_digits():

@@ -4,8 +4,8 @@ from pypads.functions.loggers.mixins import DependencyMixin, OrderMixin, TimedCa
     ConfigurableCallableMixin
 
 
-class PostRunFunction(IntermediateCallableMixin, TimedCallableMixin, DependencyMixin, OrderMixin,
-                      ConfigurableCallableMixin):
+class PostRunFunction(IntermediateCallableMixin, TimedCallableMixin, DependencyMixin,
+                      ConfigurableCallableMixin, OrderMixin):
     __metaclass__ = ABCMeta
     """
     This class should be used to define new post run functions

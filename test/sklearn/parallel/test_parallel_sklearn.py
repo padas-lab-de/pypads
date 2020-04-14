@@ -1,6 +1,6 @@
 import unittest
 
-from pypads.test.sklearn.base_sklearn_test import sklearn_simple_decision_tree_experiment
+from test.sklearn.base_sklearn_test import sklearn_simple_decision_tree_experiment
 
 result_list = []
 
@@ -119,11 +119,11 @@ class ParallelSklearnTest(unittest.TestCase):
         print(t.timeit(1))
 
     def test_punch_after_import(self):
-        from test_classes.dummy_classes import PunchDummy
-        from test_classes.dummy_classes import PunchDummy2
+        from test.test_classes.dummy_classes import PunchDummy
+        from test.test_classes.dummy_classes import PunchDummy2
         dummy2 = PunchDummy2(2)
         from pypads.base import PyPads
-        from test_classes.dummy_classes import _get_punch_dummy_mapping
+        from test.test_classes.dummy_classes import _get_punch_dummy_mapping
         # TODO PunchDummy2 has PunchDummy as reference
         tracker = PyPads(mapping=_get_punch_dummy_mapping(), reload_modules=True)
         assert PunchDummy._pypads_wrapped

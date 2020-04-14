@@ -1,6 +1,6 @@
 import datetime
 
-from pypads.test.sklearn.base_sklearn_test import BaseSklearnTest, sklearn_simple_decision_tree_experiment, \
+from test.sklearn.base_sklearn_test import BaseSklearnTest, sklearn_simple_decision_tree_experiment, \
     sklearn_pipeline_experiment
 
 

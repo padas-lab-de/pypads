@@ -85,7 +85,8 @@ class Disk(LoggingFunction):
         return ["psutil"]
 
     def __pre__(self, ctx, *args, _pypads_env, **kwargs):
-        from pypads.base import PyPads, get_current_pads
+        from pypads.base import PyPads
+        from pypads.pypads import get_current_pads
         pads: PyPads = get_current_pads()
         path = local_uri_to_path(pads._uri)
         name = os.path.join(_pypads_env.call.to_folder(), "pre_disk_usage")
@@ -97,7 +98,8 @@ class Disk(LoggingFunction):
                                         **_pypads_hook_params)
 
     def __post__(self, ctx, *args, _pypads_env, **kwargs):
-        from pypads.base import PyPads, get_current_pads
+        from pypads.base import PyPads
+        from pypads.pypads import get_current_pads
         pads: PyPads = get_current_pads()
         path = local_uri_to_path(pads._uri)
         name = os.path.join(_pypads_env.call.to_folder(), "post_disk_usage")

@@ -3,7 +3,7 @@ import os
 import unittest
 
 from pypads.autolog.mappings import MappingFile
-from pypads.test.sklearn.base_sklearn_test import sklearn_pipeline_experiment, sklearn_simple_decision_tree_experiment
+from test.sklearn.base_sklearn_test import sklearn_pipeline_experiment, sklearn_simple_decision_tree_experiment
 
 
 def _get_mapping(path):

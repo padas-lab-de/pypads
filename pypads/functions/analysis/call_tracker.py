@@ -391,13 +391,13 @@ class CallTracker:
 
 
 def add_call(accessor):
-    from pypads.base import get_current_pads
+    from pypads.pypads import get_current_pads
     pads = get_current_pads()
     call = Call(pads.call_tracker.make_call_id(accessor))
     return pads.call_tracker.add(call)
 
 
 def finish_call(call):
-    from pypads.base import get_current_pads
+    from pypads.pypads import get_current_pads
     pads = get_current_pads()
     return pads.call_tracker.finish(call)

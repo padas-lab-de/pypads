@@ -20,7 +20,7 @@ def timed(f):
 
 
 def get_logger_times():
-    from pypads.base import get_current_pads
+    from pypads.pypads import get_current_pads
     pads = get_current_pads()
 
     timings: OrderedDict = pads.cache.run_get("timings")
@@ -41,7 +41,7 @@ def get_logger_times():
 
 
 def print_timings():
-    from pypads.base import get_current_pads
+    from pypads.pypads import get_current_pads
     pads = get_current_pads()
 
     timings: OrderedDict = pads.cache.run_get("timings")
@@ -57,7 +57,7 @@ def print_timings():
 
 
 def add_run_time(log_function, name, time):
-    from pypads.base import get_current_pads
+    from pypads.pypads import get_current_pads
     pads = get_current_pads()
 
     pads.api.register_post_fn("timings", print_timings)

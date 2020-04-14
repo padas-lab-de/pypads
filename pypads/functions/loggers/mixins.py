@@ -119,9 +119,9 @@ class IntermediateCallableMixin(CallableMixin):
         super().__init__(*args, **kwargs)
 
     def __call__(self, *args, **kwargs):
-        from pypads.base import is_nested_run
+        from pypads.pypads import is_nested_run
         if self._nested or not is_nested_run():
-            from pypads.base import is_intermediate_run
+            from pypads.pypads import is_intermediate_run
             if self._intermediate or not is_intermediate_run():
                 return super().__call__(*args, **kwargs)
         raise NoCallAllowedError("Call wasn't allowed by intermediate / nested settings of the current run.")

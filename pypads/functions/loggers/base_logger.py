@@ -47,7 +47,7 @@ class LoggingExecutor(DefensiveCallableMixin, FunctionWrapper, ConfigurableCalla
         except NotImplementedError:
 
             # Ignore if only pre or post where defined
-            return 0, None
+            return None, 0
         except NoCallAllowedError as e:
 
             # Pass No Call Allowed Error through
@@ -134,7 +134,7 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
 
         _pre_result = None
         try:
-            time, _pre_result = self._pre(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs,
+            _pre_result, time = self._pre(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs,
                                           **_pypads_hook_params)
             if time != 0:
                 add_run_time(self, str(_pypads_env.call) + "." + self.__class__.__name__ + ".__post__", time)
@@ -143,7 +143,7 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
         _return = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs, **_pypads_hook_params)
 
         try:
-            time, _ = self._post(ctx, _pypads_pre_return=_pre_result, _pypads_result=_return, _pypads_env=_pypads_env,
+            _, time = self._post(ctx, _pypads_pre_return=_pre_result, _pypads_result=_return, _pypads_env=_pypads_env,
                                  _args=args, _kwargs=kwargs, **_pypads_hook_params)
             if time != 0:
                 add_run_time(self, str(_pypads_env.call) + "." + self.__class__.__name__ + ".__post__", time)

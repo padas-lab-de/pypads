@@ -20,7 +20,7 @@ from pypads.util import is_package_available
 
 # --- Clean nodes after run ---
 def end_run(*args, **kwargs):
-    from pypads.base import get_current_pads
+    from pypads.pypads import get_current_pads
     pads = get_current_pads()
 
     # curr_call = pads.call_tracker.current_call()
@@ -147,7 +147,7 @@ class PipelineTracker(LoggingFunction):
     def __pre__(self, ctx, *args, _pypads_env: LoggingEnv, _pypads_pipeline_type="normal", _pypads_pipeline_args=False,
                 **kwargs):
 
-        from pypads.base import get_current_pads
+        from pypads.pypads import get_current_pads
         pads = get_current_pads()
         pads.api.register_post_fn("pipeline_clean_up", end_run)
 
@@ -196,7 +196,7 @@ class PipelineTracker(LoggingFunction):
         return node_id
 
     def __post__(self, ctx, *args, _pypads_pipeline_args=False, _pypads_env: LoggingEnv, _pypads_pre_return, **kwargs):
-        from pypads.base import get_current_pads
+        from pypads.pypads import get_current_pads
         pads = get_current_pads()
 
         pipeline_cache = pads.cache.get("pipeline")
