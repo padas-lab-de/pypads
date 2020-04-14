@@ -3,8 +3,6 @@ import os
 import mlflow
 from loguru import logger
 from mlflow.utils.autologging_utils import try_mlflow_log
-from networkx import DiGraph
-from networkx.drawing.nx_agraph import to_agraph
 
 from pypads.functions.analysis.call_tracker import LoggingEnv
 from pypads.functions.loggers.base_logger import LoggingFunction
@@ -31,6 +29,8 @@ def end_run(*args, **kwargs):
     _pipeline_type = pipeline_cache.get("pipeline_type")
     # global network
     if network is not None and len(network.nodes) > 0:
+        from networkx import DiGraph
+        from networkx.drawing.nx_agraph import to_agraph
         try_write_artifact("_pypads_pipeline", network, WriteFormats.pickle)
 
         if is_package_available("networkx"):

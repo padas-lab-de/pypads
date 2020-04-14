@@ -58,4 +58,7 @@ test-python-3.8:
 
 check-build:
   <<: *deploy
+  only:
+    - tags
+    - master
   script: poetry publish

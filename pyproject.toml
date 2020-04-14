@@ -12,10 +12,12 @@ boltons = "^19.3.0"
 loguru = "^0.4.1"
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.2.4"
+pytest = "^5.2.5"
 scikit-learn = "^0.21.3"
 keras = "^2.3.1"
 tensorflow = "^2.1.0"
+psutil = "^5.7.0"
+networkx = "^2.4"
 
 [build-system]
 requires = ["poetry>=0.12"]
