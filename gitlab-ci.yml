@@ -9,7 +9,7 @@ cache:
 
 stages:
   - tests
-  - - deploy
+  - deploy
 
 # Jobs templates
 
@@ -37,12 +37,6 @@ stages:
     when: always
     expire_in: 1 week
 
-# Deploy jobs ----------------------
-
-check-build:
-  <<: *deploy
-  script: poetry publish
-
 # Test with different python versions
 test-python-3.5:
   <<: *test
@@ -59,3 +53,9 @@ test-python-3.7:
 test-python-3.8:
   <<: *test
   image: python:3.8
+
+# Deploy jobs
+
+check-build:
+  <<: *deploy
+  script: poetry publish
