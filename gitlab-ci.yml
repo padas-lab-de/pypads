@@ -30,7 +30,7 @@ stages:
   stage: tests
   coverage: '/TOTAL.*\s(\d+\.\d+\%)/'
   script:
-    - poetry run pytest tests/
+    - poetry run pytest test/
   artifacts:
     paths:
       - tests/logs
