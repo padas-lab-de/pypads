@@ -38,6 +38,9 @@ if is_package_available("joblib"):
                     logger.debug("Init Pypads in:" + str(time.time() - start_time))
                     pypads.pypads.current_pads = _pypads
 
+                    _pypads.activate_tracking(reload_warnings=False, affected_modules=_pypads_affected_modules,
+                                              clear_imports=True)
+
                     def clear_mlflow():
                         """
                         Don't close run. This function clears the run which was reactivated from the stack to stop a closing of it.
