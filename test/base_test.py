@@ -1,9 +1,26 @@
 import atexit
+import logging
 import os
 import unittest
 from os.path import expanduser
 
 from pypads.functions.loggers.base_logger import LoggingFunction
+from pypads.pypads import logger
+
+if "loguru" in str(logger):
+    import pytest
+
+
+    @pytest.fixture
+    def caplog(_caplog):
+        class PropogateHandler(logging.Handler):
+            def emit(self, record):
+                logging.getLogger(record.name).handle(record)
+
+        from loguru import logger
+        handler_id = logger.add(PropogateHandler(), format="{message}")
+        yield _caplog
+        logger.remove(handler_id)
 
 TEST_FOLDER = os.path.join(expanduser("~"), ".pypads-test")
 
