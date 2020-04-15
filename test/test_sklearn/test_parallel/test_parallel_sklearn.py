@@ -1,6 +1,5 @@
-import unittest
-
-from test.sklearn.base_sklearn_test import sklearn_simple_decision_tree_experiment
+from test.base_test import TEST_FOLDER, BaseTest
+from test.test_sklearn.base_sklearn_test import sklearn_simple_decision_tree_experiment
 
 result_list = []
 
@@ -73,7 +72,7 @@ def punch_dummy_gen(itr=10):
         yield (i, PCA())
 
 
-class ParallelSklearnTest(unittest.TestCase):
+class ParallelSklearnTest(BaseTest):
 
     def test_pool_execution(self):
         # TODO fails in run / works in debug for MacOsx
@@ -117,28 +116,3 @@ class ParallelSklearnTest(unittest.TestCase):
         import timeit
         t = timeit.Timer(joblib_execution(parallel_no_tracking, punch_dummy_gen()))
         print(t.timeit(1))
-
-    def test_punch_after_import(self):
-        from test.test_classes.dummy_classes import PunchDummy
-        from test.test_classes.dummy_classes import PunchDummy2
-        dummy2 = PunchDummy2(2)
-        from pypads.base import PyPads
-        from test.test_classes.dummy_classes import _get_punch_dummy_mapping
-        # TODO PunchDummy2 has PunchDummy as reference
-        tracker = PyPads(uri=TEST_FOLDER, mapping=_get_punch_dummy_mapping(), reload_modules=True)
-        assert PunchDummy._pypads_wrapped
-        assert PunchDummy2._pypads_wrapped
-        assert dummy2._pypads_wrapped
-
-    def test_punch_sklearn_after_import(self):
-        from sklearn.decomposition import PCA
-        pca = PCA()
-        from sklearn.pipeline import Pipeline
-        pipeline = Pipeline(steps=[('pca', pca)])
-        from pypads.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, reload_modules=True)
-        assert PCA._pypads_wrapped
-        assert pca._pypads_wrapped
-        assert Pipeline._pypads_wrapped
-        assert pipeline._pypads_wrapped
-        print(Pipeline._pypads_wrapped)

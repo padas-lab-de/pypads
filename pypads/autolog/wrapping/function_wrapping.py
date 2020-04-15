@@ -138,7 +138,8 @@ class FunctionWrapper(BaseWrapper):
 
                     # for every hook add
                     if cls._is_skip_recursion(accessor):
-                        logger.info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
+                        logger.info("Skipping " + str(accessor.context.container.__name__) + "." + str(
+                            accessor.wrappee.__name__))
                         out = callback(*args, **kwargs)
                         return out
 
@@ -163,8 +164,9 @@ class FunctionWrapper(BaseWrapper):
 
                     # for every hook add
                     if cls._is_skip_recursion(accessor):
-                        logger.info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
-                        out = callback(self, *args, **kwargs)
+                        logger.info("Skipping " + str(accessor.context.container.__name__) + "." + str(
+                            accessor.wrappee.__name__))
+                        out = callback(*args, **kwargs)
                         return out
 
                     for (h, params) in hooks:
@@ -187,8 +189,9 @@ class FunctionWrapper(BaseWrapper):
 
                     # for every hook add
                     if cls._is_skip_recursion(accessor):
-                        logger.info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
-                        out = callback(cls, *args, **kwargs)
+                        logger.info("Skipping " + str(accessor.context.container.__name__) + "." + str(
+                            accessor.wrappee.__name__))
+                        out = callback(*args, **kwargs)
                         return out
 
                     for (h, params) in hooks:
@@ -213,8 +216,9 @@ class FunctionWrapper(BaseWrapper):
 
                     # for every hook add
                     if cls._is_skip_recursion(accessor):
-                        logger.info("Skipping " + str(accessor.context.__name__) + "." + str(accessor.wrappee.__name__))
-                        out = callback(self, *args, **kwargs)
+                        logger.info("Skipping " + str(accessor.context.container.__name__) + "." + str(
+                            accessor.wrappee.__name__))
+                        out = callback(*args, **kwargs)
                         return out
 
                     for (h, params) in hooks:

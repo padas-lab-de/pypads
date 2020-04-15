@@ -27,7 +27,8 @@ TEST_FOLDER = os.path.join(expanduser("~"), ".pypads-test")
 
 def cleanup():
     import shutil
-    shutil.rmtree(TEST_FOLDER)
+    if os.path.isdir(TEST_FOLDER):
+        shutil.rmtree(TEST_FOLDER)
 
 
 atexit.register(cleanup)

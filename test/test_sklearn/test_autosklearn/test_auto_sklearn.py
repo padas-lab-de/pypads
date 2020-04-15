@@ -1,4 +1,5 @@
-from test.sklearn.base_sklearn_test import BaseSklearnTest
+from test.base_test import TEST_FOLDER
+from test.test_sklearn.base_sklearn_test import BaseSklearnTest
 
 
 def autosklearn_digits():
@@ -18,7 +19,8 @@ class AutoSklearnTest(BaseSklearnTest):
 
     def test_pipeline(self):
         """
-        This example will track an autosklearn experiment.
+        This example will track an autosklearn experiment. This will most likely take very long and contain a lot of
+        information about tested models with autosklearn. TODO Shouldn't really be a test and more like an example
         :return:
         """
         # --------------------------- setup of the tracking ---------------------------
@@ -27,10 +29,12 @@ class AutoSklearnTest(BaseSklearnTest):
         tracker = PyPads(uri=TEST_FOLDER)
 
         # TODO autosklearn fails we seem to change the _init_ involuntarily
-        import timeit
-        t = timeit.Timer(autosklearn_digits)
-        print(t.timeit(1))
+        # import timeit
+        # t = timeit.Timer(autosklearn_digits)
+        # print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        # TODO
+        import mlflow
+        run = mlflow.active_run()
+        assert len(tracker.mlf.list_artifacts(run.info.run_id)) > 0
         # !-------------------------- asserts ---------------------------

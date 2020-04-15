@@ -1,7 +1,7 @@
 import sys
 
 from test.base_test import BaseTest
-from test.order.test_order import First, Second, Third, experiment
+from test.test_order.test_order import First, Second, Third, experiment
 
 event_mapping = {
     "ordered_loggers": [First(order=3), Second(order=2), Third(order=1)]

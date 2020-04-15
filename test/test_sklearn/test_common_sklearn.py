@@ -1,7 +1,9 @@
 import datetime
 
+import mlflow
+
 from test.base_test import TEST_FOLDER
-from test.sklearn.base_sklearn_test import BaseSklearnTest, sklearn_simple_decision_tree_experiment, \
+from test.test_sklearn.base_sklearn_test import BaseSklearnTest, sklearn_simple_decision_tree_experiment, \
     sklearn_pipeline_experiment
 
 
@@ -22,8 +24,9 @@ class CommonSklearnTest(BaseSklearnTest):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        # TODO
-        assert True
+        run = mlflow.active_run()
+        assert tracker.api.active_run().info.run_id == run.info.run_id
+        assert len(tracker.mlf.list_artifacts(run.info.run_id)) > 0
         # !-------------------------- asserts ---------------------------
 
     def test_default_tracking(self):

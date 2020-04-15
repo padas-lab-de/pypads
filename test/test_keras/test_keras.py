@@ -1,8 +1,6 @@
-import unittest
-
-import mlflow
-
+from pypads.functions.loggers.base_logger import LoggingFunction
 from pypads.util import dict_merge
+from test.base_test import TEST_FOLDER, BaseTest
 
 
 def keras_simple_sequential_experiment():
@@ -71,37 +69,50 @@ def keras_mlp_for_multi_class_softmax_classification():
 
 
 # noinspection PyMethodMayBeStatic
-class PypadsKerasTest(unittest.TestCase):
+class PypadsKerasTest(BaseTest):
 
     def test_keras_custom_logging(self):
         # --------------------------- setup of the tracking ---------------------------
         global callback
+
         # custom logging
 
-        def predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback, **kwargs):
-            # Fallback logging function
-            global callback
-            callback = "predictions"
-            return _pypads_callback(*args, **kwargs)
+        class Predictions(LoggingFunction):
 
-        def keras_predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
-                              **kwargs):
-            # keras lib logging function
-            global callback
-            callback = "predictions for keras"
-            return _pypads_callback(*args, **kwargs)
+            def __pre__(self, ctx, *args, _pypads_env, _args, _kwargs, **kwargs):
+                # Fallback logging function
+                global callback
+                callback = "predictions"
 
-        def keras_2_3_1_predictions(self, *args, _pypads_wrappe, _pypads_context, _pypads_mapped_by, _pypads_callback,
-                                    **kwargs):
-            # keras lib logging function
-            global callback
-            callback = "predictions for keras v 2.3.1"
-            return _pypads_callback(*args, **kwargs)
+            def __post__(self, ctx, *args, _pypads_env, _pypads_pre_return, _pypads_result, _args, _kwargs,
+                         **kwargs):
+                pass
+
+        class KerasPredictions(LoggingFunction):
+
+            def __pre__(self, ctx, *args, _pypads_env, _args, _kwargs, **kwargs):
+                # Fallback logging function
+                global callback
+                callback = "predictions for keras"
+
+            def __post__(self, ctx, *args, _pypads_env, _pypads_pre_return, _pypads_result, _args, _kwargs,
+                         **kwargs):
+                pass
+
+        class Keras231Predictions(LoggingFunction):
+
+            def __pre__(self, ctx, *args, _pypads_env, _args, _kwargs, **kwargs):
+                global callback
+                callback = "predictions for keras v 2.3.1"
+
+            def __post__(self, ctx, *args, _pypads_env, _pypads_pre_return, _pypads_result, _args, _kwargs,
+                         **kwargs):
+                pass
 
         DEFAULT_Keras_MAPPING = {
-            "predictions": predictions,
-            ("predictions", "keras"): keras_predictions,
-            ("predictions", "keras", "2.3.1"): keras_2_3_1_predictions
+            "predictions": Predictions(),
+            ("predictions", "keras"): KerasPredictions(),
+            ("predictions", "keras", "2.3.1"): Keras231Predictions()
         }
         DEFAULT_keras_CONFIG = {"events": {
             "predictions": {"on": ["pypads_predict"]}
@@ -121,7 +132,6 @@ class PypadsKerasTest(unittest.TestCase):
         # TODO
         assert callback == "predictions for keras v 2.3.1"
         # !-------------------------- asserts ---------------------------
-        mlflow.end_run()
 
     def test_keras_base_class(self):
         # --------------------------- setup of the tracking ---------------------------
@@ -136,7 +146,6 @@ class PypadsKerasTest(unittest.TestCase):
         # --------------------------- asserts ---------------------------
         # TODO
         # !-------------------------- asserts ---------------------------
-        tracker.api.end_run()
 
     def test_keras_mlp(self):
         # --------------------------- setup of the tracking ---------------------------
@@ -151,7 +160,6 @@ class PypadsKerasTest(unittest.TestCase):
         # --------------------------- asserts ---------------------------
         # TODO
         # !-------------------------- asserts ---------------------------
-        mlflow.end_run()
 
     def test_keras_autolog(self):
         # Activate tracking of pypads
@@ -169,4 +177,3 @@ class PypadsKerasTest(unittest.TestCase):
         # --------------------------- asserts ---------------------------
         # TODO
         # !-------------------------- asserts ---------------------------
-        mlflow.end_run()

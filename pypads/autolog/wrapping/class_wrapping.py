@@ -19,8 +19,11 @@ class ClassWrapper(BaseWrapper):
             """
         global punched_classes
         if clazz not in punched_classes or not context.has_wrap_meta(mapping, clazz):
+            try:
+                context.store_wrap_meta(mapping, clazz)
+            except Exception:
+                return clazz
             punched_classes.add(clazz)
-            context.store_wrap_meta(mapping, clazz)
 
             if not context.has_original(clazz):
                 context.store_original(clazz)

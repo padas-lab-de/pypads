@@ -101,6 +101,15 @@ if is_package_available("joblib"):
 
     setattr(joblib, "delayed", punched_delayed)
 
+    # original_dispatch = joblib.Parallel._dispatch
+    #
+    # def _dispatch(self, *args, **kwargs):
+    #     print(self._backend)
+    #     out = original_dispatch(self, *args, **kwargs)
+    #     return out
+    #
+    # joblib.Parallel._dispatch = _dispatch
+
     original_call = joblib.Parallel.__call__
 
 

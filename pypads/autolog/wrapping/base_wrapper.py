@@ -45,7 +45,7 @@ class Context:
             getattr(holder, "_pypads_mapping_" + wrappee.__name__).append(mapping)
         except TypeError as e:
             logger.debug("Can't set attribute '" + wrappee.__name__ + "' on '" + str(self._c) + "'.")
-            return self._c
+            raise e
 
     def store_original(self, wrappee):
         try:

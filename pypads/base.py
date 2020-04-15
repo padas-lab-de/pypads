@@ -4,7 +4,6 @@ import glob
 import os
 from contextlib import contextmanager
 from os.path import expanduser
-from types import FunctionType
 from typing import List, Iterable
 
 import mlflow
@@ -19,6 +18,7 @@ from pypads.autolog.wrapping.module_wrapping import punched_module_names
 from pypads.caches import PypadsCache, Cache
 from pypads.functions.analysis.call_tracker import CallTracker
 from pypads.functions.analysis.validation.parameters import Parameters
+from pypads.functions.loggers.base_logger import LoggingFunction
 from pypads.functions.loggers.data_flow import Input, Output
 from pypads.functions.loggers.debug import LogInit, Log
 from pypads.functions.loggers.hardware import Disk, Ram, Cpu
@@ -70,7 +70,7 @@ class FunctionRegistry:
             pass
             # logger.warning("Function call with name '" + name + "' is not linked with any logging functionality.")
 
-    def add_functions(self, name, lib=None, version=None, *args: FunctionType):
+    def add_functions(self, name, lib=None, version=None, *args: LoggingFunction):
         if lib:
             if version:
                 key = (name, lib, version)
@@ -417,6 +417,7 @@ class PyPads:
 
                     if clear_imports:
                         del sys.modules[name]
+
             tracking_active = True
 
     def _init_mlflow_backend(self, uri=None, name=None, config=None):

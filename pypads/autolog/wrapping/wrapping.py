@@ -20,7 +20,7 @@ def wrap(wrappee, ctx, mapping):
     :param kwargs:
     :return:
     """
-    if not str(wrappee).startswith("_pypads"):
+    if not str(wrappee).startswith("_pypads") and not str(wrappee).startswith("__"):
         if not isinstance(ctx, Context):
             try:
                 ctx = Context(ctx)

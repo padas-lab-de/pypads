@@ -1,4 +1,5 @@
-from test.sklearn.base_sklearn_test import BaseSklearnTest, sklearn_simple_decision_tree_experiment
+from test.base_test import TEST_FOLDER
+from test.test_sklearn.base_sklearn_test import BaseSklearnTest, sklearn_simple_decision_tree_experiment
 
 
 class ConfigSklearnTest(BaseSklearnTest):
@@ -19,14 +20,14 @@ class ConfigSklearnTest(BaseSklearnTest):
         # --------------------------- asserts ---------------------------
         import mlflow
         run = mlflow.active_run()
-        assert tracker._run.info.run_id == run.info.run_id
+        assert tracker.api.active_run().info.run_id == run.info.run_id
 
         # number of inputs of DecisionTreeClassifier.fit
         n_inputs = 5
         n_outputs = 1 + 1  # number of outputs of fit and predict
-        assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
+        assert len(tracker.mlf.list_artifacts(run.info.run_id)) > 0
 
-        parameters = tracker._mlf.list_artifacts(run.info.run_id, path='../params')
+        parameters = tracker.mlf.list_artifacts(run.info.run_id, path='../params')
         assert len(parameters) != 0
         assert 'split_quality' in ''.join([p.path for p in parameters])
 
@@ -36,7 +37,7 @@ class ConfigSklearnTest(BaseSklearnTest):
         assert 'f1_score' in ''.join([m.path for m in metrics])
 
         tags = tracker.mlf.list_artifacts(run.info.run_id, path='../tags')
-        assert 'pypads.processor' in ''.join([m.path for m in tags])
+        assert 'pypads.system.processor' in ''.join([m.path for m in tags])
 
         # !-------------------------- asserts ---------------------------
         # End the mlflow run opened by PyPads
