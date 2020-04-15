@@ -1,6 +1,7 @@
 import atexit
 import logging
 import os
+import sys
 import unittest
 from os.path import expanduser
 
@@ -29,6 +30,10 @@ def cleanup():
     import shutil
     if os.path.isdir(TEST_FOLDER):
         shutil.rmtree(TEST_FOLDER)
+    if hasattr(sys.modules, "sklearn"):
+        del sys.modules["sklearn"]
+    if hasattr(sys.modules, "pypads"):
+        del sys.modules["pypads"]
 
 
 atexit.register(cleanup)
@@ -41,13 +46,21 @@ class BaseTest(unittest.TestCase):
             os.mkdir(TEST_FOLDER)
 
     def tearDown(self):
-        import mlflow
-        if mlflow.active_run():
-            # End the mlflow run opened by PyPads
-            from pypads.pypads import get_current_pads
-            pads = get_current_pads()
-            pads.api.end_run()
-        # TODO cleanup inbetween tests needed? del sys.modules
+        from pypads.pypads import current_pads
+
+        if current_pads:
+            import mlflow
+            if mlflow.active_run():
+                # End the mlflow run opened by PyPad
+                current_pads.api.end_run()
+            # TODO cleanup inbetween tests needed? del sys.modules
+
+            from pypads.autolog.wrapping.module_wrapping import punched_module_names
+            for name in punched_module_names:
+                if name.split('.')[0] in sys.modules:
+                    del sys.modules[name.split('.')[0]]
+            del current_pads
+            punched_module_names = set()
 
 
 class RanLogger(LoggingFunction):

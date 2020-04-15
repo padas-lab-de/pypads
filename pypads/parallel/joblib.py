@@ -10,7 +10,6 @@ if is_package_available("joblib"):
 
     original_delayed = joblib.delayed
 
-
     @wraps(original_delayed)
     def punched_delayed(fn):
         """Decorator used to capture the arguments of a function."""
@@ -121,7 +120,6 @@ if is_package_available("joblib"):
         pads = get_current_pads()
 
         # Temporary hold handlers and remove them
-        handlers = logger._core.handlers.values()
         logger.remove()
         out = original_call(self, *args, **kwargs)
         if isinstance(out, List):
@@ -134,18 +132,6 @@ if is_package_available("joblib"):
                 else:
                     real_out.append(entry)
             out = real_out
-
-        # If handlers where remove readd them
-        if len(handlers > 0):
-            # Set the default logger again
-            from pypads import set_logger
-            set_logger()
-
-            # Set the logger for the currently active run again
-            get_current_pads()
-            if pads.api.active_run():
-                from pypads.functions.pre_run.pre_run import RunLogger
-                RunLogger()()
         return out
 
 
