@@ -1,6 +1,8 @@
 import os
 import pathlib
 
+import pytest
+
 from pypads.functions.loggers.base_logger import LoggingFunction
 from pypads.util import dict_merge
 from test.base_test import TEST_FOLDER, BaseTest
@@ -73,6 +75,7 @@ def keras_mlp_for_multi_class_softmax_classification():
 # noinspection PyMethodMayBeStatic
 class PypadsKerasTest(BaseTest):
 
+    @pytest.mark.forked
     def test_keras_custom_logging(self):
         # --------------------------- setup of the tracking ---------------------------
         global callback
@@ -136,6 +139,7 @@ class PypadsKerasTest(BaseTest):
         assert callback == "predictions for keras v 2.3.1"
         # !-------------------------- asserts ---------------------------
 
+    @pytest.mark.forked
     def test_keras_base_class(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
@@ -150,6 +154,7 @@ class PypadsKerasTest(BaseTest):
         # TODO
         # !-------------------------- asserts ---------------------------
 
+    @pytest.mark.forked
     def test_keras_mlp(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
@@ -164,6 +169,7 @@ class PypadsKerasTest(BaseTest):
         # TODO
         # !-------------------------- asserts ---------------------------
 
+    @pytest.mark.forked
     def test_keras_autolog(self):
         # Activate tracking of pypads
         from pypads.base import PyPads

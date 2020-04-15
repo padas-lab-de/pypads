@@ -1,3 +1,5 @@
+import pytest
+
 from test.base_test import BaseTest, RanLogger, TEST_FOLDER
 
 
@@ -36,6 +38,7 @@ config = {"events": {
 
 class PypadsHookTest(BaseTest):
 
+    @pytest.mark.forked
     def test_api(self):
         """
         This example will track the experiment exection with the default configuration.

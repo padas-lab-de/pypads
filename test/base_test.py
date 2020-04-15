@@ -59,8 +59,8 @@ class BaseTest(unittest.TestCase):
             for name in punched_module_names:
                 if name.split('.')[0] in sys.modules:
                     del sys.modules[name.split('.')[0]]
+            # TODO cleanup pypads via a function on pypads itself
             del current_pads
-            punched_module_names = set()
 
 
 class RanLogger(LoggingFunction):
