@@ -1,3 +1,4 @@
+import os
 import pathlib
 
 from pypads.functions.loggers.base_logger import LoggingFunction
@@ -11,7 +12,8 @@ def keras_simple_sequential_experiment():
     from keras.models import Sequential
     from keras.layers import Dense
     # load the dataset
-    dataset = loadtxt(pathlib.Path().absolute() + '/keras-diabetes-indians.csv', delimiter=',')
+    dataset = loadtxt(os.path.join(pathlib.Path(os.path.abspath(__file__)).parent, 'keras-diabetes-indians.csv'),
+                      delimiter=',')
 
     # split into input (X) and output (y) variables
     X = dataset[:, 0:8]
@@ -74,6 +76,7 @@ class PypadsKerasTest(BaseTest):
     def test_keras_custom_logging(self):
         # --------------------------- setup of the tracking ---------------------------
         global callback
+        callback = None
 
         # custom logging
 

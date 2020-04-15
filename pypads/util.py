@@ -29,6 +29,8 @@ def dict_merge(*dicts):
 
 
 def sizeof_fmt(num, suffix='B'):
+    if num == 0:
+        return '0'
     import math
     magnitude = int(math.floor(math.log(num, 1024)))
     val = num / math.pow(1024, magnitude)

@@ -67,7 +67,7 @@ def add_run_time(log_function, name, time):
     timings: OrderedDict = pads.cache.run_get("timings")
     if name not in timings:
         timings[name] = (pads.call_tracker.call_depth(), time)
-        logger.info(name + " done after: " + str(time) + "s")
+        logger.debug(name + " done after: " + str(time) + "s")
     else:
         raise TimingDefined("Timing already defined for " + name)
 

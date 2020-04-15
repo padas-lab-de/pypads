@@ -65,7 +65,7 @@ if is_package_available("joblib"):
                 args = a
                 kwargs = b
 
-                logger.info("Started wrapped function on process: " + str(os.getpid()))
+                logger.debug("Started wrapped function on process: " + str(os.getpid()))
 
                 out = wrapped_fn(*args, **kwargs)
                 if is_new_process:
@@ -117,6 +117,11 @@ if is_package_available("joblib"):
     def joblib_call(self, *args, **kwargs):
         from pypads.caches import PypadsCache
         from pypads import logger
+        from pypads.pypads import get_current_pads
+        pads = get_current_pads()
+
+        # Temporary hold handlers and remove them
+        handlers = logger._core.handlers.values()
         logger.remove()
         out = original_call(self, *args, **kwargs)
         if isinstance(out, List):
@@ -125,12 +130,22 @@ if is_package_available("joblib"):
                 if isinstance(entry, tuple) and len(entry) == 2 and isinstance(entry[1], PypadsCache):
                     real_out.append(entry[0])
                     cache = entry[1]
-                    from pypads.pypads import get_current_pads
-                    pads = get_current_pads()
                     pads.cache.merge(cache)
                 else:
                     real_out.append(entry)
             out = real_out
+
+        # If handlers where remove readd them
+        if len(handlers > 0):
+            # Set the default logger again
+            from pypads import set_logger
+            set_logger()
+
+            # Set the logger for the currently active run again
+            get_current_pads()
+            if pads.api.active_run():
+                from pypads.functions.pre_run.pre_run import RunLogger
+                RunLogger()()
         return out
 
 

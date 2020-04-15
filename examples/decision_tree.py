@@ -1,3 +1,4 @@
+from pypads import logger
 from pypads.base import PyPads
 tracker = PyPads()
 
@@ -15,6 +16,6 @@ model.fit(dataset.data, dataset.target)
 expected = dataset.target
 predicted = model.predict(dataset.data)
 # summarize the fit of the model
-print("Score: " + str(f1_score(expected, predicted, average="macro")))
+logger.error("Score: " + str(f1_score(expected, predicted, average="macro")))
 
 tracker.api.end_run()

@@ -14,8 +14,7 @@ logger = log
 
 def set_logger():
     logger.remove()
-    logger.add(sys.stdout, format="{time} {level} {name} {message}", filter="my_module", level="INFO")
-    # logger.add("error_{time}.log", format="{time} {level} {name} {message}", filter="my_module", level="INFO")
+    logger.add(sys.stdout, filter="pypads", level="INFO")
 
 
 set_logger()

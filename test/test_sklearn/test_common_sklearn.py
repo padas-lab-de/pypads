@@ -41,7 +41,8 @@ class CommonSklearnTest(BaseSklearnTest):
 
         import timeit
         t = timeit.Timer(sklearn_simple_decision_tree_experiment)
-        print(t.timeit(1))
+        from pypads import logger
+        logger.info(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
         import mlflow
