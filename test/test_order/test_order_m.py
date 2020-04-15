@@ -1,6 +1,6 @@
 import sys
 
-from test.base_test import BaseTest
+from test.base_test import BaseTest, TEST_FOLDER
 from test.test_order.test_order import First, Second, Third, experiment
 
 event_mapping = {

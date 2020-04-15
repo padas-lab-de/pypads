@@ -49,6 +49,8 @@ class FunctionWrapper(BaseWrapper):
         if len(hooks) > 0:
             fn_reference = FunctionReference(context, fn)
             return cls.wrap_method_helper(fn_reference=fn_reference, hooks=hooks, mapping=mapping)
+        else:
+            return fn
 
     @classmethod
     def _wrap_on_class(cls, fn, context: Context, mapping):

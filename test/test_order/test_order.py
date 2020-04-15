@@ -2,7 +2,7 @@ import sys
 
 from pypads.functions.analysis.call_tracker import LoggingEnv
 from pypads.functions.loggers.base_logger import LoggingFunction
-from test.base_test import BaseTest
+from test.base_test import BaseTest, TEST_FOLDER
 
 
 def experiment():

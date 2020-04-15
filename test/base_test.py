@@ -41,13 +41,13 @@ class BaseTest(unittest.TestCase):
             os.mkdir(TEST_FOLDER)
 
     def tearDown(self):
-
         import mlflow
         if mlflow.active_run():
             # End the mlflow run opened by PyPads
             from pypads.pypads import get_current_pads
             pads = get_current_pads()
             pads.api.end_run()
+        # TODO cleanup inbetween tests needed? del sys.modules
 
 
 class RanLogger(LoggingFunction):

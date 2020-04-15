@@ -1,3 +1,5 @@
+import pathlib
+
 from pypads.functions.loggers.base_logger import LoggingFunction
 from pypads.util import dict_merge
 from test.base_test import TEST_FOLDER, BaseTest
@@ -9,9 +11,7 @@ def keras_simple_sequential_experiment():
     from keras.models import Sequential
     from keras.layers import Dense
     # load the dataset
-    import os
-    cwd = os.getcwd()
-    dataset = loadtxt(cwd + '/keras-diabetes-indians.csv', delimiter=',')
+    dataset = loadtxt(pathlib.Path().absolute() + '/keras-diabetes-indians.csv', delimiter=',')
 
     # split into input (X) and output (y) variables
     X = dataset[:, 0:8]
