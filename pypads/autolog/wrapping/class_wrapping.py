@@ -8,11 +8,11 @@ class ClassWrapper(BaseWrapper):
 
     def __init__(self, pypads):
         super().__init__(pypads)
-        self._punched_classes = set()
+        self._punched_class_names = set()
 
     @property
-    def punched_classes(self):
-        return self._punched_classes
+    def punched_class_names(self):
+        return self._punched_class_names
 
     def wrap(self, clazz, context, mapping):
         """
@@ -22,12 +22,12 @@ class ClassWrapper(BaseWrapper):
             :param mapping:
             :return:
             """
-        if clazz not in self.punched_classes or not context.has_wrap_meta(mapping, clazz):
+        if clazz.__name__ not in self.punched_class_names or not context.has_wrap_meta(mapping, clazz):
             try:
                 context.store_wrap_meta(mapping, clazz)
             except Exception:
                 return clazz
-            self.punched_classes.add(clazz)
+            self.punched_class_names.add(clazz.__name__)
 
             if not context.has_original(clazz):
                 context.store_original(clazz)

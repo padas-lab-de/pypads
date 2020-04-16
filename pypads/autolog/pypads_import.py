@@ -23,7 +23,7 @@ def _get_algorithm_mappings():
 
 def _add_inherited_mapping(clazz, super_class):
     from pypads.pypads import get_current_pads
-    if clazz not in get_current_pads().wrap_manager.class_wrapper.punched_classes:
+    if clazz.__name__ not in get_current_pads().wrap_manager.class_wrapper.punched_class_names:
         if hasattr(super_class, "_pypads_mapping_" + super_class.__name__):
             for mapping in getattr(super_class, "_pypads_mapping_" + super_class.__name__):
                 found_mapping = AlgorithmMapping(
@@ -62,7 +62,8 @@ def duck_punch_loader(spec):
                                 mro_entry_history[entry] = [reference]
                             else:
                                 mro_entry_history[entry].append(reference)
-                        overlap = set(mro_) & pads.wrap_manager.class_wrapper.punched_classes
+                        overlap = set(
+                            [c.__name__ for c in mro_]) & current_pads.wrap_manager.class_wrapper.punched_class_names
                         if bool(overlap):
                             # TODO maybe only for the first one
                             for o in overlap:
