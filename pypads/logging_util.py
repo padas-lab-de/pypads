@@ -1,6 +1,5 @@
 import os
 import pickle
-import shutil
 from enum import Enum
 from os.path import expanduser
 
@@ -11,12 +10,12 @@ from mlflow.utils.autologging_utils import try_mlflow_log
 from pypads import logger
 
 
-def get_base_folder():
+def get_base_folder(run=None):
     """
     Get the base folder to log tmp files to. For now it can't be changed. TODO
     :return:
     """
-    run = mlflow.active_run()
+    run = run if run else mlflow.active_run()
     if run is None:
         raise ValueError("No active run is defined.")
     return os.path.join(expanduser("~"), ".pypads", run.info.experiment_id, run.info.run_id) + os.path.sep
@@ -32,21 +31,6 @@ def get_run_folder():
         raise ValueError("No active run is defined.")
     # TODO use artifact download if needed or load artifact. Don't hardcode .mlflow
     return os.path.join(mlflow.get_tracking_uri(), run.info.experiment_id, run.info.run_id)
-
-
-# --- Clean tmp files after run ---
-original_end = mlflow.end_run
-
-
-def end_run(*args, **kwargs):
-    folder = get_base_folder()
-    if os.path.exists(folder):
-        shutil.rmtree(folder)
-    return original_end(*args, **kwargs)
-
-
-mlflow.end_run = end_run
-# !--- Clean tmp files after run ---
 
 
 class WriteFormats(Enum):

@@ -1,7 +1,6 @@
 import atexit
 import logging
 import os
-import sys
 import unittest
 from os.path import expanduser
 
@@ -23,17 +22,13 @@ if "loguru" in str(logger):
         yield _caplog
         logger.remove(handler_id)
 
-TEST_FOLDER = os.path.join(expanduser("~"), ".pypads-test")
+TEST_FOLDER = os.path.join(expanduser("~"), ".pypads-test_" + str(os.getpid()))
 
 
 def cleanup():
     import shutil
     if os.path.isdir(TEST_FOLDER):
         shutil.rmtree(TEST_FOLDER)
-    if hasattr(sys.modules, "sklearn"):
-        del sys.modules["sklearn"]
-    if hasattr(sys.modules, "pypads"):
-        del sys.modules["pypads"]
 
 
 atexit.register(cleanup)
@@ -46,21 +41,11 @@ class BaseTest(unittest.TestCase):
             os.mkdir(TEST_FOLDER)
 
     def tearDown(self):
-        from pypads.pypads import current_pads
-
+        from pypads.pypads import current_pads, set_current_pads
         if current_pads:
-            import mlflow
-            if mlflow.active_run():
-                # End the mlflow run opened by PyPad
-                current_pads.api.end_run()
-            # TODO cleanup inbetween tests needed? del sys.modules
-
-            from pypads.autolog.wrapping.module_wrapping import punched_module_names
-            for name in punched_module_names:
-                if name.split('.')[0] in sys.modules:
-                    del sys.modules[name.split('.')[0]]
-            # TODO cleanup pypads via a function on pypads itself
-            del current_pads
+            current_pads.deactivate_tracking(run_atexits=True, reload_modules=False)
+            # noinspection PyTypeChecker
+            set_current_pads(None)
 
 
 class RanLogger(LoggingFunction):

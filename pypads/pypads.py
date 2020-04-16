@@ -9,18 +9,6 @@ from pypads.base import PyPads, CONFIG_NAME
 configs = {}
 current_pads = None
 
-# --- Clean the config cache after run ---
-_original_end = mlflow.end_run
-
-
-def _end_run(*args, **kwargs):
-    configs.clear()
-    return _original_end(*args, **kwargs)
-
-
-mlflow.end_run = _end_run
-
-
 # !--- Clean the config cache after run ---
 
 
@@ -59,6 +47,7 @@ def is_nested_run():
 def is_intermediate_run():
     pads = get_current_pads()
     return pads.api.is_intermediate_run()
+
 
 def get_current_config(default=None):
     """

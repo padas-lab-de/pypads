@@ -143,13 +143,14 @@ class Context:
 class BaseWrapper:
     __metaclass__ = ABCMeta
 
-    @classmethod
+    def __init__(self, pypads):
+        self._pypads = pypads
+
     @abstractmethod
-    def wrap(cls, wrappee, ctx, mapping):
+    def wrap(self, wrappee, ctx, mapping):
         raise NotImplementedError()
 
-    @classmethod
-    def _get_hooked_fns(cls, fn, mapping):
+    def _get_hooked_fns(self, fn, mapping):
         """
         For a given fn find the hook functions defined in a mapping and configured in a configuration.
         :param fn:
@@ -166,7 +167,7 @@ class BaseWrapper:
             version = mapping.in_collection.lib_version
         hook_events_of_mapping = [hook.event for hook in mapping.hooks if hook.is_applicable(mapping=mapping, fn=fn)]
         output = []
-        config = cls._get_current_config()
+        config = self._get_current_config()
         events = [[k, v] for k, v in config["events"].items()]
 
         # sort event order
@@ -183,9 +184,7 @@ class BaseWrapper:
 
             # If one configured_hook_events is in this config.
             if configured_hook_events == "always" or set(configured_hook_events) & set(hook_events_of_mapping):
-                from pypads.pypads import get_current_pads
-                pads = get_current_pads()
-                fns = pads.function_registry.find_functions(log_event, lib=library, version=version)
+                fns = self._pypads.function_registry.find_functions(log_event, lib=library, version=version)
                 if fns:
                     # sort logger order
                     fns = list(fns)

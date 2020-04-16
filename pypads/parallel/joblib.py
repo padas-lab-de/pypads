@@ -10,6 +10,7 @@ if is_package_available("joblib"):
 
     original_delayed = joblib.delayed
 
+
     @wraps(original_delayed)
     def punched_delayed(fn):
         """Decorator used to capture the arguments of a function."""
@@ -76,7 +77,6 @@ if is_package_available("joblib"):
 
         def delayed_function(*args, **kwargs):
             from pypads.parallel.util import _pickle_tuple, _cloudpickle_tuple
-            from pypads.autolog.wrapping.module_wrapping import punched_module_names
             import mlflow
             run = mlflow.active_run()
             if run:
@@ -85,9 +85,11 @@ if is_package_available("joblib"):
                 args = pickled_params
                 from pypads.pypads import get_current_pads
 
-                kwargs = {"_pypads": get_current_pads(), "_pypads_active_run_id": run.info.run_id,
+                pads = get_current_pads()
+                kwargs = {"_pypads": pads, "_pypads_active_run_id": run.info.run_id,
                           "_pypads_tracking_uri": mlflow.get_tracking_uri(),
-                          "_pypads_affected_modules": punched_module_names, "_pypads_triggering_process": os.getpid()}
+                          "_pypads_affected_modules": pads.wrap_manager.module_wrapper.punched_module_names,
+                          "_pypads_triggering_process": os.getpid()}
             return wrapped_function, args, kwargs
 
         try:

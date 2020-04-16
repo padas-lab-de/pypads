@@ -4,21 +4,26 @@ from pypads import logger
 from pypads.autolog.hook import make_hook_applicable_filter
 from pypads.autolog.wrapping.base_wrapper import BaseWrapper
 
-punched_module_names = set()
-
 
 class ModuleWrapper(BaseWrapper):
 
-    @classmethod
-    def wrap(cls, module, context, mapping):
+    def __init__(self, pypads):
+        super().__init__(pypads)
+        self._punched_module_names = set()
+
+    @property
+    def punched_module_names(self):
+        return self._punched_module_names
+
+    def wrap(self, module, context, mapping):
         """
         Function to wrap modules with pypads functionality
         :param module:
         :param mapping:
         :return:
         """
-        if module.__name__ not in punched_module_names or not context.has_wrap_meta(mapping, module):
-            punched_module_names.add(module.__name__)
+        if module.__name__ not in self.punched_module_names or not context.has_wrap_meta(mapping, module):
+            self._pypads.wrap_manager.module_wrapper.punched_module_names.add(module.__name__)
             context.store_wrap_meta(mapping, module)
 
             if not context.has_original(module):
@@ -29,8 +34,6 @@ class ModuleWrapper(BaseWrapper):
                 mapping.hooks = mapping.in_collection.get_default_module_hooks()
 
             # Try to wrap every attr of the module
-            from pypads.autolog.wrapping.wrapping import wrap
-
             if mapping.hooks:
                 for hook in mapping.hooks:
                     # Only get entries defined directly in this module
@@ -42,7 +45,7 @@ class ModuleWrapper(BaseWrapper):
 
                         # Don't track imported modules
                         if not inspect.ismodule(attr):
-                            wrap(attr, module, mapping)
+                            self._pypads.wrap_manager.wrap(attr, module, mapping)
 
             # Add found classes to the tracking
             # for name in find_applicable_hooks(ctx, mapping):

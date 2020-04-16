@@ -9,8 +9,6 @@ from multiprocessing import Value
 from pypads import logger
 from pypads.autolog.mappings import AlgorithmMapping
 from pypads.autolog.wrapping.base_wrapper import Context
-from pypads.autolog.wrapping.class_wrapping import punched_classes
-from pypads.autolog.wrapping.wrapping import wrap
 
 
 def _add_found_class(mapping):
@@ -24,7 +22,8 @@ def _get_algorithm_mappings():
 
 
 def _add_inherited_mapping(clazz, super_class):
-    if clazz not in punched_classes:
+    from pypads.pypads import get_current_pads
+    if clazz not in get_current_pads().wrap_manager.class_wrapper.punched_classes:
         if hasattr(super_class, "_pypads_mapping_" + super_class.__name__):
             for mapping in getattr(super_class, "_pypads_mapping_" + super_class.__name__):
                 found_mapping = AlgorithmMapping(
@@ -47,56 +46,58 @@ def duck_punch_loader(spec):
         # History to check if a class inherits a wrapping intra-module
         mro_entry_history = {}
 
-        # On execution of a module we search for relevant mappings
-        # TODO we might want to make this configurable/improve performance. This looks at every imported class.
-        for name in dir(module):
-            reference = getattr(module, name)
-            if inspect.isclass(reference) and hasattr(reference, "mro"):
-                try:
+        from pypads.pypads import current_pads
+        if current_pads:
+            # On execution of a module we search for relevant mappings
+            # TODO we might want to make this configurable/improve performance. This looks at every imported class.
+            for name in dir(module):
+                reference = getattr(module, name)
+                if inspect.isclass(reference) and hasattr(reference, "mro"):
+                    try:
 
-                    # Look at the MRO and add classes to be punched which inherit from our punched classes
-                    mro_ = reference.mro()[1:]
-                    for entry in mro_:
-                        if entry not in mro_entry_history.keys():
-                            mro_entry_history[entry] = [reference]
-                        else:
-                            mro_entry_history[entry].append(reference)
-                    overlap = set(mro_) & punched_classes
-                    if bool(overlap):
-                        # TODO maybe only for the first one
-                        for o in overlap:
-                            _add_inherited_mapping(reference, o)
-                except Exception as e:
-                    logger.debug("Skipping superclasses of " + str(reference) + ". " + str(e))
+                        # Look at the MRO and add classes to be punched which inherit from our punched classes
+                        mro_ = reference.mro()[1:]
+                        for entry in mro_:
+                            if entry not in mro_entry_history.keys():
+                                mro_entry_history[entry] = [reference]
+                            else:
+                                mro_entry_history[entry].append(reference)
+                        overlap = set(mro_) & pads.wrap_manager.class_wrapper.punched_classes
+                        if bool(overlap):
+                            # TODO maybe only for the first one
+                            for o in overlap:
+                                _add_inherited_mapping(reference, o)
+                    except Exception as e:
+                        logger.debug("Skipping superclasses of " + str(reference) + ". " + str(e))
 
-        # TODO And every mapping.
-        for mapping in _get_algorithm_mappings():
-            if mapping.reference.startswith(module.__name__):
-                if mapping.reference == module.__name__:
-                    wrap(module, None, mapping)
-                else:
-                    ref = mapping.reference
-                    path = ref[len(module.__name__) + 1:].rsplit(".")
-                    obj = module
-                    ctx = obj
-                    for seg in path:
-                        try:
-                            ctx = obj
-                            obj = getattr(obj, seg)
-                        except AttributeError:
-                            obj = None
-                            break
+            # TODO And every mapping.
+            for mapping in _get_algorithm_mappings():
+                if mapping.reference.startswith(module.__name__):
+                    if mapping.reference == module.__name__:
+                        current_pads.wrap_manager.wrap(module, None, mapping)
+                    else:
+                        ref = mapping.reference
+                        path = ref[len(module.__name__) + 1:].rsplit(".")
+                        obj = module
+                        ctx = obj
+                        for seg in path:
+                            try:
+                                ctx = obj
+                                obj = getattr(obj, seg)
+                            except AttributeError:
+                                obj = None
+                                break
 
-                    if obj:
-                        if inspect.isclass(obj):
-                            if mapping.reference == obj.__module__ + "." + obj.__name__:
-                                wrap(obj, Context(ctx), mapping)
-                                if obj in mro_entry_history:
-                                    for clazz in mro_entry_history[obj]:
-                                        _add_inherited_mapping(clazz, obj)
+                        if obj:
+                            if inspect.isclass(obj):
+                                if mapping.reference == obj.__module__ + "." + obj.__name__:
+                                    current_pads.wrap_manager.wrap(obj, Context(ctx), mapping)
+                                    if obj in mro_entry_history:
+                                        for clazz in mro_entry_history[obj]:
+                                            _add_inherited_mapping(clazz, obj)
 
-                        elif inspect.isfunction(obj):
-                            wrap(obj, Context(ctx), mapping)
+                            elif inspect.isfunction(obj):
+                                current_pads.wrap_manager.wrap(obj, Context(ctx), mapping)
         return out
 
     spec.loader.exec_module = types.MethodType(exec_module, spec.loader)

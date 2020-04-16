@@ -13,7 +13,7 @@ punch_dummy_mapping = {
             "name": "punchtest",
             "other_names": [],
             "implementation": {
-                "sklearn": "test.test_classes.dummy_classes"
+                "sklearn": "test_classes.dummy_classes"
             },
             "hooks": {
                 "pypads_dummy_hook": "always"
@@ -21,7 +21,7 @@ punch_dummy_mapping = {
         }],
     "metadata": {
         "author": "Thomas Weißgerber",
-        "library": "pypads",
+        "library": "test_classes",
         "library_version": "0.0.1",
         "mapping_version": "0.1"
     }

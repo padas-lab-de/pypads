@@ -3,13 +3,18 @@ from pypads import logger
 from pypads.autolog.hook import find_applicable_hooks
 from pypads.autolog.wrapping.base_wrapper import BaseWrapper
 
-punched_classes = set()
-
 
 class ClassWrapper(BaseWrapper):
 
-    @classmethod
-    def wrap(cls, clazz, context, mapping):
+    def __init__(self, pypads):
+        super().__init__(pypads)
+        self._punched_classes = set()
+
+    @property
+    def punched_classes(self):
+        return self._punched_classes
+
+    def wrap(self, clazz, context, mapping):
         """
             Wrap a class in given ctx with pypads functionality
             :param clazz:
@@ -17,31 +22,27 @@ class ClassWrapper(BaseWrapper):
             :param mapping:
             :return:
             """
-        global punched_classes
-        if clazz not in punched_classes or not context.has_wrap_meta(mapping, clazz):
+        if clazz not in self.punched_classes or not context.has_wrap_meta(mapping, clazz):
             try:
                 context.store_wrap_meta(mapping, clazz)
             except Exception:
                 return clazz
-            punched_classes.add(clazz)
+            self.punched_classes.add(clazz)
 
             if not context.has_original(clazz):
                 context.store_original(clazz)
 
             # Module was changed and should be added to the list of modules which have been changed
             if hasattr(clazz, "__module__"):
-                from pypads.autolog.wrapping.module_wrapping import punched_module_names
-                punched_module_names.add(clazz.__module__)
+                self._pypads.wrap_manager.module_wrapper.punched_module_names.add(clazz.__name__)
 
             # Get default hooks
             if not mapping.hooks:
                 mapping.hooks = mapping.in_collection.get_default_class_hooks()
 
             # Try to wrap every attr of the class
-            from pypads.autolog.wrapping.wrapping import wrap
-
             for name, c, mapping in find_applicable_hooks(clazz, mapping):
-                wrap(getattr(clazz, name), c, mapping)
+                self._pypads.wrap_manager.wrap(getattr(clazz, name), c, mapping)
 
             # Override class on module
             reference_name = mapping.reference.rsplit('.', 1)[-1]

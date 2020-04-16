@@ -12,32 +12,52 @@ def _add_found_class(mapping):
     get_current_pads().mapping_registry.add_found_class(mapping)
 
 
-def wrap(wrappee, ctx, mapping):
-    """
-    Wrap given object with pypads functionality
-    :param wrappee:
-    :param args:
-    :param kwargs:
-    :return:
-    """
-    if not str(wrappee).startswith("_pypads") and not str(wrappee).startswith("__"):
-        if not isinstance(ctx, Context):
-            try:
-                ctx = Context(ctx)
-            except ValueError as e:
+class WrapManager:
 
-                dummy = ModuleType("dummy_module")
-                if inspect.isfunction(wrappee):
-                    setattr(dummy, wrappee.__name__, wrappee)
-                ctx = Context(dummy)
+    def __init__(self, pypads):
+        self._pypads = pypads
+        self._module_wrapper = ModuleWrapper(pypads)
+        self._class_wrapper = ClassWrapper(pypads)
+        self._function_wrapper = FunctionWrapper(pypads)
 
-        if inspect.ismodule(wrappee):
-            return ModuleWrapper.wrap(wrappee, ctx, mapping)
+    @property
+    def module_wrapper(self):
+        return self._module_wrapper
 
-        elif inspect.isclass(wrappee):
-            return ClassWrapper.wrap(wrappee, ctx, mapping)
+    @property
+    def class_wrapper(self):
+        return self._class_wrapper
 
-        elif inspect.isfunction(wrappee):
-            return FunctionWrapper.wrap(wrappee, ctx, mapping)
-    else:
-        return wrappee
+    @property
+    def function_wrapper(self):
+        return self._function_wrapper
+
+    def wrap(self, wrappee, ctx, mapping):
+        """
+        Wrap given object with pypads functionality
+        :param wrappee:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        if not str(wrappee).startswith("_pypads") and not str(wrappee).startswith("__"):
+            if not isinstance(ctx, Context):
+                try:
+                    ctx = Context(ctx)
+                except ValueError as e:
+
+                    dummy = ModuleType("dummy_module")
+                    if inspect.isfunction(wrappee):
+                        setattr(dummy, wrappee.__name__, wrappee)
+                    ctx = Context(dummy)
+
+            if inspect.ismodule(wrappee):
+                return self._module_wrapper.wrap(wrappee, ctx, mapping)
+
+            elif inspect.isclass(wrappee):
+                return self._class_wrapper.wrap(wrappee, ctx, mapping)
+
+            elif inspect.isfunction(wrappee):
+                return self._function_wrapper.wrap(wrappee, ctx, mapping)
+        else:
+            return wrappee

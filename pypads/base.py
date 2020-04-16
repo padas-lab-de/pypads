@@ -14,7 +14,6 @@ from pypads import logger
 from pypads.autolog.hook import Hook
 from pypads.autolog.mappings import AlgorithmMapping, MappingRegistry, AlgorithmMeta
 from pypads.autolog.pypads_import import extend_import_module, duck_punch_loader
-from pypads.autolog.wrapping.module_wrapping import punched_module_names
 from pypads.caches import PypadsCache, Cache
 from pypads.functions.analysis.call_tracker import CallTracker
 from pypads.functions.analysis.validation.parameters import Parameters
@@ -28,7 +27,7 @@ from pypads.functions.loggers.pipeline_detection import PipelineTracker
 from pypads.functions.post_run.post_run import PostRunFunction
 from pypads.functions.pre_run.hardware import ISystem, IRam, ICpu, IDisk, IPid, ISocketInfo, IMacAddress
 from pypads.functions.pre_run.pre_run import RunInfo, RunLogger, PreRunFunction
-from pypads.logging_util import WriteFormats, try_write_artifact, try_read_artifact
+from pypads.logging_util import WriteFormats, try_write_artifact, try_read_artifact, get_base_folder
 from pypads.util import get_class_that_defined_method, dict_merge
 
 tracking_active = None
@@ -180,8 +179,7 @@ class PypadsApi:
             hooks = [Hook(e) for e in events]
             mapping = AlgorithmMapping(ctx_path + "." + fn.__name__, lib, AlgorithmMeta(fn.__name__, []), None,
                                        hooks=hooks)
-        from pypads.autolog.wrapping.wrapping import wrap
-        return wrap(fn, ctx=ctx, mapping=mapping)
+        return self._pypads.wrap_manager.wrap(fn, ctx=ctx, mapping=mapping)
 
     def start_run(self, run_id=None, experiment_id=None, run_name=None, nested=False):
         out = mlflow.start_run(run_id=run_id, experiment_id=experiment_id, run_name=run_name, nested=nested)
@@ -232,9 +230,6 @@ class PypadsApi:
     def intermediate_run(self, **kwargs):
         enclosing_run = mlflow.active_run()
         try:
-            # TODO check if nested run is a good idea
-            # if enclosing_run:
-            #   mlflow.end_run()
             run = self._pypads.api.start_run(**kwargs, nested=True)
             self._pypads.cache.run_add("enclosing_run", enclosing_run)
             yield run
@@ -242,12 +237,7 @@ class PypadsApi:
             if not mlflow.active_run() is enclosing_run:
                 self._pypads.cache.run_clear()
                 self._pypads.cache.run_delete()
-                mlflow.end_run()
-                # try:
-                #     mlflow.start_run(run_id=enclosing_run.info.run_id)
-                # except Exception:
-                #     mlflow.end_run()
-                #     mlflow.start_run(run_id=enclosing_run.info.run_id)
+                self._pypads.api.end_run()
 
     def _get_pre_run_cache(self):
         if not self._pypads.cache.exists("pre_run_fns"):
@@ -293,13 +283,24 @@ class PypadsApi:
         return enclosing_run is not None
 
     def end_run(self):
+        run = self.active_run()
+
         chached_fns = self._get_post_run_cache()
         fn_list = [v for i, v in chached_fns.items()]
         fn_list.sort(key=lambda t: t.order())
         for fn in fn_list:
             fn()
-        # TODO alternatively punch mlflow end_run
+
+        # TODO  clear config cache after run
         mlflow.end_run()
+
+        # --- Clean tmp files in disk cache after run ---
+        folder = get_base_folder(run)
+        if os.path.exists(folder):
+            import shutil
+            shutil.rmtree(folder)
+        # !-- Clean tmp files in disk cache after run ---
+
         # TODO Loguru has a problem with pydev: sys.stdout.flush() -> ValueError: I/O operation on closed file.
     # !--- run management ----
 
@@ -353,6 +354,7 @@ class PyPads:
 
         # Init variable to filled later in this constructor
         self._config = None
+        self._atexit_fns = []
 
         if mapping_paths is None:
             mapping_paths = []
@@ -360,17 +362,40 @@ class PyPads:
         if init_run_fns is None:
             init_run_fns = DEFAULT_INIT_RUN_FNS
 
+        from pypads.autolog.wrapping.wrapping import WrapManager
+        self._wrap_manager = WrapManager(self)
         self._api = PypadsApi(self)
         self._decorators = PypadsDecorators(self)
         self._cache = PypadsCache()
         self._call_tracker = CallTracker(self)
+        self._init_mapping_registry(*mapping_paths, mapping=mapping, include_defaults=include_default_mappings)
+
+        def cleanup():
+            from pypads.pypads import get_current_pads
+            pads: PyPads = get_current_pads()
+            if pads.api.active_run():
+                pads.api.end_run()
+
+        self.add_atexit_fn(cleanup)
 
         self._init_run_fns = init_run_fns
         self._init_mlflow_backend(uri, name, config)
         self._function_registry = FunctionRegistry(logging_fns or DEFAULT_LOGGING_FNS)
-        self._init_mapping_registry(*mapping_paths, mapping=mapping, include_defaults=include_default_mappings)
         self.activate_tracking(reload_modules=reload_modules, reload_warnings=reload_warnings,
                                clear_imports=clear_imports, affected_modules=affected_modules)
+
+    def add_atexit_fn(self, fn):
+        self._atexit_fns.append(fn)
+        atexit.register(fn)
+
+    def _is_affected_module(self, name, affected_modules=None):
+        if affected_modules is None:
+            affected_modules = self.wrap_manager.module_wrapper.punched_module_names
+
+        affected = set([module.split(".", 1)[0] for module in affected_modules])
+        return any([name.startswith(module + ".") or name == module for module in affected]) or any(
+            [name.startswith(module + ".") or name == module for module in
+             affected_modules])
 
     def activate_tracking(self, reload_modules=False, reload_warnings=True, clear_imports=False, affected_modules=None):
         """
@@ -380,16 +405,12 @@ class PyPads:
         :return:
         """
         if affected_modules is None:
-            affected_modules = punched_module_names | self.mapping_registry.get_libraries()
-
-        def _is_affected_module(name):
-            affected = set([module.split(".", 1)[0] for module in affected_modules])
-            return any([name.startswith(module + ".") or name == module for module in affected]) or any(
-                [name.startswith(module + ".") or name == module for module in
-                 affected_modules])
+            affected_modules = self.wrap_manager.module_wrapper.punched_module_names | self.mapping_registry.get_libraries()
 
         global tracking_active
         if not tracking_active:
+            from pypads.pypads import set_current_pads
+            set_current_pads(self)
 
             # Add our loader to the meta_path
             extend_import_module()
@@ -398,11 +419,14 @@ class PyPads:
             import importlib
             loaded_modules = [(name, module) for name, module in sys.modules.items()]
             for name, module in loaded_modules:
-                if _is_affected_module(name):
+                if self._is_affected_module(name, affected_modules):
                     if reload_warnings:
                         logger.warning(
-                            name + "was imported before PyPads. To enable tracking import PyPads before or use "
+                            name + " was imported before PyPads. To enable tracking import PyPads before or use "
                                    "reload_modules. Every already created instance is not tracked.")
+
+                    if clear_imports:
+                        del sys.modules[name]
 
                     if reload_modules:
                         try:
@@ -415,10 +439,41 @@ class PyPads:
                         except Exception as e:
                             logger.debug("Couldn't reload module " + str(e))
 
-                    if clear_imports:
-                        del sys.modules[name]
-
             tracking_active = True
+        else:
+            raise Exception("Currently only one tracker can be activated at once.")
+
+    def deactivate_tracking(self, run_atexits=False, reload_modules=True):
+        # run atexit fns if needed
+        if run_atexits:
+            for fn in self._atexit_fns:
+                fn()
+
+        # Remove atexit fns
+        for fn in self._atexit_fns:
+            atexit.unregister(fn)
+
+        import sys
+        import importlib
+        loaded_modules = [(name, module) for name, module in sys.modules.items()]
+        for name, module in loaded_modules:
+            if self._is_affected_module(name):
+                del sys.modules[name]
+
+                if reload_modules:
+                    # reload modules if they where affected
+                    try:
+                        spec = importlib.util.find_spec(module.__name__)
+                        duck_punch_loader(spec)
+                        loader = spec.loader
+                        module = loader.load_module(module.__name__)
+                        loader.exec_module(module)
+                        importlib.reload(module)
+                    except Exception as e:
+                        logger.debug("Couldn't reload module " + str(e))
+
+        global tracking_active
+        tracking_active = False
 
     def _init_mlflow_backend(self, uri=None, name=None, config=None):
         """
@@ -484,6 +539,10 @@ class PyPads:
                 self._mapping_registry.add_mapping(mapping, key=id(mapping))
 
     @property
+    def wrap_manager(self):
+        return self._wrap_manager
+
+    @property
     def mapping_registry(self):
         return self._mapping_registry
 
@@ -533,14 +592,3 @@ class PyPads:
         for fn in self._init_run_fns:
             if callable(fn):
                 fn(self)
-
-
-# --- Enfore end_run() at code exit ---
-def cleanup():
-    from pypads.pypads import get_current_pads
-    pads: PyPads = get_current_pads()
-    if pads.api.active_run():
-        pads.api.end_run()
-
-
-atexit.register(cleanup)
