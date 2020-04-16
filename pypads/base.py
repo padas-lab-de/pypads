@@ -474,6 +474,9 @@ class PyPads:
 
         global tracking_active
         tracking_active = False
+        # noinspection PyTypeChecker
+        from pypads.pypads import set_current_pads
+        set_current_pads(None)
 
     def _init_mlflow_backend(self, uri=None, name=None, config=None):
         """

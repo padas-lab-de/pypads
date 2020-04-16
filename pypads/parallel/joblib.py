@@ -118,23 +118,26 @@ if is_package_available("joblib"):
     def joblib_call(self, *args, **kwargs):
         from pypads.caches import PypadsCache
         from pypads import logger
-        from pypads.pypads import get_current_pads
-        pads = get_current_pads()
+        from pypads.pypads import current_pads
+        pads = current_pads
 
-        # Temporary hold handlers and remove them
-        logger.remove()
-        out = original_call(self, *args, **kwargs)
-        if isinstance(out, List):
-            real_out = []
-            for entry in out:
-                if isinstance(entry, tuple) and len(entry) == 2 and isinstance(entry[1], PypadsCache):
-                    real_out.append(entry[0])
-                    cache = entry[1]
-                    pads.cache.merge(cache)
-                else:
-                    real_out.append(entry)
-            out = real_out
-        return out
+        if pads:
+            # Temporary hold handlers and remove them
+            logger.remove()
+            out = original_call(self, *args, **kwargs)
+            if isinstance(out, List):
+                real_out = []
+                for entry in out:
+                    if isinstance(entry, tuple) and len(entry) == 2 and isinstance(entry[1], PypadsCache):
+                        real_out.append(entry[0])
+                        cache = entry[1]
+                        pads.cache.merge(cache)
+                    else:
+                        real_out.append(entry)
+                out = real_out
+            return out
+        else:
+            return original_call(self, *args, **kwargs)
 
 
     setattr(joblib.Parallel, "__call__", joblib_call)
