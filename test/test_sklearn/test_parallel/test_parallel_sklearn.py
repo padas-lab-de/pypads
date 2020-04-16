@@ -1,5 +1,3 @@
-import pytest
-
 from test.base_test import TEST_FOLDER, BaseTest
 
 result_list = []
@@ -52,7 +50,7 @@ def parallel_tracking(min_samples_leaf=1):
     tracker = PyPads(uri=TEST_FOLDER)
     from test.test_sklearn.base_sklearn_test import sklearn_simple_decision_tree_experiment
     sklearn_simple_decision_tree_experiment(min_samples_leaf=min_samples_leaf)
-    tracker.deactivate_tracking(run_atexits=True, reload_modules=True)
+    tracker.deactivate_tracking(run_atexits=True, reload_modules=False)
     return min_samples_leaf
 
 
@@ -77,7 +75,7 @@ def punch_dummy_gen(itr=10):
 
 class ParallelSklearnTest(BaseTest):
 
-    @pytest.mark.forked
+    # @pytest.mark.forked
     def test_pool_execution(self):
         # TODO fails in run / works in debug for MacOsx
         import timeit
@@ -88,7 +86,7 @@ class ParallelSklearnTest(BaseTest):
         # TODO
         # !-------------------------- asserts ---------------------------
 
-    @pytest.mark.forked
+    # @pytest.mark.forked
     def test_pool_execution_single_tracker(self):
         from pypads.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER)
@@ -96,13 +94,13 @@ class ParallelSklearnTest(BaseTest):
         t = timeit.Timer(pool_execution(parallel_no_tracking, punch_dummy_gen()))
         print(t.timeit(1))
 
-    @pytest.mark.forked
+    # @pytest.mark.forked
     def test_process_execution(self):
         import timeit
         t = timeit.Timer(process_execution(parallel_tracking, range_gen()))
         print(t.timeit(1))
 
-    @pytest.mark.forked
+    # @pytest.mark.forked
     def test_process_execution_single_tracker(self):
         from pypads.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER)
@@ -111,16 +109,16 @@ class ParallelSklearnTest(BaseTest):
         print(t.timeit(1))
 
     # @pytest.mark.forked
-    # def test_joblib_execution(self):
-    #     import timeit
-    #     # TODO sklearn pretty print endless loop
-    #     t = timeit.Timer(joblib_execution(parallel_tracking, range_gen()))
-    #     print(t.timeit(1))
-
-    @pytest.mark.forked
-    def test_joblib_execution_single_tracker(self):
-        from pypads.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER)
+    def test_joblib_execution(self):
         import timeit
-        t = timeit.Timer(joblib_execution(parallel_no_tracking, punch_dummy_gen()))
+        # TODO sklearn pretty print endless loop
+        t = timeit.Timer(joblib_execution(parallel_tracking, range_gen()))
         print(t.timeit(1))
+
+    # @pytest.mark.forked
+    # def test_joblib_execution_single_tracker(self):
+    #     from pypads.base import PyPads
+    #     tracker = PyPads(uri=TEST_FOLDER)
+    #     import timeit
+    #     t = timeit.Timer(joblib_execution(parallel_no_tracking, punch_dummy_gen()))
+    #     print(t.timeit(1))

@@ -542,6 +542,10 @@ class PyPads:
                 self._mapping_registry.add_mapping(mapping, key=id(mapping))
 
     @property
+    def tracking_uri(self):
+        return self._uri
+
+    @property
     def wrap_manager(self):
         return self._wrap_manager
 

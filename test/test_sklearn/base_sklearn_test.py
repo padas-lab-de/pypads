@@ -12,7 +12,7 @@ def sklearn_simple_decision_tree_experiment(min_samples_leaf=1):
     dataset = datasets.load_iris()
 
     # fit a model to the data
-    model = DecisionTreeClassifier(min_samples_leaf=1)
+    model = DecisionTreeClassifier(min_samples_leaf=min_samples_leaf)
     model.fit(dataset.data, dataset.target)
     # make predictions
     expected = dataset.target
