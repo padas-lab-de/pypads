@@ -15,6 +15,7 @@ logger = log
 def set_logger():
     logger.remove()
     logger.add(sys.stdout, filter="pypads", level="INFO")
+    logger.add(sys.stderr, filter="pypads", level="INFO")
 
 
 set_logger()

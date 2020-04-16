@@ -1,7 +1,6 @@
 import sys
-import unittest
 
-from test.base_test import RanLogger, TEST_FOLDER
+from test.base_test import RanLogger, TEST_FOLDER, BaseTest
 
 
 def experiment():
@@ -22,7 +21,7 @@ config = {"events": {
     "recursion_depth": -1}
 
 
-class PypadsCustomFunctionTest(unittest.TestCase):
+class PypadsCustomFunctionTest(BaseTest):
 
     def test_api(self):
         """
