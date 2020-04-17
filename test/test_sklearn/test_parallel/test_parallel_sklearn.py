@@ -1,4 +1,4 @@
-from test.base_test import TEST_FOLDER, BaseTest
+from test.base_test import TEST_FOLDER, BaseTest, mac_os_disabled
 
 result_list = []
 
@@ -74,8 +74,8 @@ def punch_dummy_gen(itr=10):
 
 
 class ParallelSklearnTest(BaseTest):
-    pass
 
+    @mac_os_disabled
     def test_pool_execution(self):
         # TODO fails in run / works in debug for MacOsx
         import timeit
@@ -86,6 +86,7 @@ class ParallelSklearnTest(BaseTest):
         # TODO
         # !-------------------------- asserts ---------------------------
 
+    @mac_os_disabled
     def test_pool_execution_single_tracker(self):
         from pypads.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER)
@@ -93,11 +94,13 @@ class ParallelSklearnTest(BaseTest):
         t = timeit.Timer(pool_execution(parallel_no_tracking, punch_dummy_gen()))
         print(t.timeit(1))
 
+    @mac_os_disabled
     def test_process_execution(self):
         import timeit
         t = timeit.Timer(process_execution(parallel_tracking, range_gen()))
         print(t.timeit(1))
 
+    @mac_os_disabled
     def test_process_execution_single_tracker(self):
         from pypads.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER)
@@ -105,6 +108,7 @@ class ParallelSklearnTest(BaseTest):
         t = timeit.Timer(process_execution(parallel_no_tracking, punch_dummy_gen()))
         print(t.timeit(1))
 
+    @mac_os_disabled
     def test_joblib_execution(self):
         import timeit
         # TODO sklearn pretty print endless loop
