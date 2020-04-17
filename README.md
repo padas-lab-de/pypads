@@ -4,13 +4,27 @@ Building on the [MLFlow](https://github.com/mlflow/mlflow/) toolset this project
 # Getting started
 This tool requires those libraries to work:
 
-    mlflow>=1.4.0
+    mlflow>=1.6.0
     boltons>=19.3.0
-To install pypads from source, clone the source code repository and run
-   
-    python setup.py install
+    cloudpickle >= 1.3.0
+    loguru >= 0.4.1
+PyPads only support python 3.6 and higher. To install pypads run this in you terminal
+
+**Using source code**
+
+First, you have to install **poetry**
+
     poetry build & pip install ./dist/pypads-0.1.0.tar.gz 
-        
+ 
+**Using pip**
+
+    pip install pypads
+
+### Tests
+The unit tests can be found under 'test/' and can be executed using
+
+    poetry run pytest test/
+           
 ### Usage
 pypads is easy to use. Just define what is needed to be tracked in the config and call PyPads.
 
@@ -132,7 +146,10 @@ As we have seen, a simple initialization of the class at the top of your code ac
 
 Beside the configuration, **PyPads** takes other optional arguments.
 ```python        
-class PyPads(uri=None, name=None, mapping=None, config=None, mod_globals=None)
+class PyPads(uri=None, name=None, mapping_paths=None, mapping=None, init_run_fns=None,
+                 include_default_mappings=True,
+                 logging_fns=None, config=None, reload_modules=False, reload_warnings=True, clear_imports=False,
+                 affected_modules=None)
 ```
 [Source](https://github.com/padre-lab-eu/pypads/blob/0cb9f9bd5dff7753f7c47dc691d41edd0426a90a/pypads/base.py#L141)
 
@@ -141,11 +158,21 @@ class PyPads(uri=None, name=None, mapping=None, config=None, mod_globals=None)
 > 
 > **name : string, optional (default=None)** <br> Name of the **MLflow** experiment to track.
 >
+> **mapping_paths : list, optional (default=None)** <br> Absolute paths to additional mapping files.
+>
 > **mapping : dict, optional (default=None)** <br> Mapping to the logging functions to use for the tracking of the events. If None, then a DEFAULT_MAPPING is used which allow to log parameters, outputs or inputs.
+>
+> **init_run_fns : list, optional (default=None)** <br> Logging function to execute on tracking initialization.
+>
+> **include_default_mappings : boolean, optional (default=True)** <br> A flag whether to use the default provided mappings or not.
+>
+> **logging_fns : dict, optional (default=None)** <br> User defined logging functions to use where each dict item has to be ' "event": fn' or ' "event": {fn1,fn2,...}'.
 >
 > **config : dict, optional (default=None)** <br> A dictionary that maps the events defined in PyPads mapping files with the logging functions.
 >
-> **mod_globals : object, optional (default=None)** <br> globals() object used to 'duckpunch' already loaded classes.
+> **reload_modules : boolean, optional (default=False)** <br> Reload and duck punch already loaded modules before the tracking activation if set to True.
+>
+> **clear_imports: boolean, optional (default=False)** <br> Delete alredy loaded modules for sys.modules() if set to True.
 # Scientific work disclaimer
 This was created in scope of scientific work of the Data Science Chair at the University of Passau. If you want to use this tool or any of its resources in your scientific work include a citation.
 
