@@ -111,9 +111,9 @@ class ParallelSklearnTest(BaseTest):
         t = timeit.Timer(joblib_execution(parallel_tracking, range_gen()))
         print(t.timeit(1))
 
-    def test_joblib_execution_single_tracker(self):
-        from pypads.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER)
-        import timeit
-        t = timeit.Timer(joblib_execution(parallel_no_tracking, punch_dummy_gen()))
-        print(t.timeit(1))
+    # def test_joblib_execution_single_tracker(self):
+    #     from pypads.base import PyPads
+    #     tracker = PyPads(uri=TEST_FOLDER)
+    #     import timeit
+    #     t = timeit.Timer(joblib_execution(parallel_no_tracking, punch_dummy_gen()))
+    #     print(t.timeit(1))
