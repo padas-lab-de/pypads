@@ -40,7 +40,8 @@ if is_package_available("joblib"):
                     from pypads.base import PyPads
                     _pypads = PyPads(uri=_pypads_tracking_uri, reload_warnings=False,
                                      affected_modules=_pypads_affected_modules,
-                                     clear_imports=True, pre_initialized_cache=_pypads_cache, reload_modules=True)
+                                     clear_imports=True, pre_initialized_cache=_pypads_cache, reload_modules=True,
+                                     disable_run_init=True)
 
                     def clear_mlflow():
                         """
