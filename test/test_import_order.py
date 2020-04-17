@@ -3,7 +3,6 @@ from test.base_test import BaseTest, TEST_FOLDER
 
 class PypadsImportOrder(BaseTest):
 
-    # @pytest.mark.forked
     def test_punch_before_import(self):
         from pypads.base import PyPads
         from test_classes.dummy_mapping import _get_punch_dummy_mapping
@@ -15,7 +14,6 @@ class PypadsImportOrder(BaseTest):
         assert hasattr(PunchDummy2, "_pypads_mapping_PunchDummy2")
         assert hasattr(dummy2, "_pypads_mapping_PunchDummy2")
 
-    #@pytest.mark.forked
     def test_punch_after_import(self):
         from test_classes.dummy_classes import PunchDummy
         from test_classes.dummy_classes import PunchDummy2
@@ -32,7 +30,6 @@ class PypadsImportOrder(BaseTest):
         assert not hasattr(PunchDummy2, "_pypads_mapping_PunchDummy2")
         assert not hasattr(dummy2, "_pypads_mapping_PunchDummy2")
 
-    #@pytest.mark.forked
     def test_punch_after_import_clear_imports(self):
         from test_classes.dummy_classes import PunchDummy
         from test_classes.dummy_classes import PunchDummy2

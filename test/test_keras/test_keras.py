@@ -73,7 +73,6 @@ def keras_mlp_for_multi_class_softmax_classification():
 # noinspection PyMethodMayBeStatic
 class PypadsKerasTest(BaseTest):
 
-    # @pytest.mark.forked
     def test_keras_custom_logging(self):
         # --------------------------- setup of the tracking ---------------------------
         global callback

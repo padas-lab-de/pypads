@@ -40,7 +40,7 @@ if is_package_available("joblib"):
                     from pypads.base import PyPads
                     _pypads = PyPads(uri=_pypads_tracking_uri, reload_warnings=False,
                                      affected_modules=_pypads_affected_modules,
-                                     clear_imports=True, reload_modules=True)
+                                     clear_imports=True, pre_initialized_cache=_pypads_cache, reload_modules=True)
 
                     def clear_mlflow():
                         """
@@ -54,6 +54,7 @@ if is_package_available("joblib"):
                     atexit.register(clear_mlflow)
                 else:
                     _pypads = pypads.pypads.current_pads
+                    _pypads.cache.merge(_pypads_cache)
 
                 from pickle import loads
 
@@ -72,6 +73,7 @@ if is_package_available("joblib"):
 
                 out = wrapped_fn(*args, **kwargs)
                 if is_new_process:
+
                     return out, _pypads.cache
                 else:
                     return out

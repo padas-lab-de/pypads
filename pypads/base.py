@@ -341,7 +341,7 @@ class PyPads:
     def __init__(self, uri=None, name=None, mapping_paths=None, mapping=None, init_run_fns=None,
                  include_default_mappings=True,
                  logging_fns=None, config=None, reload_modules=False, reload_warnings=True, clear_imports=False,
-                 affected_modules=None):
+                 affected_modules=None, pre_initialized_cache=None):
         """
         TODO
         :param uri:
@@ -366,7 +366,8 @@ class PyPads:
         self._wrap_manager = WrapManager(self)
         self._api = PypadsApi(self)
         self._decorators = PypadsDecorators(self)
-        self._cache = PypadsCache()
+
+        self._cache = pre_initialized_cache if pre_initialized_cache else PypadsCache()
         self._call_tracker = CallTracker(self)
         self._init_mapping_registry(*mapping_paths, mapping=mapping, include_defaults=include_default_mappings)
 
