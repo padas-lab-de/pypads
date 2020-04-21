@@ -25,6 +25,7 @@ from pypads.functions.loggers.metric import Metric
 from pypads.functions.loggers.mlflow.mlflow_autolog import MlflowAutologger
 from pypads.functions.loggers.pipeline_detection import PipelineTracker
 from pypads.functions.post_run.post_run import PostRunFunction
+from pypads.functions.pre_run.git import IGit
 from pypads.functions.pre_run.hardware import ISystem, IRam, ICpu, IDisk, IPid, ISocketInfo, IMacAddress
 from pypads.functions.pre_run.pre_run import RunInfo, RunLogger, PreRunFunction
 from pypads.logging_util import WriteFormats, try_write_artifact, try_read_artifact, get_base_folder
@@ -88,7 +89,7 @@ class FunctionRegistry:
 
 # --- Pypads App ---
 # Default init_run fns
-DEFAULT_INIT_RUN_FNS = [RunInfo(), RunLogger(), ISystem(), IRam(), ICpu(), IDisk(), IPid(), ISocketInfo(),
+DEFAULT_INIT_RUN_FNS = [RunInfo(), RunLogger(), IGit(), ISystem(), IRam(), ICpu(), IDisk(), IPid(), ISocketInfo(),
                         IMacAddress()]
 
 
