@@ -11,7 +11,7 @@ class IGit(PreRunFunction):
         return ['git']
 
     def _call(self, pads, *args, **kwargs):
-        _pypads_timeout = kwargs.get("_pypads_timeout")
+        _pypads_timeout = kwargs.get("_pypads_timeout") if kwargs.get("_pypads_timeout") else 5
         run = pads.api.active_run()
         tags = run.data.tags
         source_name = tags.get("mlflow.source.name", None)

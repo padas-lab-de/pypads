@@ -164,8 +164,7 @@ if is_package_available("joblib"):
                         kwargs) + " but subprocess tracking is deactivated. To activated subprocess tracking set "
                                   "config parameter track_sub_processes to true. Disclaimer: this might be currently "
                                   "unstable and/or bad for the performance.")
-        else:
-            return original_call(self, *args, **kwargs)
+        return original_call(self, *args, **kwargs)
 
 
     setattr(joblib.Parallel, "__call__", joblib_call)
