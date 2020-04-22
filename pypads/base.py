@@ -121,6 +121,7 @@ DEFAULT_CONFIG = {"events": {
     "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"]},
     "log": {"on": ["pypads_log"]}
 },
+    "track_sub_processes": False,
     "recursion_identity": False,
     "recursion_depth": -1,
     "log_on_failure": True}
