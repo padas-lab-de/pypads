@@ -71,6 +71,12 @@ class Cache:
     def clear(self):
         self._cache = {}
 
+    def __str__(self):
+        out = str(super(Cache, self).__str__()) + "["
+        out += ",".join([str(k) + ": " + str(i) for k, i in self._cache.items()])
+        out += "]"
+        return out
+
     # def __getstate__(self):
     #     """
     #     Overwrite standard pickling by excluding the functions

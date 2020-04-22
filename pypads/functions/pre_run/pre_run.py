@@ -62,6 +62,7 @@ class RunLogger(PreRunFunction):
 
         def remove_logger():
             try:
+                from pypads import logger
                 logger.remove(lid)
             except Exception:
                 pass

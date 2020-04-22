@@ -16,11 +16,11 @@ if is_package_available("joblib"):
         """Decorator used to capture the arguments of a function."""
 
         @wraps(fn)
-        def wrapped_function(*args, _pypads=None, _pypads_active_run_id=None, _pypads_tracking_uri=None,
+        def wrapped_function(*args, _pypads_cache=None, _pypads_active_run_id=None, _pypads_tracking_uri=None,
                              _pypads_affected_modules=None, _pypads_triggering_process=None, **kwargs):
             from pypads.parallel.util import _pickle_tuple, _cloudpickle_tuple
             from pypads import logger
-            if _pypads:
+            if _pypads_active_run_id:
                 # noinspection PyUnresolvedReferences
                 import pypads.pypads
                 import mlflow
@@ -36,10 +36,12 @@ if is_package_available("joblib"):
                     # TODO pickling _pypads takes a long time
                     start_time = time.time()
                     logger.debug("Init Pypads in:" + str(time.time() - start_time))
-                    pypads.pypads.current_pads = _pypads
 
-                    _pypads.activate_tracking(reload_warnings=False, affected_modules=_pypads_affected_modules,
-                                              clear_imports=True)
+                    from pypads.base import PyPads
+                    _pypads = PyPads(uri=_pypads_tracking_uri, reload_warnings=False,
+                                     affected_modules=_pypads_affected_modules,
+                                     clear_imports=True, pre_initialized_cache=_pypads_cache, reload_modules=True,
+                                     disable_run_init=True)
 
                     def clear_mlflow():
                         """
@@ -51,6 +53,9 @@ if is_package_available("joblib"):
 
                     import atexit
                     atexit.register(clear_mlflow)
+                else:
+                    _pypads = pypads.pypads.current_pads
+                    _pypads.cache.merge(_pypads_cache)
 
                 from pickle import loads
 
@@ -68,10 +73,8 @@ if is_package_available("joblib"):
                 logger.debug("Started wrapped function on process: " + str(os.getpid()))
 
                 out = wrapped_fn(*args, **kwargs)
-                if is_new_process:
-                    return out, _pypads.cache
-                else:
-                    return out
+                return out, _pypads.cache
+
             else:
                 return fn(*args, **kwargs)
 
@@ -86,10 +89,15 @@ if is_package_available("joblib"):
                 from pypads.pypads import get_current_pads
 
                 pads = get_current_pads()
-                kwargs = {"_pypads": pads, "_pypads_active_run_id": run.info.run_id,
-                          "_pypads_tracking_uri": mlflow.get_tracking_uri(),
+
+                # TODO pickle all for reinitialisation important things (Logging functions, config, init run fns)
+                kwargs = {"_pypads_cache": pads.cache,
+                          "_pypads_active_run_id": run.info.run_id,
+                          "_pypads_tracking_uri": pads.tracking_uri,
                           "_pypads_affected_modules": pads.wrap_manager.module_wrapper.punched_module_names,
                           "_pypads_triggering_process": os.getpid()}
+                from pypads import logger
+                logger.remove()
             return wrapped_function, args, kwargs
 
         try:

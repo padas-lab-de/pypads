@@ -5,7 +5,7 @@ description = "PyPaDS aims to to add tracking functionality to machine learning 
 authors = ["Thomas Weißgerber <thomas.weissgerber@uni-passau.de>"]
 
 [tool.poetry.dependencies]
-python = "^3.6.0"
+python = "^3.7.0"
 cloudpickle = "^1.3.0"
 mlflow = "^1.6.0"
 boltons = "^19.3.0"
@@ -13,6 +13,7 @@ loguru = "^0.4.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2.5"
+pytest-faulthandler = "^2.0.1"
 scikit-learn = "^0.21.3"
 keras = "^2.3.1"
 tensorflow = "^2.0.0b1"

@@ -342,7 +342,7 @@ class PyPads:
     def __init__(self, uri=None, name=None, mapping_paths=None, mapping=None, init_run_fns=None,
                  include_default_mappings=True,
                  logging_fns=None, config=None, reload_modules=False, reload_warnings=True, clear_imports=False,
-                 affected_modules=None):
+                 affected_modules=None, pre_initialized_cache=None, disable_run_init=True):
         """
         TODO
         :param uri:
@@ -367,7 +367,8 @@ class PyPads:
         self._wrap_manager = WrapManager(self)
         self._api = PypadsApi(self)
         self._decorators = PypadsDecorators(self)
-        self._cache = PypadsCache()
+
+        self._cache = pre_initialized_cache if pre_initialized_cache else PypadsCache()
         self._call_tracker = CallTracker(self)
         self._init_mapping_registry(*mapping_paths, mapping=mapping, include_defaults=include_default_mappings)
 
@@ -380,7 +381,7 @@ class PyPads:
         self.add_atexit_fn(cleanup)
 
         self._init_run_fns = init_run_fns
-        self._init_mlflow_backend(uri, name, config)
+        self._init_mlflow_backend(uri, name, config, disable_run_init)
         self._function_registry = FunctionRegistry(logging_fns or DEFAULT_LOGGING_FNS)
         self.activate_tracking(reload_modules=reload_modules, reload_warnings=reload_warnings,
                                clear_imports=clear_imports, affected_modules=affected_modules)
@@ -479,7 +480,7 @@ class PyPads:
         from pypads.pypads import set_current_pads
         set_current_pads(None)
 
-    def _init_mlflow_backend(self, uri=None, name=None, config=None):
+    def _init_mlflow_backend(self, uri=None, name=None, config=None, disable_run_init=True):
         """
         Intialize the mlflow backend experiment and run as well as store the config to it.
         :param uri:
@@ -500,7 +501,8 @@ class PyPads:
             run = self.api.start_run(experiment_id=experiment_id)
         else:
             # Run init functions if run already exists but tracking is starting for it now
-            self.run_init_fns()
+            if not disable_run_init:
+                self.run_init_fns()
         _experiment = self.mlf.get_experiment_by_name(name) if name else self.mlf.get_experiment(
             run.info.experiment_id)
         if config:
@@ -541,6 +543,10 @@ class PyPads:
                     self._mapping_registry.add_mapping(mapping, key=key)
             else:
                 self._mapping_registry.add_mapping(mapping, key=id(mapping))
+
+    @property
+    def tracking_uri(self):
+        return self._uri
 
     @property
     def wrap_manager(self):
