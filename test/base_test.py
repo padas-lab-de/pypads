@@ -34,20 +34,20 @@ def cleanup():
 atexit.register(cleanup)
 
 
-# def mac_os_disabled(f):
-#     """
-#     Function to disable a test when mac os is used
-#     :param f:
-#     :return:
-#     """
-#     from sys import platform
-#     if platform == "darwin":
-#         def disabled(self):
-#             print(f.__name__ + ' has been disabled on mac osx')
-#
-#         return disabled
-#     else:
-#         return f
+def mac_os_disabled(f):
+    """
+    Function to disable a test when mac os is used
+    :param f:
+    :return:
+    """
+    from sys import platform
+    if platform == "darwin":
+        def disabled(self):
+            print(f.__name__ + ' has been disabled on mac osx')
+
+        return disabled
+    else:
+        return f
 
 
 class BaseTest(unittest.TestCase):

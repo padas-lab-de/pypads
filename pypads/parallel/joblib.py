@@ -73,11 +73,8 @@ if is_package_available("joblib"):
                 logger.debug("Started wrapped function on process: " + str(os.getpid()))
 
                 out = wrapped_fn(*args, **kwargs)
-                if is_new_process:
+                return out, _pypads.cache
 
-                    return out, _pypads.cache
-                else:
-                    return out
             else:
                 return fn(*args, **kwargs)
 
@@ -99,11 +96,8 @@ if is_package_available("joblib"):
                           "_pypads_tracking_uri": pads.tracking_uri,
                           "_pypads_affected_modules": pads.wrap_manager.module_wrapper.punched_module_names,
                           "_pypads_triggering_process": os.getpid()}
-
-                # kwargs = {"_pypads": pads, "_pypads_active_run_id": run.info.run_id,
-                #           "_pypads_tracking_uri": mlflow.get_tracking_uri(),
-                #           "_pypads_affected_modules": pads.wrap_manager.module_wrapper.punched_module_names,
-                #           "_pypads_triggering_process": os.getpid()}
+                from pypads import logger
+                logger.remove()
             return wrapped_function, args, kwargs
 
         try:

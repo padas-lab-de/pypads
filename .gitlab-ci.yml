@@ -30,7 +30,7 @@ stages:
   stage: tests
   coverage: '/TOTAL.*\s(\d+\.\d+\%)/'
   script:
-    - poetry run pytest test/
+    - pytest test/
   artifacts:
     paths:
       - tests/logs
@@ -51,9 +51,9 @@ test-python-3.7:
   <<: *test
   image: python:3.7
 
-test-python-3.8:
-  <<: *test
-  image: python:3.8
+#test-python-3.8:
+#  <<: *test
+#  image: python:3.8
 
 # Deploy jobs
 

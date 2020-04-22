@@ -9,7 +9,7 @@ This tool requires those libraries to work:
 To install pypads from source, clone the source code repository and run
    
     python setup.py install
-    poetry build & pip install ./dist/pypads-0.1.0.tar.gz 
+    poetry build & pip install ./dist/pypads-0.1.0.tar.gz
         
 ### Usage
 pypads is easy to use. Just define what is needed to be tracked in the config and call PyPads.
