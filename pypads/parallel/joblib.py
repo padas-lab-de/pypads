@@ -10,7 +10,6 @@ if is_package_available("joblib"):
 
     original_delayed = joblib.delayed
 
-
     @wraps(original_delayed)
     def punched_delayed(fn):
         """Decorator used to capture the arguments of a function."""
