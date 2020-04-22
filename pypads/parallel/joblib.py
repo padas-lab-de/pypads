@@ -16,7 +16,8 @@ if is_package_available("joblib"):
         """Decorator used to capture the arguments of a function."""
 
         @wraps(fn)
-        def wrapped_function(*args, _pypads_cache=None, _pypads_active_run_id=None, _pypads_tracking_uri=None,
+        def wrapped_function(*args, _pypads_cache=None, _pypads_config=None, _pypads_active_run_id=None,
+                             _pypads_tracking_uri=None,
                              _pypads_affected_modules=None, _pypads_triggering_process=None, **kwargs):
             from pypads.parallel.util import _pickle_tuple, _cloudpickle_tuple
             from pypads import logger
@@ -39,6 +40,7 @@ if is_package_available("joblib"):
 
                     from pypads.base import PyPads
                     _pypads = PyPads(uri=_pypads_tracking_uri, reload_warnings=False,
+                                     config=_pypads_config,
                                      affected_modules=_pypads_affected_modules,
                                      clear_imports=True, pre_initialized_cache=_pypads_cache, reload_modules=True,
                                      disable_run_init=True)
@@ -92,6 +94,7 @@ if is_package_available("joblib"):
 
                 # TODO pickle all for reinitialisation important things (Logging functions, config, init run fns)
                 kwargs = {"_pypads_cache": pads.cache,
+                          "_pypads_config": pads.config,
                           "_pypads_active_run_id": run.info.run_id,
                           "_pypads_tracking_uri": pads.tracking_uri,
                           "_pypads_affected_modules": pads.wrap_manager.module_wrapper.punched_module_names,
