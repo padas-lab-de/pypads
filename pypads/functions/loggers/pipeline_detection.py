@@ -93,7 +93,8 @@ def end_run(*args, **kwargs):
                 nx.draw_networkx_labels(network, pos=pos)
                 nx.draw_networkx_edge_labels(network, pos)
                 plt.savefig(folder)
-            try_mlflow_log(mlflow.log_artifact, folder)
+            if os.path.exists(folder):
+                try_mlflow_log(mlflow.log_artifact, folder)
 
     pads.cache.pop("pipeline")
     # # global last_pipeline_tracking
