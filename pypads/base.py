@@ -89,7 +89,7 @@ class FunctionRegistry:
 
 # --- Pypads App ---
 # Default init_run fns
-DEFAULT_INIT_RUN_FNS = [RunInfo(), RunLogger(), IGit(), ISystem(), IRam(), ICpu(), IDisk(), IPid(), ISocketInfo(),
+DEFAULT_INIT_RUN_FNS = [RunInfo(), RunLogger(), IGit(_pypads_timeout=3), ISystem(), IRam(), ICpu(), IDisk(), IPid(), ISocketInfo(),
                         IMacAddress()]
 
 
