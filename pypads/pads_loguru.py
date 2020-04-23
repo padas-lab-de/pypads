@@ -31,7 +31,7 @@ class LoggerManager:
         self._add_history[lid] = (args, kwargs)
 
     def temporary_remove(self):
-        for k in self._add_history.keys():
+        for k in list(self._add_history):
             try:
                 self.remove(k)
                 self._removed.append(k)
