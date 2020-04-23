@@ -34,11 +34,6 @@ from pypads.util import get_class_that_defined_method, dict_merge
 tracking_active = None
 
 
-# TODO make configurable
-# logger.remove(0)
-# logger.add(sys.stderr, level="WARNING")
-
-
 class FunctionRegistry:
     """
     This class holds function mappings. Logging functionalities get a name and a underlying function.

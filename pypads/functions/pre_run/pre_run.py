@@ -55,15 +55,17 @@ class RunLogger(PreRunFunction):
         folder = get_base_folder()
 
         # TODO loguru has problems with multiprocessing / make rotation configurable etc
-        lid = logger.add(os.path.join(folder, "run_" + _api.active_run().info.run_id + ".log"), rotation="50 MB",
-                         enqueue=True)
+        from pypads.pads_loguru import logger_manager
+        lid = logger_manager.add(os.path.join(folder, "run_" + _api.active_run().info.run_id + ".log"),
+                                 rotation="50 MB",
+                                 enqueue=True)
 
         import glob
 
         def remove_logger():
             try:
-                from pypads import logger
-                logger.remove(lid)
+                from pypads.pads_loguru import logger_manager
+                logger_manager.remove(lid)
             except Exception:
                 pass
             for file in glob.glob(os.path.join(folder, "run_*.log")):

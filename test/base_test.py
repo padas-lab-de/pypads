@@ -18,9 +18,10 @@ if "loguru" in str(logger):
                 logging.getLogger(record.name).handle(record)
 
         from loguru import logger
-        handler_id = logger.add(PropogateHandler(), format="{message}")
+        from pypads.pads_loguru import logger_manager
+        handler_id = logger_manager.add(PropogateHandler(), format="{message}")
         yield _caplog
-        logger.remove(handler_id)
+        logger_manager.remove(handler_id)
 
 TEST_FOLDER = os.path.join(expanduser("~"), ".pypads-test_" + str(os.getpid()))
 

@@ -108,8 +108,8 @@ if is_package_available("joblib"):
                               "_pypads_tracking_uri": pads.tracking_uri,
                               "_pypads_affected_modules": pads.wrap_manager.module_wrapper.punched_module_names,
                               "_pypads_triggering_process": os.getpid()}
-                    from pypads import logger
-                    logger.remove()
+            from pypads.pads_loguru import logger_manager
+            logger_manager.temporary_remove()
             return wrapped_function, args, kwargs
 
         try:
@@ -141,10 +141,12 @@ if is_package_available("joblib"):
         from pypads.pypads import current_pads
         pads = current_pads
 
+        # Temporary hold handlers and remove them
+        from pypads.pads_loguru import logger_manager
+        logger_manager.temporary_remove()
+
         if pads:
             if pads.config["track_sub_processes"]:
-                # Temporary hold handlers and remove them
-                logger.remove()
                 out = original_call(self, *args, **kwargs)
                 if isinstance(out, List):
                     real_out = []
@@ -156,6 +158,7 @@ if is_package_available("joblib"):
                         else:
                             real_out.append(entry)
                     out = real_out
+                logger_manager.add_loggers_from_history()
                 return out
             else:
                 logger.warning(
@@ -163,7 +166,9 @@ if is_package_available("joblib"):
                         kwargs) + " but subprocess tracking is deactivated. To activated subprocess tracking set "
                                   "config parameter track_sub_processes to true. Disclaimer: this might be currently "
                                   "unstable and/or bad for the performance.")
-        return original_call(self, *args, **kwargs)
+        out = original_call(self, *args, **kwargs)
+        logger_manager.add_loggers_from_history()
+        return out
 
 
     setattr(joblib.Parallel, "__call__", joblib_call)
