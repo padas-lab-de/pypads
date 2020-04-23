@@ -1,3 +1,9 @@
+"""
+===========================================
+DecisionTree Classification on Iris dataset
+===========================================
+An example of using PyPads to track different functions and classes used in a minimal classification examples.
+"""
 from pypads import logger
 from pypads.base import PyPads
 tracker = PyPads()
