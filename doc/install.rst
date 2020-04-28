@@ -1,8 +1,8 @@
 .. _installation-instructions:
 
-=======================
-Installing pypads
-=======================
+==============
+How To Install
+==============
 
 There are different ways to install pypads:
 
@@ -19,57 +19,12 @@ There are different ways to install pypads:
 
 .. _install_official_release:
 
-Installing the latest release
-=============================
+Installing the latest release with pip
+======================================
 
-.. This quickstart installation is a hack of the scikit-learn.
-   See the original https://github.com/scikit-learn/scikit-learn/blob/master/doc/install.rst
+The lastest stable version of pypads can be downloaded and installed from `PyPi <https://pypi.org/project/pypads/>`_::
 
-
-.. raw:: html
-
-  <div class="install">
-       <strong>Operating System</strong>
-          <input type="radio" name="os" id="quickstart-win" checked>
-          <label for="quickstart-win">Windows</label>
-          <input type="radio" name="os" id="quickstart-mac">
-          <label for="quickstart-mac">macOS</label>
-          <input type="radio" name="os" id="quickstart-lin">
-          <label for="quickstart-lin">Linux</label><br />
-       <strong>Packager</strong>
-          <input type="radio" name="packager" id="quickstart-pip" checked>
-          <label for="quickstart-pip">pip</label>
-          <input type="radio" name="packager" id="quickstart-conda">
-          <label for="quickstart-conda">conda</label><br />
-          <input type="checkbox" name="config" id="quickstart-venv">
-          <label for="quickstart-venv"></label>
-       </span>
-
-.. raw:: html
-
-       <div>
-         <span class="pp-expandable" data-packager="pip" data-os="windows">Install the 64bit version of Python 3, for instance from <a href="https://www.python.org/">https://www.python.org</a>.</span
-         ><span class="pp-expandable" data-packager="pip" data-os="mac">Install Python 3 using <a href="https://brew.sh/">homebrew</a> (<code>brew install python</code>) or by manually installing the package from <a href="https://www.python.org">https://www.python.org</a>.</span
-         ><span class="pp-expandable" data-packager="pip" data-os="linux">Install python3 and python3-pip using the package manager of the Linux Distribution.</span
-         ><span class="pp-expandable" data-packager="conda"><a href="https://docs.conda.io/projects/conda/en/latest/user-guide/install/">Install conda</a> (no administrator permission required).</span>
-       </div>
-
-Then run:
-
-.. raw:: html
-
-       <div class="highlight"><pre><code
-        ><span class="pp-expandable" data-packager="pip" data-os="linux" data-venv="">python3 -m venv pypads-venv</span
-        ><span class="pp-expandable" data-packager="pip" data-os="windows" data-venv="">python -m venv pypads-venv</span
-        ><span class="pp-expandable" data-packager="pip" data-os="mac" data-venv="">python -m venv pypads-venv</span
-        ><span class="pp-expandable" data-packager="pip" data-os="linux" data-venv="">source pypads-venv/bin/activate</span
-        ><span class="pp-expandable" data-packager="pip" data-os="mac" data-venv="">source pypads-venv/bin/activate</span
-        ><span class="pp-expandable" data-packager="pip" data-os="windows" data-venv="">pypads-venv\Scripts\activate</span
-        ><span class="pp-expandable" data-packager="pip" data-venv="">pip install pypads</span
-        ><span class="pp-expandable" data-packager="pip" data-os="mac" data-venv="no">pip install -U pypads</span
-        ><span class="pp-expandable" data-packager="pip" data-os="windows" data-venv="no">pip install -U pypads</span
-        ><span class="pp-expandable" data-packager="pip" data-os="linux" data-venv="no">pip3 install -U pypads</span
-       ></code></pre></div>
+   pip install pypads
 
 
 Note that in order to avoid potential conflicts with other packages it is
@@ -93,3 +48,86 @@ prior to running any Python command whenever you start a new terminal session.
 
     Pypads requires Python 3.6 or newer.
 
+.. _advanced-installation:
+
+
+Installing pypads from source
+=============================
+
+This section introduces how to install the **master branch** of pypads.
+This can be done by building from source.
+
+.. _install_from_source:
+
+Building from source
+--------------------
+
+Building from source is required to work on a contribution (bug fix, new
+feature, code or documentation improvement).
+
+.. _git_repo:
+
+#. Use `Git <https://git-scm.com/>`_ to check out the latest source from the
+   `pypads repository <https://github.com/padre-lab-eu/pypads>`_ on
+   Github.::
+
+        git clone git@github.com:padre-lab-eu/pypads.git  # add --depth 1 if your connection is slow
+        cd pypads
+
+   If you plan on submitting a pull-request, you should clone from your fork
+   instead.
+
+#. Install poetry tool for dependency managenment for your platform. See instructions in the `Official documentation <https://python-poetry.org/docs/#installation>`_.
+
+#. Optional (but recommended): create and activate a dedicated virtualenv_
+   or `conda environment`_.
+
+#. Install build the project with poetry ::
+
+        poetry build & pip install ./dist/pypads-0.1.0.tar.gz .
+
+
+Dependencies
+------------
+
+Runtime dependencies
+~~~~~~~~~~~~~~~~~~~~
+
+Pypads requires the following dependencies both at build time and at
+runtime:
+
+- Python (>= 3.6),
+- cloudpickle (>= 1.3.3),
+- mlflow (>= 1.6.0),
+- boltons (>= 19.3.0),
+- loguru (>=0.4.1)
+
+Those dependencies are **automatically installed by poetry** if they were missing
+when building pypads from source.
+
+
+Build dependencies
+~~~~~~~~~~~~~~~~~~
+
+Building PyPads also requires:
+
+- Poetry >= 0.12.
+
+
+Test dependencies
+~~~~~~~~~~~~~~~~~
+
+Running tests requires:
+
+- pytest >= 5.2.5,
+- scikit-learn >= 0.21.3,
+- tensorflow >= 2.0.0b1,
+- psutil >= 5.7.0,
+- networkx >= 2.4,
+- keras >= 2.3.1.
+
+Some tests also require `numpy <https://numpy.org/>`_.
+
+
+.. _virtualenv: https://docs.python.org/3/tutorial/venv.html
+.. _conda environment: https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html
