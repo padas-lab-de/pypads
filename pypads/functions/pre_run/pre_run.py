@@ -3,11 +3,12 @@ from _py_abc import ABCMeta
 from abc import abstractmethod
 
 from pypads import logger
+from pypads.functions.loggers.base_logger import FunctionHolder
 from pypads.functions.loggers.mixins import DependencyMixin, OrderMixin, TimedCallableMixin, IntermediateCallableMixin, \
     ConfigurableCallableMixin
 
 
-class PreRunFunction(IntermediateCallableMixin, TimedCallableMixin, DependencyMixin, OrderMixin,
+class PreRunFunction(IntermediateCallableMixin, FunctionHolder, TimedCallableMixin, DependencyMixin, OrderMixin,
                      ConfigurableCallableMixin):
     __metaclass__ = ABCMeta
     """
@@ -15,19 +16,24 @@ class PreRunFunction(IntermediateCallableMixin, TimedCallableMixin, DependencyMi
     """
 
     @abstractmethod
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args, fn=None, **kwargs):
+        super().__init__(*args, fn=fn, **kwargs)
+        if self._fn is None:
+            self._fn = self._call
 
     @abstractmethod
     def _call(self, pads, *args, **kwargs):
-        pass
+        return NotImplementedError()
 
     def __real_call__(self, *args, **kwargs):
         from pypads.pypads import get_current_pads
-        return self._call(get_current_pads(), *args, **kwargs)
+        return super().__real_call__(get_current_pads(), *args, **kwargs)
 
 
 class RunInfo(PreRunFunction):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     @staticmethod
     def _needed_packages():
@@ -47,6 +53,9 @@ class RunInfo(PreRunFunction):
 
 
 class RunLogger(PreRunFunction):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def _call(self, pads, *args, **kwargs):
         from pypads.base import PypadsApi
         _api: PypadsApi = pads.api
@@ -62,7 +71,7 @@ class RunLogger(PreRunFunction):
 
         import glob
 
-        def remove_logger():
+        def remove_logger(pads, *args, **kwargs):
             try:
                 from pypads.pads_loguru import logger_manager
                 logger_manager.remove(lid)

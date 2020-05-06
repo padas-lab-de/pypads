@@ -39,10 +39,7 @@ def get_logger_times():
     return out
 
 
-def print_timings():
-    from pypads.pypads import get_current_pads
-    pads = get_current_pads()
-
+def print_timings(pads, *args, **kwargs):
     timings: OrderedDict = pads.cache.run_get("timings")
     out = ""
     for k, v in timings.items():

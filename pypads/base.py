@@ -16,6 +16,7 @@ from pypads.autolog.mappings import AlgorithmMapping, MappingRegistry, Algorithm
 from pypads.autolog.pypads_import import extend_import_module, duck_punch_loader
 from pypads.caches import PypadsCache, Cache
 from pypads.functions.analysis.call_tracker import CallTracker
+from pypads.functions.analysis.strace import STrace
 from pypads.functions.analysis.validation.parameters import Parameters
 from pypads.functions.loggers.base_logger import LoggingFunction
 from pypads.functions.loggers.data_flow import Input, Output
@@ -86,7 +87,7 @@ class FunctionRegistry:
 # Default init_run fns
 DEFAULT_INIT_RUN_FNS = [RunInfo(), RunLogger(), IGit(_pypads_timeout=3), ISystem(), IRam(), ICpu(), IDisk(), IPid(),
                         ISocketInfo(),
-                        IMacAddress()]
+                        IMacAddress(), STrace()]
 
 
 # Default event mappings. We allow to log parameters, output or input
@@ -579,7 +580,7 @@ class PyPads:
         self._config = value
 
     @property
-    def api(self):
+    def api(self) -> PypadsApi:
         return self._api
 
     @property

@@ -109,7 +109,7 @@ class PypadsRunCache(Cache):
         from pypads.pypads import get_current_pads
         pads = get_current_pads()
 
-        def cleanup_cache(run_id=self.run_id):
+        def cleanup_cache(*args, run_id=self.run_id, **kwargs):
             from pypads.pypads import get_current_pads
             pads = get_current_pads()
             pads.cache.run_delete(run_id)

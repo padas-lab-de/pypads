@@ -1,5 +1,3 @@
-from logging import warning
-
 from pypads.functions.pre_run.pre_run import PreRunFunction
 from pypads.functions.util import get_run_git, get_git_repo
 
@@ -22,10 +20,10 @@ class IGit(PreRunFunction):
             pads.api.set_tag("pypads.git.description", repo.description)
             pads.api.set_tag("pypads.git.describe", repo.git.describe("--all"))
             from git import GitCommandError
-            try:
-                pads.api.set_tag("pypads.git.shortlog", repo.git.shortlog(kill_after_timeout=_pypads_timeout))
-            except GitCommandError as e:
-                warning("Ignored the execution and tracking of 'git shortlog'. " + str(e))
+            # try:
+            #     pads.api.set_tag("pypads.git.shortlog", repo.git.shortlog(kill_after_timeout=_pypads_timeout))
+            # except GitCommandError as e:
+            #     warning("Ignored the execution and tracking of 'git shortlog'. " + str(e))
             try:
                 pads.api.set_tag("pypads.git.log", repo.git.log(kill_after_timeout=_pypads_timeout))
             except GitCommandError as e:
