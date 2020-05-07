@@ -9,8 +9,7 @@ To start and activate the tracking of your modules, classes and functions, An in
 It is recommended to initialize the tracking **before** importing the modules to be tracked.
 
 .. autoclass:: pypads.base.PyPads
-    :members:
-    :undoc-members:
+
 
 .. _default_setting:
 
