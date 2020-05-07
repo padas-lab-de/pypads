@@ -14,8 +14,8 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath('sphinxext'))
+sys.path.insert(0, os.path.abspath('../../pypads'))
 from github_link import make_linkcode_resolve
-
 
 
 # -- Project information -----------------------------------------------------
@@ -33,7 +33,7 @@ release = '0.1.0'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.autosummary', 'sphinx.ext.intersphinx', 'sphinx.ext.doctest',
-              'numpydoc','sphinx.ext.linkcode']
+              'sphinx.ext.napoleon','sphinx.ext.linkcode']
 
 autodoc_default_options = {
     'members': True,
@@ -77,6 +77,6 @@ html_short_title = 'pypads'
 
 # The following is used by sphinx.ext.linkcode to provide links to github
 linkcode_resolve = make_linkcode_resolve('pypads',
-                                         'https://github.com/padre-lab-eu/pypads'
-                                         'pypads/blob/{revision}/'
+                                         'https://github.com/padre-lab-eu/pypads/'
+                                         'blob/{revision}/'
                                          '{package}/{path}#L{lineno}')

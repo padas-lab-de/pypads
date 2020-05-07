@@ -14,7 +14,7 @@ additional goal of the extension.
 Install PyPads
 --------------
 
-Are you tired of logging your experiments manually? Learn how to automate logging as much information as possible by
+Logging your experiments manually can be overwhelming and exhaustive? PyPads is a tool to help automate logging as much information as possible by
 tracking the libraries of your choice.
 
 * **Installing PyPads**:
@@ -35,6 +35,17 @@ Getting started
 Learn more about how to use pypads, configuring your tracking events and hooks, mapping your custom logging function
 and some of the core features of PyPads.
 
+* **Usage example**
+   :ref:`Decision Tree Iris classification <usage_example>`
+
+* **Mapping file example for Scikit-learn**
+   A :ref:`mapping file <mappingfile>` is where we define the classes and functions to be tracked from the library of our choice. It includes the defined hooks.
+* **Hooks and events**
+   - :ref:`Events <events>` are defined primarily by listeners which are, in our case, **hooks**. When triggered, the corresponding loggers are called. Logging functions are linked to these events via a mapping dictionary passed to the :ref:`base class <base_class>`.
+   - :ref:`Hooks <hooks>` help the user to define what triggers those events (e.g. what functions or classes should trigger a specific event).
+* **Loggers**
+   Logging functions are functions called around when any tracked method or class triggers their corresponding event. Mapping events to logging functions is done by passing a dictionary **mapping** as a parameter to the :ref:`PyPads class <base_class>`.
+
 .. toctree::
    :maxdepth: 2
    :hidden:
@@ -44,12 +55,23 @@ and some of the core features of PyPads.
 
 PyPads
 ------
-TODO
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: PyPads:
+
+   pypads
 
 Related Projects
 ----------------
-**PaDRe-Pads** is a tool that builds on PyPads and add some semantics to the tracked data of Machine learning experiments.
- See the `padre-pads documentation <https://github.com/padre-lab-eu/padre-pads>`_.
+- **PaDRe-Pads** is a tool that builds on PyPads and add some semantics to the tracked data of Machine learning experiments. See the `padre-pads documentation <https://github.com/padre-lab-eu/padre-pads>`_.
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Related Projects:
+
+   related_projects
 
 About Us
 --------

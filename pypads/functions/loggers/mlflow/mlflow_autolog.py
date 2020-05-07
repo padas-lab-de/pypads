@@ -33,7 +33,10 @@ gorilla.get_original_attribute = fake_gorilla_get_original_attribute
 
 # Could also be a normal function right now
 class MlflowAutologger(LoggingFunction):
+    """
+    MlflowAutologger is the intergration of the mlflow autologging functionalities into PyPads tracking system.
 
+    """
     def __init__(self, *args, order=-1, **kwargs):
         super().__init__(*args, order=order, **kwargs)
 
@@ -41,17 +44,7 @@ class MlflowAutologger(LoggingFunction):
     def __call_wrapped__(self, ctx, *args, _args, _kwargs, _pypads_autologgers=None, _pypads_env=LoggingEnv, **kwargs):
         """
             Function used to enable autologgers of mlflow.
-            :param _kwargs: Real kwargs to pass to the callback
-            :param self:
-            :param args:
-            :param _pypads_autologgers:
-            :param _pypads_wrappe:
-            :param _pypads_context:
-            :param _pypads_mapped_by:
-            :param _pypads_callback:
-            :param kwargs:
-            :return:
-            """
+        """
 
         if _pypads_autologgers is None:
             _pypads_autologgers = ["keras", "tensorflow", "xgboost", "gluon", "spark", "lightgbm"]

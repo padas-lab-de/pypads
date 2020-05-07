@@ -9,10 +9,10 @@ from pypads.functions.loggers.mixins import DependencyMixin, OrderMixin, TimedCa
 
 class PreRunFunction(IntermediateCallableMixin, TimedCallableMixin, DependencyMixin, OrderMixin,
                      ConfigurableCallableMixin):
+    """
+        This class should be used to define new pre run functions
+    """
     __metaclass__ = ABCMeta
-    """
-    This class should be used to define new pre run functions
-    """
 
     @abstractmethod
     def __init__(self, *args, **kwargs):
@@ -20,6 +20,11 @@ class PreRunFunction(IntermediateCallableMixin, TimedCallableMixin, DependencyMi
 
     @abstractmethod
     def _call(self, pads, *args, **kwargs):
+        """
+        Function where to add you custom code to execute before starting the run.
+
+        :param pads: the current instance of PyPads.
+        """
         pass
 
     def __real_call__(self, *args, **kwargs):

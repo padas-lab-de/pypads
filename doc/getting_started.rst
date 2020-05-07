@@ -7,6 +7,8 @@ Getting started!
 
 Usage
 =====
+.. _usage_example:
+
 pypads is easy to use. Just define what is needed to be tracked in the config and call PyPads.
 
 A simple example looks like the following.::
@@ -37,43 +39,27 @@ A simple example looks like the following.::
 
 
 The used hooks for each event are defined in the mapping json file where each event includes the functions to listen to.
-For the previous example, the sklearn mapping json file would look like the following::
 
-    {
-      "default_hooks": {
-        "modules": {
-          "fns": {}
-        },
-        "classes": {
-          "fns": {
-            "pypads_init": [
-              "__init__"
-            ],
-            "pypads_fit": [
-              "fit",
-              "fit_predict",
-              "fit_transform"
-            ],
-            "pypads_predict": [
-              "fit_predict",
-              "predict",
-              "score"
-            ],
-            "pypads_transform": [
-              "fit_transform",
-              "transform"
-            ]
-          }
-        },
-        "fns": {}
-      }
+Mapping file example
+====================
+
+.. _mappingfile:
+
+For the previous example, the sklearn mapping json file would look like the following.
 
 
-For example, "pypads_fit" is an event listener on any **fit, fit_predict and fit_transform** function call made by the tracked class.
+.. literalinclude:: files/sklearn_example.json
+    :language: JSON
 
-Defining a hook event
-=====================
-An event can be defined in the mapping file with 3 different ways.
+
+
+For example, "pypads_fit" is an event listener on any **fit, fit_predict and fit_transform** function call made by any tracked class with those methods.
+
+Defining a hook for an event
+============================
+.. _hooks:
+
+A hook can be defined in the mapping file with 3 different ways.
 
 #. Always::
 
@@ -120,3 +106,23 @@ An event can be defined in the mapping file with 3 different ways.
 
    Tracks all attributes of the module where "package_name" is matching Regex.
 
+Define an event
+===============
+.. _events:
+
+Once the hooks are defined, they are then linked to the events we want them to trigger. Following the example below, the hook **pypads_metric** will be linked to an event we call
+**Metrics** for example. This is done via passing a dictionary as the parameter **config** to the :ref:`PyPads class <base_class>`::
+
+    config = {"events": {
+                        "Metrics" : {"on": ["pypads_metrics"]}
+                        }
+             }
+
+
+
+PyPads loggers
+==============
+.. _logging:
+
+PyPads has a set of built-in logging functions that are mapped by default to some pre-defined events. Check the default setting of PyPads :ref:`here <default_setting>`.
+The user can also define custom logging functions for custom events. Details on how to do that can be found (:ref:`here <loggingfns>`).

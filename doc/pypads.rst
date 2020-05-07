@@ -16,8 +16,11 @@ PyPads
 |
 
 .. toctree::
-    :maxdepth: 2
+   :maxdepth: 2
 
+   classes/base_class
+   classes/logging_fns
+   classes/utilities
 
 
 |
