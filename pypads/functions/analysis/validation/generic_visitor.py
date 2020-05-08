@@ -12,7 +12,7 @@ SciKitPipelineVisitor = {
                                           )
                                 ),
                 "__doc__":
-                    "doc"
+                    "docs"
             }
 
 default_selector = {

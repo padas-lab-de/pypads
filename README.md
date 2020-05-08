@@ -1,6 +1,7 @@
 # PyPads
 Building on the [MLFlow](https://github.com/mlflow/mlflow/) toolset this project aims to extend the functionality for MLFlow, increase the automation and therefore reduce the workload for the user. The production of structured results is an additional goal of the extension.
 
+For more information, look into the [full documentation of PyPads](link.com).
 # Getting started
 This tool requires those libraries to work:
 

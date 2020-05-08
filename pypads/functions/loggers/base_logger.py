@@ -75,10 +75,16 @@ class LoggingExecutor(DefensiveCallableMixin, FunctionHolder, ConfigurableCallab
 
 # noinspection PyBroadException
 class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, DependencyMixin, OrderMixin):
+    """
+    This class should be used to define new custom loggers. The user has to define __pre__ and/or __post__ methods
+    depending on the specific use case.
+
+    :param static_parameters: dict, optional, static parameters (if needed) to be used when logging.
+
+    .. note:: It is not recommended to change the __call_wrapped__ method, only if really needed.
+
+    """
     __metaclass__ = ABCMeta
-    """
-    This class should be used to define new loggers.
-    """
 
     def __init__(self, *args, static_parameters=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -126,25 +132,22 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
 
     def __pre__(self, ctx, *args, _pypads_env, _args, _kwargs, **kwargs):
         """
-        The function to be called before executing the log anchor
-        :param ctx:
-        :param args:
-        :param _pypads_wrappe:
-        :param _pypads_context:
-        :param _pypads_mapped_by:
-        :param _pypads_callback:
-        :param kwargs:
-        :return:
+        The function to be called before executing the log anchor. the value returned will be passed on to the __post__
+        function as **_pypads_pre_return**.
+
+
+        :return: _pypads_pre_return
         """
         raise NotImplementedError()
 
     def __post__(self, ctx, *args, _pypads_env, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
         """
-        The function to be called after executing the log anchor
-        :param ctx:
-        :param args:
-        :param kwargs:
-        :return:
+        The function to be called after executing the log anchor.
+
+        :param _pypads_pre_return: the value returned by __pre__.
+        :param _pypads_result: the value returned by __call_wrapped__.
+
+        :return: the wrapped function return value
         """
         raise NotImplementedError()
 
@@ -162,9 +165,9 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
         _pre_result = None
         try:
 
-            out = self._pre(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs,
+            _pre_result = self._pre(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs,
                             **_pypads_hook_params)
-            self._extract_runtime(out, _pypads_env, "__pre__")
+            self._extract_runtime(_pre_result, _pypads_env, "__pre__")
         except TimingDefined:
             pass
         _return = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs, **_pypads_hook_params)
@@ -180,13 +183,9 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
     def __call_wrapped__(self, ctx, *args, _pypads_env: LoggingEnv, _args, _kwargs, **_pypads_hook_params):
         """
         The real call of the wrapped function. Be carefull when you change this.
-        Exceptions here will not be catched automatically and might break your workflow.
-        :param _pypads_env:
-        :param _kwargs:
-        :param ctx:
-        :param args:
-        :param _pypads_hook_params:
-        :return:
+        Exceptions here will not be catched automatically and might break your workflow. The returned value will be passed on to __post__ function.
+
+        :return: _pypads_result
         """
         _return, time = FunctionHolder(fn=_pypads_env.callback)(*_args, **_kwargs)
         try:

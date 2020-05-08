@@ -84,15 +84,14 @@ class DependencyMixin(CallableMixin):
     @staticmethod
     def _needed_packages():
         """
-        List of needed packages
-        :return:
+        :return: List of needed packages by the logger.
         """
         return []
 
     def _check_dependencies(self):
         """
-        Raise error if dependencies are missing
-        :return:
+        Raise error if dependencies are missing.
+
         """
         missing = []
         for package in self._needed_packages():

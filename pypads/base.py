@@ -334,8 +334,20 @@ class PypadsDecorators:
 
 class PyPads:
     """
-    PyPads app. Enable automatic logging for all libs in mapping files.
+    PyPads app and base class. It enable automatic logging for all libraries included in the mapping files.
     Serves as the main entrypoint to PyPads. After constructing this app tracking is activated.
+
+        :param uri: **string, optional (default=None)** Address of local or remote tracking server that **MLflow** uses to record runs. If None, then it tries to get the environment variable **'MLFLOW_PATH'** or the **'HOMEPATH'** of the user.
+        :param name: **string, optional (default=None)** Name of the **MLflow** experiment to track.
+        :param mapping_paths: **list, optional (default=None)** Absolute paths to additional mapping files.
+        :param mapping: **dict, optional (default=None)** Mapping to the logging functions to use for the tracking of the events. If None, then a DEFAULT_MAPPING is used which allow to log parameters, outputs or inputs.
+        :param init_run_fns: **list, optional (default=None)** Logging function to execute on tracking initialization.
+        :param include_default_mappings: **boolean, optional (default=True)** A flag whether to use the default provided mappings or not.
+        :param logging_fns: **dict, optional (default=None)** User defined logging functions to use where each dict item has to be ' "event": fn' or ' "event": {fn1,fn2,...}'.
+        :param config: **dict, optional (default=None)** A dictionary that maps the events defined in PyPads mapping files with the logging functions.
+        :param reload_modules: **boolean, optional (default=False)** Reload and duck punch already loaded modules before the tracking activation if set to True.
+        :param clear_imports: **boolean, optional (default=False)** Delete alredy loaded modules for sys.modules() if set to True.
+
     """
 
     def __init__(self, uri=None, name=None, mapping_paths=None, mapping=None, init_run_fns=None,
@@ -343,11 +355,16 @@ class PyPads:
                  logging_fns=None, config=None, reload_modules=False, reload_warnings=True, clear_imports=False,
                  affected_modules=None, pre_initialized_cache=None, disable_run_init=True):
         """
-        TODO
-        :param uri:
-        :param name:
-        :param logging_fns:
-        :param config:
+        :param uri: **string, optional (default=None)** <br> Address of local or remote tracking server that **MLflow** uses to record runs. If None, then it tries to get the environment variable **'MLFLOW_PATH'** or the **'HOMEPATH'** of the user.
+        :param name: **string, optional (default=None)** <br> Name of the **MLflow** experiment to track.
+        :param mapping_paths: **list, optional (default=None)** <br> Absolute paths to additional mapping files.
+        :param mapping: **dict, optional (default=None)** <br> Mapping to the logging functions to use for the tracking of the events. If None, then a DEFAULT_MAPPING is used which allow to log parameters, outputs or inputs.
+        :param init_run_fns: **list, optional (default=None)** <br> Logging function to execute on tracking initialization.
+        :param include_default_mappings: **boolean, optional (default=True)** <br> A flag whether to use the default provided mappings or not.
+        :param logging_fns: **dict, optional (default=None)** <br> User defined logging functions to use where each dict item has to be ' "event": fn' or ' "event": {fn1,fn2,...}'.
+        :param config: **dict, optional (default=None)** <br> A dictionary that maps the events defined in PyPads mapping files with the logging functions.
+        :param reload_modules: **boolean, optional (default=False)** <br> Reload and duck punch already loaded modules before the tracking activation if set to True.
+        :param clear_imports: **boolean, optional (default=False)** <br> Delete alredy loaded modules for sys.modules() if set to True.
         """
         from pypads.pypads import set_current_pads
         set_current_pads(self)
@@ -386,6 +403,9 @@ class PyPads:
                                clear_imports=clear_imports, affected_modules=affected_modules)
 
     def add_atexit_fn(self, fn):
+        """
+        Add function to be executed before stopping your process.
+        """
         self._atexit_fns.append(fn)
         atexit.register(fn)
 

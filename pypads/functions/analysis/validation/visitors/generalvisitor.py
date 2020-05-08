@@ -1,6 +1,6 @@
 from .visitor import CombineVisitor
 
-GeneralVisitor = {"__doc__": "doc"}
+GeneralVisitor = {"__doc__": "docs"}
 
 
 def generalize_visitor(visitor):
