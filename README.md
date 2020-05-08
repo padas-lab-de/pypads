@@ -1,7 +1,10 @@
+[![Documentation Status](https://readthedocs.org/projects/pypads/badge/?version=latest)](https://pypads.readthedocs.io/en/latest/?badge=latest)
+
 # PyPads
 Building on the [MLFlow](https://github.com/mlflow/mlflow/) toolset this project aims to extend the functionality for MLFlow, increase the automation and therefore reduce the workload for the user. The production of structured results is an additional goal of the extension.
 
-For more information, look into the [full documentation of PyPads](link.com).
+For more information, look into the [full documentation of PyPads](https://pypads.readthedocs.io/en/latest/).
+
 # Getting started
 This tool requires those libraries to work:
 
