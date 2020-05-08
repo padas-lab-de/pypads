@@ -234,9 +234,10 @@ class PypadsApi:
             yield run
         finally:
             if not mlflow.active_run() is enclosing_run:
+                self._pypads.api.end_run()
                 self._pypads.cache.run_clear()
                 self._pypads.cache.run_delete()
-                self._pypads.api.end_run()
+                mlflow.start_run(run_id=enclosing_run.info.run_id)
 
     def _get_pre_run_cache(self):
         if not self._pypads.cache.exists("pre_run_fns"):

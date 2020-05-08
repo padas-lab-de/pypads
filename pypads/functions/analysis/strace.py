@@ -32,10 +32,11 @@ class STrace(PreRunFunction):
             logger.warning("No tracing supported on windows currently.")
 
         if proc:
-            pads.api.register_post("stop_dtrace", DtraceStop(_pypads_proc=proc, _pypads_trace_file=file))
+            pads.api.register_post("stop_dtrace_" + str(proc.pid),
+                                   DtraceStop(_pypads_proc=proc, _pypads_trace_file=file))
             if proc.poll() == 1:
                 logger.warning(
-                    "Can't dtruss / strace without sudo rights. To enable tracking allow user to execute dtruss / strace "
+                    "Can't dtruss/strace without sudo rights. To enable tracking allow user to execute dtruss/strace "
                     "without sudo password with polkit or by modifiying visudo - /etc/sudoers:"
                     "username ALL=NOPASSWD: /usr/bin/dtruss. To get the path to dtruss you can use 'which dtruss'. "
                     "Be carefull about allowing permanent sudo rights to dtruss. This might introduce security risks.")
@@ -46,6 +47,7 @@ class STrace(PreRunFunction):
             """
             if proc.poll() is None:
                 os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+                proc.terminate()
 
         atexit.register(safety_hook)
 
@@ -59,6 +61,7 @@ class DtraceStop(PostRunFunction):
     def _call(self, pads, *args, **kwargs):
         if self._proc.poll() is None:
             os.killpg(os.getpgid(self._proc.pid), signal.SIGTERM)
+            self._proc.terminate()
         try:
             pads.api.log_artifact(self._trace_file)
         except Exception as e:

@@ -29,6 +29,7 @@ class LoggerManager:
     def add(self, *args, **kwargs):
         lid = logger.add(*args, **kwargs)
         self._add_history[lid] = (args, kwargs)
+        return lid
 
     def temporary_remove(self):
         for k in list(self._add_history):
