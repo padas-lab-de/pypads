@@ -37,4 +37,3 @@ Pypads also support mlflow autologging functionalities. More on that can be foun
 
 .. autoclass:: pypads.functions.loggers.mlflow.mlflow_autolog.MlflowAutologger
     :special-members: __call_wrapped__
-

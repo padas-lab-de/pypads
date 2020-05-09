@@ -45,6 +45,82 @@ and some of the core features of PyPads.
    - :ref:`Hooks <hooks>` help the user to define what triggers those events (e.g. what functions or classes should trigger a specific event).
 * **Loggers**
    Logging functions are functions called around when any tracked method or class triggers their corresponding event. Mapping events to logging functions is done by passing a dictionary **mapping** as a parameter to the :ref:`PyPads class <base_class>`.
+The following tables show the default loggers of pypads.
+
+   * Event Based loggers
+      .. list-table::
+         :widths: 10 10 25 25
+         :header-rows: 1
+
+         * - Logger
+           - Event
+           - Hook
+           - Description
+         * - LogInit
+           - init
+           - 'pypads_init'
+           - Debugging purposes
+         * - Log
+           - log
+           - 'pypads_log'
+           - Debugging purposes
+         * - Parameters
+           - parameters
+           - 'pypads_fit'
+           - tracks parameters of the tracked function call
+         * - Cpu,Ram,Disk
+           - hardware
+           - 'pypads_fit'
+           - track usage information, properties and other info on CPU, Memory and Disk.
+         * - Input
+           - input
+           - 'pypads_fit'
+           - tracks the input parameters of the current tracked function call.
+         * - Output
+           - output
+           - 'pypads_predict', 'pypads_fit'
+           - Logs the output of the current tracked function call.
+         * - Metric
+           - metric
+           - 'pypads_metric'
+           - tracks the output of the tracked metric function.
+         * - PipelineTracker
+           - pipeline
+           - 'pypads_fit','pypads_predict', 'pypads_transform', 'pypads_metrics'
+           - tracks the workflow of execution of the different pipeline elements of the experiment.
+
+   * Pre/Post run loggers
+      .. list-table::
+         :widths: 10 10 25
+         :header-rows: 1
+
+         * - Logger
+           - Pre/Post
+           - Description
+         * - IGit
+           - Pre
+           - Source code management and tracking
+         * - ISystem
+           - Pre
+           - System information (os,version,machine...)
+         * - ICpu
+           - Pre
+           - Cpu information (Nbr of cores, max/min frequency)
+         * - IRam
+           - Pre
+           - Memory information (Total RAM, SWAP)
+         * - IDisk
+           - Pre
+           - Disk information (disk total space)
+         * - IPid
+           - Pre
+           - Process information (ID, command, cpu usage, memory usage)
+         * - ISocketInfo
+           - Pre
+           - Network information (hostname, ip address)
+         * - IMacAddress
+           - Pre
+           - Mac address
 
 .. toctree::
    :maxdepth: 2
