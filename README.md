@@ -1,14 +1,20 @@
+
 # PyPads
 Building on the [MLFlow](https://github.com/mlflow/mlflow/) toolset this project aims to extend the functionality for MLFlow, increase the automation and therefore reduce the workload for the user. The production of structured results is an additional goal of the extension.
 
-For more information, look into the [full documentation of PyPads](link.com).
-# Getting started
+[![Documentation Status](https://readthedocs.org/projects/pypads/badge/?version=latest)](https://pypads.readthedocs.io/en/latest/?badge=latest)
+[![PyPI version](https://badge.fury.io/py/pypads.svg)](https://badge.fury.io/py/pypads)
+
+
+# Intalling
 This tool requires those libraries to work:
 
-    mlflow>=1.6.0
-    boltons>=19.3.0
-    cloudpickle >= 1.3.0
-    loguru >= 0.4.1
+    Python (>= 3.6),
+    cloudpickle (>= 1.3.3),
+    mlflow (>= 1.6.0),
+    boltons (>= 19.3.0),
+    loguru (>=0.4.1)
+    
 PyPads only support python 3.6 and higher. To install pypads run this in you terminal
 
 **Using source code**
@@ -17,7 +23,7 @@ First, you have to install **poetry**
 
     poetry build & pip install ./dist/pypads-0.1.0.tar.gz 
  
-**Using pip**
+**Using pip ([PyPi release](https://pypi.org/project/pypads/))**
 
     pip install pypads
 
@@ -25,8 +31,14 @@ First, you have to install **poetry**
 The unit tests can be found under 'test/' and can be executed using
 
     poetry run pytest test/
-           
-### Usage
+
+# Documentation
+
+For more information, look into the [official documentation of PyPads](https://pypads.readthedocs.io/en/latest/).
+
+# Getting Started
+         
+### Usage example
 pypads is easy to use. Just define what is needed to be tracked in the config and call PyPads.
 
 A simple example looks like the following,
@@ -56,39 +68,37 @@ model.fit(dataset.data, dataset.target) # pypads will track the parameters, outp
 predicted = model.predict(dataset.data) # pypads will track only the output of the model predict function.
 ```
         
-The used hooks for each event are defined in the mapping json file where each event includes the functions to listen to.
-In the example of sklearn mapping json file, we have:
+        
+The used hooks for each event are defined in the mapping json file where each hook represents the functions to listen to.
+In the [sklearn mapping](pypads/bindings/resources/mapping/sklearn_0_19_1.json) json file, an example entry would be:
 
-    "default_hooks": {
-        "modules": {
-          "fns": {}
-        },
-        "classes": {
-          "fns": {
-            "pypads_fit": [
-              "fit",
-              "fit_predict",
-              "fit_transform"
-            ],
-            "pypads_predict": [
-              "fit_predict",
-              "predict",
-              "score"
-            ],
-            "pypads_transform": [
-              "fit_transform",
-              "transform"
-            ]
-          }
-        },
-        "fns": {
-          "pypads_metric": [
-            "f1_score"
-          ]
-        }
+    {
+      "name": "base sklearn estimator",
+      "other_names": [],
+      "implementation": {
+        "sklearn": "sklearn.base.BaseEstimator"
+      },
+      "hooks": {
+        "pypads_fit": [
+          "fit",
+          "fit_predict",
+          "fit_transform"
+        ],
+        "pypads_predict": [
+          "fit_predict",
+          "predict"
+        ],
+        "pypads_transform": [
+          "fit_transform",
+          "transform"
+        ]
       }
+    }
 
-For example, "pypads_fit" is an event listener on any fit, fit_predict and fit_transform call made by the tracked model class.
+For instance, "pypads_fit" is an event listener on any fit, fit_predict and fit_transform call made by the tracked model class which is in this case **BaseEstimator** that most estimators inherits from.
+
+### Defining hooks
+Hooks are what triggers an "event" which is associated to one or more logger function in the mapping.
 
 #### Always
     {
@@ -114,7 +124,7 @@ This hook triggers always. If you annotate a module with this hook, all its func
         "pypads_metric": ["f1_score"]
       }
     }
-Tracks function with a name matching the given Regex.
+Tracks function with a name matching the given expression by compiling a regex expression.
 
 #### PackageNameHook
     {
@@ -127,7 +137,64 @@ Tracks function with a name matching the given Regex.
         "pypads_metric": [{"type": "package_name", "name":".*classification.*"}]
       }
     }
-Tracks all attr on module where package name is matching Regex.
+Tracks all attribute on module where package name is matching Regex.
+
+### Default Events, Hooks and Logging Functions
+
+The default configuration of events/hooks and logging functions for PyPads:
+
+    DEFAULT_CONFIG = {"events": {
+    "init": {"on": ["pypads_init"]},
+    "parameters": {"on": ["pypads_fit"]},
+    "hardware": {"on": ["pypads_fit"]},
+    "output": {"on": ["pypads_fit", "pypads_predict"]},
+    "input": {"on": ["pypads_fit"], "with": {"_pypads_write_format": WriteFormats.text.name}},
+    "metric": {"on": ["pypads_metric"]},
+    "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"]},
+    "log": {"on": ["pypads_log"]}
+    },
+        "recursion_identity": False,
+        "recursion_depth": -1,
+        "log_on_failure": True}
+    
+    DEFAULT_LOGGING_FNS = {
+    "parameters": Parameters(),
+    "output": Output(_pypads_write_format=WriteFormats.text.name),
+    "input": Input(_pypads_write_format=WriteFormats.text.name),
+    "hardware": {Cpu(), Ram(), Disk()},
+    "metric": Metric(),
+    "autolog": MlflowAutologger(),
+    "pipeline": PipelineTracker(_pypads_pipeline_type="normal", _pypads_pipeline_args=False),
+    "log": Log(),
+    "init": LogInit()
+
+Loggers in pypads goes into three categories. Pre, Post run loggers and event based loggers.
+
+* Event based loggers:
+
+| Logger  | Event | Hook | Description
+| :-------------: |:----------:|: -----------:| ----------------|
+| LogInit  | init | 'pypads_init'| Debugging purposes |
+| Log  | log | 'pypads_log'| Debugging purposes |
+| Parameters  |  parameters | 'pypads_fit'| tracks parameters of the tracked function call |
+| Cpu,Ram,Disk  |  hardware | 'pypads_fit'| track usage information, properties and other info on CPU, Memory and Disk. |
+| Input  |  input | 'pypads_fit' |tracks the input parameters of the current tracked function call. | 
+| Output  | output | 'pypads_predict', 'pypads_fit' |Logs the output of the current tracked function call.| 
+| Metric  | metric | 'pypads_metric' |tracks the output of the tracked metric function. | 
+| PipelineTracker  | pipeline | 'pypads_fit','pypads_predict', 'pypads_transform', 'pypads_metrics'|tracks the workflow of execution of the different pipeline elements of the experiment.| 
+
+* Pre/Post run loggers:
+
+| Logger  | Pre/Post | Description
+| :-------------:|: -----------:| ----------------|
+| IGit  | Pre | Source code management and tracking|
+| ISystem  | Pre | System information (os,version,machine...)|
+| ICpu  |  Pre | Cpu information (Nbr of cores, max/min frequency)|
+| IRam  |  Pre | Memory information (Total RAM, SWAP)|
+| IDisk  |  Pre | Disk information (disk total space)| 
+| IPid  | Pre | Process information (ID, command, cpu usage, memory usage)| 
+| ISocketInfo  | Pre | Network information (hostname, ip address)| 
+| IMacAddress  | Pre | Mac address |
 
 # Concept
 Logging results of machine learning workflows often shares similar structures and goals. You might want to track parameteres, loss functions, metrics or other characteristic numbers. While the produced output shares a lot of concepts and could be standardized, implementations are diverse and integrating them or their autologging functionality into such a standard needs manual labour. Each and every version of a library might change internal structures and hard coding interfaces can need intesive work. Pypads aims to feature following main techniques to handle autologging and standardization efforts:
@@ -135,12 +202,7 @@ Logging results of machine learning workflows often shares similar structures an
 - **Automatic execution tracking:** TODO 
 - **Community driven mapping files:** A means to log data from python libaries like sklearn. Interfaces are not added directly to MLFlows, but derived from versioned mapping files of frameworks.
 - **Output standardization:** TODO
-- **Dataset management:** TODO
 
-# Use Cases
-- **Explorative logging**: TODO
-- **Pipeline extraction**: TODO
-- **Inter experiment comparision**: TODO
 
 ### PyPads class
 As we have seen, a simple initialization of the class at the top of your code activate the tracking for libraries that has a mapping file defining the algorithms to track.
