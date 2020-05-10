@@ -45,7 +45,7 @@ class STrace(PreRunFunction):
             """
             A None value indicates that the process hasn't terminated yet.
             """
-            if proc.poll() is None:
+            if proc and proc.poll() is None:
                 os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
                 proc.terminate()
 
@@ -59,7 +59,7 @@ class DtraceStop(PostRunFunction):
         self._trace_file = _pypads_trace_file
 
     def _call(self, pads, *args, **kwargs):
-        if self._proc.poll() is None:
+        if self._proc and self._proc.poll() is None:
             os.killpg(os.getpgid(self._proc.pid), signal.SIGTERM)
             self._proc.terminate()
         try:

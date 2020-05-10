@@ -84,8 +84,11 @@ feature, code or documentation improvement).
 
 #. Install build the project with poetry ::
 
-        poetry build & pip install ./dist/pypads-0.1.0.tar.gz .
+        poetry build & pip install ./dist/pypads-0.1.9.tar.gz .
 
+If the package is available on pypi but can't be found with poetry you might want to delete your local poetry cache :
+
+    poetry cache clear --all pypi
 
 Dependencies
 ------------
