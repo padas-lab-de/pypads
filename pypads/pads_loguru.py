@@ -24,7 +24,7 @@ class LoggerManager:
 
     def add_default_logger(self):
         self.add(sys.stdout, filter="pypads", level="INFO")
-        # self.add(sys.stderr, filter="pypads", level="INFO")
+        self.add(sys.stderr, filter="pypads", level="INFO")
 
     def add(self, *args, **kwargs):
         lid = logger.add(*args, **kwargs)
