@@ -5,10 +5,10 @@ from abc import abstractmethod
 from pypads import logger
 from pypads.functions.loggers.base_logger import FunctionHolder
 from pypads.functions.loggers.mixins import DependencyMixin, OrderMixin, TimedCallableMixin, IntermediateCallableMixin, \
-    ConfigurableCallableMixin
+    ConfigurableCallableMixin, DefensiveCallableMixin
 
 
-class PreRunFunction(IntermediateCallableMixin, FunctionHolder, TimedCallableMixin, DependencyMixin, OrderMixin,
+class PreRunFunction(DefensiveCallableMixin, IntermediateCallableMixin, FunctionHolder, TimedCallableMixin, DependencyMixin, OrderMixin,
                      ConfigurableCallableMixin):
     """
     This class should be used to define new pre run functions
