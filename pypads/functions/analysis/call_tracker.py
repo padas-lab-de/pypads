@@ -61,8 +61,11 @@ class FunctionReference:
                     self.real_context()) + ". Omit logging. " + str(e))
                 return None
 
-            # TODO can we find less error prone ways to get the type of the given fn.
+            # TODO Can we find less error prone ways to get the type of the given fn?
             # Delegate decorator of sklearn obfuscates the real type.
+            # if is_package_available("sklearn"):
+            #     from sklearn.utils.metaestimators import _IffHasAttrDescriptor
+            #     if function_type == _IffHasAttrDescriptor:
             if str(function_type) == "<class 'sklearn.utils.metaestimators._IffHasAttrDescriptor'>":
                 function_type = "wrapped"
                 self._function = self.real_context().get_dict()[self._function.__name__]
@@ -222,7 +225,7 @@ class Call:
     #     Overwrite standard pickling by excluding the functions
     #     :return:
     #     """
-    #     # TODO can't pickle call_ids here
+    #     # can't pickle call_ids here
     #     self.call_id_fragments = str(self.call_id.to_fragements())
     #     state = self.__dict__.copy()
     #     del state["_call_id"]
@@ -231,7 +234,7 @@ class Call:
     # def __setstate__(self, state):
     #     self.__dict__.update(state)
     #     state["_call_id"] = None
-    #     # Todo can we rebuild call_id?
+    #     # can we rebuild call_id?
     #     return state
 
 
@@ -268,8 +271,6 @@ class LoggingEnv:
 class CallTracker:
     """
     This class tracks the number of execution per instance of an object.
-
-    TODO Thread / Process safety
     """
 
     def __init__(self, pads):

@@ -19,7 +19,6 @@ from pypads.util import is_package_available
 # --- Clean nodes after run ---
 def end_run(pads, *args, **kwargs):
     # curr_call = pads.call_tracker.current_call()
-    # Todo should we track the pipeline per process
     pipeline_cache = pads.cache.get("pipeline", {})
 
     network = pipeline_cache.get("network", None)

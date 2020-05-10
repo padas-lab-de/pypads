@@ -132,7 +132,7 @@ class PypadsKerasTest(BaseTest):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        # TODO
+        # TODO add asserts
         assert callback == "predictions for keras v 2.3.1"
         # !-------------------------- asserts ---------------------------
 
@@ -148,7 +148,7 @@ class PypadsKerasTest(BaseTest):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        # TODO
+        # TODO add asserts
         # !-------------------------- asserts ---------------------------
 
     #@pytest.mark.forked
@@ -163,7 +163,7 @@ class PypadsKerasTest(BaseTest):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        # TODO
+        # TODO add asserts
         # !-------------------------- asserts ---------------------------
 
     #@pytest.mark.forked
@@ -181,5 +181,5 @@ class PypadsKerasTest(BaseTest):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        # TODO
+        # TODO add asserts
         # !-------------------------- asserts ---------------------------

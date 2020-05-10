@@ -83,7 +83,7 @@ class AlgorithmMapping:
             self.algorithm) + ", hooks=" + str(self.hooks) + "]"
 
     def __eq__(self, other):
-        # TODO also check for reference, file,, in_collection?
+        # TODO also check for reference, file, in_collection?
         if self.hooks and other.hooks:
             return set(self.hooks) == set(
                 other.hooks) and self.algorithm == other.algorithm and self.library == other.library

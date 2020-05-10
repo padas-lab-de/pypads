@@ -56,7 +56,7 @@ class IDisk(PreRunFunction):
 
     def _call(self, pads, *args, **kwargs):
         import psutil
-        # TODO https://www.thepythoncode.com/article/get-hardware-system-information-python
+        # see https://www.thepythoncode.com/article/get-hardware-system-information-python
         path = local_uri_to_path(pads._uri)
         disk_usage = psutil.disk_usage(path)
         pads.api.set_tag("pypads.system.disk.total", sizeof_fmt(disk_usage.total))
@@ -96,7 +96,7 @@ class IMacAddress(PreRunFunction):
 # def inetw(pads):
 #     if is_package_available("psutil"):
 #         import psutil
-#         # TODO
+#         # get net stats
 #
 #     else:
 #         logger.warning("To track network usage you need to install psutil.")

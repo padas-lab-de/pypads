@@ -12,7 +12,7 @@ from pypads import logger
 
 def get_base_folder(run=None):
     """
-    Get the base folder to log tmp files to. For now it can't be changed. TODO
+    Get the base folder to log tmp files to. For now it can't be changed. Todo make configurable
     :return:
     """
     run = run if run else mlflow.active_run()
@@ -29,7 +29,7 @@ def get_run_folder():
     run = mlflow.active_run()
     if run is None:
         raise ValueError("No active run is defined.")
-    # TODO use artifact download if needed or load artifact. Don't hardcode .mlflow
+    # TODO use artifact download if needed or load artifact.
     return os.path.join(mlflow.get_tracking_uri(), run.info.experiment_id, run.info.run_id)
 
 
@@ -47,7 +47,7 @@ def all_tags(experiment_id):
 
 
 def try_read_artifact(file_name):
-    # TODO defensive
+    # TODO make defensive
     base_path = get_run_folder()
     path = os.path.join(base_path, "artifacts", file_name)
     with open(path, "r") as meta:
@@ -57,7 +57,7 @@ def try_read_artifact(file_name):
 
 def try_write_artifact(file_name, obj, write_format, preserve_folder=True):
     """
-    Function to write an artifact to disk. TODO
+    Function to write an artifact to disk.
     :param write_format:
     :param file_name:
     :param obj:
@@ -66,7 +66,6 @@ def try_write_artifact(file_name, obj, write_format, preserve_folder=True):
     base_path = get_base_folder()
     path = base_path + file_name
 
-    # Todo allow for configuring output format
     if not os.path.exists(os.path.dirname(path)):
         os.makedirs(os.path.dirname(path))
 

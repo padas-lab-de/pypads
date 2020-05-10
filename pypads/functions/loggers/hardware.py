@@ -19,7 +19,7 @@ class Cpu(LoggingFunction):
         try_write_artifact(name, _get_cpu_usage(), WriteFormats.text)
 
     def __call_wrapped__(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
-        # TODO track while executing
+        # TODO track while executing instead of before and after
         return super().__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=_args, _kwargs=_kwargs,
                                         **_pypads_hook_params)
 
@@ -51,7 +51,7 @@ class Ram(LoggingFunction):
         try_write_artifact(name, _get_memory_usage(), WriteFormats.text)
 
     def __call_wrapped__(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
-        # TODO track while executing
+        # TODO track while executing instead of before and after
         return super().__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=_args, _kwargs=_kwargs,
                                         **_pypads_hook_params)
 
@@ -93,7 +93,7 @@ class Disk(LoggingFunction):
         try_write_artifact(name, _get_disk_usage(path), WriteFormats.text)
 
     def __call_wrapped__(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
-        # TODO track while executing
+        # TODO track while executing instead of before and after
         return super().__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=_args, _kwargs=_kwargs,
                                         **_pypads_hook_params)
 
@@ -108,7 +108,7 @@ class Disk(LoggingFunction):
 
 def _get_disk_usage(path):
     import psutil
-    # TODO https://www.thepythoncode.com/article/get-hardware-system-information-python
+    # See https://www.thepythoncode.com/article/get-hardware-system-information-python
     disk_usage = psutil.disk_usage(path)
     output_ = "Disk usage:"
     output_ += f"\n\tFree:{sizeof_fmt(disk_usage.free)}"

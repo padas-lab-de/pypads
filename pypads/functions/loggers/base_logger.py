@@ -51,7 +51,6 @@ class LoggingExecutor(DefensiveCallableMixin, FunctionHolder, ConfigurableCallab
         try:
             raise error
         except TimingDefined:
-            # TODO multithreading fails
             pass
         except NotImplementedError:
 

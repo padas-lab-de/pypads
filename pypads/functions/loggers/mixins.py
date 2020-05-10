@@ -25,7 +25,7 @@ class MissingDependencyError(NoCallAllowedError):
 
 class SuperStop:
     """
-    TODO this class resolves the issue TypeError: object.__init__() takes exactly one argument by being the last class
+    This class resolves the issue TypeError: object.__init__() takes exactly one argument by being the last class
     in a mro and ommitting all arguments. This should be always last in the mro()!
     """
 

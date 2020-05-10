@@ -171,5 +171,5 @@ class PypadsCustomFunctionTest(BaseTest):
         from pypads.pypads import get_current_pads
         pads = get_current_pads()
         assert pads.cache.run_exists(id(logger))
-        # TODO
+        # TODO add asserts
         # !-------------------------- asserts ---------------------------

@@ -158,7 +158,6 @@ class PypadsApi:
             events = ["pypads_log"]
         if ctx is not None and not hasattr(ctx, fn.__name__):
             logger.warning("Given context " + str(ctx) + " doesn't define " + str(fn.__name__))
-            # TODO create dummy context
             ctx = None
         if mapping is None:
             logger.warning("Tracking a function without a mapping definition. A default mapping will be generated.")
@@ -291,7 +290,6 @@ class PypadsApi:
         for fn in fn_list:
             fn()
 
-        # TODO  clear config cache after run
         mlflow.end_run()
 
         # --- Clean tmp files in disk cache after run ---
@@ -300,8 +298,6 @@ class PypadsApi:
             import shutil
             shutil.rmtree(folder)
         # !-- Clean tmp files in disk cache after run ---
-
-        # TODO Loguru has a problem with pydev: sys.stdout.flush() -> ValueError: I/O operation on closed file.
     # !--- run management ----
 
 
@@ -330,7 +326,9 @@ class PypadsDecorators:
         return track_decorator
 
 
-# TODO pypads isn't allowed to hold a state anymore (Everything with state should be part of the caching system) - We want to be able to rebuild PyPads from the config and cache alone if possible to stop the need for pickeling pypads as a whole.
+# TODO pypads isn't allowed to hold a state anymore (Everything with state should be part of the caching system)
+#  - We want to be able to rebuild PyPads from the config and cache alone if possible
+#  to stop the need for pickeling pypads as a whole.
 
 class PyPads:
     """

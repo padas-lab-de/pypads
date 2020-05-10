@@ -83,7 +83,7 @@ class ParallelSklearnTest(BaseTest):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        # TODO
+        # TODO add asserts
         # !-------------------------- asserts ---------------------------
 
     @mac_os_disabled

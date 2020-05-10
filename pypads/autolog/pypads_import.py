@@ -48,8 +48,10 @@ def duck_punch_loader(spec):
 
         from pypads.pypads import current_pads
         if current_pads:
+            # TODO we might want to make this configurable/improve performance.
+            #  This looks at every imported class and every mapping.
             # On execution of a module we search for relevant mappings
-            # TODO we might want to make this configurable/improve performance. This looks at every imported class.
+            # For every var on module
             for name in dir(module):
                 reference = getattr(module, name)
                 if inspect.isclass(reference) and hasattr(reference, "mro"):
@@ -65,13 +67,13 @@ def duck_punch_loader(spec):
                         overlap = set(
                             [c.__name__ for c in mro_]) & current_pads.wrap_manager.class_wrapper.punched_class_names
                         if bool(overlap):
-                            # TODO maybe only for the first one
+                            # TODO Is one inherited mapping maybe enough? Only add for the first one?
                             for o in overlap:
                                 _add_inherited_mapping(reference, o)
                     except Exception as e:
                         logger.debug("Skipping superclasses of " + str(reference) + ". " + str(e))
 
-            # TODO And every mapping.
+            # For every mapping in our mappings
             for mapping in _get_algorithm_mappings():
                 if mapping.reference.startswith(module.__name__):
                     if mapping.reference == module.__name__:

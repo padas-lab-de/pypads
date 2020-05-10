@@ -82,7 +82,7 @@ class Cache:
     #     Overwrite standard pickling by excluding the functions
     #     :return:
     #     """
-    #     # TODO can't pickle functions
+    #     # can't pickle functions - use cloudpickle here?
     #     state = self.__dict__.copy()
     #     if "cache_cleanup" in self._cache:
     #         del state["_cache"]

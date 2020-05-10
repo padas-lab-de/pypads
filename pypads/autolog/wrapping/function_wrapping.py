@@ -80,14 +80,6 @@ class FunctionWrapper(BaseWrapper):
         if isinstance(fn, property):
             fn = fn.fget
 
-        # if ClassWrapper.has_original(fn_name, ctx):
-        #     # TODO it would be nice if we could force super to return the here stated original function instead
-        #     logger.debug("Wrapping an already wrapped function: " + str(fn) + " on " + str(defining_class)
-        #           + " with original: " +
-        #           str(getattr(defining_class, ClassWrapper.original_name(fn_name, ctx)))
-        #           + " The function may be wrapped on a superclass.")
-        #     fn = getattr(defining_class, _to_original_name(fn_name, ctx))
-
         hooks = self._get_hooked_fns(fn, mapping)
         if len(hooks) > 0:
             fn_reference = FunctionReference(context, fn)

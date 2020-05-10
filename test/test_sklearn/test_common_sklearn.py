@@ -92,7 +92,7 @@ class CommonSklearnTest(BaseSklearnTest):
         run = mlflow.active_run()
         assert tracker.api.active_run().info.run_id == run.info.run_id
 
-        # TODO assert len(tracker.mlf.list_artifacts(run.info.run_id)) == 0
+        # assert len(tracker.mlf.list_artifacts(run.info.run_id)) == 0
 
         parameters = tracker.mlf.list_artifacts(run.info.run_id, path='../params')
         assert len(parameters) != 0
@@ -119,7 +119,7 @@ class CommonSklearnTest(BaseSklearnTest):
 
         # assert statements
         # assert tracker._experiment.regex == "ConfiguredExperiment"
-        # TODO
+        # TODO add asserts
 
     def test_predefined_experiment(self):
         import mlflow
@@ -154,7 +154,7 @@ class CommonSklearnTest(BaseSklearnTest):
         # assert statements
         assert run == tracker.api.active_run()
         # assert name == tracker._experiment.regex
-        # TODO
+        # TODO add asserts
 
     def test_parameter_logging_extension_after_import(self):
         from sklearn import datasets, metrics
@@ -194,5 +194,4 @@ class CommonSklearnTest(BaseSklearnTest):
 
         n_inputs = 5 * 2  # number of inputs of DecisionTreeClassifier.fit
         n_outputs = 1 * 2  # number of outputs of fit
-        # TODO currently a function is only tracked on the first call. Fixed
-        # TODO assert n_inputs + n_outputs == len(tracker._mlf.list_artifacts(run.info.run_id))
+        # TODO add asserts

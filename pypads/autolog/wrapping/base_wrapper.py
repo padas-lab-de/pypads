@@ -118,7 +118,8 @@ class Context:
                     if callable(defining_class.__dict__[fn_name]):
                         break
                     else:
-                        # TODO workaround for <sklearn.utils.metaestimators._IffHasAttrDescriptor object at 0x121e56810> again
+                        # TODO do we need a workaround for
+                        #  <sklearn.utils.metaestimators._IffHasAttrDescriptor object at 0x121e56810> again?
                         break
         except Exception as e:
             logger.warning("Couldn't get defining class of context '" + str(

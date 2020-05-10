@@ -37,7 +37,6 @@ if is_package_available("joblib"):
                     mlflow.set_tracking_uri(_pypads_tracking_uri)
                     mlflow.start_run(run_id=_pypads_active_run_id, nested=True)
 
-                    # TODO pickling _pypads takes a long time
                     start_time = time.time()
                     logger.debug("Init Pypads in:" + str(time.time() - start_time))
 
@@ -94,14 +93,14 @@ if is_package_available("joblib"):
             if run:
                 from pypads.pypads import current_pads
                 if current_pads and current_pads.config["track_sub_processes"]:
-                    # TODO cloudpickle args / kwargs if needed
+                    # TODO Only cloudpickle args / kwargs if needed and not always.
                     pickled_params = (_pickle_tuple(args, kwargs), _cloudpickle_tuple(fn))
                     args = pickled_params
                     from pypads.pypads import get_current_pads
 
                     pads = get_current_pads()
 
-                    # TODO pickle all for reinitialisation important things (Logging functions, config, init run fns)
+                    # TODO Pickle all for reinitialisation important things (Logging functions, config, init run fns)
                     kwargs = {"_pypads_cache": pads.cache,
                               "_pypads_config": pads.config,
                               "_pypads_active_run_id": run.info.run_id,

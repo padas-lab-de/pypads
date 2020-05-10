@@ -1,5 +1,5 @@
 from pypads.functions.pre_run.pre_run import PreRunFunction
-from pypads.functions.util import get_run_git, get_git_repo
+from pypads.functions.util import get_git_repo
 
 
 class IGit(PreRunFunction):
@@ -36,16 +36,16 @@ class IGit(PreRunFunction):
                     remote_out += remote.name + ": " + remote.url + "\n"
             pads.api.set_tag("pypads.git.remotes", remote_out)
 
-
-class GitMirror(PreRunFunction):
-
-    @staticmethod
-    def _needed_packages():
-        return ['git']
-
-    def _call(self, pads, *args, **kwargs):
-        if pads.config["mirror_git"]:
-            repo = get_run_git()
-            if repo:
-                # TODO mirror the given repo to our git remote server
-                pass
+#
+# class GitMirror(PreRunFunction):
+#
+#     @staticmethod
+#     def _needed_packages():
+#         return ['git']
+#
+#     def _call(self, pads, *args, **kwargs):
+#         if pads.config["mirror_git"]:
+#             repo = get_run_git()
+#             if repo:
+#                 # mirror the given repo to our git remote server
+#                 pass
