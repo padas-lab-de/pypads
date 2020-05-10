@@ -25,6 +25,8 @@ First, you have to install **poetry**
  
 **Using pip ([PyPi release](https://pypi.org/project/pypads/))**
 
+The package can be found on PyPi in following [project](https://pypi.org/project/pypads/).
+
     pip install pypads
 
 ### Tests

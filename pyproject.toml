@@ -9,7 +9,7 @@ homepage = "https://www.padre-lab.eu/"
 repository = "https://github.com/padre-lab-eu/pypads"
 documentation = "https://readthedocs.org/projects/pypads/"
 keywords = ["tracking", "reproducibility", "provenance", "function injection", "mapping files"]
-classifiers = ["Development Status :: 3 - Alpha", "Intended Audience :: Developers", "Intended Audience :: Science/Research", "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)", "Natural Language :: English", "Operating System :: MacOS", "Operating System :: Microsoft :: Windows", "Operating System :: Unix", "Programming Language :: Python :: 3.7", "Programming Language :: Python :: 3.8", "Programming Language :: Python :: 3.9", "Topic :: Scientific/Engineering :: Artificial Intelligence"]
+classifiers = ["Development Status :: 3 - Alpha", "Intended Audience :: Developers", "Intended Audience :: Science/Research", "License :: OSI Approved :: GNU General Public License v3 or later (LGPLv3+)", "Natural Language :: English", "Operating System :: MacOS", "Operating System :: Microsoft :: Windows", "Operating System :: Unix", "Programming Language :: Python :: 3.7", "Programming Language :: Python :: 3.8", "Programming Language :: Python :: 3.9", "Topic :: Scientific/Engineering :: Artificial Intelligence"]
 
 [tool.poetry.dependencies]
 python = "^3.7.0"
