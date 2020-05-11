@@ -1,7 +1,18 @@
+
+
+:globalsidebartoc: True
+
+.. _projects_menu:
+
 ===========================
-Related Project: PaDRe-Pads
+Related Projects
 ===========================
 
-**PaDRe-Pads** is a tool that builds on PyPads and add some semantics to the tracked data of Machine learning experiments.
- See the `padre-pads documentation <https://python-poetry.org/docs/#installation>`_.
+|
+
+.. toctree::
+   :maxdepth: 2
+
+   projects/padrepads
+
 
