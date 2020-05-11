@@ -288,7 +288,7 @@ class PypadsApi:
         fn_list = [v for i, v in chached_fns.items()]
         fn_list.sort(key=lambda t: t.order())
         for fn in fn_list:
-            fn()
+            fn(self, _pypads_env=None)
 
         mlflow.end_run()
 
@@ -618,4 +618,4 @@ class PyPads:
         self._init_run_fns.sort(key=lambda f: f.order())
         for fn in self._init_run_fns:
             if callable(fn):
-                fn(self)
+                fn(self, _pypads_env=None)

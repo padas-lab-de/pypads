@@ -5,10 +5,11 @@ from abc import abstractmethod
 from pypads import logger
 from pypads.functions.loggers.base_logger import FunctionHolder
 from pypads.functions.loggers.mixins import DependencyMixin, OrderMixin, TimedCallableMixin, IntermediateCallableMixin, \
-    ConfigurableCallableMixin
+    ConfigurableCallableMixin, DefensiveCallableMixin
 
 
-class PreRunFunction(IntermediateCallableMixin, FunctionHolder, TimedCallableMixin, DependencyMixin, OrderMixin,
+class PreRunFunction(DefensiveCallableMixin, IntermediateCallableMixin, FunctionHolder, TimedCallableMixin,
+                     DependencyMixin, OrderMixin,
                      ConfigurableCallableMixin):
     """
     This class should be used to define new pre run functions
@@ -33,6 +34,9 @@ class PreRunFunction(IntermediateCallableMixin, FunctionHolder, TimedCallableMix
     def __real_call__(self, *args, **kwargs):
         from pypads.pypads import get_current_pads
         return super().__real_call__(get_current_pads(), *args, **kwargs)
+
+    def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
+        logger.warning(str(error))
 
 
 class RunInfo(PreRunFunction):

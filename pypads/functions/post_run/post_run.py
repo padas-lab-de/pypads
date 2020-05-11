@@ -1,10 +1,13 @@
 from abc import ABCMeta, abstractmethod
 
+from pypads import logger
 from pypads.functions.loggers.base_logger import FunctionHolder
-from pypads.functions.loggers.mixins import DependencyMixin, OrderMixin, IntermediateCallableMixin, TimedCallableMixin
+from pypads.functions.loggers.mixins import DependencyMixin, OrderMixin, IntermediateCallableMixin, TimedCallableMixin, \
+    DefensiveCallableMixin
 
 
-class PostRunFunction(IntermediateCallableMixin, FunctionHolder, TimedCallableMixin, DependencyMixin, OrderMixin):
+class PostRunFunction(DefensiveCallableMixin, IntermediateCallableMixin, FunctionHolder, TimedCallableMixin,
+                      DependencyMixin, OrderMixin):
     """
     This class should be used to define new post run functions
     """
@@ -28,3 +31,6 @@ class PostRunFunction(IntermediateCallableMixin, FunctionHolder, TimedCallableMi
     def __real_call__(self, *args, **kwargs):
         from pypads.pypads import get_current_pads
         return super().__real_call__(get_current_pads(), *args, **kwargs)
+
+    def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
+        logger.warning(str(error))

@@ -94,6 +94,10 @@ feature, code or documentation improvement).
         OR
         pip install dist/pypads-X.X.X-py3-none-any.whl
 
+If the package is available on pypi but can't be found with poetry you might want to delete your local poetry cache :
+
+    poetry cache clear --all pypi
+
 Dependencies
 ------------
 
