@@ -6,7 +6,7 @@ An example of using PyPads to track different functions and classes used in a mi
 """
 from pypads import logger
 from pypads.base import PyPads
-tracker = PyPads()
+tracker = PyPads(uri="http://weissger:p4lXS!3A@zaire.dimis.fim.uni-passau.de:25724/")
 
 from sklearn import datasets
 from sklearn.metrics.classification import f1_score
