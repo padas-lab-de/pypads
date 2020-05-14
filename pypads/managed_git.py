@@ -48,6 +48,7 @@ class ManagedGit:
         from git import InvalidGitRepositoryError, GitCommandError, GitError
         try:
             self.repo = git.Repo.init(path, bare=False)
+            self._add_git_ignore()
             logger.info("Repository was successfully initialized")
         except (InvalidGitRepositoryError, GitCommandError, GitError) as e:
             raise Exception(
@@ -144,6 +145,14 @@ class ManagedGit:
             self.repo.index.add(untracked_files)
         if len([item.a_path for item in self.repo.index.diff(None)]) > 0:
             self.repo.git.add(A=True)
+
+    def _add_git_ignore(self):
+        try:
+            with open(self.repo.working_dir + "/.gitignore", "w") as file:
+                file.write(GIT_IGNORE)
+            self.repo.git.add(A=True)
+        except Exception as e:
+            logger.warning("Could add .gitignore file to the repo due to this %s" % str(e))
 
 
 GIT_IGNORE = """
