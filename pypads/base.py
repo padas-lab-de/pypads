@@ -366,7 +366,7 @@ class PyPads:
         from pypads.pypads import set_current_pads
         set_current_pads(self)
 
-        from pypads.git import ManagedGitFactory
+        from pypads.managed_git import ManagedGitFactory
         self._managed_git_factory = ManagedGitFactory(self)
 
         # Init variable to filled later in this constructor
@@ -594,7 +594,7 @@ class PyPads:
             else:
                 self._mapping_registry.add_mapping(mapping, key=id(mapping))
 
-    def add_remote(self, remote, uri):
+    def add_result_remote(self, remote, uri):
         if self.managed_result_git is None:
             raise Exception("Can only add remotes to the result directory if it is managed by pypads git.")
         try:

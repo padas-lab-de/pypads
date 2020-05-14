@@ -1,5 +1,5 @@
 from pypads.functions.pre_run.pre_run import PreRunFunction
-from pypads.git import ManagedGit
+from pypads.managed_git import ManagedGit
 
 
 class IGit(PreRunFunction):

@@ -8,7 +8,7 @@ from pypads import logger
 from pypads.base import PyPads
 
 tracker = PyPads(uri="git://Users/weissger/.pypads/results2")
-tracker.add_remote("fim-gitlab", "git@git.fim.uni-passau.de:weissger/pypads-results-test.git")
+tracker.add_result_remote("fim-gitlab", "git@git.fim.uni-passau.de:weissger/pypads-results-test.git")
 
 from sklearn import datasets
 from sklearn.metrics.classification import f1_score
