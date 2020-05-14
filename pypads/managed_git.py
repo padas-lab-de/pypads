@@ -40,7 +40,7 @@ class ManagedGit:
         try:
             self.repo = git.Repo(path, search_parent_directories=True)
         except InvalidGitRepositoryError:
-            logger.warning("No existing git repository was found, initializing a new one...")
+            logger.warning("No existing git repository was found on {0}, initializing a new one...".format(path))
             self._init_git_repo(path)
 
     def _init_git_repo(self, path):
