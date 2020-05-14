@@ -14,6 +14,7 @@ class IGit(PreRunFunction):
         tags = run.data.tags
         source_name = tags.get("mlflow.source.name", None)
         managed_git: ManagedGit = pads.managed_git_factory(source_name)
+        managed_git.preserve_changes("PyPads issued preserve changes commit")
         if managed_git:
             repo = managed_git.repo
 

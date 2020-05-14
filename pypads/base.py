@@ -564,7 +564,8 @@ class PyPads:
                 else:
                     branch = repo.active_branch
                     # TODO pull branch first (setup remote if needed on a new repository) git pull <remote> <branch> / git branch --set-upstream-to=fim-gitlab/<branch> master
-                    pads.managed_result_git.repo.git.push(remote)
+                    repo.git.fetch(remote)
+                    repo.git.push(remote)
                     # TODO The current branch master has no upstream branch. git push --set-upstream fim-gitlab master
 
             self._api.register_post_fn("commit", commit, nested=False, intermediate=False, order=sys.maxsize)
