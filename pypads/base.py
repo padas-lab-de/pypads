@@ -2,6 +2,7 @@ import ast
 import atexit
 import glob
 import os
+import sys
 from contextlib import contextmanager
 from os.path import expanduser
 from typing import List, Iterable
@@ -16,7 +17,6 @@ from pypads.autolog.mappings import AlgorithmMapping, MappingRegistry, Algorithm
 from pypads.autolog.pypads_import import extend_import_module, duck_punch_loader
 from pypads.caches import PypadsCache, Cache
 from pypads.functions.analysis.call_tracker import CallTracker
-from pypads.functions.analysis.strace import STrace
 from pypads.functions.analysis.validation.parameters import Parameters
 from pypads.functions.loggers.base_logger import LoggingFunction
 from pypads.functions.loggers.data_flow import Input, Output
@@ -29,7 +29,7 @@ from pypads.functions.post_run.post_run import PostRunFunction
 from pypads.functions.pre_run.git import IGit
 from pypads.functions.pre_run.hardware import ISystem, IRam, ICpu, IDisk, IPid, ISocketInfo, IMacAddress
 from pypads.functions.pre_run.pre_run import RunInfo, RunLogger, PreRunFunction
-from pypads.logging_util import WriteFormats, try_write_artifact, try_read_artifact, get_base_folder
+from pypads.logging_util import WriteFormats, try_write_artifact, try_read_artifact, get_temp_folder
 from pypads.util import get_class_that_defined_method, dict_merge
 
 tracking_active = None
@@ -87,8 +87,7 @@ class FunctionRegistry:
 # Default init_run fns
 DEFAULT_INIT_RUN_FNS = [RunInfo(), RunLogger(), IGit(_pypads_timeout=3), ISystem(), IRam(), ICpu(), IDisk(), IPid(),
                         ISocketInfo(),
-                        IMacAddress(), STrace()]
-
+                        IMacAddress()]
 
 # Default event mappings. We allow to log parameters, output or input
 DEFAULT_LOGGING_FNS = {
@@ -293,7 +292,7 @@ class PypadsApi:
         mlflow.end_run()
 
         # --- Clean tmp files in disk cache after run ---
-        folder = get_base_folder(run)
+        folder = get_temp_folder(run)
         if os.path.exists(folder):
             import shutil
             shutil.rmtree(folder)
@@ -348,7 +347,7 @@ class PyPads:
 
     """
 
-    def __init__(self, uri=None, name=None, mapping_paths=None, mapping=None, init_run_fns=None,
+    def __init__(self, uri=None, folder=None, name=None, mapping_paths=None, mapping=None, init_run_fns=None,
                  include_default_mappings=True,
                  logging_fns=None, config=None, reload_modules=False, reload_warnings=True, clear_imports=False,
                  affected_modules=None, pre_initialized_cache=None, disable_run_init=True):
@@ -367,9 +366,13 @@ class PyPads:
         from pypads.pypads import set_current_pads
         set_current_pads(self)
 
+        from pypads.git import ManagedGitFactory
+        self._managed_git_factory = ManagedGitFactory(self)
+
         # Init variable to filled later in this constructor
         self._config = None
         self._atexit_fns = []
+        self._folder = folder or os.path.join(expanduser("~"), ".pypads")
 
         if mapping_paths is None:
             mapping_paths = []
@@ -505,7 +508,15 @@ class PyPads:
         :param config:
         :return:
         """
-        self._uri = uri or os.environ.get('MLFLOW_PATH') or 'file:' + os.path.expanduser('~/.mlruns')
+        self._uri = uri or os.environ.get('MLFLOW_PATH') or os.path.join(self._folder, ".mlruns")
+
+        manage_results = self._uri.startswith("git://")
+
+        # If the results should be git managed
+        if manage_results:
+            self._uri = os.path.join(self._uri[5:], "experiments")
+
+        # Set the tracking uri
         mlflow.set_tracking_uri(self._uri)
 
         # check if there is already an active run
@@ -536,6 +547,28 @@ class PyPads:
                 mlflow.end_run()
                 self.api.start_run(experiment_id=_experiment.experiment_id)
 
+        if manage_results:
+            self.managed_result_git = self.managed_git_factory(os.path.dirname(self._uri))
+
+            def commit(pads, *args, **kwargs):
+                message = "Added results for run " + pads.api.active_run().info.run_id
+                pads.managed_result_git.commit_changes(message=message)
+
+                repo = pads.managed_result_git.repo
+                remote = repo.git.remote()
+                # git remote add
+                if not remote:
+                    logger.warning(
+                        "Your results don't have a remote repository set. Set a remote repository for"
+                        "to enable automatic pushing.")
+                else:
+                    branch = repo.active_branch
+                    # TODO pull branch first (setup remote if needed on a new repository) git pull <remote> <branch> / git branch --set-upstream-to=fim-gitlab/<branch> master
+                    pads.managed_result_git.repo.git.push(remote)
+                    # TODO The current branch master has no upstream branch. git push --set-upstream fim-gitlab master
+
+            self._api.register_post_fn("commit", commit, nested=False, intermediate=False, order=sys.maxsize)
+
     def _init_mapping_registry(self, *paths, mapping=None, include_defaults=True):
         """
         Function to initialize the mapping file registry
@@ -561,9 +594,21 @@ class PyPads:
             else:
                 self._mapping_registry.add_mapping(mapping, key=id(mapping))
 
+    def add_remote(self, remote, uri):
+        if self.managed_result_git is None:
+            raise Exception("Can only add remotes to the result directory if it is managed by pypads git.")
+        try:
+            self.managed_result_git.repo.create_remote(remote, uri)
+        except Exception as e:
+            logger.warning("Failed to add remote due to exception: " + str(e))
+
     @property
     def tracking_uri(self):
         return self._uri
+
+    @property
+    def managed_git_factory(self):
+        return self._managed_git_factory
 
     @property
     def wrap_manager(self):
@@ -580,6 +625,10 @@ class PyPads:
     @property
     def function_registry(self) -> FunctionRegistry:
         return self._function_registry
+
+    @property
+    def folder(self):
+        return self._folder
 
     @property
     def config(self):

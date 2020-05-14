@@ -82,6 +82,7 @@ class DependencyMixin(CallableMixin):
         super().__init__(*args, **kwargs)
 
     @staticmethod
+    @abstractmethod
     def _needed_packages():
         """
         :return: List of needed packages by the logger.

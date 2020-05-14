@@ -33,4 +33,4 @@ class PostRunFunction(DefensiveCallableMixin, IntermediateCallableMixin, Functio
         return super().__real_call__(get_current_pads(), *args, **kwargs)
 
     def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
-        logger.warning(str(error))
+        logger.warning("Couldn't execute " + str(self) + ", because of exception: " + str(error))

@@ -1,7 +1,6 @@
 import os
 import pickle
 from enum import Enum
-from os.path import expanduser
 
 import mlflow
 from mlflow.tracking import MlflowClient
@@ -10,15 +9,17 @@ from mlflow.utils.autologging_utils import try_mlflow_log
 from pypads import logger
 
 
-def get_base_folder(run=None):
+def get_temp_folder(run=None):
     """
     Get the base folder to log tmp files to. For now it can't be changed. Todo make configurable
     :return:
     """
-    run = run if run else mlflow.active_run()
+    from pypads.pypads import get_current_pads
+    pads = get_current_pads()
+    run = run if run else pads.api.active_run()
     if run is None:
         raise ValueError("No active run is defined.")
-    return os.path.join(expanduser("~"), ".pypads", run.info.experiment_id, run.info.run_id) + os.path.sep
+    return os.path.join(pads.folder, "tmp", run.info.experiment_id, run.info.run_id) + os.path.sep
 
 
 def get_run_folder():
@@ -63,8 +64,8 @@ def try_write_artifact(file_name, obj, write_format, preserve_folder=True):
     :param obj:
     :return:
     """
-    base_path = get_base_folder()
-    path = base_path + file_name
+    base_path = get_temp_folder()
+    path = os.path.join(base_path, file_name)
 
     if not os.path.exists(os.path.dirname(path)):
         os.makedirs(os.path.dirname(path))

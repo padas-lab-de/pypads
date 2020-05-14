@@ -6,7 +6,7 @@ from mlflow.utils.autologging_utils import try_mlflow_log
 from pypads import logger
 from pypads.functions.analysis.call_tracker import LoggingEnv
 from pypads.functions.loggers.base_logger import LoggingFunction
-from pypads.logging_util import WriteFormats, get_base_folder, try_write_artifact
+from pypads.logging_util import WriteFormats, get_temp_folder, try_write_artifact
 from pypads.util import is_package_available
 
 
@@ -30,7 +30,7 @@ def end_run(pads, *args, **kwargs):
         try_write_artifact("_pypads_pipeline", network, WriteFormats.pickle)
 
         if is_package_available("networkx"):
-            base_folder = get_base_folder()
+            base_folder = get_temp_folder()
             folder = base_folder + "pipeline_graph.png"
             if not os.path.exists(base_folder):
                 os.mkdir(base_folder)

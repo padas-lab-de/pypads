@@ -1,5 +1,5 @@
 from pypads.functions.pre_run.pre_run import PreRunFunction
-from pypads.functions.util import get_git_repo
+from pypads.git import ManagedGit
 
 
 class IGit(PreRunFunction):
@@ -13,8 +13,10 @@ class IGit(PreRunFunction):
         run = pads.api.active_run()
         tags = run.data.tags
         source_name = tags.get("mlflow.source.name", None)
-        repo = get_git_repo(source_name, pads=pads) if source_name else None
-        if repo:
+        managed_git: ManagedGit = pads.managed_git_factory(source_name)
+        if managed_git:
+            repo = managed_git.repo
+
             # Disable pager for returns
             repo.git.set_persistent_git_options(no_pager=True)
             pads.api.set_tag("pypads.git.description", repo.description)
@@ -25,7 +27,7 @@ class IGit(PreRunFunction):
             # except GitCommandError as e:
             #     warning("Ignored the execution and tracking of 'git shortlog'. " + str(e))
             try:
-                pads.api.set_tag("pypads.git.log", repo.git.log(kill_after_timeout=_pypads_timeout))
+                pads.api.log_mem_artifact("pypads.git.log", repo.git.log(kill_after_timeout=_pypads_timeout))
             except GitCommandError as e:
                 pass
             remotes = repo.remotes

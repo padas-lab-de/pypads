@@ -7,7 +7,7 @@ from sys import platform
 from pypads import logger
 from pypads.functions.post_run.post_run import PostRunFunction
 from pypads.functions.pre_run.pre_run import PreRunFunction
-from pypads.logging_util import get_base_folder
+from pypads.logging_util import get_temp_folder
 
 
 class STrace(PreRunFunction):
@@ -17,7 +17,7 @@ class STrace(PreRunFunction):
 
     def _call(self, pads, *args, **kwargs):
 
-        file = os.path.join(get_base_folder(), str(os.getpid()) + "_trace.txt")
+        file = os.path.join(get_temp_folder(), str(os.getpid()) + "_trace.txt")
         proc = None
         if platform == "linux" or platform == "linux2":
             # https://stackoverflow.com/questions/4789837/how-to-terminate-a-python-subprocess-launched-with-shell-true
@@ -33,7 +33,7 @@ class STrace(PreRunFunction):
 
         if proc:
             pads.api.register_post("stop_dtrace_" + str(proc.pid),
-                                   DtraceStop(_pypads_proc=proc, _pypads_trace_file=file))
+                                   STraceStop(_pypads_proc=proc, _pypads_trace_file=file))
             if proc.poll() == 1:
                 logger.warning(
                     "Can't dtruss/strace without sudo rights. To enable tracking allow user to execute dtruss/strace "
@@ -52,7 +52,7 @@ class STrace(PreRunFunction):
         atexit.register(safety_hook)
 
 
-class DtraceStop(PostRunFunction):
+class STraceStop(PostRunFunction):
     def __init__(self, *args, _pypads_proc=None, _pypads_trace_file=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._proc = _pypads_proc

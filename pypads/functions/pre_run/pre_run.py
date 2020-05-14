@@ -36,7 +36,7 @@ class PreRunFunction(DefensiveCallableMixin, IntermediateCallableMixin, Function
         return super().__real_call__(get_current_pads(), *args, **kwargs)
 
     def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
-        logger.warning(str(error))
+        logger.warning("Couldn't execute " + str(self) + ", because of exception: " + str(error))
 
 
 class RunInfo(PreRunFunction):
@@ -69,8 +69,8 @@ class RunLogger(PreRunFunction):
         from pypads.base import PypadsApi
         _api: PypadsApi = pads.api
 
-        from pypads.logging_util import get_base_folder
-        folder = get_base_folder()
+        from pypads.logging_util import get_temp_folder
+        folder = get_temp_folder()
 
         # TODO loguru has problems with multiprocessing / make rotation configurable etc
         from pypads.pads_loguru import logger_manager
