@@ -85,6 +85,7 @@ class DependencyMixin(CallableMixin):
     @abstractmethod
     def _needed_packages():
         """
+        Overwrite this to provide your package names.
         :return: List of needed packages by the logger.
         """
         return []

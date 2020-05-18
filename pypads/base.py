@@ -287,7 +287,10 @@ class PypadsApi:
         fn_list = [v for i, v in chached_fns.items()]
         fn_list.sort(key=lambda t: t.order())
         for fn in fn_list:
-            fn(self, _pypads_env=None)
+            try:
+                fn(self, _pypads_env=None)
+            except (KeyboardInterrupt, Exception) as e:
+                logger.warning("Failed running post run function " + fn.__name__ + " because of exception: " + str(e))
 
         mlflow.end_run()
 
@@ -407,8 +410,15 @@ class PyPads:
         """
         Add function to be executed before stopping your process.
         """
-        self._atexit_fns.append(fn)
-        atexit.register(fn)
+
+        def defensive_atexit():
+            try:
+                return fn()
+            except (KeyboardInterrupt, Exception) as e:
+                logger.error("Couldn't run atexit function " + fn.__name__ + " because of " + str(e))
+
+        self._atexit_fns.append(defensive_atexit)
+        atexit.register(defensive_atexit)
 
     def _is_affected_module(self, name, affected_modules=None):
         if affected_modules is None:
@@ -575,10 +585,16 @@ class PyPads:
                         repo.git.pull(pads.managed_result_git.remote, 'master', '--allow-unrelated-histories')
                         # Push merged changes
                         repo.git.push(pads.managed_result_git.remote, 'master')
+                        logger.info("Pushed your results automatically to " + pads.managed_result_git.remote)
                     except Exception as e:
                         logger.error("pushing logs to remote failed due to this error '{}'".format(str(e)))
 
-            self._api.register_post_fn("commit", commit, nested=False, intermediate=False, order=sys.maxsize)
+            self._api.register_post_fn("commit", commit, nested=False, intermediate=False, order=sys.maxsize - 1)
+            # def wrap():
+            #     from pypads.pypads import get_current_pads
+            #     return commit(pads=get_current_pads())
+            #
+            # atexit.register(wrap)
 
     def _init_mapping_registry(self, *paths, mapping=None, include_defaults=True):
         """

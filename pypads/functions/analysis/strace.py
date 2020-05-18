@@ -52,6 +52,7 @@ class STrace(PreRunFunction):
 
 
 class STraceStop(PostRunFunction):
+
     def __init__(self, *args, _pypads_proc=None, _pypads_trace_file=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._proc = _pypads_proc
