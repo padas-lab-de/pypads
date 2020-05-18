@@ -19,6 +19,13 @@ class PostRunFunction(DefensiveCallableMixin, IntermediateCallableMixin, Functio
         if self._fn is None:
             self._fn = self._call
 
+    @property
+    def __name__(self):
+        if self._fn is not self._call:
+            return self._fn.__name__
+        else:
+            return self.__class__.__name__
+
     @abstractmethod
     def _call(self, pads, *args, **kwargs):
         """
@@ -30,7 +37,8 @@ class PostRunFunction(DefensiveCallableMixin, IntermediateCallableMixin, Functio
 
     def __real_call__(self, *args, **kwargs):
         from pypads.pypads import get_current_pads
+        logger.debug("Called post run function " + str(self))
         return super().__real_call__(get_current_pads(), *args, **kwargs)
 
     def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
-        logger.warning("Couldn't execute " + str(self) + ", because of exception: " + str(error))
+        logger.warning("Couldn't execute " + self.__name__ + ", because of exception: " + str(error))

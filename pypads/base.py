@@ -287,7 +287,10 @@ class PypadsApi:
         fn_list = [v for i, v in chached_fns.items()]
         fn_list.sort(key=lambda t: t.order())
         for fn in fn_list:
-            fn(self, _pypads_env=None)
+            try:
+                fn(self, _pypads_env=None)
+            except (KeyboardInterrupt, Exception) as e:
+                logger.warning("Failed running post run function " + fn.__name__ + " because of exception: " + str(e))
 
         mlflow.end_run()
 
@@ -407,8 +410,15 @@ class PyPads:
         """
         Add function to be executed before stopping your process.
         """
-        self._atexit_fns.append(fn)
-        atexit.register(fn)
+
+        def defensive_atexit():
+            try:
+                return fn()
+            except (KeyboardInterrupt, Exception) as e:
+                logger.error("Couldn't run atexit function " + fn.__name__ + " because of " + str(e))
+
+        self._atexit_fns.append(defensive_atexit)
+        atexit.register(defensive_atexit)
 
     def _is_affected_module(self, name, affected_modules=None):
         if affected_modules is None:
@@ -557,31 +567,34 @@ class PyPads:
                 pads.managed_result_git.commit_changes(message=message)
 
                 repo = pads.managed_result_git.repo
-                remotes = repo.remotes
+                remote = repo.remote(name=pads.managed_result_git.remote)
                 # git remote add
-                if not remotes:
+                if not remote:
                     logger.warning(
-                        "Your results don't have any remote repository set. Set a remote repository for"
+                        "Your results don't have a remote repository set. Set a remote repository for"
                         "to enable automatic pushing.")
                 else:
-                    for name, url in remotes:
-                        try:
-                            # check if remote repo is bare and if it is initialize it with a temporary local repo
-                            pads.managed_result_git.is_remote_empty(remote=name,
-                                                                    remote_url=url,
-                                                                    init=True)
-                            # stash current state
-                            repo.git.stash('push', '--include-untracked')
-                            # Force pull
-                            repo.git.pull(name, 'master', '--allow-unrelated-histories')
-                            # Push merged changes
-                            repo.git.push(name, 'master')
-                            # pop the stash
-                            repo.git.stash('pop')
-                        except Exception as e:
-                            logger.error("pushing logs to remote failed due to this error '{}'".format(str(e)))
+                    try:
+                        # check if remote repo is bare and if it is initialize it with a temporary local repo
+                        pads.managed_result_git.is_remote_empty(remote=pads.managed_result_git.remote,
+                                                                remote_url=pads.managed_result_git.remote_uri,
+                                                                init=True)
+                        # Commit latest changes
+                        pads.managed_result_git.commit_changes(message="Committing logs of your experiment...")
+                        # Force pull
+                        repo.git.pull(pads.managed_result_git.remote, 'master', '--allow-unrelated-histories')
+                        # Push merged changes
+                        repo.git.push(pads.managed_result_git.remote, 'master')
+                        logger.info("Pushed your results automatically to " + pads.managed_result_git.remote)
+                    except Exception as e:
+                        logger.error("pushing logs to remote failed due to this error '{}'".format(str(e)))
 
-            self._api.register_post_fn("commit", commit, nested=False, intermediate=False, order=sys.maxsize)
+            self._api.register_post_fn("commit", commit, nested=False, intermediate=False, order=sys.maxsize - 1)
+            # def wrap():
+            #     from pypads.pypads import get_current_pads
+            #     return commit(pads=get_current_pads())
+            #
+            # atexit.register(wrap)
 
     def _init_mapping_registry(self, *paths, mapping=None, include_defaults=True):
         """
@@ -612,6 +625,8 @@ class PyPads:
         if self.managed_result_git is None:
             raise Exception("Can only add remotes to the result directory if it is managed by pypads git.")
         try:
+            self.managed_result_git.remote = remote
+            self.managed_result_git.remote_uri = uri
             self.managed_result_git.repo.create_remote(remote, uri)
         except Exception as e:
             logger.warning("Failed to add remote due to exception: " + str(e))
