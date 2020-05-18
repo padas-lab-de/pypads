@@ -555,17 +555,24 @@ class PyPads:
                 pads.managed_result_git.commit_changes(message=message)
 
                 repo = pads.managed_result_git.repo
-                remote = repo.git.remote()
+                remote = repo.remote(name=pads.managed_result_git.remote)
                 # git remote add
                 if not remote:
                     logger.warning(
                         "Your results don't have a remote repository set. Set a remote repository for"
                         "to enable automatic pushing.")
                 else:
-                    branch = repo.active_branch
-                    # TODO pull branch first (setup remote if needed on a new repository) git pull <remote> <branch> / git branch --set-upstream-to=fim-gitlab/<branch> master
-                    pads.managed_result_git.repo.git.push(remote)
-                    # TODO The current branch master has no upstream branch. git push --set-upstream fim-gitlab master
+                    try:
+                        # check if remote repo is bare and if it is initialize it with a temporary local repo
+                        pads.managed_result_git.is_remote_empty(remote_url=pads.managed_result_git.remote_uri, init=True)
+                        # Commit latest changes
+                        pads.managed_result_git.commit_changes(message="Committing logs of your experiment...")
+                        # Force pull
+                        repo.git.pull(pads.managed_result_git.remote,'master','--allow-unrelated-histories')
+                        # Push merged changes
+                        repo.git.push(pads.managed_result_git.remote,'master')
+                    except Exception as e:
+                        logger.error("pushing logs to remote failed due to this error '{}'".format(str(e)))
 
             self._api.register_post_fn("commit", commit, nested=False, intermediate=False, order=sys.maxsize)
 
@@ -598,6 +605,8 @@ class PyPads:
         if self.managed_result_git is None:
             raise Exception("Can only add remotes to the result directory if it is managed by pypads git.")
         try:
+            self.managed_result_git.remote = remote
+            self.managed_result_git.remote_uri = uri
             self.managed_result_git.repo.create_remote(remote, uri)
         except Exception as e:
             logger.warning("Failed to add remote due to exception: " + str(e))

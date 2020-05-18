@@ -22,6 +22,8 @@ class ManagedGitFactory(DefensiveCallableMixin, DependencyMixin):
 
 
 class ManagedGit:
+    remote = None
+    remote_uri = None
 
     def __init__(self, path, pads=None):
         import git
@@ -145,6 +147,18 @@ class ManagedGit:
             self.repo.index.add(untracked_files)
         if len([item.a_path for item in self.repo.index.diff(None)]) > 0:
             self.repo.git.add(A=True)
+
+    def is_remote_empty(self, remote_url="", init=False):
+        from tempfile import TemporaryDirectory
+        from git import Repo
+        with TemporaryDirectory() as temp_dir:
+            repo = Repo.clone_from(remote_url, temp_dir)
+            if not repo.branches and init:
+                with open(temp_dir+"/Readme.md", "w") as f:
+                    f.write("# Results repository")
+                repo.git.add(A=True)
+                repo.git.commit(message="Initializing the repository with Readme.md")
+                repo.git.push('origin', 'master')
 
     def _add_git_ignore(self):
         try:
