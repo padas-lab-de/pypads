@@ -564,13 +564,15 @@ class PyPads:
                 else:
                     try:
                         # check if remote repo is bare and if it is initialize it with a temporary local repo
-                        pads.managed_result_git.is_remote_empty(remote_url=pads.managed_result_git.remote_uri, init=True)
+                        pads.managed_result_git.is_remote_empty(remote=pads.managed_result_git.remote,
+                                                                remote_url=pads.managed_result_git.remote_uri,
+                                                                init=True)
                         # Commit latest changes
                         pads.managed_result_git.commit_changes(message="Committing logs of your experiment...")
                         # Force pull
-                        repo.git.pull(pads.managed_result_git.remote,'master','--allow-unrelated-histories')
+                        repo.git.pull(pads.managed_result_git.remote, 'master', '--allow-unrelated-histories')
                         # Push merged changes
-                        repo.git.push(pads.managed_result_git.remote,'master')
+                        repo.git.push(pads.managed_result_git.remote, 'master')
                     except Exception as e:
                         logger.error("pushing logs to remote failed due to this error '{}'".format(str(e)))
 
