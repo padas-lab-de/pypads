@@ -557,26 +557,29 @@ class PyPads:
                 pads.managed_result_git.commit_changes(message=message)
 
                 repo = pads.managed_result_git.repo
-                remote = repo.remote(name=pads.managed_result_git.remote)
+                remotes = repo.remotes
                 # git remote add
-                if not remote:
+                if not remotes:
                     logger.warning(
-                        "Your results don't have a remote repository set. Set a remote repository for"
+                        "Your results don't have any remote repository set. Set a remote repository for"
                         "to enable automatic pushing.")
                 else:
-                    try:
-                        # check if remote repo is bare and if it is initialize it with a temporary local repo
-                        pads.managed_result_git.is_remote_empty(remote=pads.managed_result_git.remote,
-                                                                remote_url=pads.managed_result_git.remote_uri,
-                                                                init=True)
-                        # Commit latest changes
-                        pads.managed_result_git.commit_changes(message="Committing logs of your experiment...")
-                        # Force pull
-                        repo.git.pull(pads.managed_result_git.remote, 'master', '--allow-unrelated-histories')
-                        # Push merged changes
-                        repo.git.push(pads.managed_result_git.remote, 'master')
-                    except Exception as e:
-                        logger.error("pushing logs to remote failed due to this error '{}'".format(str(e)))
+                    for name, url in remotes:
+                        try:
+                            # check if remote repo is bare and if it is initialize it with a temporary local repo
+                            pads.managed_result_git.is_remote_empty(remote=name,
+                                                                    remote_url=url,
+                                                                    init=True)
+                            # stash current state
+                            repo.git.stash('push', '--include-untracked')
+                            # Force pull
+                            repo.git.pull(name, 'master', '--allow-unrelated-histories')
+                            # Push merged changes
+                            repo.git.push(name, 'master')
+                            # pop the stash
+                            repo.git.stash('pop')
+                        except Exception as e:
+                            logger.error("pushing logs to remote failed due to this error '{}'".format(str(e)))
 
             self._api.register_post_fn("commit", commit, nested=False, intermediate=False, order=sys.maxsize)
 
@@ -609,8 +612,6 @@ class PyPads:
         if self.managed_result_git is None:
             raise Exception("Can only add remotes to the result directory if it is managed by pypads git.")
         try:
-            self.managed_result_git.remote = remote
-            self.managed_result_git.remote_uri = uri
             self.managed_result_git.repo.create_remote(remote, uri)
         except Exception as e:
             logger.warning("Failed to add remote due to exception: " + str(e))

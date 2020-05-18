@@ -22,9 +22,6 @@ class ManagedGitFactory(DefensiveCallableMixin, DependencyMixin):
 
 
 class ManagedGit:
-    remote = None
-    remote_uri = None
-
     def __init__(self, path, pads=None):
         import git
 

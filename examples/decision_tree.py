@@ -7,8 +7,12 @@ An example of using PyPads to track different functions and classes used in a mi
 from pypads import logger
 from pypads.base import PyPads
 
-tracker = PyPads(uri="git://Users/weissger/.pypads/results11")
-tracker.add_result_remote("fim-gitlab", "git@git.fim.uni-passau.de:weissger/pypads-results-test.git")
+# tracker = PyPads(uri="git://Users/weissger/.pypads/results11")
+# tracker.add_result_remote("fim-gitlab", "git@git.fim.uni-passau.de:weissger/pypads-results-test.git")
+
+tracker = PyPads(uri="git://home/mehdi/.pypads/results")
+tracker.add_result_remote("origin", "ssh://git@gitlab.padim.fim.uni-passau.de:13003/Mehdi/pypads-results-testt.git")
+
 
 from sklearn import datasets
 from sklearn.metrics.classification import f1_score
@@ -25,3 +29,5 @@ expected = dataset.target
 predicted = model.predict(dataset.data)
 # summarize the fit of the model
 logger.error("Score: " + str(f1_score(expected, predicted, average="macro")))
+
+tracker.api.end_run()
