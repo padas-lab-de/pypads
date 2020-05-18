@@ -165,6 +165,9 @@ class DefensiveCallableMixin(CallableMixin):
     def __call__(self, ctx, *args, _pypads_env=None, **kwargs):
         try:
             return super().__call__(ctx, *args, _pypads_env=_pypads_env, **kwargs)
+        except KeyboardInterrupt:
+            return self._handle_error(*args, ctx=ctx, _pypads_env=_pypads_env, error=Exception("KeyboardInterrupt"),
+                                      **kwargs)
         except Exception as e:
             return self._handle_error(*args, ctx=ctx, _pypads_env=_pypads_env, error=e, **kwargs)
 
