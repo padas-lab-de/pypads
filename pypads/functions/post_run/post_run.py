@@ -14,8 +14,9 @@ class PostRunFunction(DefensiveCallableMixin, IntermediateCallableMixin, Functio
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def __init__(self, *args, fn=None, **kwargs):
+    def __init__(self, *args, fn=None, message=None, **kwargs):
         super().__init__(*args, fn=fn, **kwargs)
+        self._message = message if message else None
         if self._fn is None:
             self._fn = self._call
 
@@ -41,4 +42,7 @@ class PostRunFunction(DefensiveCallableMixin, IntermediateCallableMixin, Functio
         return super().__real_call__(get_current_pads(), *args, **kwargs)
 
     def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
-        logger.warning("Couldn't execute " + self.__name__ + ", because of exception: " + str(error))
+        if self._message:
+            logger.warning(self._message.format(str(error)))
+        else:
+            logger.warning("Couldn't execute " + self.__name__ + ", because of exception: " + str(error))

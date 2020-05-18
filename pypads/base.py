@@ -269,9 +269,12 @@ class PypadsApi:
         else:
             cache.add(name, post_fn)
 
-    def register_post_fn(self, name, fn, log_function=None, nested=True, intermediate=True, order=0, silent=True):
-        self.register_post(name, post_fn=PostRunFunction(fn=fn, nested=nested, intermediate=intermediate, order=order,
-                                                         log_function=log_function), silent=silent)
+    def register_post_fn(self, name, fn, log_function=None, message=None, nested=True, intermediate=True, order=0,
+                         silent=True):
+        self.register_post(name,
+                           post_fn=PostRunFunction(fn=fn, message=message, nested=nested, intermediate=intermediate,
+                                                   order=order,
+                                                   log_function=log_function), silent=silent)
 
     def active_run(self):
         return mlflow.active_run()
@@ -593,7 +596,11 @@ class PyPads:
                         except Exception as e:
                             logger.error("pushing logs to remote failed due to this error '{}'".format(str(e)))
 
-            self._api.register_post_fn("commit", commit, nested=False, intermediate=False, order=sys.maxsize - 1)
+            self._api.register_post_fn("commit", commit, nested=False, intermediate=False,
+                                       message="A problem executing the result management function was detected."
+                                               " Check if you have to commit / push results manually."
+                                               " Following exception caused the problem: {0}",
+                                       order=sys.maxsize - 1)
 
     def _init_mapping_registry(self, *paths, mapping=None, include_defaults=True):
         """
