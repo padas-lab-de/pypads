@@ -77,14 +77,22 @@ feature, code or documentation improvement).
    If you plan on submitting a pull-request, you should clone from your fork
    instead.
 
-#. Install poetry tool for dependency managenment for your platform. See instructions in the `Official documentation <https://python-poetry.org/docs/#installation>`_.
+#. Install poetry tool for dependency managenment for your platform. See instructions in the `Official documentation <https://python-poetry.org/docs/#installation>`_.::
+
+        pip install poetry
 
 #. Optional (but recommended): create and activate a dedicated virtualenv_
    or `conda environment`_.
 
-#. Install build the project with poetry ::
+#. Build the project with poetry, this will generate a whl and a tar file under dist/::
 
-        poetry build & pip install ./dist/pypads-0.1.9.tar.gz .
+        poetry build
+
+#. Install pypads using one of the two generated files::
+
+        pip install dist/pypads-X.X.X.tar.gz
+        OR
+        pip install dist/pypads-X.X.X-py3-none-any.whl
 
 If the package is available on pypi but can't be found with poetry you might want to delete your local poetry cache :
 

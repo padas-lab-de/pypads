@@ -37,17 +37,3 @@ class IGit(PreRunFunction):
                 for remote in remotes:
                     remote_out += remote.name + ": " + remote.url + "\n"
             pads.api.set_tag("pypads.git.remotes", remote_out)
-
-#
-# class GitMirror(PreRunFunction):
-#
-#     @staticmethod
-#     def _needed_packages():
-#         return ['git']
-#
-#     def _call(self, pads, *args, **kwargs):
-#         if pads.config["mirror_git"]:
-#             repo = get_run_git()
-#             if repo:
-#                 # mirror the given repo to our git remote server
-#                 pass

@@ -19,9 +19,17 @@ PyPads only support python 3.6 and higher. To install pypads run this in you ter
 
 **Using source code**
 
-First, you have to install **poetry**
+First, you have to install **poetry** 
 
-    poetry build & pip install ./dist/pypads-0.1.0.tar.gz 
+    pip install poetry
+    poetry build (in the root folder of the repository pypads/)
+
+This would create two files under pypads/dist that can be used to install,
+
+    pip install dist/pypads-X.X.X.tar.gz
+    OR
+    pip install dist/pypads-X.X.X-py3-none-any.whl
+    
  
 **Using pip ([PyPi release](https://pypi.org/project/pypads/))**
 

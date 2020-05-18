@@ -45,6 +45,7 @@ and some of the core features of PyPads.
    - :ref:`Hooks <hooks>` help the user to define what triggers those events (e.g. what functions or classes should trigger a specific event).
 * **Loggers**
    Logging functions are functions called around when any tracked method or class triggers their corresponding event. Mapping events to logging functions is done by passing a dictionary **mapping** as a parameter to the :ref:`PyPads class <base_class>`.
+
 The following tables show the default loggers of pypads.
 
    * Event Based loggers

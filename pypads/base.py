@@ -235,6 +235,7 @@ class PypadsApi:
                 self._pypads.api.end_run()
                 self._pypads.cache.run_clear()
                 self._pypads.cache.run_delete()
+            else:
                 mlflow.start_run(run_id=enclosing_run.info.run_id)
 
     def _get_pre_run_cache(self):
