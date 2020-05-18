@@ -52,3 +52,8 @@ def is_package_available(name):
     import importlib
     spam_loader = importlib.util.find_spec(name)
     return spam_loader is not None
+
+
+def string_to_int(s):
+    ord3 = lambda x: '%.3d' % ord(x)
+    return int(''.join(map(ord3, s)))

@@ -1,4 +1,3 @@
-import atexit
 import os
 import signal
 import subprocess
@@ -49,7 +48,7 @@ class STrace(PreRunFunction):
                 os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
                 proc.terminate()
 
-        atexit.register(safety_hook)
+        pads.add_atexit_fn(safety_hook)
 
 
 class STraceStop(PostRunFunction):

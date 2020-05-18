@@ -30,7 +30,7 @@ from pypads.functions.pre_run.git import IGit
 from pypads.functions.pre_run.hardware import ISystem, IRam, ICpu, IDisk, IPid, ISocketInfo, IMacAddress
 from pypads.functions.pre_run.pre_run import RunInfo, RunLogger, PreRunFunction
 from pypads.logging_util import WriteFormats, try_write_artifact, try_read_artifact, get_temp_folder
-from pypads.util import get_class_that_defined_method, dict_merge
+from pypads.util import get_class_that_defined_method, dict_merge, string_to_int
 
 tracking_active = None
 
@@ -511,10 +511,12 @@ class PyPads:
         self._uri = uri or os.environ.get('MLFLOW_PATH') or os.path.join(self._folder, ".mlruns")
 
         manage_results = self._uri.startswith("git://")
+        result_path = self._uri
 
         # If the results should be git managed
         if manage_results:
-            self._uri = os.path.join(self._uri[5:], "experiments")
+            result_path = self._uri[5:]
+            self._uri = os.path.join(self._uri[5:], "r_" + str(string_to_int(uri)), "experiments")
 
         # Set the tracking uri
         mlflow.set_tracking_uri(self._uri)
@@ -548,7 +550,7 @@ class PyPads:
                 self.api.start_run(experiment_id=_experiment.experiment_id)
 
         if manage_results:
-            self.managed_result_git = self.managed_git_factory(os.path.dirname(self._uri))
+            self.managed_result_git = self.managed_git_factory(result_path)
 
             def commit(pads, *args, **kwargs):
                 message = "Added results for run " + pads.api.active_run().info.run_id
