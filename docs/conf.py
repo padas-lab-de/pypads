@@ -18,7 +18,6 @@ sys.path.insert(0, os.path.abspath('../..'))
 sys.path.insert(0, os.path.abspath('..'))
 from github_link import make_linkcode_resolve
 
-
 # -- Project information -----------------------------------------------------
 
 project = 'PyPads'
@@ -26,7 +25,7 @@ copyright = '2020, Padre-Lab'
 author = 'Padre-Lab, Thomas Weissgerber & Mehdi Ben Amor'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1.0'
+release = '0.1.20'
 
 # -- General configuration ---------------------------------------------------
 

@@ -13,6 +13,7 @@ Related Projects
 .. toctree::
    :maxdepth: 2
 
+   projects/pypadre
    projects/padrepads
 
 
