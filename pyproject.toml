@@ -46,7 +46,7 @@ deploy = "poetry build && poetry publish"
 
 [tool.coverage.run]
 branch = true
-include = ["padrepads/*"]
+include = ["pypads/*"]
 omit = [
     "*/__init__.py",
 ]

@@ -9,7 +9,7 @@ poetry build
 A wheel is created which can be used to install the package into the local python env.
 
 ``
-pip install ./dist/padrepads-0.1.4.tar.gz
+pip install ./dist/pypads-0.1.4.tar.gz
 ``
 
 # Publishing a new version
