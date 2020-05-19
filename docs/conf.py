@@ -10,13 +10,11 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-import os
-import sys
 
-sys.path.insert(0, os.path.abspath('sphinxext'))
-sys.path.insert(0, os.path.abspath('../..'))
-sys.path.insert(0, os.path.abspath('..'))
-from github_link import make_linkcode_resolve
+# sys.path.insert(0, os.path.abspath('sphinxext'))
+# sys.path.insert(0, os.path.abspath('../..'))
+# sys.path.insert(0, os.path.abspath('..'))
+# from github_link import make_linkcode_resolve
 
 
 # -- Project information -----------------------------------------------------
@@ -26,7 +24,7 @@ copyright = '2020, Padre-Lab'
 author = 'Padre-Lab, Thomas Weissgerber & Mehdi Ben Amor'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1.0'
+release = '0.1.20'
 
 # -- General configuration ---------------------------------------------------
 
