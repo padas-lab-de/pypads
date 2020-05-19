@@ -108,12 +108,12 @@ class ParallelSklearnTest(BaseTest):
         t = timeit.Timer(process_execution(parallel_no_tracking, punch_dummy_gen()))
         print(t.timeit(1))
 
-    @mac_os_disabled
-    def test_joblib_execution(self):
-        import timeit
-        # TODO sklearn pretty print endless loop
-        t = timeit.Timer(joblib_execution(parallel_tracking, range_gen()))
-        print(t.timeit(1))
+    # @mac_os_disabled
+    # def test_joblib_execution(self):
+    #     import timeit
+    #     # TODO sklearn pretty print endless loop
+    #     t = timeit.Timer(joblib_execution(parallel_tracking, range_gen()))
+    #     print(t.timeit(1))
 
     # def test_joblib_execution_single_tracker(self):
     #     from pypads.base import PyPads
