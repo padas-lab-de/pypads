@@ -29,7 +29,7 @@ networkx = "^2.4"
 sphinx = "^2.0.1"
 sphinx_rtd_theme = "^0.4.3"
 taskipy = "^1.1.2"
-bump2version = "^0.6.0"
+bump2version = "^1.0.0"
 coverage = {version = "^5.0", extras = ["toml"]}
 gitchangelog = "^3.0.4"
 
@@ -37,11 +37,16 @@ gitchangelog = "^3.0.4"
 docs = ["sphinx", "sphinx_rtd_theme"]
 
 [tool.taskipy.tasks]
+#pre_publish = "poetry test"
+publish = "bump2version"
+post_publish = "gitchangelog && git add ./CHANGELOG.rst && git commit -m 'auto: Updated changelog' && git push --tags && task doc"
+doc = "make -C ./docs html"
+post_doc = "task deploy"
 deploy = "poetry build && poetry publish"
 
 [tool.coverage.run]
 branch = true
-include = ["pypads/*"]
+include = ["padrepads/*"]
 omit = [
     "*/__init__.py",
 ]
