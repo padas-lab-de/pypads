@@ -51,9 +51,10 @@ test-python-3.7:
   <<: *test
   image: python:3.7
 
-test-python-3.8:
-  <<: *test
-  image: python:3.8
+# Numpy currently not supported
+#test-python-3.8:
+#  <<: *test
+#  image: python:3.8
 
 # Deploy jobs
 
