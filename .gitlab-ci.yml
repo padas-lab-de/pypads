@@ -43,9 +43,10 @@ stages:
 #  <<: *test
 #  image: python:3.5
 
-test-python-3.6:
-  <<: *test
-  image: python:3.6
+# Tensorflow 2.2.0 not available
+#test-python-3.6:
+#  <<: *test
+#  image: python:3.6
 
 test-python-3.7:
   <<: *test
