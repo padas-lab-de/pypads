@@ -614,7 +614,7 @@ class PyPads:
         mapping_file_paths = []
         if include_defaults:
             # Use our with the package delivered mapping files
-            mapping_file_paths.extend(glob.glob(os.path.join(expanduser("~"), ".pypads", "bindings", "**.json")))
+            mapping_file_paths.extend(glob.glob(os.path.join(self._folder, "bindings", "**.json")))
             mapping_file_paths.extend(glob.glob(
                 os.path.abspath(
                     os.path.join(os.path.dirname(__file__), "bindings", "resources", "mapping", "**.json"))))
