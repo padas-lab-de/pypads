@@ -1,6 +1,5 @@
 from pypads import logger
 
-from pypads.autolog.hook import find_applicable_hooks
 from pypads.autolog.wrapping.base_wrapper import BaseWrapper
 
 
@@ -36,13 +35,9 @@ class ClassWrapper(BaseWrapper):
             if hasattr(clazz, "__module__"):
                 self._pypads.wrap_manager.module_wrapper.punched_module_names.add(clazz.__name__)
 
-            # Get default hooks
-            if not mapping.hooks:
-                mapping.hooks = mapping.in_collection.get_default_class_hooks()
-
             # Try to wrap every attr of the class
-            for name, c, mapping in find_applicable_hooks(clazz, mapping):
-                self._pypads.wrap_manager.wrap(getattr(clazz, name), c, mapping)
+            for name in clazz.__dict__:
+                self._pypads.wrap_manager.wrap(getattr(clazz, name), clazz, mapping)
 
             # Override class on module
             reference_name = mapping.reference.rsplit('.', 1)[-1]

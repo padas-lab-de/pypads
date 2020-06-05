@@ -1,47 +1,64 @@
 import glob
-import json
 import os
+import re
 from itertools import chain
 from os.path import expanduser
 from typing import List
 
+import yaml
+
 from pypads import logger
-from pypads.autolog.hook import get_hooks
 
-mapping_files = glob.glob(expanduser("~") + ".pypads/bindings/**.json")
+mapping_files = glob.glob(expanduser("~") + ".pypads/bindings/**.yml")
 mapping_files.extend(
-    glob.glob(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) + "/bindings/resources/mapping/**.json"))
+    glob.glob(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) + "/bindings/resources/mapping/**.yml>"))
 
 
-class AlgorithmMeta:
-    def __init__(self, name, concepts):
-        self._concepts = concepts
-        self._name = name
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def concepts(self):
-        return self._concepts
-
-    def __eq__(self, other):
-        return self.name == other.name
-
-
-class AlgorithmMapping:
+class PadsMapping:
     """
     Mapping for an algorithm defined by a pypads mapping file
     """
 
-    def __init__(self, reference, library, algorithm: AlgorithmMeta, file, hooks):
-        self._hooks = hooks
-        self._algorithm = algorithm
+    def __init__(self, reference, library, in_collection, events, values):
         self._library = library
         self._reference = reference
-        self._file = file
-        self._in_collection = None
+        self._in_collection = in_collection
+        self._values = values
+        self._events = events
+
+        try:
+            self._regex = re.compile(self._reference)
+        except Exception as e:
+            logger.error(
+                "Couldn't compile regex: " + str(self._reference) + "of mapping" + str(self) + ". Disabling it.")
+            # Regex to never match anything
+            self._regex = re.compile('a^')
+
+    def is_applicable(self, reference):
+        if self._reference == reference:
+            return True
+        return self._regex.match(reference)
+
+    def applicable_filter(self, ctx):
+        """
+        Create a filter to check if the mapping is applicable
+        :param ctx:
+        :param mapping:
+        :return:
+        """
+
+        def mapping_applicable_filter(name):
+            if hasattr(ctx, name):
+                try:
+                    return self.is_applicable(getattr(ctx, name).__name__)
+                except RecursionError as rerr:
+                    logger.error("Recursion error on '" + str(
+                        ctx) + "'. This might be because __get_attr__ is being wrapped. " + str(rerr))
+            else:
+                logger.warning("Can't access attribute '" + str(name) + "' on '" + str(ctx) + "'. Skipping.")
+            return False
+
+        return mapping_applicable_filter
 
     @property
     def in_collection(self):
@@ -52,10 +69,6 @@ class AlgorithmMapping:
         self._in_collection = value
 
     @property
-    def file(self):
-        return self._file
-
-    @property
     def reference(self):
         return self._reference
 
@@ -63,94 +76,21 @@ class AlgorithmMapping:
     def library(self):
         return self._library
 
-    @property
-    def algorithm(self):
-        return self._algorithm
-
-    @property
-    def hooks(self):
-        return self._hooks
-
-    @hooks.setter
-    def hooks(self, value):
-        if not isinstance(value, List):
-            self._hooks = get_hooks(value)
-        else:
-            self._hooks = value
-
     def __str__(self):
-        return "Mapping[" + str(self.file) + ":" + str(self.reference) + ", lib=" + str(self.library) + ", alg=" + str(
-            self.algorithm) + ", hooks=" + str(self.hooks) + "]"
+        return "Mapping[" + str(self.reference) + ", lib=" + str(self.library) + "]"
 
     def __eq__(self, other):
-        # TODO also check for reference, file, in_collection?
-        if self.hooks and other.hooks:
-            return set(self.hooks) == set(
-                other.hooks) and self.algorithm == other.algorithm and self.library == other.library
-        elif not self.hooks and not other.hooks:
-            return self.algorithm == other.algorithm and self.library == other.library
-        else:
-            return False
+        return self.reference == other.reference
 
 
 class MappingCollection:
-    def __init__(self, key, default_hooks, algorithms: List[AlgorithmMapping]):
-        self._default_hooks = default_hooks
-        self._algorithms = algorithms
-        self._key = key
-
-    @property
-    def key(self):
-        return self._key
-
-    @property
-    def default_hooks(self):
-        return self._default_hooks
-
-    @property
-    def algorithms(self):
-        for alg in self._algorithms:
-            hooks = None
-            if "hooks" in alg:
-                hooks = get_hooks(alg["hooks"])
-
-            if alg["implementation"] and len(alg["implementation"]) > 0:
-                for library, reference in alg["implementation"].items():
-                    mapping = AlgorithmMapping(reference, library, AlgorithmMeta(alg, []), self.key, hooks)
-                    mapping.in_collection = self
-                    yield mapping
-
-    def get_default_module_hooks(self):
-        if "modules" in self._default_hooks:
-            if "fns" in self._default_hooks["modules"]:
-                return get_hooks(self._default_hooks["modules"]["fns"])
-
-    def get_default_class_hooks(self):
-        if "classes" in self._default_hooks:
-            if "fns" in self._default_hooks["classes"]:
-                return get_hooks(self._default_hooks["classes"]["fns"])
-
-    def get_default_fn_hooks(self):
-        if "fns" in self._default_hooks:
-            return get_hooks(self._default_hooks["fns"])
-
-
-class MappingFile(MappingCollection):
-
-    def __init__(self, name, json):
-        super().__init__(name, json['default_hooks'] if 'default_hooks' in json else {
-            "modules": {
-                "fns": {}
-            },
-            "classes": {
-                "fns": {}
-            },
-            "fns": {}
-        }, json["algorithms"] if 'algorithms' in json else [])
-        self._lib = json['metadata']['library']
-        self._lib_version = json['metadata']['library_version']
-        self._version = json['metadata']['mapping_version']
-        self._name = name
+    def __init__(self, key, version, lib, lib_version, packages, mappings: List[PadsMapping]):
+        self._mappings = mappings
+        self._name = key
+        self._version = version
+        self._lib = lib
+        self._lib_version = lib_version
+        self._packages = packages
 
     @property
     def version(self):
@@ -168,6 +108,114 @@ class MappingFile(MappingCollection):
     def name(self):
         return self._name
 
+    @property
+    def mappings(self):
+        return self._mappings
+
+    @property
+    def packages(self):
+        return self._packages
+
+
+class MappingSchema:
+
+    def __init__(self, fragments, metadata, reference, events, values):
+        self._fragments = fragments
+        self._metadata = metadata
+        self._reference = reference
+        self._events = events
+        self._values = values
+
+    @property
+    def fragments(self):
+        return self._fragments
+
+    @property
+    def metadata(self):
+        return self._metadata
+
+    @property
+    def reference(self):
+        return self._reference
+
+    @property
+    def values(self):
+        return self._values
+
+    @property
+    def events(self):
+        return self._events
+
+    def get(self, key):
+        return self._values[key]
+
+    def has(self, key):
+        return key in self._values
+
+
+class SerializedMapping(MappingCollection):
+
+    def __init__(self, key, content):
+        yml = yaml.load(content, Loader=yaml.SafeLoader)
+        schema = MappingSchema(yml["fragments"] if "fragments" in yml else [], yml["metadata"], "", set(), {})
+        super().__init__(key, schema.metadata["version"], schema.metadata["library"]["name"],
+                         schema.metadata["library"]["version"], list(yml["mappings"].keys()),
+                         self._build_mappings(yml["mappings"], schema, True))
+
+    def _build_mappings(self, node, schema: MappingSchema, entry):
+        _fragments = []
+        _children = []
+        _events = set()
+        _values = {}
+        mappings = []
+
+        # replace fragments
+        for k, v in node.items():
+            if entry:
+                _children.append((k, v))
+            elif k.startswith("::"):
+                _fragments.append(k[2:])
+            elif k.startswith("."):
+                _children.append((k, v))
+            elif k == "events":
+                for event in v:
+                    _events.add(event)
+            elif k == "data":
+                _values[k] = v
+
+        for p in _fragments:
+            for k, v in schema.fragments[p].items():
+                node[k] = v
+            del node["::" + p]
+
+        schema = MappingSchema(schema.fragments, schema.metadata, reference=schema.reference,
+                               events=_events.union(schema.events),
+                               values={**schema.values, **_values})
+
+        if len(_fragments) > 0:
+            mappings = mappings + self._build_mappings(node, schema, False)
+        else:
+            if len(_children) > 0:
+                for c, v in _children:
+                    mappings = mappings + self._build_mappings(v, MappingSchema(schema.fragments, schema.metadata,
+                                                                                reference=schema.reference + c,
+                                                                                events=schema.events,
+                                                                                values=schema.values), False)
+            else:
+                mappings.append(
+                    PadsMapping(schema.reference, schema.metadata["library"], self, schema.events, schema.values))
+        return mappings
+
+
+class MappingFile(SerializedMapping):
+
+    def __init__(self, path, name=None):
+        with open(path) as f:
+            if name is None:
+                name = os.path.basename(f.name)
+            data = f.read()
+        super().__init__(name, data)
+
 
 class MappingRegistry:
     """
@@ -183,8 +231,9 @@ class MappingRegistry:
             self.load_mapping(path)
 
     def add_mapping(self, mapping: MappingCollection, key=None):
-        if isinstance(mapping, MappingFile):
-            key = mapping.lib
+
+        if key is None and isinstance(mapping, MappingFile):
+            key = mapping.name
 
         if key is None:
             logger.error(
@@ -193,17 +242,13 @@ class MappingRegistry:
             self._mappings[key] = mapping
 
     def load_mapping(self, path):
-        with open(path) as json_file:
-            name = os.path.basename(json_file.name)
-            logger.info("Added mapping file with name: " + str(name))
-            content = json.load(json_file)
-            self.add_mapping(MappingFile(name, json=content))
+        self.add_mapping(MappingFile(path))
 
     def add_found_class(self, mapping):
         if mapping.reference not in self.found_classes:
             self.found_classes[mapping.reference] = mapping
 
-    def iter_found_classes(self):
+    def iter_found_mappings(self):
         for i, mapping in self.found_classes.items():
             yield mapping
 
@@ -213,19 +258,23 @@ class MappingRegistry:
             all_libs.add(mapping.lib)
         return all_libs
 
-    def get_relevant_mappings(self):
+    def get_relevant_mappings(self, module):
         """
         Function to find all relevant mappings. This produces a generator getting extended with found subclasses
         :return:
         """
-        return chain(self.get_algorithms(), self.iter_found_classes())
+        return chain(self.get_static_mappings(module), self.iter_found_mappings())
 
-    def get_algorithms(self):
+    def get_static_mappings(self, module):
         """
         Get all mappings defined in all mapping files.
         :return:
         """
+        for collection in self._get_relevant_collections(module):
+            for m in collection.mappings:
+                yield m
 
-        for key, mapping in self._mappings.items():
-            for alg in mapping.algorithms:
-                yield alg
+    def _get_relevant_collections(self, module):
+        for key, collection in self._mappings.items():
+            if module.__name__ in collection.packages:
+                yield collection

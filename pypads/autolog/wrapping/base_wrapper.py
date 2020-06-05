@@ -158,15 +158,12 @@ class BaseWrapper:
         :param mapping:
         :return:
         """
-        if not mapping.hooks:
-            mapping.hooks = mapping.in_collection.get_default_fn_hooks()
-
         library = None
         version = None
         if mapping.in_collection is not None:
             library = mapping.in_collection.lib
             version = mapping.in_collection.lib_version
-        hook_events_of_mapping = [hook.event for hook in mapping.hooks if hook.is_applicable(mapping=mapping, fn=fn)]
+
         output = []
         config = self._get_current_config()
         events = [[k, v] for k, v in config["events"].items()]
@@ -184,7 +181,7 @@ class BaseWrapper:
                 hook_params = {}
 
             # If one configured_hook_events is in this config.
-            if configured_hook_events == "always" or set(configured_hook_events) & set(hook_events_of_mapping):
+            if configured_hook_events == set(configured_hook_events) & set(mapping.events):
                 fns = self._pypads.function_registry.find_functions(log_event, lib=library, version=version)
                 if fns:
                     # sort logger order

@@ -1,0 +1,25 @@
+metadata:
+  author: "Thomas Weißgerber"
+  version: "0.1.0"
+  library:
+    name: "keras"
+    version: "2.3.1"
+
+mappings:
+  keras.metrics.*:
+    events: ["pypads_metric"]
+    concept:
+      names: ["keras classification metrics"]
+
+  keras.engine.training.Model:
+    .__init__:
+      events: ["pypads_init"]
+    .fit | .fit_generator:
+      events: ["pypads_fit"]
+    .predict_classes:
+      events: ["pypads_predict"]
+
+  keras.datasets.mnist.load_data:
+    events: ["pypads_dataset"]
+    concept:
+      names: ["keras mnist dataset"]

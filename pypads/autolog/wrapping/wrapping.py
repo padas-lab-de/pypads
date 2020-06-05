@@ -40,7 +40,7 @@ class WrapManager:
         :param kwargs:
         :return:
         """
-        if not str(wrappee).startswith("_pypads") and not str(wrappee).startswith("__"):
+        if not str(wrappee.__name__).startswith("_pypads") and not str(wrappee.__name__).startswith("__"):
             if not isinstance(ctx, Context):
                 try:
                     ctx = Context(ctx)
