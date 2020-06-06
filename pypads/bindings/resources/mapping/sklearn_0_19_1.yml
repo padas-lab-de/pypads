@@ -9,11 +9,11 @@ fragments:
   default_model:
     .__init__:
       events: "pypads_init"
-    .{re:[fit|.fit_predict|fit_transform]}:
+    .{re:(fit|.fit_predict|fit_transform)$}:
       events: "pypads_fit"
-    .{re:[fit_predict|predict|score]}:
+    .{re:(fit_predict|predict|score)$}:
       events: "pypads_predict"
-    .{re:[fit_transform|transform]}:
+    .{re:(fit_transform|transform)$}:
       events: "pypads_transform"
 
 mappings:
@@ -23,7 +23,7 @@ mappings:
       ::default_model: ~
     .metrics.classification.{re:.*}:
       concepts: "Sklearn provided metric"
-      events: "metric"
+      events: "pypads_metric"
     .datasets.{re:load.*}:
       concepts: "dataset"
       events: "pypads_dataset"
@@ -35,10 +35,10 @@ mappings:
         ._validation._fit_and_score:
           concepts: "metric"
           events: "pypads_param_search"
-      ._split.{re:[BaseShuffleSplit|BaseCrossValidator]}:
+      ._split.{re:(BaseShuffleSplit|BaseCrossValidator)$}:
         concepts: "splitter"
         .split:
           events: "pypads_split"
-    .base.{re:[RegressorMixin|ClassifierMixin|DensityMixin]}.score:
-      events: "pypads_metric"
+    .base.{re:(RegressorMixin|ClassifierMixin|DensityMixin)$}.score:
       concepts: "metric"
+      events: "pypads_metric"

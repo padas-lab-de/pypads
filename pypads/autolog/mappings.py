@@ -34,7 +34,10 @@ class PadsMapping:
             # Regex to never match anything
             self._regex = re.compile('a^')
 
-    def is_applicable(self, reference):
+    def is_applicable(self, ctx, obj):
+        if not hasattr(obj, "__name__"):
+            return False
+        reference = ctx.reference + "." + obj.__name__ if ctx is not None else obj.__name__
         if self._reference == reference:
             return True
         return self._regex.match(reference)
@@ -48,14 +51,14 @@ class PadsMapping:
         """
 
         def mapping_applicable_filter(name):
-            if hasattr(ctx, name):
+            if hasattr(ctx.container, name):
                 try:
-                    return self.is_applicable(getattr(ctx, name).__name__)
+                    return self.is_applicable(ctx, getattr(ctx.container, name))
                 except RecursionError as rerr:
                     logger.error("Recursion error on '" + str(
                         ctx) + "'. This might be because __get_attr__ is being wrapped. " + str(rerr))
             else:
-                logger.warning("Can't access attribute '" + str(name) + "' on '" + str(ctx) + "'. Skipping.")
+                logger.debug("Can't access attribute '" + str(name) + "' on '" + str(ctx) + "'. Skipping.")
             return False
 
         return mapping_applicable_filter
@@ -75,6 +78,14 @@ class PadsMapping:
     @property
     def library(self):
         return self._library
+
+    @property
+    def events(self):
+        return self._events
+
+    @property
+    def values(self):
+        return self._values
 
     def __str__(self):
         return "Mapping[" + str(self.reference) + ", lib=" + str(self.library) + "]"
@@ -178,8 +189,11 @@ class SerializedMapping(MappingCollection):
             elif k.startswith("."):
                 _children.append((k, v))
             elif k == "events":
-                for event in v:
-                    _events.add(event)
+                if isinstance(v, str):
+                    _events.add(v)
+                elif isinstance(v, List):
+                    for event in v:
+                        _events.add(event)
             elif k == "data":
                 _values[k] = v
 
@@ -249,7 +263,7 @@ class MappingRegistry:
             self.found_classes[mapping.reference] = mapping
 
     def iter_found_mappings(self):
-        for i, mapping in self.found_classes.items():
+        for i, mapping in list(self.found_classes.items()):
             yield mapping
 
     def get_libraries(self):
@@ -276,5 +290,20 @@ class MappingRegistry:
 
     def _get_relevant_collections(self, module):
         for key, collection in self._mappings.items():
-            if module.__name__ in collection.packages:
+            if any([True for p in collection.packages if module.__name__.startswith(p)]):
                 yield collection
+
+
+class MappingHit:
+
+    def __init__(self, mapping: PadsMapping, segments):
+        self._segments = segments
+        self._mapping = mapping
+
+    @property
+    def segments(self):
+        return self._segments
+
+    @property
+    def mapping(self):
+        return self._mapping

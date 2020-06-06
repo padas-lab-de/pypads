@@ -370,8 +370,8 @@ class AlgorithmVisitor(Visitor):
         fullName = "Unknown"
         for key, value in inspect.getmembers(object):
             if key.startswith("_pypads_mapping"):
-                for mapping in value:
-                    fullName = mapping.reference
+                for mapping_hit in value:
+                    fullName = mapping_hit.mapping.reference
                     break
                 break
         fullName_ = object.__class__.__module__ + "." + object.__class__.__name__ if hasattr(object,

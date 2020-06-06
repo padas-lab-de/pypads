@@ -2,13 +2,14 @@ import inspect
 import re
 import sys
 import types
+from abc import abstractmethod, ABCMeta
 from functools import wraps
 from importlib._bootstrap_external import PathFinder
 # noinspection PyUnresolvedReferences
 from multiprocessing import Value
 
 from pypads import logger
-from pypads.autolog.mappings import PadsMapping
+from pypads.autolog.mappings import PadsMapping, MappingHit
 from pypads.autolog.wrapping.base_wrapper import Context
 
 
@@ -26,11 +27,64 @@ def _add_inherited_mapping(clazz, super_class):
     from pypads.pypads import get_current_pads
     if clazz.__name__ not in get_current_pads().wrap_manager.class_wrapper.punched_class_names:
         if hasattr(super_class, "_pypads_mapping_" + super_class.__name__):
-            for mapping in getattr(super_class, "_pypads_mapping_" + super_class.__name__):
+            for mapping_hit in getattr(super_class, "_pypads_mapping_" + super_class.__name__):
                 found_mapping = PadsMapping(
-                    clazz.__module__ + "." + clazz.__qualname__, mapping.library,
-                    mapping.in_collection, mapping.events, mapping.values)
+                    ".".join(filter(lambda s: len(s) > 0,
+                                    [clazz.__module__, clazz.__qualname__,
+                                     ".".join([h.serialize() for h in mapping_hit.segments])])),
+                    mapping_hit.mapping.library,
+                    mapping_hit.mapping.in_collection, mapping_hit.mapping.events, mapping_hit.mapping.values)
                 _add_found_class(mapping=found_mapping)
+
+
+def _to_segments(reference):
+    segments = []
+    for seg in filter(lambda s: len(s) > 0, re.split(r"(\{.*?\})", reference)):
+        if seg.startswith("{re:"):
+            segments.append(RegexSegment(seg[4:-1]))
+        else:
+            segments = segments + [PathSegment(s) for s in filter(lambda s: len(s) > 0, seg.split("."))]
+    return segments
+
+
+class Segment:
+    __metaclass__ = ABCMeta
+
+    def __init__(self, content):
+        self._content = content
+
+    @property
+    def content(self):
+        return self._content
+
+    @abstractmethod
+    def fits(self, segment):
+        raise NotImplementedError
+
+    @abstractmethod
+    def serialize(self):
+        raise NotImplementedError
+
+    def __str__(self):
+        return str(self._content)
+
+
+class PathSegment(Segment):
+
+    def fits(self, segment):
+        return segment == self.content
+
+    def serialize(self):
+        return self.content
+
+
+class RegexSegment(Segment):
+
+    def fits(self, segment):
+        return re.match(self.content, segment)
+
+    def serialize(self):
+        return "{re:" + self.content + "}"
 
 
 def duck_punch_loader(spec):
@@ -46,31 +100,38 @@ def duck_punch_loader(spec):
         # History to check if a class inherits a wrapping intra-module
         mro_entry_history = {}
 
-        def _find_wrappees(segments, ctx, obj, mapping, current_pads):
+        def _find_wrappees(segments, ctx, obj, mapping, current_pads, curr_segment=None):
+
+            if inspect.isclass(obj):
+                current_pads.wrap_manager.wrap(obj, ctx, MappingHit(mapping, segments))
+                if obj in mro_entry_history:
+                    for clazz in mro_entry_history[obj]:
+                        _add_inherited_mapping(clazz, obj)
+            elif inspect.isfunction(obj):
+                current_pads.wrap_manager.wrap(obj, ctx, MappingHit(mapping, [
+                                                                                 curr_segment] + segments if curr_segment is not None else segments))
+
             if len(segments) > 0:
-                segment = segments.pop(0)
-                if segment.startswith("{re:"):
-                    regex = segment[1:-1]
-                    objs = [var for var in dir(obj) if re.match(regex, var)]
-                    for o in objs:
-                        _find_wrappees(segments, obj, o, mapping, current_pads)
+                curr_segment = segments[0]
+                if isinstance(curr_segment, RegexSegment):
+                    objs = [var for var in dir(obj) if curr_segment.fits(var)]
+                    sub_segments = segments[1:]
+                    for name in objs:
+                        _find_wrappees(sub_segments, Context(obj, ctx.reference + "." + name), getattr(obj, name),
+                                       mapping,
+                                       current_pads, curr_segment=curr_segment)
                 else:
                     # Add the normal segments with the regex segments
-                    joined_segments = segment.split(".") + segments
                     try:
-                        o = getattr(obj, joined_segments[0])
-                        _find_wrappees(joined_segments[1:], obj, o, mapping, current_pads)
-                    except AttributeError:
+                        if hasattr(obj, curr_segment.content):
+                            o = getattr(obj, curr_segment.content)
+                        else:
+                            o = obj[curr_segment.content]
+                        sub_segments = segments[1:]
+                        _find_wrappees(sub_segments, Context(obj, ctx.reference + "." + o.__name__), o, mapping,
+                                       current_pads, curr_segment=curr_segment)
+                    except Exception as e:
                         pass
-            else:
-                if inspect.isclass(obj):
-                    current_pads.wrap_manager.wrap(obj, Context(ctx), mapping)
-                    if obj in mro_entry_history:
-                        for clazz in mro_entry_history[obj]:
-                            _add_inherited_mapping(clazz, obj)
-
-                elif inspect.isfunction(obj) or 'wrapper_descriptor' in str(obj.__class__):
-                    current_pads.wrap_manager.wrap(obj, Context(ctx), mapping)
 
         from pypads.pypads import current_pads
         if current_pads:
@@ -90,28 +151,24 @@ def duck_punch_loader(spec):
                                 mro_entry_history[entry] = [reference]
                             else:
                                 mro_entry_history[entry].append(reference)
-                        overlap = set(
-                            [c.__name__ for c in mro_]) & current_pads.wrap_manager.class_wrapper.punched_class_names
-                        if bool(overlap):
-                            # TODO Is one inherited mapping maybe enough? Only add for the first one?
-                            for o in overlap:
-                                _add_inherited_mapping(reference, o)
+                            if hasattr(entry, "_pypads_mapping_" + entry.__name__):
+                                _add_inherited_mapping(reference, entry)
                     except Exception as e:
                         logger.debug("Skipping superclasses of " + str(reference) + ". " + str(e))
 
             # For every mapping in our mappings
             for mapping in _get_relevant_mappings(module):
-                if mapping.is_applicable(module.__name__):
+                if mapping.is_applicable(None, module):
                     current_pads.wrap_manager.wrap(module, None, mapping)
                 else:
-                    ref = mapping.reference
-                    path = ref[len(module.__name__) + 1:]
-
-                    obj = module
-
-                    # split for regex
-                    segments = re.split(r"(\{.*?\})", path)
-                    _find_wrappees(segments, module, obj, mapping, current_pads)
+                    segments = _to_segments(mapping.reference)
+                    entry_segs = module.__name__.split(".")
+                    checks = []
+                    for i, entry_seg in enumerate(entry_segs):
+                        checks.append(len(segments) >= len(entry_segs) and segments[i].fits(entry_seg))
+                    if all(checks):
+                        _find_wrappees(segments[len(checks):], Context(sys.modules, module.__name__), module, mapping,
+                                       current_pads, curr_segment=segments[len(checks)])
         return out
 
     spec.loader.exec_module = types.MethodType(exec_module, spec.loader)

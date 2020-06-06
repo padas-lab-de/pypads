@@ -4,17 +4,27 @@ from abc import abstractmethod
 from copy import copy
 
 from pypads import logger
+from pypads.autolog.mappings import MappingHit
 
 DEFAULT_ORDER = 1
+
+
+def fullname(o):
+    module = o.__class__.__module__
+    if module is None or module == str.__class__.__module__:
+        return o.__class__.__name__  # Don't report __builtin__
+    else:
+        return module + '.' + o.__class__.__name__
 
 
 class Context:
     __metaclass__ = ABCMeta
 
-    def __init__(self, context):
+    def __init__(self, context, reference=None):
         if context is None:
             raise ValueError("A context has to be passed for a object to be wrapped.")
         self._c = context
+        self._reference = reference if reference is not None else fullname(context)
 
     def overwrite(self, key, obj):
         setattr(self._c, key, obj)
@@ -29,20 +39,21 @@ class Context:
         #         if mapping in getattr(holder, k):
         #             return True
         if hasattr(holder, "_pypads_mapping_" + wrappee.__name__):
-            if mapping in getattr(holder, "_pypads_mapping_" + wrappee.__name__):
-                return True
+            for hit in getattr(holder, "_pypads_mapping_" + wrappee.__name__):
+                if hit.mapping == mapping:
+                    return True
         return False
 
-    def store_wrap_meta(self, mapping, wrappee):
+    def store_wrap_meta(self, mapping_hit: MappingHit, wrappee):
         try:
-            if not inspect.isfunction(wrappee):
+            if not inspect.isfunction(wrappee) or "<slot wrapper" in str(wrappee):
                 holder = wrappee
             else:
                 holder = self._c
             # Set self reference
             if not hasattr(holder, "_pypads_mapping_" + wrappee.__name__):
                 setattr(holder, "_pypads_mapping_" + wrappee.__name__, [])
-            getattr(holder, "_pypads_mapping_" + wrappee.__name__).append(mapping)
+            getattr(holder, "_pypads_mapping_" + wrappee.__name__).append(mapping_hit)
         except TypeError as e:
             logger.debug("Can't set attribute '" + wrappee.__name__ + "' on '" + str(self._c) + "'.")
             raise e
@@ -134,6 +145,10 @@ class Context:
     def container(self):
         return self._c
 
+    @property
+    def reference(self):
+        return self._reference
+
     def get_dict(self):
         return self._c.__dict__
 
@@ -148,7 +163,7 @@ class BaseWrapper:
         self._pypads = pypads
 
     @abstractmethod
-    def wrap(self, wrappee, ctx, mapping):
+    def wrap(self, wrappee, ctx, mapping_hit: MappingHit):
         raise NotImplementedError()
 
     def _get_hooked_fns(self, fn, mapping):
@@ -172,7 +187,7 @@ class BaseWrapper:
         events.sort(key=lambda e: e[1]["order"] if "order" in e[1] else DEFAULT_ORDER)
 
         for log_event, event_config in events:
-            configured_hook_events = event_config["on"]
+            configured_hook_events = set(event_config["on"])
 
             # Add by config defined parameters
             if "with" in event_config:

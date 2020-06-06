@@ -27,7 +27,8 @@ class Parameters(LoggingFunction):
             if "model_parameters" in visitor[0]["steps"][0]["hyper_parameters"]:
                 for k, v in visitor[0]["steps"][0]["hyper_parameters"]["model_parameters"].items():
                     try:
-                        try_mlflow_log(mlflow.log_param, _pypads_env.mapping.reference + "." + k + ".txt", v)
+                        try_mlflow_log(mlflow.log_param, _pypads_env.call.call_id.context.reference + "." + k + ".txt",
+                                       v)
                     except Exception as e:
                         logger.warning("Couldn't track parameter. " + str(e) + " Trying to track with another name.")
                         try_mlflow_log(mlflow.log_param,

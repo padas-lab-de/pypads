@@ -1,6 +1,7 @@
 import inspect
 from types import ModuleType
 
+from pypads.autolog.mappings import MappingHit
 from pypads.autolog.wrapping.base_wrapper import Context
 from pypads.autolog.wrapping.class_wrapping import ClassWrapper
 from pypads.autolog.wrapping.function_wrapping import FunctionWrapper
@@ -32,7 +33,7 @@ class WrapManager:
     def function_wrapper(self):
         return self._function_wrapper
 
-    def wrap(self, wrappee, ctx, mapping):
+    def wrap(self, wrappee, ctx, mapping_hit: MappingHit):
         """
         Wrap given object with pypads functionality
         :param wrappee:
@@ -40,7 +41,7 @@ class WrapManager:
         :param kwargs:
         :return:
         """
-        if not str(wrappee.__name__).startswith("_pypads") and not str(wrappee.__name__).startswith("__"):
+        if not str(wrappee).startswith("_pypads") and not str(wrappee).startswith("__"):
             if not isinstance(ctx, Context):
                 try:
                     ctx = Context(ctx)
@@ -52,12 +53,12 @@ class WrapManager:
                     ctx = Context(dummy)
 
             if inspect.ismodule(wrappee):
-                return self._module_wrapper.wrap(wrappee, ctx, mapping)
+                return self._module_wrapper.wrap(wrappee, ctx, mapping_hit)
 
             elif inspect.isclass(wrappee):
-                return self._class_wrapper.wrap(wrappee, ctx, mapping)
+                return self._class_wrapper.wrap(wrappee, ctx, mapping_hit)
 
             elif inspect.isfunction(wrappee):
-                return self._function_wrapper.wrap(wrappee, ctx, mapping)
+                return self._function_wrapper.wrap(wrappee, ctx, mapping_hit)
         else:
             return wrappee

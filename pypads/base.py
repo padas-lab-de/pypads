@@ -153,7 +153,7 @@ class PypadsApi:
     # noinspection PyMethodMayBeStatic
     def track(self, fn, ctx=None, events: List = None, mapping: PadsMapping = None):
         if events is None:
-            events = ["pypads_log"]
+            events = set("pypads_log")
         if ctx is not None and not hasattr(ctx, fn.__name__):
             logger.warning("Given context " + str(ctx) + " doesn't define " + str(fn.__name__))
             ctx = None
@@ -173,7 +173,7 @@ class PypadsApi:
 
             # For all events we want to hook to
             mapping = PadsMapping(ctx_path + "." + fn.__name__, lib, None, events, {"concept": fn.__name__})
-        return self._pypads.wrap_manager.wrap(fn, ctx=ctx, mapping=mapping)
+        return self._pypads.wrap_manager.wrap(fn, ctx=ctx, mapping_hit=mapping)
 
     def start_run(self, run_id=None, experiment_id=None, run_name=None, nested=False):
         out = mlflow.start_run(run_id=run_id, experiment_id=experiment_id, run_name=run_name, nested=nested)

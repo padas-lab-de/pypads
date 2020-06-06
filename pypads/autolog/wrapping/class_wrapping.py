@@ -13,17 +13,17 @@ class ClassWrapper(BaseWrapper):
     def punched_class_names(self):
         return self._punched_class_names
 
-    def wrap(self, clazz, context, mapping):
+    def wrap(self, clazz, context, mapping_hit):
         """
             Wrap a class in given ctx with pypads functionality
             :param clazz:
             :param context:
-            :param mapping:
+            :param mapping_hit:
             :return:
             """
-        if clazz.__name__ not in self.punched_class_names or not context.has_wrap_meta(mapping, clazz):
+        if clazz.__name__ not in self.punched_class_names or not context.has_wrap_meta(mapping_hit.mapping, clazz):
             try:
-                context.store_wrap_meta(mapping, clazz)
+                context.store_wrap_meta(mapping_hit, clazz)
             except Exception:
                 return clazz
             self.punched_class_names.add(clazz.__name__)
@@ -36,12 +36,11 @@ class ClassWrapper(BaseWrapper):
                 self._pypads.wrap_manager.module_wrapper.punched_module_names.add(clazz.__name__)
 
             # Try to wrap every attr of the class
-            for name in clazz.__dict__:
-                self._pypads.wrap_manager.wrap(getattr(clazz, name), clazz, mapping)
+            for name in list(filter(mapping_hit.mapping.applicable_filter(context), dir(clazz))):
+                self._pypads.wrap_manager.wrap(getattr(clazz, name), clazz, mapping_hit)
 
             # Override class on module
-            reference_name = mapping.reference.rsplit('.', 1)[-1]
-            context.overwrite(reference_name, clazz)
+            context.overwrite(clazz.__name__, clazz)
         else:
             logger.debug("Class " + str(clazz) + "already duck-puched.")
         return clazz

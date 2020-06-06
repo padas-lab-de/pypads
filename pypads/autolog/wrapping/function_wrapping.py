@@ -10,24 +10,25 @@ from pypads.functions.analysis.call_tracker import CallAccessor, FunctionReferen
 
 class FunctionWrapper(BaseWrapper):
 
-    def wrap(self, fn, context: Context, mapping):
+    def wrap(self, fn, context: Context, mapping_hit):
         # Only wrap functions not starting with "__"
         if (fn.__name__.startswith("__") or fn.__name__.startswith("_pypads")) and fn.__name__ is not "__init__":
             return fn
 
-        if not context.has_wrap_meta(mapping, fn):
-            context.store_wrap_meta(mapping, fn)
+        if not context.has_wrap_meta(mapping_hit, fn):
+            context.store_wrap_meta(mapping_hit, fn)
 
             if not context.has_original(fn) or not context.defined_stored_original(fn):
                 context.store_original(fn)
 
             if context.is_class():
-                return self._wrap_on_class(fn, context, mapping)
+                return self._wrap_on_class(fn, context, mapping_hit.mapping)
             elif hasattr(context.container, fn.__name__):
-                return self._wrap_on_object(fn, context, mapping)
+                return self._wrap_on_object(fn, context, mapping_hit.mapping)
             else:
                 logger.warning(str(
-                    context) + " is no class and doesn't provide attribute with fn_name. Couldn't access " + str(
+                    context) + " is no class and doesn't provide attribute with name " + str(
+                    fn.__name__) + ". Couldn't access " + str(
                     fn) + " on it.")
 
     def _wrap_on_object(self, fn, context: Context, mapping):
