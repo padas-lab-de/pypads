@@ -1,15 +1,13 @@
 import inspect
-import re
 import sys
 import types
-from abc import abstractmethod, ABCMeta
 from functools import wraps
 from importlib._bootstrap_external import PathFinder
 # noinspection PyUnresolvedReferences
 from multiprocessing import Value
 
 from pypads import logger
-from pypads.autolog.mappings import PadsMapping, MappingHit
+from pypads.autolog.mappings import PadsMapping, MappingHit, _to_segments
 from pypads.autolog.wrapping.base_wrapper import Context
 
 
@@ -18,9 +16,9 @@ def _add_found_class(mapping):
     return get_current_pads().mapping_registry.add_found_class(mapping)
 
 
-def _get_relevant_mappings(module):
+def _get_relevant_mappings(segments, search_found):
     from pypads.pypads import get_current_pads
-    return get_current_pads().mapping_registry.get_relevant_mappings(module)
+    return get_current_pads().mapping_registry.get_relevant_mappings(segments, search_found)
 
 
 def _add_inherited_mapping(clazz, super_class):
@@ -31,60 +29,11 @@ def _add_inherited_mapping(clazz, super_class):
                 found_mapping = PadsMapping(
                     ".".join(filter(lambda s: len(s) > 0,
                                     [clazz.__module__, clazz.__qualname__,
-                                     ".".join([h.serialize() for h in mapping_hit.segments])])),
+                                     ".".join([h.serialize() for h in
+                                               mapping_hit.mapping.segments[len(mapping_hit.segments):]])])),
                     mapping_hit.mapping.library,
                     mapping_hit.mapping.in_collection, mapping_hit.mapping.events, mapping_hit.mapping.values)
-                _add_found_class(mapping=found_mapping)
-
-
-def _to_segments(reference):
-    segments = []
-    for seg in filter(lambda s: len(s) > 0, re.split(r"(\{.*?\})", reference)):
-        if seg.startswith("{re:"):
-            segments.append(RegexSegment(seg[4:-1]))
-        else:
-            segments = segments + [PathSegment(s) for s in filter(lambda s: len(s) > 0, seg.split("."))]
-    return segments
-
-
-class Segment:
-    __metaclass__ = ABCMeta
-
-    def __init__(self, content):
-        self._content = content
-
-    @property
-    def content(self):
-        return self._content
-
-    @abstractmethod
-    def fits(self, segment):
-        raise NotImplementedError
-
-    @abstractmethod
-    def serialize(self):
-        raise NotImplementedError
-
-    def __str__(self):
-        return str(self._content)
-
-
-class PathSegment(Segment):
-
-    def fits(self, segment):
-        return segment == self.content
-
-    def serialize(self):
-        return self.content
-
-
-class RegexSegment(Segment):
-
-    def fits(self, segment):
-        return re.match(self.content, segment)
-
-    def serialize(self):
-        return "{re:" + self.content + "}"
+                _add_found_class(found_mapping)
 
 
 def duck_punch_loader(spec):
@@ -100,75 +49,48 @@ def duck_punch_loader(spec):
         # History to check if a class inherits a wrapping intra-module
         mro_entry_history = {}
 
-        def _find_wrappees(segments, ctx, obj, mapping, current_pads, curr_segment=None):
-
-            if inspect.isclass(obj):
-                current_pads.wrap_manager.wrap(obj, ctx, MappingHit(mapping, segments))
-                if obj in mro_entry_history:
-                    for clazz in mro_entry_history[obj]:
-                        _add_inherited_mapping(clazz, obj)
-            elif inspect.isfunction(obj):
-                current_pads.wrap_manager.wrap(obj, ctx, MappingHit(mapping, [
-                                                                                 curr_segment] + segments if curr_segment is not None else segments))
-
-            if len(segments) > 0:
-                curr_segment = segments[0]
-                if isinstance(curr_segment, RegexSegment):
-                    objs = [var for var in dir(obj) if curr_segment.fits(var)]
-                    sub_segments = segments[1:]
-                    for name in objs:
-                        _find_wrappees(sub_segments, Context(obj, ctx.reference + "." + name), getattr(obj, name),
-                                       mapping,
-                                       current_pads, curr_segment=curr_segment)
-                else:
-                    # Add the normal segments with the regex segments
-                    try:
-                        if hasattr(obj, curr_segment.content):
-                            o = getattr(obj, curr_segment.content)
-                        else:
-                            o = obj[curr_segment.content]
-                        sub_segments = segments[1:]
-                        _find_wrappees(sub_segments, Context(obj, ctx.reference + "." + o.__name__), o, mapping,
-                                       current_pads, curr_segment=curr_segment)
-                    except Exception as e:
-                        pass
-
         from pypads.pypads import current_pads
+        reference = module.__name__
+
         if current_pads:
             # TODO we might want to make this configurable/improve performance.
             #  This looks at every imported class and every mapping.
             # On execution of a module we search for relevant mappings
             # For every var on module
             for name in dir(module):
-                reference = getattr(module, name)
-                if inspect.isclass(reference) and hasattr(reference, "mro"):
-                    try:
+                obj = getattr(module, name)
 
-                        # Look at the MRO and add classes to be punched which inherit from our punched classes
-                        mro_ = reference.mro()[1:]
-                        for entry in mro_:
-                            if entry not in mro_entry_history.keys():
-                                mro_entry_history[entry] = [reference]
-                            else:
-                                mro_entry_history[entry].append(reference)
-                            if hasattr(entry, "_pypads_mapping_" + entry.__name__):
-                                _add_inherited_mapping(reference, entry)
-                    except Exception as e:
-                        logger.debug("Skipping superclasses of " + str(reference) + ". " + str(e))
+                if obj is not None:
+                    obj_ref = ".".join([reference, name])
+                    obj_seg = _to_segments(obj_ref)
 
-            # For every mapping in our mappings
-            for mapping in _get_relevant_mappings(module):
-                if mapping.is_applicable(None, module):
-                    current_pads.wrap_manager.wrap(module, None, mapping)
-                else:
-                    segments = _to_segments(mapping.reference)
-                    entry_segs = module.__name__.split(".")
-                    checks = []
-                    for i, entry_seg in enumerate(entry_segs):
-                        checks.append(len(segments) >= len(entry_segs) and segments[i].fits(entry_seg))
-                    if all(checks):
-                        _find_wrappees(segments[len(checks):], Context(sys.modules, module.__name__), module, mapping,
-                                       current_pads, curr_segment=segments[len(checks)])
+                    # Skip modules if they are from another package for now
+                    if inspect.ismodule(obj):
+                        if not module.__name__.split(".")[0] == obj.__name__.split(".")[0]:
+                            continue
+
+                    if inspect.isclass(obj) and hasattr(obj, "mro"):
+                        found = []
+                        try:
+
+                            # Look at the MRO and add classes to be punched which inherit from our punched classes
+                            mro_ = obj.mro()[1:]
+                            for entry in mro_:
+                                if entry not in mro_entry_history.keys():
+                                    mro_entry_history[entry] = [obj]
+                                else:
+                                    mro_entry_history[entry].append(obj)
+                                if hasattr(entry, "_pypads_mapping_" + entry.__name__):
+                                    _add_inherited_mapping(obj, entry)
+                                    found.append(entry)
+                        except Exception as e:
+                            logger.debug("Skipping some superclasses of " + str(obj) + ". " + str(e))
+                        mappings = _get_relevant_mappings(obj_seg, len(found) > 0)
+                    else:
+                        mappings = _get_relevant_mappings(obj_seg, False)
+
+                    for mapping in mappings:
+                        current_pads.wrap_manager.wrap(obj, Context(module, reference), MappingHit(mapping, obj_seg))
         return out
 
     spec.loader.exec_module = types.MethodType(exec_module, spec.loader)

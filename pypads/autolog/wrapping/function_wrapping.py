@@ -15,7 +15,7 @@ class FunctionWrapper(BaseWrapper):
         if (fn.__name__.startswith("__") or fn.__name__.startswith("_pypads")) and fn.__name__ is not "__init__":
             return fn
 
-        if not context.has_wrap_meta(mapping_hit, fn):
+        if not context.has_wrap_meta(mapping_hit.mapping, fn):
             context.store_wrap_meta(mapping_hit, fn)
 
             if not context.has_original(fn) or not context.defined_stored_original(fn):
@@ -34,7 +34,7 @@ class FunctionWrapper(BaseWrapper):
     def _wrap_on_object(self, fn, context: Context, mapping):
         # Add module of class to the changed modules
         if hasattr(context.container, "__module__"):
-            self._pypads.punched_module_names.add(context.container.__module__)
+            self._pypads.add_punched_module_name(context.container.__module__)
 
         # If we are already punched get original function instead of punched function
         if context.has_original(fn):
@@ -63,7 +63,7 @@ class FunctionWrapper(BaseWrapper):
         else:
             # Add the module to the list of modules which where changed
             if hasattr(defining_class.container, "__module__"):
-                self._pypads.wrap_manager.module_wrapper.punched_module_names.add(defining_class.container.__module__)
+                self._pypads.wrap_manager.module_wrapper.add_punched_module_name(defining_class.container.__module__)
 
             # Get real fn from defining class
             fn = None

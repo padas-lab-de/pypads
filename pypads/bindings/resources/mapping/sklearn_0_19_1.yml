@@ -19,26 +19,33 @@ fragments:
 mappings:
   sklearn:
     .base.BaseEstimator:
-      concepts: "algorithm"
+      data:
+        concepts: ["algorithm"]
       ::default_model: ~
     .metrics.classification.{re:.*}:
-      concepts: "Sklearn provided metric"
+      data:
+        concepts: ["Sklearn provided metric"]
       events: "pypads_metric"
     .datasets.{re:load.*}:
-      concepts: "dataset"
+      data:
+        concepts: ["dataset"]
       events: "pypads_dataset"
     .model_selection:
       ._search.BaseSearchCV:
-        concepts: "cross_validation"
+        data:
+          concepts: ["cross_validation"]
         .fit:
           events: "pypads_param_search"
         ._validation._fit_and_score:
-          concepts: "metric"
+          data:
+            concepts: ["metric"]
           events: "pypads_param_search"
       ._split.{re:(BaseShuffleSplit|BaseCrossValidator)$}:
-        concepts: "splitter"
+        data:
+          concepts: ["splitter"]
         .split:
           events: "pypads_split"
     .base.{re:(RegressorMixin|ClassifierMixin|DensityMixin)$}.score:
-      concepts: "metric"
+      data:
+        concepts: ["metric"]
       events: "pypads_metric"

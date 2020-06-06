@@ -1,6 +1,6 @@
 from pypads import logger
 
-from pypads.autolog.wrapping.base_wrapper import BaseWrapper
+from pypads.autolog.wrapping.base_wrapper import BaseWrapper, Context
 
 
 class ClassWrapper(BaseWrapper):
@@ -33,10 +33,13 @@ class ClassWrapper(BaseWrapper):
 
             # Module was changed and should be added to the list of modules which have been changed
             if hasattr(clazz, "__module__"):
-                self._pypads.wrap_manager.module_wrapper.punched_module_names.add(clazz.__name__)
+                self._pypads.wrap_manager.module_wrapper.add_punched_module_name(clazz.__module__)
 
             # Try to wrap every attr of the class
-            for name in list(filter(mapping_hit.mapping.applicable_filter(context), dir(clazz))):
+            for name in list(filter(
+                    mapping_hit.mapping.applicable_filter(
+                        Context(clazz, ".".join([context.reference, clazz.__name__]))),
+                    dir(clazz))):
                 self._pypads.wrap_manager.wrap(getattr(clazz, name), clazz, mapping_hit)
 
             # Override class on module

@@ -12,7 +12,7 @@ from mlflow.tracking import MlflowClient
 from mlflow.utils.autologging_utils import try_mlflow_log
 
 from pypads import logger
-from pypads.autolog.mappings import PadsMapping, MappingRegistry
+from pypads.autolog.mappings import PadsMapping, MappingRegistry, MappingHit, _to_segments
 from pypads.autolog.pypads_import import extend_import_module, duck_punch_loader
 from pypads.caches import PypadsCache, Cache
 from pypads.functions.analysis.call_tracker import CallTracker
@@ -153,7 +153,7 @@ class PypadsApi:
     # noinspection PyMethodMayBeStatic
     def track(self, fn, ctx=None, events: List = None, mapping: PadsMapping = None):
         if events is None:
-            events = set("pypads_log")
+            events = {"pypads_log"}
         if ctx is not None and not hasattr(ctx, fn.__name__):
             logger.warning("Given context " + str(ctx) + " doesn't define " + str(fn.__name__))
             ctx = None
@@ -173,7 +173,8 @@ class PypadsApi:
 
             # For all events we want to hook to
             mapping = PadsMapping(ctx_path + "." + fn.__name__, lib, None, events, {"concept": fn.__name__})
-        return self._pypads.wrap_manager.wrap(fn, ctx=ctx, mapping_hit=mapping)
+        return self._pypads.wrap_manager.wrap(fn, ctx=ctx,
+                                              mapping_hit=MappingHit(mapping, _to_segments(mapping.reference)))
 
     def start_run(self, run_id=None, experiment_id=None, run_name=None, nested=False):
         out = mlflow.start_run(run_id=run_id, experiment_id=experiment_id, run_name=run_name, nested=nested)
@@ -456,7 +457,7 @@ class PyPads:
                     if reload_warnings:
                         logger.warning(
                             name + " was imported before PyPads. To enable tracking import PyPads before or use "
-                                   "reload_modules. Every already created instance is not tracked.")
+                                   "reload_modules / clear_imports. Every already created instance is not tracked.")
 
                     if clear_imports:
                         del sys.modules[name]

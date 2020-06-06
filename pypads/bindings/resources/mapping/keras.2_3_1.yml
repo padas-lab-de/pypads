@@ -8,8 +8,8 @@ metadata:
 mappings:
   keras.metrics.*:
     events: ["pypads_metric"]
-    concept:
-      names: ["keras classification metrics"]
+    data:
+      concepts: ["keras classification metrics"]
 
   keras.engine.training.Model:
     .__init__:
@@ -21,5 +21,5 @@ mappings:
 
   keras.datasets.mnist.load_data:
     events: ["pypads_dataset"]
-    concept:
-      names: ["keras mnist dataset"]
+    data:
+      concepts: ["keras mnist dataset"]
