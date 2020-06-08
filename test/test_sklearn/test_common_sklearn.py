@@ -156,26 +156,26 @@ class CommonSklearnTest(BaseSklearnTest):
         # assert name == tracker._experiment.regex
         # TODO add asserts
 
-    def test_parameter_logging_extension_after_import(self):
-        from sklearn import datasets, metrics
-        from sklearn.tree import DecisionTreeClassifier
-        # TODO global modding fails for unittests but seems to work in production
-        # Activate tracking of pypads
-        from pypads.base import PyPads
-        PyPads(uri=TEST_FOLDER, )
-
-        # load the iris datasets
-        dataset = datasets.load_iris()
-
-        # fit a model to the data
-        model = DecisionTreeClassifier()
-        model.fit(dataset.data, dataset.target)
-        # make predictions
-        expected = dataset.target
-        predicted = model.predict(dataset.data)
-        # summarize the fit of the model
-        print(metrics.classification_report(expected, predicted))
-        print(metrics.confusion_matrix(expected, predicted))
+    # def test_parameter_logging_extension_after_import(self):
+    #     from sklearn import datasets, metrics
+    #     from sklearn.tree import DecisionTreeClassifier
+    #     # TODO global modding fails for unittests but seems to work in production
+    #     # Activate tracking of pypads
+    #     from pypads.base import PyPads
+    #     PyPads(uri=TEST_FOLDER, reload_modules=True, clear_imports=True)
+    #
+    #     # load the iris datasets
+    #     dataset = datasets.load_iris()
+    #
+    #     # fit a model to the data
+    #     model = DecisionTreeClassifier()
+    #     model.fit(dataset.data, dataset.target)
+    #     # make predictions
+    #     expected = dataset.target
+    #     predicted = model.predict(dataset.data)
+    #     # summarize the fit of the model
+    #     print(metrics.classification_report(expected, predicted))
+    #     print(metrics.confusion_matrix(expected, predicted))
 
     def test_multiple_fits(self):
         # Activate tracking of pypads

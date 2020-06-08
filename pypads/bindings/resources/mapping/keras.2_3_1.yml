@@ -18,8 +18,3 @@ mappings:
       events: ["pypads_fit"]
     .predict_classes:
       events: ["pypads_predict"]
-
-  keras.datasets.mnist.load_data:
-    events: ["pypads_dataset"]
-    data:
-      concepts: ["keras mnist dataset"]
