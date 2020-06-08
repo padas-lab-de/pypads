@@ -14,6 +14,8 @@ class IGit(PreRunFunction):
         tags = run.data.tags
         source_name = tags.get("mlflow.source.name", None)
         managed_git: ManagedGit = pads.managed_git_factory(source_name)
+        import ipdb
+        ipdb.set_trace()
         if managed_git:
             repo = managed_git.repo
 
