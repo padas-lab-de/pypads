@@ -6,15 +6,15 @@ metadata:
     version: "2.3.1"
 
 mappings:
-  keras.metrics.*:
+  :keras.metrics.{re:.*}:
     events: ["pypads_metric"]
     data:
       concepts: ["keras classification metrics"]
 
-  keras.engine.training.Model:
-    .__init__:
+  :keras.engine.training.Model:
+    :__init__:
       events: ["pypads_init"]
-    .fit | .fit_generator:
+    :{re:(fit|fit_generator)$}:
       events: ["pypads_fit"]
-    .predict_classes:
+    :predict_classes:
       events: ["pypads_predict"]

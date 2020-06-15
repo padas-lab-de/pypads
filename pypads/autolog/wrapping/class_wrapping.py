@@ -13,17 +13,17 @@ class ClassWrapper(BaseWrapper):
     def punched_class_names(self):
         return self._punched_class_names
 
-    def wrap(self, clazz, context, mapping_hit):
+    def wrap(self, clazz, context, matched_mapping):
         """
             Wrap a class in given ctx with pypads functionality
             :param clazz:
             :param context:
-            :param mapping_hit:
+            :param matched_mapping:
             :return:
             """
-        if clazz.__name__ not in self.punched_class_names or not context.has_wrap_meta(mapping_hit.mapping, clazz):
+        if clazz.__name__ not in self.punched_class_names or not context.has_wrap_meta(matched_mapping.mapping, clazz):
             try:
-                context.store_wrap_meta(mapping_hit, clazz)
+                context.store_wrap_meta(matched_mapping, clazz)
             except Exception:
                 return clazz
             self.punched_class_names.add(clazz.__name__)
@@ -37,10 +37,10 @@ class ClassWrapper(BaseWrapper):
 
             # Try to wrap every attr of the class
             for name in list(filter(
-                    mapping_hit.mapping.applicable_filter(
+                    matched_mapping.mapping.applicable_filter(
                         Context(clazz, ".".join([context.reference, clazz.__name__]))),
                     dir(clazz))):
-                self._pypads.wrap_manager.wrap(getattr(clazz, name), clazz, mapping_hit)
+                self._pypads.wrap_manager.wrap(getattr(clazz, name), clazz, matched_mapping)
 
             # Override class on module
             context.overwrite(clazz.__name__, clazz)

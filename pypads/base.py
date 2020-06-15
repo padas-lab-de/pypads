@@ -12,7 +12,8 @@ from mlflow.tracking import MlflowClient
 from mlflow.utils.autologging_utils import try_mlflow_log
 
 from pypads import logger
-from pypads.autolog.mappings import PadsMapping, MappingRegistry, MappingHit, _to_segments
+from pypads.autolog.mappings import Mapping, MappingRegistry, MatchedMapping
+from pypads.autolog.package_path import PackagePathMatcher, PackagePath
 from pypads.autolog.pypads_import import extend_import_module, duck_punch_loader
 from pypads.caches import PypadsCache, Cache
 from pypads.functions.analysis.call_tracker import CallTracker
@@ -32,6 +33,18 @@ from pypads.logging_util import WriteFormats, try_write_artifact, try_read_artif
 from pypads.util import get_class_that_defined_method, dict_merge, string_to_int
 
 tracking_active = None
+
+
+def _to_artifact_meta_name(name):
+    return name + ".artifact"
+
+
+def _to_metric_meta_name(name):
+    return name + ".metric"
+
+
+def _to_param_meta_name(name):
+    return name + ".param"
 
 
 class FunctionRegistry:
@@ -151,7 +164,7 @@ class PypadsApi:
         self._pypads = pypads
 
     # noinspection PyMethodMayBeStatic
-    def track(self, fn, ctx=None, events: List = None, mapping: PadsMapping = None):
+    def track(self, fn, ctx=None, events: List = None, mapping: Mapping = None):
         if events is None:
             events = {"pypads_log"}
         if ctx is not None and not hasattr(ctx, fn.__name__):
@@ -172,9 +185,10 @@ class PypadsApi:
                 ctx_path = "<unbound>"
 
             # For all events we want to hook to
-            mapping = PadsMapping(ctx_path + "." + fn.__name__, lib, None, events, {"concept": fn.__name__})
-        return self._pypads.wrap_manager.wrap(fn, ctx=ctx,
-                                              mapping_hit=MappingHit(mapping, _to_segments(mapping.reference)))
+            mapping = Mapping(PackagePathMatcher(ctx_path + "." + fn.__name__), lib, None, events,
+                              {"concept": fn.__name__})
+        return self._pypads.wrap_manager.wrap(fn, ctx=ctx, matched_mapping=MatchedMapping(mapping, PackagePath(
+            ctx_path + "." + fn.__name__)))
 
     def start_run(self, run_id=None, experiment_id=None, run_name=None, nested=False):
         out = mlflow.start_run(run_id=run_id, experiment_id=experiment_id, run_name=run_name, nested=nested)
@@ -305,23 +319,11 @@ class PypadsApi:
     # !--- run management ----
 
 
-def _to_artifact_meta_name(name):
-    return name + ".artifact"
-
-
-def _to_metric_meta_name(name):
-    return name + ".metric"
-
-
-def _to_param_meta_name(name):
-    return name + ".param"
-
-
 class PypadsDecorators:
     def __init__(self, pypads):
         self._pypads = pypads
 
-    def track(self, event="pypads_log", mapping: PadsMapping = None):
+    def track(self, event="pypads_log", mapping: Mapping = None):
         def track_decorator(fn):
             ctx = get_class_that_defined_method(fn)
             events = event if isinstance(event, List) else [event]
@@ -505,8 +507,6 @@ class PyPads:
                         importlib.reload(module)
                     except Exception as e:
                         logger.debug("Couldn't reload module " + str(e))
-            elif name == "sklearn.tree.tree":
-                print(name)
 
         global tracking_active
         tracking_active = False

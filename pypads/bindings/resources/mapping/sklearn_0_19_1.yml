@@ -7,27 +7,28 @@ metadata:
 
 fragments:
   default_model:
-    .__init__:
+    !!python/pPath __init__:
       events: "pypads_init"
-    .{re:(fit|.fit_predict|fit_transform)$}:
+    !!python/rSeg (fit|.fit_predict|fit_transform)$:
       events: "pypads_fit"
-    .{re:(fit_predict|predict|score)$}:
+    !!python/rSeg (fit_predict|predict|score)$:
       events: "pypads_predict"
-    .{re:(fit_transform|transform)$}:
+    !!python/rSeg (fit_transform|transform)$:
       events: "pypads_transform"
 
 mappings:
-  sklearn:
-    .base.BaseEstimator:
-      ::default_model: ~
+  !!python/pPath sklearn:
+    !!python/pPath base.BaseEstimator:
+      ;default_model: ~
       data:
         concepts: ["algorithm"]
-    .metrics.classification.{re:.*}:
-      events: "pypads_metric"
-      data:
-        concepts: ["Sklearn provided metric"]
-    .tree.tree.DecisionTreeClassifier:
-      ::default_model: ~
+    !!python/pPath metrics.classification:
+      !!python/rSeg .*:
+        events: "pypads_metric"
+        data:
+          concepts: ["Sklearn provided metric"]
+    !!python/pPath tree.tree.DecisionTreeClassifier:
+      ;default_model: ~
       data:
         name: decision tree classifier
         other_names: []

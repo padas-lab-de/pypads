@@ -9,8 +9,8 @@ metadata:
     version: "0.1"
 
 mappings:
-    test_classes.dummy_classes.{re:.*}:
-        events: "pypads_dummy_hook"
+    :test_classes.dummy_classes.{re:.*}:
+            events: "pypads_dummy_hook"
 """
 
 

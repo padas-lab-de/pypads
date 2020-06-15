@@ -1,7 +1,5 @@
 import glob
 import os
-import re
-from abc import ABCMeta, abstractmethod
 from itertools import chain
 from os.path import expanduser
 from typing import List
@@ -9,97 +7,31 @@ from typing import List
 import yaml
 
 from pypads import logger
+from pypads.autolog.package_path import RegexMatcher, PackagePath, PackagePathMatcher, \
+    SerializableMatcher
 
 mapping_files = glob.glob(expanduser("~") + ".pypads/bindings/**.yml")
 mapping_files.extend(
     glob.glob(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) + "/bindings/resources/mapping/**.yml>"))
 
 
-class Segment:
-    __metaclass__ = ABCMeta
-
-    def __init__(self, content):
-        self._content = content
-
-    @property
-    def content(self):
-        return self._content
-
-    @abstractmethod
-    def fits(self, segment):
-        raise NotImplementedError
-
-    @abstractmethod
-    def serialize(self):
-        raise NotImplementedError
-
-    def __hash__(self):
-        return hash(self.content)
-
-    def __eq__(self, other):
-        if isinstance(other, str):
-            return self.fits(other)
-        return self.content == other.content
-
-
-class PathSegment(Segment):
-
-    def fits(self, segment):
-        return segment == self.content
-
-    def serialize(self):
-        return self.content
-
-    def __str__(self):
-        return self.serialize()
-
-
-class RegexSegment(Segment):
-
-    def fits(self, segment):
-        return re.match(self.content, segment)
-
-    def serialize(self):
-        return "{re:" + self.content + "}"
-
-    def __str__(self):
-        return self.serialize()
-
-
-def _to_segments(reference):
-    segments = []
-    for seg in filter(lambda s: len(s) > 0, re.split(r"(\{.*?\})", reference)):
-        if seg.startswith("{re:"):
-            segments.append(RegexSegment(seg[4:-1]))
-        else:
-            segments = segments + [PathSegment(s) for s in filter(lambda s: len(s) > 0, seg.split("."))]
-    return segments
-
-
-class PadsMapping:
+class Mapping:
     """
     Mapping for an algorithm defined by a pypads mapping file
     """
 
-    def __init__(self, reference, library, in_collection, events, values):
+    def __init__(self, matcher: PackagePathMatcher, library, in_collection, events, values):
         self._library = library
         self._in_collection = in_collection
         self._values = values
         self._events = events
-
-        self._segments = _to_segments(reference)
+        self._matcher = matcher
 
     def is_applicable(self, ctx, obj):
         if not hasattr(obj, "__name__"):
             return False
         reference = ctx.reference + "." + obj.__name__ if ctx is not None else obj.__name__
-        if self.reference == reference:
-            return True
-        segments = _to_segments(reference)
-        offset = len(segments) - 1
-        if offset >= len(self.segments):
-            return False
-        return self.segments[offset].fits(segments[offset].content)
+        return self._matcher.matches(PackagePath(reference))
 
     def applicable_filter(self, ctx):
         """
@@ -132,7 +64,7 @@ class PadsMapping:
 
     @property
     def reference(self):
-        return ".".join([s.serialize() for s in self._segments])
+        return self._matcher.serialize()
 
     @property
     def library(self):
@@ -147,8 +79,8 @@ class PadsMapping:
         return self._values
 
     @property
-    def segments(self):
-        return self._segments
+    def matcher(self):
+        return self._matcher
 
     def __str__(self):
         return "Mapping[" + str(self.reference) + ", lib=" + str(self.library) + "]"
@@ -188,9 +120,9 @@ class MappingCollection:
     def mappings(self):
         return self._mappings
 
-    def add_mapping(self, mapping):
+    def add_mapping(self, mapping: Mapping):
         path_map = self._mappings
-        for segment in mapping.segments:
+        for segment in mapping.matcher.matchers:
             if segment not in path_map:
                 path_map[segment] = dict()
             path_map = path_map[segment]
@@ -220,7 +152,7 @@ class MappingCollection:
 
             # For non PathSegments we can't use the hash lookup
             for s, v in current_path.items():
-                if isinstance(s, RegexSegment) and s.fits(segments[0].content):
+                if isinstance(s, RegexMatcher) and s.matches(segments[0]):
                     mappings = mappings + self.find_mappings(segments[1:], v)
         else:
             mappings = mappings + self._get_all_mappings(current_path)
@@ -230,10 +162,10 @@ class MappingCollection:
 
 class MappingSchema:
 
-    def __init__(self, fragments, metadata, reference, events, values):
+    def __init__(self, fragments, metadata, matcher: PackagePathMatcher, events, values):
         self._fragments = fragments
         self._metadata = metadata
-        self._reference = reference
+        self._matcher = matcher
         self._events = events
         self._values = values
 
@@ -246,8 +178,8 @@ class MappingSchema:
         return self._metadata
 
     @property
-    def reference(self):
-        return self._reference
+    def matcher(self) -> PackagePathMatcher:
+        return self._matcher
 
     @property
     def values(self):
@@ -268,12 +200,13 @@ class SerializedMapping(MappingCollection):
 
     def __init__(self, key, content):
         yml = yaml.load(content, Loader=yaml.SafeLoader)
-        schema = MappingSchema(yml["fragments"] if "fragments" in yml else [], yml["metadata"], "", set(), {})
+        schema = MappingSchema(yml["fragments"] if "fragments" in yml else [], yml["metadata"], PackagePathMatcher(""),
+                               set(), {})
         super().__init__(key, schema.metadata["version"], schema.metadata["library"]["name"],
                          schema.metadata["library"]["version"])
-        self._build_mappings(yml["mappings"], schema, True)
+        self._build_mappings(yml["mappings"], schema)
 
-    def _build_mappings(self, node, schema: MappingSchema, entry):
+    def _build_mappings(self, node, schema: MappingSchema):
         _fragments = []
         _children = []
         _events = set()
@@ -282,12 +215,12 @@ class SerializedMapping(MappingCollection):
 
         # replace fragments
         for k, v in node.items():
-            if entry:
+            if isinstance(k, SerializableMatcher):
                 _children.append((k, v))
-            elif k.startswith("::"):
-                _fragments.append(k[2:])
-            elif k.startswith("."):
-                _children.append((k, v))
+            elif k.startswith(":"):
+                _children.append((PackagePathMatcher.unserialize(k[1:]), v))
+            elif k.startswith(";"):
+                _fragments.append(k[1:])
             elif k == "events":
                 if isinstance(v, str):
                     _events.add(v)
@@ -300,24 +233,28 @@ class SerializedMapping(MappingCollection):
         for p in _fragments:
             for k, v in schema.fragments[p].items():
                 node[k] = v
-            del node["::" + p]
+            del node[";" + p]
 
-        schema = MappingSchema(schema.fragments, schema.metadata, reference=schema.reference,
+        schema = MappingSchema(schema.fragments, schema.metadata, matcher=schema.matcher,
                                events=_events.union(schema.events),
                                values={**schema.values, **_values})
 
         if len(_fragments) > 0:
-            mappings = {**mappings, **self._build_mappings(node, schema, False)}
+            mappings = {**mappings, **self._build_mappings(node, schema)}
         else:
             if len(_children) > 0:
-                for c, v in _children:
+                for matcher, v in _children:
+                    if schema.matcher:
+                        matcher = schema.matcher + matcher
+                    if not isinstance(matcher, PackagePathMatcher):
+                        matcher = PackagePathMatcher(matcher)
                     mappings = {**mappings, **self._build_mappings(v, MappingSchema(schema.fragments, schema.metadata,
-                                                                                    reference=schema.reference + c,
+                                                                                    matcher=matcher,
                                                                                     events=schema.events,
-                                                                                    values=schema.values), False)}
-            else:
+                                                                                    values=schema.values))}
+            elif schema.matcher.matchers is not None:
                 self.add_mapping(
-                    PadsMapping(schema.reference, schema.metadata["library"], self, schema.events, schema.values))
+                    Mapping(schema.matcher, schema.metadata["library"], self, schema.events, schema.values))
         return mappings
 
 
@@ -361,8 +298,8 @@ class MappingRegistry:
     def add_found_class(self, mapping):
         self._found_mappings.add_mapping(mapping)
 
-    def iter_found_mappings(self, segments):
-        return self._found_mappings.find_mappings(segments)
+    def iter_found_mappings(self, package_path: PackagePath):
+        return self._found_mappings.find_mappings(package_path.segments)
 
     def get_libraries(self):
         all_libs = set()
@@ -370,38 +307,41 @@ class MappingRegistry:
             all_libs.add(mapping.lib)
         return all_libs
 
-    def get_relevant_mappings(self, segments, search_found):
+    def get_relevant_mappings(self, package_path: PackagePath, search_found):
         """
         Function to find all relevant mappings. This produces a generator getting extended with found subclasses
         :return:
         """
         if search_found:
-            return set(chain(self.get_static_mappings(segments), self.iter_found_mappings(segments)))
+            return set(chain(self.get_static_mappings(package_path), self.iter_found_mappings(package_path)))
         else:
-            return set(self.get_static_mappings(segments))
+            return set(self.get_static_mappings(package_path))
 
-    def get_static_mappings(self, segments):
+    def get_static_mappings(self, package_path: PackagePath):
         """
         Get all mappings defined in all mapping files.
         :return:
         """
         mappings = []
         for k, collection in self._mappings.items():
-            for m in collection.find_mappings(segments):
+            for m in collection.find_mappings(package_path.segments):
                 mappings.append(m)
         return mappings
 
 
-class MappingHit:
+class MatchedMapping:
+    """
+    Class to denote a mapping hit. Given mapping matches given package path.
+    """
 
-    def __init__(self, mapping: PadsMapping, segments):
-        self._segments = segments
+    def __init__(self, mapping: Mapping, package_path: PackagePath):
+        self._package_path = package_path
         self._mapping = mapping
 
     @property
-    def segments(self):
-        return self._segments
+    def package_path(self) -> PackagePath:
+        return self._package_path
 
     @property
-    def mapping(self):
+    def mapping(self) -> Mapping:
         return self._mapping

@@ -4,7 +4,7 @@ from abc import abstractmethod
 from copy import copy
 
 from pypads import logger
-from pypads.autolog.mappings import MappingHit
+from pypads.autolog.mappings import MatchedMapping
 
 DEFAULT_ORDER = 1
 
@@ -44,7 +44,7 @@ class Context:
                     return True
         return False
 
-    def store_wrap_meta(self, mapping_hit: MappingHit, wrappee):
+    def store_wrap_meta(self, matched_mapping: MatchedMapping, wrappee):
         try:
             if not inspect.isfunction(wrappee) or "<slot wrapper" in str(wrappee):
                 holder = wrappee
@@ -53,7 +53,7 @@ class Context:
             # Set self reference
             if not hasattr(holder, "_pypads_mapping_" + wrappee.__name__):
                 setattr(holder, "_pypads_mapping_" + wrappee.__name__, [])
-            getattr(holder, "_pypads_mapping_" + wrappee.__name__).append(mapping_hit)
+            getattr(holder, "_pypads_mapping_" + wrappee.__name__).append(matched_mapping)
         except TypeError as e:
             logger.debug("Can't set attribute '" + wrappee.__name__ + "' on '" + str(self._c) + "'.")
             raise e
@@ -163,7 +163,7 @@ class BaseWrapper:
         self._pypads = pypads
 
     @abstractmethod
-    def wrap(self, wrappee, ctx, mapping_hit: MappingHit):
+    def wrap(self, wrappee, ctx, matched_mapping: MatchedMapping):
         raise NotImplementedError()
 
     def _get_hooked_fns(self, fn, mapping):
