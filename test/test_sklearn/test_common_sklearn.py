@@ -39,6 +39,7 @@ class CommonSklearnTest(BaseSklearnTest):
         from pypads.app.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER)
         tracker.activate_tracking()
+        tracker.start_track()
 
         import timeit
         t = timeit.Timer(sklearn_simple_decision_tree_experiment)
