@@ -1,8 +1,8 @@
 import os
 import pathlib
 
-from pypads.functions.loggers.base_logger import LoggingFunction
-from pypads.util import dict_merge
+from pypads.app.injections.base_logger import LoggingFunction
+from pypads.utils import dict_merge
 from test.base_test import TEST_FOLDER, BaseTest
 
 
@@ -122,8 +122,8 @@ class PypadsKerasTest(BaseTest):
         }}
 
         # Activate tracking of pypads
-        from pypads.base import PyPads
-        from pypads.base import DEFAULT_LOGGING_FNS, DEFAULT_CONFIG
+        from pypads.app.base import PyPads
+        from pypads.app.base import DEFAULT_LOGGING_FNS, DEFAULT_CONFIG
         PyPads(uri=TEST_FOLDER, config=dict_merge(DEFAULT_CONFIG, DEFAULT_keras_CONFIG),
                logging_fns=dict_merge(DEFAULT_LOGGING_FNS, DEFAULT_Keras_MAPPING))
 
@@ -140,7 +140,7 @@ class PypadsKerasTest(BaseTest):
     def test_keras_base_class(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
+        from pypads.app.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER)
 
         import timeit
@@ -155,7 +155,7 @@ class PypadsKerasTest(BaseTest):
     def test_keras_mlp(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
+        from pypads.app.base import PyPads
         PyPads(uri=TEST_FOLDER)
 
         import timeit
@@ -169,7 +169,7 @@ class PypadsKerasTest(BaseTest):
     #@pytest.mark.forked
     def test_keras_autolog(self):
         # Activate tracking of pypads
-        from pypads.base import PyPads
+        from pypads.app.base import PyPads
         PyPads(uri=TEST_FOLDER, config={"events": {
             "autolog": {"on": ["pypads_fit"]},
             "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metrics"]}

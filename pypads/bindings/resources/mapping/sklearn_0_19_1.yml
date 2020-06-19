@@ -8,13 +8,13 @@ metadata:
 fragments:
   default_model:
     !!python/pPath __init__:
-      events: "pypads_init"
+      hooks: "pypads_init"
     !!python/rSeg (fit|.fit_predict|fit_transform)$:
-      events: "pypads_fit"
+      hooks: "pypads_fit"
     !!python/rSeg (fit_predict|predict|score)$:
-      events: "pypads_predict"
+      hooks: "pypads_predict"
     !!python/rSeg (fit_transform|transform)$:
-      events: "pypads_transform"
+      hooks: "pypads_transform"
 
 mappings:
   !!python/pPath sklearn:
@@ -24,7 +24,7 @@ mappings:
         concepts: ["algorithm"]
     !!python/pPath metrics.classification:
       !!python/rSeg .*:
-        events: "pypads_metric"
+        hooks: "pypads_metric"
         data:
           concepts: ["Sklearn provided metric"]
     !!python/pPath tree.tree.DecisionTreeClassifier:

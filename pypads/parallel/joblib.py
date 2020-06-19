@@ -3,7 +3,7 @@ import time
 from functools import wraps
 from typing import List
 
-from pypads.util import is_package_available
+from pypads.utils.util import is_package_available
 
 if is_package_available("joblib"):
     import joblib
@@ -24,10 +24,10 @@ if is_package_available("joblib"):
             # only if pads data was passed
             if _pypads_active_run_id:
                 # noinspection PyUnresolvedReferences
-                import pypads.pypads
+                from pypads.app import pypads
                 import mlflow
 
-                is_new_process = not pypads.pypads.current_pads
+                is_new_process = not pypads.app.pypads.current_pads
 
                 # If pads has to be reinitialized
                 if is_new_process:
@@ -40,7 +40,7 @@ if is_package_available("joblib"):
                     start_time = time.time()
                     logger.debug("Init Pypads in:" + str(time.time() - start_time))
 
-                    from pypads.base import PyPads
+                    from pypads.app.base import PyPads
                     _pypads = PyPads(uri=_pypads_tracking_uri, reload_warnings=False,
                                      config=_pypads_config,
                                      affected_modules=_pypads_affected_modules,
@@ -60,7 +60,7 @@ if is_package_available("joblib"):
 
                 # If pads already exists on process
                 else:
-                    _pypads = pypads.pypads.current_pads
+                    _pypads = pypads.app.pypads.current_pads
                     _pypads.cache.merge(_pypads_cache)
 
                 # Unpickle args
@@ -91,12 +91,12 @@ if is_package_available("joblib"):
             import mlflow
             run = mlflow.active_run()
             if run:
-                from pypads.pypads import current_pads
+                from pypads.app.pypads import current_pads
                 if current_pads and current_pads.config["track_sub_processes"]:
                     # TODO Only cloudpickle args / kwargs if needed and not always.
                     pickled_params = (_pickle_tuple(args, kwargs), _cloudpickle_tuple(fn))
                     args = pickled_params
-                    from pypads.pypads import get_current_pads
+                    from pypads.app.pypads import get_current_pads
 
                     pads = get_current_pads()
 
@@ -135,9 +135,9 @@ if is_package_available("joblib"):
 
     @wraps(original_call)
     def joblib_call(self, *args, **kwargs):
-        from pypads.caches import PypadsCache
+        from pypads.app.misc.caches import PypadsCache
         from pypads import logger
-        from pypads.pypads import current_pads
+        from pypads.app.pypads import current_pads
         pads = current_pads
 
         if pads:

@@ -5,7 +5,7 @@ GridSearch CrossValidation on sklearn pipeline
 An example of using PyPads to track a multiprocess GridSearch for PCA and LogisticRegression as a
 pipeline for digits classification.
 """
-from pypads.base import PyPads
+from pypads.app.base import PyPads
 tracker = PyPads()
 
 import numpy as np

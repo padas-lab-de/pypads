@@ -23,16 +23,16 @@ class PypadsOrderTest(BaseTest):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
+        from pypads.app.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
-        tracker.api.track(experiment, events=["order"], ctx=sys.modules[__name__])
+        tracker.api.track(experiment, hooks=["order"], ctx=sys.modules[__name__])
 
         import timeit
         t = timeit.Timer(experiment)
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        from pypads.pypads import get_current_pads
+        from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         assert pads.cache.run_exists(0, 1, 2)
         # !-------------------------- asserts ---------------------------

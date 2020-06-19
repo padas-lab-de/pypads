@@ -43,24 +43,24 @@ class PypadsHookTest(BaseTest):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
+        from pypads.app.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
 
         global experiment
-        experiment = tracker.api.track(experiment, events=["ran"])
+        experiment = tracker.api.track(experiment, hooks=["ran"])
 
         global sub_experiment
-        sub_experiment = tracker.api.track(sub_experiment, events=["ran"])
+        sub_experiment = tracker.api.track(sub_experiment, hooks=["ran"])
 
         global more_experiment
-        more_experiment = tracker.api.track(more_experiment, events=["ran"])
+        more_experiment = tracker.api.track(more_experiment, hooks=["ran"])
 
         import timeit
         t = timeit.Timer(experiment)
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        from pypads.pypads import get_current_pads
+        from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         assert pads.cache.run_exists(id(logger))
         assert pads.cache.run_get(id(logger)) == 16

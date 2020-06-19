@@ -2,7 +2,7 @@ import os
 
 import mlflow
 
-from pypads.autolog.mappings import MappingFile
+from pypads.importext.mappings import MappingFile
 from test.base_test import TEST_FOLDER, BaseTest
 from test.test_sklearn.base_sklearn_test import sklearn_pipeline_experiment, sklearn_simple_decision_tree_experiment
 
@@ -16,7 +16,7 @@ class MappingSklearnTest(BaseTest):
     def test_minimal_mapping(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
+        from pypads.app.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER, mapping=minimal)
 
         import timeit
@@ -33,7 +33,7 @@ class MappingSklearnTest(BaseTest):
     def test_regex_mapping(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
+        from pypads.app.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER, mapping=regex)
 
         import timeit

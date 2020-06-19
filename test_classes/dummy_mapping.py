@@ -1,4 +1,4 @@
-from pypads.autolog.mappings import SerializedMapping
+from pypads.importext.mappings import SerializedMapping
 
 punch_dummy_mapping = """
 metadata:

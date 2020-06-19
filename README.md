@@ -53,7 +53,7 @@ pypads is easy to use. Just define what is needed to be tracked in the config an
 
 A simple example looks like the following,
 ```python
-from pypads.base import PyPads
+from pypads.app.base import PyPads
 # define the configuration, in this case we want to track the parameters, 
 # outputs and the inputs of each called function included in the hooks (pypads_fit, pypads_predict)
 config = {"events": {

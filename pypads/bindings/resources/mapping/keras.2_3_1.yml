@@ -7,14 +7,14 @@ metadata:
 
 mappings:
   :keras.metrics.{re:.*}:
-    events: ["pypads_metric"]
+    hooks: ["pypads_metric"]
     data:
       concepts: ["keras classification metrics"]
 
   :keras.engine.training.Model:
     :__init__:
-      events: ["pypads_init"]
+      hooks: ["pypads_init"]
     :{re:(fit|fit_generator)$}:
-      events: ["pypads_fit"]
+      hooks: ["pypads_fit"]
     :predict_classes:
-      events: ["pypads_predict"]
+      hooks: ["pypads_predict"]

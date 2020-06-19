@@ -4,8 +4,8 @@ import os
 import unittest
 from os.path import expanduser
 
-from pypads.functions.loggers.base_logger import LoggingFunction
-from pypads.pypads import logger
+from pypads.app.injections.base_logger import LoggingFunction
+from pypads.app.pypads import logger
 
 if "loguru" in str(logger):
     import pytest
@@ -60,7 +60,7 @@ class BaseTest(unittest.TestCase):
 
     def tearDown(self):
         # TODO isn't run on unexpected errors
-        from pypads.pypads import current_pads, set_current_pads
+        from pypads.app.pypads import current_pads, set_current_pads
         if current_pads:
             current_pads.deactivate_tracking(run_atexits=True, reload_modules=False)
             # noinspection PyTypeChecker
@@ -75,7 +75,7 @@ class RanLogger(LoggingFunction):
         self._run_count = 0
 
     def __pre__(self, ctx, *args, _pypads_env, _args, _kwargs, **kwargs):
-        from pypads.pypads import get_current_pads
+        from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         self._run_count += 1
         pads.cache.run_add(id(self), self._run_count)

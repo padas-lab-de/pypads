@@ -16,7 +16,7 @@ class CommonSklearnTest(BaseSklearnTest):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
+        from pypads.app.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER)
 
         import timeit
@@ -36,8 +36,9 @@ class CommonSklearnTest(BaseSklearnTest):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
+        from pypads.app.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER)
+        tracker.activate_tracking()
 
         import timeit
         t = timeit.Timer(sklearn_simple_decision_tree_experiment)
@@ -69,7 +70,7 @@ class CommonSklearnTest(BaseSklearnTest):
 
     def test_simple_parameter_mapping(self):
         # Activate tracking of pypads
-        from pypads.base import PyPads
+        from pypads.app.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER, config={"events": {"parameters": {"on": ["pypads_fit"]}}})
         from sklearn import datasets, metrics
         from sklearn.tree import DecisionTreeClassifier
@@ -99,7 +100,7 @@ class CommonSklearnTest(BaseSklearnTest):
 
     def test_experiment_configuration(self):
         # Activate tracking of pypads
-        from pypads.base import PyPads
+        from pypads.app.base import PyPads
         tracker = PyPads(name="ConfiguredExperiment")
         from sklearn import datasets, metrics
         from sklearn.tree import DecisionTreeClassifier
@@ -133,7 +134,7 @@ class CommonSklearnTest(BaseSklearnTest):
             mlflow.end_run()
             run = mlflow.start_run(experiment_id=experiment_id)
         # Activate tracking of pypads
-        from pypads.base import PyPads
+        from pypads.app.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER)
         from sklearn import datasets, metrics
         from sklearn.tree import DecisionTreeClassifier
@@ -179,7 +180,7 @@ class CommonSklearnTest(BaseSklearnTest):
 
     def test_multiple_fits(self):
         # Activate tracking of pypads
-        from pypads.base import PyPads
+        from pypads.app.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER)
         from sklearn import datasets
         from sklearn.tree import DecisionTreeClassifier
