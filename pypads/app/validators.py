@@ -48,9 +48,13 @@ def validator(f):
 
 
 class PyPadsValidators(IValidators):
-    def __init__(self, pypads):
-        self._pypads = pypads
+    def __init__(self):
         super().__init__()
+
+    @property
+    def pypads(self):
+        from pypads.app.pypads import get_current_pads
+        return get_current_pads()
 
     @validator
     def determinism(self):
@@ -60,7 +64,10 @@ class PyPadsValidators(IValidators):
 class ValidatorPluginManager(ExtendableMixin):
 
     def __init__(self, *args, **kwargs):
-        super().__init__(instances=PyPadsValidators(*args, **kwargs))
+        super().__init__(plugin_list=validator_plugins)
+
+
+pypads_validators = PyPadsValidators()
 
 
 def validators():

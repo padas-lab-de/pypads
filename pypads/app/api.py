@@ -12,7 +12,7 @@ from pypads.app.injections.base_logger import FunctionHolder
 from pypads.app.injections.run_loggers import PreRunFunction, PostRunFunction
 from pypads.app.misc.caches import Cache
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
-from pypads.bindings.anchor import get_anchor, Anchor
+from pypads.bindings.anchors import get_anchor, Anchor
 from pypads.importext.mappings import Mapping, MatchedMapping, make_run_time_mapping_collection
 from pypads.importext.package_path import PackagePathMatcher, PackagePath
 from pypads.utils.logging_util import WriteFormats, try_write_artifact, try_read_artifact, get_temp_folder, \
@@ -65,9 +65,13 @@ class PyPadsApi(IApi):
     Default api functions of pypads
     """
 
-    def __init__(self, pypads):
-        self._pypads = pypads
+    def __init__(self):
         super().__init__()
+
+    @property
+    def pypads(self):
+        from pypads.app.pypads import get_current_pads
+        return get_current_pads()
 
     # noinspection PyMethodMayBeStatic
     @cmd
@@ -123,7 +127,7 @@ class PyPadsApi(IApi):
                               _anchors, {"concept": fn.__name__})
 
         # Wrap the function of given context and return it
-        return self._pypads.wrap_manager.wrap(fn, ctx=ctx, matched_mapping=MatchedMapping(mapping, PackagePath(
+        return self.pypads.wrap_manager.wrap(fn, ctx=ctx, matched_mapping=MatchedMapping(mapping, PackagePath(
             ctx_path + "." + fn.__name__)))
 
     @cmd
@@ -209,7 +213,6 @@ class PyPadsApi(IApi):
         """
         return mlflow.set_tag(key, value)
 
-    @cmd
     def _write_meta(self, name, meta):
         """
         Write the meta information about an given object name as artifact.
@@ -220,7 +223,6 @@ class PyPadsApi(IApi):
         if meta:
             try_write_artifact(name + ".meta", meta, WriteFormats.text, preserve_folder=True)
 
-    @cmd
     def _read_meta(self, name):
         """
         Read the metainformation of a object name.
@@ -271,27 +273,26 @@ class PyPadsApi(IApi):
         """
         enclosing_run = mlflow.active_run()
         try:
-            run = self._pypads.api.start_run(**kwargs, nested=True)
-            self._pypads.cache.run_add("enclosing_run", enclosing_run)
+            run = self.pypads.api.start_run(**kwargs, nested=True)
+            self.pypads.cache.run_add("enclosing_run", enclosing_run)
             yield run
         finally:
             if not mlflow.active_run() is enclosing_run:
-                self._pypads.api.end_run()
-                self._pypads.cache.run_clear()
-                self._pypads.cache.run_delete()
+                self.pypads.api.end_run()
+                self.pypads.cache.run_clear()
+                self.pypads.cache.run_delete()
             else:
                 mlflow.start_run(run_id=enclosing_run.info.run_id)
 
-    @cmd
     def _get_setup_cache(self):
         """
         Get registered pre_run functions.
         :return:
         """
-        if not self._pypads.cache.exists("pre_run_fns"):
+        if not self.pypads.cache.exists("pre_run_fns"):
             pre_run_fn_cache = Cache()
-            self._pypads.cache.add("pre_run_fns", pre_run_fn_cache)
-        return self._pypads.cache.get("pre_run_fns")
+            self.pypads.cache.add("pre_run_fns", pre_run_fn_cache)
+        return self.pypads.cache.get("pre_run_fns")
 
     @cmd
     def register_setup(self, name, pre_fn: PreRunFunction, silent=True):
@@ -338,24 +339,23 @@ class PyPadsApi(IApi):
             if callable(fn):
                 fn(self, _pypads_env=_pypads_env)
 
-    @cmd
     def _get_teardown_cache(self):
         """
         Register a new post run function.
         :return:
         """
         # General post run cache
-        if not self._pypads.api.active_run():
-            if not self._pypads.cache.exists("post_run_fns"):
+        if not self.pypads.api.active_run():
+            if not self.pypads.cache.exists("post_run_fns"):
                 post_run_fn_cache = Cache()
-                self._pypads.cache.exists("post_run_fns", post_run_fn_cache)
-            return self._pypads.cache.get("post_run_fns")
+                self.pypads.cache.add("post_run_fns", post_run_fn_cache)
+            return self.pypads.cache.get("post_run_fns")
 
         # Post run cache for especially this run
-        if not self._pypads.cache.run_exists("post_run_fns"):
+        if not self.pypads.cache.run_exists("post_run_fns"):
             post_run_fn_cache = Cache()
-            self._pypads.cache.run_add("post_run_fns", post_run_fn_cache)
-        return self._pypads.cache.run_get("post_run_fns")
+            self.pypads.cache.run_add("post_run_fns", post_run_fn_cache)
+        return self.pypads.cache.run_get("post_run_fns")
 
     @cmd
     def register_teardown(self, name, post_fn: PostRunFunction, silent=True):
@@ -408,7 +408,7 @@ class PyPadsApi(IApi):
         Check if the current run is an intermediate run.
         :return:
         """
-        enclosing_run = self._pypads.cache.run_get("enclosing_run")
+        enclosing_run = self.pypads.cache.run_get("enclosing_run")
         return enclosing_run is not None
 
     @cmd
@@ -442,7 +442,10 @@ class PyPadsApi(IApi):
 class ApiPluginManager(ExtendableMixin):
 
     def __init__(self, *args, **kwargs):
-        super().__init__(instances=PyPadsApi(*args, **kwargs))
+        super().__init__(plugin_list=api_plugins)
+
+
+pypads_api = PyPadsApi()
 
 
 def api():

@@ -7,11 +7,16 @@ import pkg_resources
 import yaml
 
 from pypads import logger
-from pypads.bindings.anchor import Anchor, get_anchor
+from pypads.bindings.anchors import Anchor, get_anchor
 from pypads.bindings.hooks import Hook
 from pypads.importext.package_path import RegexMatcher, PackagePath, PackagePathMatcher, \
     SerializableMatcher, Package
 from pypads.importext.semver import parse_constraint, VersionConstraint
+
+default_mapping_file_paths = []
+default_mapping_file_paths.extend(glob.glob(
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "bindings", "resources", "mapping", "**.yml"))))
 
 
 class LibSelector:
@@ -363,9 +368,7 @@ class MappingRegistry:
         if pypads.config["include_default_mappings"]:
             # Use our with the package delivered mapping files
             mapping_file_paths.extend(glob.glob(os.path.join(pypads.folder, "bindings", "**.yml")))
-            mapping_file_paths.extend(glob.glob(
-                os.path.abspath(
-                    os.path.join(os.path.dirname(__file__), "..", "bindings", "resources", "mapping", "**.yml"))))
+            mapping_file_paths.extend(default_mapping_file_paths)
         if paths:
             mapping_file_paths.extend(paths)
 
@@ -404,7 +407,7 @@ class MappingRegistry:
                     for key, mapping in mapping.items():
                         registry.add_mapping(mapping, key=key)
                 else:
-                    registry.add_mapping(mapping, key=id(mapping))
+                    registry.add_mapping(mapping, key=mapping.lib)
         return registry
 
     def get_entries(self):  # type: () -> Generator[Tuple[LibSelector, MappingCollection]]

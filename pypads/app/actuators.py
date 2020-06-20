@@ -46,10 +46,14 @@ def actuator(f):
     return wrapper
 
 
-class PypadsActuators(IActuators):
-    def __init__(self, pypads):
-        self._pypads = pypads
+class PyPadsActuators(IActuators):
+    def __init__(self):
         super().__init__()
+
+    @property
+    def pypads(self):
+        from pypads.app.pypads import get_current_pads
+        return get_current_pads()
 
     @actuator
     def set_random_seed(self, seed=None):
@@ -60,7 +64,7 @@ class PypadsActuators(IActuators):
             # seed = random.randrange(sys.maxsize)
             # Numpy only allows for a max value of 2**32 - 1
             seed = random.randrange(2 ** 32 - 1)
-        self._pypads.cache.run_add('seed', seed)
+        self.pypads.cache.run_add('seed', seed)
 
         from pypads.injections.analysis.randomness import set_random_seed
         set_random_seed(seed)
@@ -69,7 +73,10 @@ class PypadsActuators(IActuators):
 class ActuatorPluginManager(ExtendableMixin):
 
     def __init__(self, *args, **kwargs):
-        super().__init__(instances=PypadsActuators(*args, **kwargs))
+        super().__init__(plugin_list=actuator_plugins)
+
+
+pypads_actuators = PyPadsActuators()
 
 
 def actuators():

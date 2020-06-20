@@ -1,6 +1,8 @@
 import ast
 import atexit
+import importlib
 import os
+import pkgutil
 from os.path import expanduser
 from typing import List
 
@@ -8,7 +10,7 @@ import mlflow
 
 from pypads import logger
 from pypads.app.actuators import ActuatorPluginManager
-from pypads.app.api import PyPadsApi
+from pypads.app.api import ApiPluginManager
 from pypads.app.backend import MLFlowBackend
 from pypads.app.decorators import DecoratorPluginManager
 from pypads.app.misc.caches import PypadsCache
@@ -19,9 +21,35 @@ from pypads.importext.mappings import MappingRegistry, MappingCollection
 from pypads.importext.pypads_import import extend_import_module, duck_punch_loader
 from pypads.importext.wrapping.wrapping import WrapManager
 from pypads.injections.analysis.call_tracker import CallTracker
-from pypads.injections.pre_run.git import IGit
-from pypads.injections.pre_run.hardware import ISystem, IRam, ICpu, IDisk, IPid, ISocketInfo, IMacAddress
-from pypads.injections.pre_run.pre_run import RunInfo, RunLogger
+from pypads.injections.setup.git import IGit
+from pypads.injections.setup.hardware import ISystem, IRam, ICpu, IDisk, IPid, ISocketInfo, IMacAddress
+from pypads.injections.setup.misc_setup import RunInfo, RunLogger
+import ast
+import atexit
+import importlib
+import os
+import pkgutil
+from os.path import expanduser
+from typing import List
+
+import mlflow
+
+from pypads import logger
+from pypads.app.actuators import ActuatorPluginManager
+from pypads.app.api import ApiPluginManager
+from pypads.app.backend import MLFlowBackend
+from pypads.app.decorators import DecoratorPluginManager
+from pypads.app.misc.caches import PypadsCache
+from pypads.app.validators import ValidatorPluginManager, validators
+from pypads.bindings.events import FunctionRegistry
+from pypads.bindings.hooks import HookRegistry
+from pypads.importext.mappings import MappingRegistry, MappingCollection
+from pypads.importext.pypads_import import extend_import_module, duck_punch_loader
+from pypads.importext.wrapping.wrapping import WrapManager
+from pypads.injections.analysis.call_tracker import CallTracker
+from pypads.injections.setup.git import IGit
+from pypads.injections.setup.hardware import ISystem, IRam, ICpu, IDisk, IPid, ISocketInfo, IMacAddress
+from pypads.injections.setup.misc_setup import RunInfo, RunLogger
 
 tracking_active = None
 
@@ -63,9 +91,8 @@ DEFAULT_CONFIG = {
     # is passed
 }
 
-DEFAULT_SETUP_FNS = [RunInfo(), RunLogger(), IGit(_pypads_timeout=3), ISystem(), IRam(), ICpu(), IDisk(), IPid(),
-                     ISocketInfo(),
-                     IMacAddress()]
+DEFAULT_SETUP_FNS = {RunInfo(), RunLogger(), IGit(_pypads_timeout=3), ISystem(), IRam(), ICpu(), IDisk(), IPid(),
+                     ISocketInfo(), IMacAddress()}
 
 # Tag name to save the config to in mlflow context.
 CONFIG_NAME = "pypads.config"
@@ -93,16 +120,16 @@ class PyPads:
         self._wrap_manager = WrapManager(self)
 
         # Init API
-        self._api = PyPadsApi(self)
+        self._api = ApiPluginManager()
 
         # Init Decorators
-        self._decorators = DecoratorPluginManager(self)
+        self._decorators = DecoratorPluginManager()
 
         # Init Actuators
-        self._actuators = ActuatorPluginManager(self)
+        self._actuators = ActuatorPluginManager()
 
         # Init Validators
-        self._validators = ValidatorPluginManager(self)
+        self._validators = ValidatorPluginManager()
 
         # Init CallTracker
         self._call_tracker = CallTracker(self)
@@ -193,13 +220,13 @@ class PyPads:
 
     @staticmethod
     def existing_anchors():
-        from pypads.bindings.anchor import anchors
+        from pypads.bindings.anchors import anchors
         return anchors
 
     @staticmethod
     def existing_events():
-        from pypads.bindings.event_types import events
-        return events
+        from pypads.bindings.event_types import event_types
+        return event_types
 
     @staticmethod
     def existing_validators():
@@ -427,6 +454,9 @@ class PyPads:
         :param disable_run_init:
         :return:
         """
+        if not tracking_active:
+            self.activate_tracking()
+
         # check if there is already an active run
         run = mlflow.active_run()
         if run is None:
@@ -451,3 +481,12 @@ class PyPads:
                 mlflow.end_run()
                 self.api.start_run(experiment_id=_experiment.experiment_id)
         return self
+
+
+# --- Pypads Plugins ---
+discovered_plugins = {
+    name: importlib.import_module(name)
+    for finder, name, ispkg
+    in pkgutil.iter_modules()
+    if name.startswith('pypads_')
+}

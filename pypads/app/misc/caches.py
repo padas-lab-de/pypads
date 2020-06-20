@@ -3,39 +3,6 @@ import sys
 import mlflow
 
 from pypads import logger
-from pypads.utils.util import dict_merge
-
-
-def cache_merge(*dicts):
-    """
-    Merge two dicts of caches. Entries are overwritten if not mergeable.
-    :param dicts: dicts to merge
-    :return:
-    """
-    merged = {}
-    for d in dicts:
-        if isinstance(d, dict):
-            for key, value in d.items():
-                if isinstance(value, dict):
-                    node = merged.setdefault(key, {})
-                    merged[key] = dict_merge(node, value)
-                elif isinstance(value, list):
-                    node = merged.setdefault(key, [])
-                    merged[key] = node.extend(value)
-                elif isinstance(value, set):
-                    s: set = merged.setdefault(key, set())
-                    for v in value:
-                        if v in s:
-                            merged = dict_merge(v, s.pop(v))
-                            s.add(merged)
-                        else:
-                            s.add(v)
-                elif isinstance(value, Cache):
-                    node = merged.setdefault(key, Cache())
-                    merged[key] = value.merge(node)
-                else:
-                    merged[key] = value
-    return merged
 
 
 class Cache:
@@ -51,7 +18,8 @@ class Cache:
         return self._cache
 
     def merge(self, other):
-        self._cache = cache_merge(self.cache, other.cache)
+        from pypads.utils.util import merge_dicts
+        self._cache = merge_dicts(self.cache, other.cache)
         return self
 
     def add(self, key, value):
@@ -142,7 +110,8 @@ class PypadsCache(Cache):
 
     def merge(self, other):
         super().merge(other)
-        self._run_caches = cache_merge(self.run_caches, other.run_caches)
+        from pypads.utils.util import merge_dicts
+        self._run_caches = merge_dicts(self.run_caches, other.run_caches)
 
     @property
     def run_caches(self):

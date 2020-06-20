@@ -49,16 +49,20 @@ def decorator(f):
 
 
 class PyPadsDecorators(IDecorators):
-    def __init__(self, pypads):
-        self._pypads = pypads
+    def __init__(self):
         super().__init__()
+
+    @property
+    def pypads(self):
+        from pypads.app.pypads import get_current_pads
+        return get_current_pads()
 
     @decorator
     def track(self, event="pypads_log", mapping: Mapping = None):
         def track_decorator(fn):
             ctx = get_class_that_defined_method(fn)
             events = event if isinstance(event, List) else [event]
-            return self._pypads.api.track(ctx=ctx, fn=fn, hooks=events, mapping=mapping)
+            return self.pypads.api.track(ctx=ctx, fn=fn, hooks=events, mapping=mapping)
 
         return track_decorator
 
@@ -66,7 +70,10 @@ class PyPadsDecorators(IDecorators):
 class DecoratorPluginManager(ExtendableMixin):
 
     def __init__(self, *args, **kwargs):
-        super().__init__(instances=PyPadsDecorators(*args, **kwargs))
+        super().__init__(plugin_list=decorator_plugins)
+
+
+pypads_decorators = PyPadsDecorators()
 
 
 def actuators():

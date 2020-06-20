@@ -1,5 +1,10 @@
 import inspect
 
+from pypads.app.misc.caches import Cache
+import inspect
+
+from pypads.app.misc.caches import Cache
+
 
 def get_class_that_defined_method(meth):
     if inspect.ismethod(meth):
@@ -80,3 +85,35 @@ def _is_package_available(name):
     import importlib
     spam_loader = importlib.util.find_spec(name)
     return spam_loader is not None
+
+
+def merge_dicts(*dicts):
+    """
+    Merge two dicts. Entries are overwritten if not mergeable. Cache is supported.
+    :param dicts: dicts to merge
+    :return:
+    """
+    merged = {}
+    for d in dicts:
+        if isinstance(d, dict):
+            for key, value in d.items():
+                if isinstance(value, dict):
+                    node = merged.setdefault(key, {})
+                    merged[key] = dict_merge(node, value)
+                elif isinstance(value, list):
+                    node = merged.setdefault(key, [])
+                    merged[key] = node.extend(value)
+                elif isinstance(value, set):
+                    s: set = merged.setdefault(key, set())
+                    for v in value:
+                        if v in s:
+                            merged = dict_merge(v, s.pop(v))
+                            s.add(merged)
+                        else:
+                            s.add(v)
+                elif isinstance(value, Cache):
+                    node = merged.setdefault(key, Cache())
+                    merged[key] = value.merge(node)
+                else:
+                    merged[key] = value
+    return merged
