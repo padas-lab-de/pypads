@@ -24,32 +24,6 @@ from pypads.injections.analysis.call_tracker import CallTracker
 from pypads.injections.setup.git import IGit
 from pypads.injections.setup.hardware import ISystem, IRam, ICpu, IDisk, IPid, ISocketInfo, IMacAddress
 from pypads.injections.setup.misc_setup import RunInfo, RunLogger
-import ast
-import atexit
-import importlib
-import os
-import pkgutil
-from os.path import expanduser
-from typing import List
-
-import mlflow
-
-from pypads import logger
-from pypads.app.actuators import ActuatorPluginManager
-from pypads.app.api import ApiPluginManager
-from pypads.app.backend import MLFlowBackend
-from pypads.app.decorators import DecoratorPluginManager
-from pypads.app.misc.caches import PypadsCache
-from pypads.app.validators import ValidatorPluginManager, validators
-from pypads.bindings.events import FunctionRegistry
-from pypads.bindings.hooks import HookRegistry
-from pypads.importext.mappings import MappingRegistry, MappingCollection
-from pypads.importext.pypads_import import extend_import_module, duck_punch_loader
-from pypads.importext.wrapping.wrapping import WrapManager
-from pypads.injections.analysis.call_tracker import CallTracker
-from pypads.injections.setup.git import IGit
-from pypads.injections.setup.hardware import ISystem, IRam, ICpu, IDisk, IPid, ISocketInfo, IMacAddress
-from pypads.injections.setup.misc_setup import RunInfo, RunLogger
 
 tracking_active = None
 
@@ -108,8 +82,16 @@ class PyPads:
     """
 
     def __init__(self, uri=None, folder=None, mappings: List[MappingCollection] = None, hooks=None,
-                 events=None, setup_fns=None, config=None, pre_initialized_cache: PypadsCache = None, autostart=None):
+                 events=None, setup_fns=None, config=None, pre_initialized_cache: PypadsCache = None,
+                 disable_plugins=None, autostart=None):
         # Set the singleton instance
+
+        if disable_plugins is None:
+            disable_plugins = []
+        for name, plugin in discovered_plugins.items():
+            if name not in disable_plugins:
+                plugin.activate()
+
         from pypads.app.pypads import set_current_pads
         set_current_pads(self)
 

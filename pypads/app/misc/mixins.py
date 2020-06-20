@@ -108,9 +108,11 @@ class DependencyMixin(CallableMixin):
 
         """
         missing = []
-        for package in self._needed_packages():
-            if not is_package_available(package):
-                missing.append(package)
+        packages = self._needed_packages()
+        if packages is not None:
+            for package in packages:
+                if not is_package_available(package):
+                    missing.append(package)
         if len(missing) > 0:
             raise MissingDependencyError("Can't log " + str(self) + ". Missing dependencies: " + ", ".join(missing))
 

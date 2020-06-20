@@ -179,7 +179,7 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
 
         :return: _pypads_pre_return
         """
-        raise NotImplementedError()
+        pass
 
     def __post__(self, ctx, *args, _pypads_env, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
         """
@@ -190,7 +190,7 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
 
         :return: the wrapped function return value
         """
-        raise NotImplementedError()
+        pass
 
     def _extract_runtime(self, out, _pypads_env, label):
         if type(out) is tuple and len(out) is 2:

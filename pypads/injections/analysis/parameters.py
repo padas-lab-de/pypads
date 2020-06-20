@@ -21,9 +21,6 @@ def persist_parameter(_pypads_env, key, value):
 
 class Parameters(LoggingFunction):
 
-    def __pre__(self, ctx, *args, _pypads_env, **kwargs):
-        pass
-
     def __post__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
         """
         Function logging the parameters of the current pipeline object function call.
