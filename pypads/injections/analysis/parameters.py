@@ -30,7 +30,7 @@ class Parameters(LoggingFunction):
         :return:
         """
         try:
-            if 'hyper_parameters' in _pypads_env.mapping.values['data']:
+            if "data" in _pypads_env.mapping.values and 'hyper_parameters' in _pypads_env.mapping.values['data']:
                 for type, parameters in _pypads_env.mapping.values['data']['hyper_parameters'].items():
                     for parameter in parameters:
                         key = parameter["name"]

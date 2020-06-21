@@ -57,7 +57,8 @@ class LibSelector:
         :param version:
         :return:
         """
-        return self._constraint.allows(version)
+        from pypads.importext.semver import Version
+        return self._constraint.allows(Version.parse(version))
 
 
 class Mapping:
@@ -484,31 +485,35 @@ class MappingRegistry:
         :return:
         """
 
-        lib_version = None
+        if any([package.path.segments[0] == s.name for s, _ in self.get_entries()]):
+            lib_version = None
 
-        # TODO what about libraries where package name != pip name
-        # Try to get version of installed package
-        try:
-            if hasattr("__version__", package.content):
-                lib_version = getattr(package, "__version__")
+            # TODO what about libraries where package name != pip name
+            # Try to get version of installed package
+            try:
+                import sys
+                base_package = sys.modules[str(package.path.segments[0])]
+                if hasattr(base_package, "__version__"):
+                    lib_version = getattr(base_package, "__version__")
+                else:
+                    lib_version = pkg_resources.get_distribution(str(package.path.segments[0])).version
+            except Exception as e:
+                logger.debug("Couldn't get version of package {}".format(package.path))
+
+            mappings = []
+
+            # Take only mappings which are fitting for versions
+            if lib_version:
+                for k, collection in [(s, c) for s, c in self.get_entries() if
+                                      s.name == package.path.segments[0] and s.allows(lib_version)]:
+                    for m in collection.find_mappings(package.path.segments):
+                        mappings.append(m)
             else:
-                lib_version = pkg_resources.get_distribution("construct").version
-        except Exception as e:
-            logger.debug("Couldn't get version of package {}".format(package.path))
-
-        mappings = []
-
-        # Take only mappings which are fitting for versions
-        if lib_version:
-            for k, collection in [(s, c) for s, c in self.get_entries() if
-                                  s.name == package.path.segments[0] and s.allows(lib_version)]:
-                for m in collection.find_mappings(package.path.segments):
-                    mappings.append(m)
-        else:
-            for k, collection in [(s, c) for s, c in self.get_entries() if s.name == package.path.segments[0]]:
-                for m in collection.find_mappings(package.path.segments):
-                    mappings.append(m)
-        return mappings
+                for k, collection in [(s, c) for s, c in self.get_entries() if s.name == package.path.segments[0]]:
+                    for m in collection.find_mappings(package.path.segments):
+                        mappings.append(m)
+            return mappings
+        return []
 
 
 class MatchedMapping:

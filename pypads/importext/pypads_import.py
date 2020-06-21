@@ -35,9 +35,9 @@ def _add_inherited_mapping(clazz, super_class):
                     ".".join(filter(lambda s: len(s) > 0,
                                     [clazz.__module__, clazz.__qualname__,
                                      ".".join([h.serialize() for h in
-                                               matched_mapping.package_path[
-                                               len(matched_mapping.matcher.matchers):]])]))),
-                    matched_mapping.mapping.in_collection, matched_mapping.mapping.hooks,
+                                               matched_mapping.package_path.segments[
+                                               len(matched_mapping.mapping.matcher.matchers):]])]))),
+                    matched_mapping.mapping.in_collection, {h.anchor for h in matched_mapping.mapping.hooks},
                     matched_mapping.mapping.values)
                 _add_found_class(found_mapping)
 

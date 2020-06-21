@@ -177,6 +177,9 @@ class ISegmentMatcher(SerializableMatcher):
     def __hash__(self):
         return hash(self.content)
 
+    def __eq__(self, other):
+        return self.content == other.content
+
     def __str__(self):
         return self.serialize()
 

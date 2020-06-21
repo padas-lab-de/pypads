@@ -284,6 +284,7 @@ class FunctionWrapper(BaseWrapper):
         call: Call = env.call
         cid = call.call_id
 
+        # TODO maybe use https://gist.github.com/MacHu-GWU/0170849f693aa5f8d129aa03fc358305
         if cid.is_static_method():
             @wraps(cid.wrappee)
             def env_setter(*args, _pypads_env=env, **kwargs):

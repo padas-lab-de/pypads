@@ -96,6 +96,9 @@ class FunctionReference:
                 return id(getattr(self.context, self.wrappee.__name__))
         return str(id(self.context)) + "." + str(id(self.wrappee))
 
+    def __str__(self):
+        return str(self._real_context) + "." + str(self._function.__name__)
+
 
 class CallAccessor(FunctionReference):
 
