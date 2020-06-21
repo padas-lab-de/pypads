@@ -56,7 +56,8 @@ Logs loss and any other metrics specified in the fit
 # This config defines such a listening structure.
 # {"recursive": track functions recursively. Otherwise check the callstack to only track the top level function.}
 DEFAULT_CONFIG = {
-    "track_sub_processes": False,  # Activate to track spawned subprocesses by extending the joblib
+    "track_sub_processes": False,
+    # Activate to track spawned subprocesses by extending the joblib. This is currently experimental.
     "recursion_identity": False,
     # Activate to ignore tracking on recursive calls of the same function with the same mapping
     "recursion_depth": -1,  # Limit the tracking of recursive calls

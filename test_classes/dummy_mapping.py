@@ -15,4 +15,4 @@ mappings:
 
 
 def _get_punch_dummy_mapping():
-    return SerializedMapping("punch_dummy", punch_dummy_mapping)
+    return [SerializedMapping("punch_dummy", punch_dummy_mapping)]

@@ -26,7 +26,7 @@ class AutoSklearnTest(BaseSklearnTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER)
+        tracker = PyPads(uri=TEST_FOLDER, autostart=True)
 
         # TODO autosklearn fails we seem to change the _init_ involuntarily
         # import timeit

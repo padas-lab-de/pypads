@@ -10,13 +10,15 @@ def experiment():
 
 logger = RanLogger()
 
-event_mapping = {
+events = {
     "ran_logger": logger
 }
 
-config = {"events": {
+hooks = {
     "ran_logger": {"on": ["pypads_log"]},
-},
+}
+
+config = {
     "recursion_identity": False,
     "recursion_depth": -1}
 
@@ -31,7 +33,7 @@ class PypadsCustomFunctionTest(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
 
         tracker.api.track(experiment, ctx=sys.modules[__name__])
 
@@ -53,7 +55,7 @@ class PypadsCustomFunctionTest(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
 
         def experiment():
             print("I'm an function level experiment")
@@ -79,7 +81,7 @@ class PypadsCustomFunctionTest(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
 
         @tracker.decorators.track()
         def experiment():
@@ -104,7 +106,7 @@ class PypadsCustomFunctionTest(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
 
         @tracker.decorators.track(event="pypads_log")
         def experiment():
@@ -129,7 +131,7 @@ class PypadsCustomFunctionTest(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
 
         @tracker.decorators.track(event="pypads_log")
         def experiment():
@@ -149,7 +151,7 @@ class PypadsCustomFunctionTest(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
 
         i = 0
 

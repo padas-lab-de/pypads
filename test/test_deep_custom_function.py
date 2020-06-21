@@ -23,13 +23,15 @@ def experiment():
 
 logger = RanLogger()
 
-event_mapping = {
+events = {
     "ran_logger": logger
 }
 
-config = {"events": {
-    "ran_logger": {"on": ["ran"]},
-},
+hooks = {
+            "ran_logger": {"on": ["ran"]},
+        },
+
+config = {
     "recursion_identity": False,
     "recursion_depth": -1}
 
@@ -44,7 +46,7 @@ class PypadsHookTest(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
 
         global experiment
         experiment = tracker.api.track(experiment, hooks=["ran"])

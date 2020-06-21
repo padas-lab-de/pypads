@@ -47,7 +47,7 @@ def parallel_tracking(min_samples_leaf=1):
     # --------------------------- setup of the tracking ---------------------------
     # Activate tracking of pypads
     from pypads.app.base import PyPads
-    tracker = PyPads(uri=TEST_FOLDER)
+    tracker = PyPads(uri=TEST_FOLDER, autostart=True)
     from test.test_sklearn.base_sklearn_test import sklearn_simple_decision_tree_experiment
     sklearn_simple_decision_tree_experiment(min_samples_leaf=min_samples_leaf)
     tracker.deactivate_tracking(run_atexits=True, reload_modules=False)
@@ -89,7 +89,7 @@ class ParallelSklearnTest(BaseTest):
     @mac_os_disabled
     def test_pool_execution_single_tracker(self):
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER)
+        tracker = PyPads(uri=TEST_FOLDER, autostart=True)
         import timeit
         t = timeit.Timer(pool_execution(parallel_no_tracking, punch_dummy_gen()))
         print(t.timeit(1))
@@ -103,7 +103,7 @@ class ParallelSklearnTest(BaseTest):
     @mac_os_disabled
     def test_process_execution_single_tracker(self):
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER)
+        tracker = PyPads(uri=TEST_FOLDER, autostart=True)
         import timeit
         t = timeit.Timer(process_execution(parallel_no_tracking, punch_dummy_gen()))
         print(t.timeit(1))
