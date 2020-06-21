@@ -4,7 +4,7 @@ from test.base_test import BaseTest, TEST_FOLDER
 from test.test_order.test_order import First, Second, Third, experiment
 
 events = {
-    "ordered_loggers": [First(order=3), Second(order=2), Third(order=1)]
+    "ordered_loggers": [First(order=1), Second(order=2), Third(order=3)]
 }
 
 hooks = {

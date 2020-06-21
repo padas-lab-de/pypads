@@ -54,9 +54,9 @@ events = {
 }
 
 hooks = {
-    "first": {"on": ["order"], "order": 3},
+    "first": {"on": ["order"], "order": 1},
     "second": {"on": ["order"], "order": 2},
-    "third": {"on": ["order"], "order": 1},
+    "third": {"on": ["order"], "order": 3},
 }
 
 config = {

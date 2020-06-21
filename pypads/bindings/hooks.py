@@ -1,6 +1,6 @@
 from typing import Iterable, Set
 
-from pypads.app.misc.mixins import OrderMixin
+from pypads.app.misc.mixins import OrderMixin, DEFAULT_ORDER
 from pypads.utils.logging_util import WriteFormats
 
 # Maps hooks to events
@@ -73,11 +73,11 @@ class HookRegistry:
         self._pypads = pypads
         self._hook_event_mapping = {}
 
-    def add_reference(self, event_name: str, *hook_names: str, parameters=None):
+    def add_reference(self, event_name: str, *hook_names: str, order=DEFAULT_ORDER, parameters=None):
         for hook_name in hook_names:
             if hook_name not in self._hook_event_mapping:
                 self._hook_event_mapping[hook_name] = set()
-            self._hook_event_mapping[hook_name].add(HookEventConfig(hook_name, event_name, parameters))
+            self._hook_event_mapping[hook_name].add(HookEventConfig(hook_name, event_name, parameters, order=order))
 
     def get_configs_for_hook(self, hook: Hook) -> Set[HookEventConfig]:
         if hook.anchor.name not in self._hook_event_mapping:
@@ -89,12 +89,12 @@ class HookRegistry:
         configs = []
         for hook in hooks:
             configs = configs + list(self.get_configs_for_hook(hook))
-        OrderMixin.sort_mutable(configs)
+        OrderMixin.sort_mutable(configs, reverse=True)
 
         fns = []
         for c in configs:
             found_fns = [(f, c.parameters) for f in self._pypads.function_registry.get_functions(c.event_name)]
-            found_fns.sort(key=lambda e: e[0].order())
+            found_fns.sort(key=lambda e: -e[0].order())
             fns = fns + found_fns
         return fns
 
@@ -114,8 +114,9 @@ class HookRegistry:
         for key, value in hook_mapping.items():
             parameters = value["with"] if "with" in value else {}
             hook_names = value["on"]
+            order = value["order"] if "order" in value else DEFAULT_ORDER
             if isinstance(hook_names, Iterable):
-                registry.add_reference(key, *hook_names, parameters=parameters)
+                registry.add_reference(key, *hook_names, order=order, parameters=parameters)
             else:
-                registry.add_reference(key, hook_names, parameters=parameters)
+                registry.add_reference(key, hook_names, order=order, parameters=parameters)
         return registry
