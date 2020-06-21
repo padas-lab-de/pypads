@@ -81,12 +81,15 @@ function groups that should trigger specific events. Here in the below given exa
 sklearn.metrics.classification to "pypads_metric". We also inform PyPads that all functions of this form are an instance
 of sklearn provided metrics using the concepts key.
 
-mappings:
-    sklearn:
+.. code-block:: YAML
+
+    mappings:
+      sklearn:
         .metrics.classification.{re:.*}:
-            data:
-                concepts: ["Sklearn provided metric"]
-            events: "pypads_metric"
+           data:
+             concepts: ["Sklearn provided metric"]
+             events: "pypads_metric"
+
 
 Adding a new mapping file
 =========================

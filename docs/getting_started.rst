@@ -99,6 +99,7 @@ To call an actuator you can use the app.
 API
 =========
 The PyPads API delivers standard functionality of PyPads. This also pipes some of mlflow features. You can start, stop runs, log artifacts, metrics or parameters, set tags and write meta information about them. Additionally the PyPads API inroduces setup and teardown (also called pre and post run) functions to be called and also to manually mark functions for tracking. A full documentation can be found :ref:`here <api>`. To call the api you can use the app.
+
 .. code-block:: python
 
     from pypads.app.base import PyPads
@@ -277,7 +278,7 @@ Examples
 
 Sklearn DecisionTree example
 ====================
-Following shows how PyPads can be used to track the parameters, input and output of a sklearn experiment.#
+Following shows how PyPads can be used to track the parameters, input and output of a sklearn experiment.
 
 .. code-block:: python
 
@@ -332,10 +333,11 @@ A hook can be defined in the mapping file via the "hooks" attribute. It is compo
 
 Define an event
 ===============
+
 .. _events:
 
 Once the hooks are defined, they are then linked to the events we want them to trigger. Following the example below, the hook **pypads_metric** will be linked to an event we call
-**Metrics** for example. This is done via passing a dictionary as the parameter **config** to the :ref:`PyPads class <base_class>`::
+**Metrics** for example. This is done via passing a dictionary as the parameter **config** to the :ref:`PyPads class <base_class>`
 
 .. code-block:: python
 
@@ -349,7 +351,7 @@ PyPads loggers
 .. _logging:
 
 PyPads has a set of built-in logging functions that are mapped by default to some pre-defined events. Check the default setting of PyPads :ref:`here <default_setting>`.
-The user can also define custom logging functions for custom events. Details on how to do that can be found (:ref:`here <loggingfns>`).
+The user can also define custom logging functions for custom events. Details on how to do that can be found :ref:`here <loggingfns>`.
 
 
 External resources
