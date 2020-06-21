@@ -3,7 +3,7 @@ metadata:
   version: "0.1.0"
   library:
     name: "sklearn"
-    version: "0.19.1"
+    version: ">= 0.19.1"
 
 fragments:
   default_model:

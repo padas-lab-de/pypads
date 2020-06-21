@@ -134,10 +134,10 @@ class Mapping:
         return "Mapping[" + str(self.reference) + ", lib=" + str(self.library) + "]"
 
     def __eq__(self, other):
-        return self.reference == other.reference and self.hooks == other.hooks
+        return self.reference == other.reference and self.hooks == other.hooks and self.values == other.values
 
     def __hash__(self):
-        return hash((self.reference, "|".join([str(h) for h in self.hooks])))
+        return hash((self.reference, "|".join([str(h) for h in self.hooks]), str(self.values)))
 
 
 class MappingCollection:
@@ -532,3 +532,9 @@ class MatchedMapping:
     @property
     def mapping(self) -> Mapping:
         return self._mapping
+
+    def __hash__(self):
+        return self._mapping.__hash__()
+
+    def __eq__(self, other):
+        return self.mapping == other.mapping and self.package_path == other.package_path

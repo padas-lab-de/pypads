@@ -35,8 +35,8 @@ def _add_inherited_mapping(clazz, super_class):
                     ".".join(filter(lambda s: len(s) > 0,
                                     [clazz.__module__, clazz.__qualname__,
                                      ".".join([h.serialize() for h in
-                                               matched_mapping.package_path.segments[
-                                               len(matched_mapping.mapping.matcher.matchers):]])]))),
+                                               matched_mapping.mapping.matcher.matchers[
+                                               len(matched_mapping.package_path.segments):]])]))),
                     matched_mapping.mapping.in_collection, {h.anchor for h in matched_mapping.mapping.hooks},
                     matched_mapping.mapping.values)
                 _add_found_class(found_mapping)
@@ -95,9 +95,8 @@ def duck_punch_loader(spec):
                     else:
                         mappings = _get_relevant_mappings(package, False)
 
-                    for mapping in mappings:
-                        current_pads.wrap_manager.wrap(obj, Context(module, reference),
-                                                       MatchedMapping(mapping, package.path))
+                    current_pads.wrap_manager.wrap(obj, Context(module, reference),
+                                                   {MatchedMapping(mapping, package.path) for mapping in mappings})
         return out
 
     spec.loader.exec_module = types.MethodType(exec_module, spec.loader)

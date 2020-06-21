@@ -243,11 +243,11 @@ class Call:
 
 class LoggingEnv:
 
-    def __init__(self, mapping, hook, parameter, callback, call: Call):
+    def __init__(self, mappings, hook, parameter, callback, call: Call):
         self._call = call
         self._callback = callback
         self._hook = hook
-        self._mapping = mapping
+        self._mappings = mappings
         self._parameter = parameter
 
     @property
@@ -263,8 +263,8 @@ class LoggingEnv:
         return self._hook
 
     @property
-    def mapping(self):
-        return self._mapping
+    def mappings(self):
+        return self._mappings
 
     @property
     def parameter(self):

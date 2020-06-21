@@ -186,6 +186,10 @@ class PyPads:
             else:
                 self.start_track()
 
+    @property
+    def managed_git_factory(self):
+        return self._managed_git_factory
+
     @staticmethod
     def available_loggers():
         """
