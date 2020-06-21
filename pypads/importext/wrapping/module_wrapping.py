@@ -42,8 +42,8 @@ class ModuleWrapper(BaseWrapper):
             for matched_mapping in matched_mappings:
                 for name in list(filter(matched_mapping.mapping.applicable_filter(
                         Context(module, ".".join([context.reference, module.__name__]))),
-                        [m[0] for m in inspect.getmembers(module) if
-                         hasattr(m[1], "__module__") and m[1].__module__ == module.__name__])):
+                        [m for m, _ in inspect.getmembers(module, lambda x: hasattr(x,
+                                                                                    "__module__") and x.__module__ == module.__name__)])):
                     attr = getattr(module, name)
                     if attr not in attrs:
                         attrs[attr] = set()

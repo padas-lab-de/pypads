@@ -1,6 +1,5 @@
 import glob
 import os
-from itertools import chain
 from typing import List, Set, Tuple, Generator, Iterable
 
 import pkg_resources
@@ -131,7 +130,7 @@ class Mapping:
         return self._matcher
 
     def __str__(self):
-        return "Mapping[" + str(self.reference) + ", lib=" + str(self.library) + "]"
+        return "Mapping[" + str(self.reference) + ", lib=" + str(self.library) + ", hooks=" + str(self.hooks) + "]"
 
     def __eq__(self, other):
         return self.reference == other.reference and self.hooks == other.hooks and self.values == other.values
@@ -374,8 +373,6 @@ class MappingRegistry:
             mapping_file_paths.extend(paths)
 
         self._mappings = {}
-        self._found_mappings = MappingCollection("_pypads_found", "0.0.0",
-                                                 {"name": "_pypads_found", "version": "0.0.0"})
 
         for path in mapping_file_paths:
             self.load_mapping(path)
@@ -443,22 +440,6 @@ class MappingRegistry:
         """
         self.add_mapping(MappingFile(path))
 
-    def add_found_class(self, mapping):
-        """
-        Add a mapping for a found class to the found_class mapping cache.
-        :param mapping: Mapping of a found class
-        :return:
-        """
-        self._found_mappings.add_mapping(mapping)
-
-    def iter_found_mappings(self, package: Package):
-        """
-        Iterate over found mappings and find fitting mappings for given package.
-        :param package: Package object referencing a module.
-        :return:
-        """
-        return self._found_mappings.find_mappings(package.path.segments)
-
     def get_libraries(self):
         """
         Find all supported libraries in the mapping registry.
@@ -469,22 +450,11 @@ class MappingRegistry:
             all_libs.add(mapping.lib)
         return all_libs
 
-    def get_relevant_mappings(self, package: Package, search_found):
+    def get_relevant_mappings(self, package: Package):
         """
         Function to find all relevant mappings. This produces a generator getting extended with found subclasses
         :return:
         """
-        if search_found:
-            return set(chain(self.get_static_mappings(package), self.iter_found_mappings(package)))
-        else:
-            return set(self.get_static_mappings(package))
-
-    def get_static_mappings(self, package: Package):
-        """
-        Get all mappings defined in all mapping files.
-        :return:
-        """
-
         if any([package.path.segments[0] == s.name for s, _ in self.get_entries()]):
             lib_version = None
 
@@ -500,20 +470,20 @@ class MappingRegistry:
             except Exception as e:
                 logger.debug("Couldn't get version of package {}".format(package.path))
 
-            mappings = []
+            mappings = set()
 
             # Take only mappings which are fitting for versions
             if lib_version:
                 for k, collection in [(s, c) for s, c in self.get_entries() if
                                       s.name == package.path.segments[0] and s.allows(lib_version)]:
                     for m in collection.find_mappings(package.path.segments):
-                        mappings.append(m)
+                        mappings.add(m)
             else:
                 for k, collection in [(s, c) for s, c in self.get_entries() if s.name == package.path.segments[0]]:
                     for m in collection.find_mappings(package.path.segments):
-                        mappings.append(m)
+                        mappings.add(m)
             return mappings
-        return []
+        return set()
 
 
 class MatchedMapping:

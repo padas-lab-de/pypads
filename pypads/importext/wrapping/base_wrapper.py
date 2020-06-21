@@ -53,6 +53,7 @@ class Context:
             if not hasattr(holder, "_pypads_mapping_" + wrappee.__name__):
                 setattr(holder, "_pypads_mapping_" + wrappee.__name__, set())
             getattr(holder, "_pypads_mapping_" + wrappee.__name__).add(matched_mapping)
+
         except TypeError as e:
             logger.debug("Can't set attribute '" + wrappee.__name__ + "' on '" + str(self._c) + "'.")
             raise e

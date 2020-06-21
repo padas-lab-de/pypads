@@ -72,6 +72,8 @@ DEFAULT_SETUP_FNS = {RunInfo(), RunLogger(), IGit(_pypads_timeout=3), ISystem(),
 # Tag name to save the config to in mlflow context.
 CONFIG_NAME = "pypads.config"
 
+DEFAULT_EXPERIMENT_NAME = "Default-PyPads"
+
 
 #  pypads isn't allowed to hold a state anymore (Everything with state should be part of the caching system)
 #  - We want to be able to rebuild PyPads from the cache alone if existing
@@ -568,7 +570,7 @@ class PyPads:
         from pypads.app.pypads import set_current_pads
         set_current_pads(None)
 
-    def start_track(self, experiment_name="Default-PyPads", disable_run_init=False):
+    def start_track(self, experiment_name=None, disable_run_init=False):
         """
         Start a new run to track.
         :param experiment_name: The name of the mlflow experiment
@@ -581,8 +583,8 @@ class PyPads:
         # check if there is already an active run
         run = mlflow.active_run()
         if run is None:
+            experiment_name = experiment_name or DEFAULT_EXPERIMENT_NAME
             # Create run if run doesn't already exist
-            experiment_name = experiment_name
             experiment = mlflow.get_experiment_by_name(experiment_name)
             experiment_id = experiment.experiment_id if experiment else mlflow.create_experiment(experiment_name)
             run = self.api.start_run(experiment_id=experiment_id)
@@ -590,17 +592,18 @@ class PyPads:
             # Run init functions if run already exists but tracking is starting for it now
             if not disable_run_init:
                 self.api.run_setups()
-        _experiment = self.backend.mlf.get_experiment_by_name(
+
+        experiment = self.backend.mlf.get_experiment_by_name(
             experiment_name) if experiment_name else self.backend.mlf.get_experiment(run.info.experiment_id)
 
         # override active run if used
-        if experiment_name and run.info.experiment_id is not _experiment.experiment_id:
+        if experiment_name and run.info.experiment_id is not experiment.experiment_id:
             logger.warning("Active run doesn't match given input name " + experiment_name + ". Recreating new run.")
             try:
-                self.api.start_run(experiment_id=_experiment.experiment_id, nested=True)
+                self.api.start_run(experiment_id=experiment_name, nested=True)
             except Exception:
                 mlflow.end_run()
-                self.api.start_run(experiment_id=_experiment.experiment_id)
+                self.api.start_run(experiment_id=experiment_name)
         return self
 
 

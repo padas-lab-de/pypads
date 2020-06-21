@@ -45,14 +45,12 @@ class ClassWrapper(BaseWrapper):
                         matched_mapping.mapping.applicable_filter(
                             Context(clazz, ".".join([context.reference, clazz.__name__]))),
                         dir(clazz))):
-                    attr = getattr(clazz, name)
-                    if attr not in attrs:
-                        attrs[attr] = set()
-                    else:
-                        attrs[attr].add(matched_mapping)
+                    if name not in attrs:
+                        attrs[name] = set()
+                    attrs[name].add(matched_mapping)
 
-            for attr, mm in attrs.items():
-                self._pypads.wrap_manager.wrap(attr, clazz, mm)
+            for name, mm in attrs.items():
+                self._pypads.wrap_manager.wrap(getattr(clazz, name), clazz, mm)
 
             # Override class on module
             context.overwrite(clazz.__name__, clazz)

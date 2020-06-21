@@ -19,22 +19,20 @@ class FunctionWrapper(BaseWrapper):
         if (fn.__name__.startswith("__") or fn.__name__.startswith("_pypads")) and fn.__name__ is not "__init__":
             return fn
 
-        for matched_mapping in matched_mappings:
-            if not context.has_wrap_meta(matched_mapping.mapping, fn):
+        if not context.has_original(fn) or not context.defined_stored_original(fn):
+            for matched_mapping in matched_mappings:
                 context.store_wrap_meta(matched_mapping, fn)
 
-                if not context.has_original(fn) or not context.defined_stored_original(fn):
-                    context.store_original(fn)
-
-                if context.is_class():
-                    return self._wrap_on_class(fn, context, matched_mappings)
-                elif hasattr(context.container, fn.__name__):
-                    return self._wrap_on_object(fn, context, matched_mappings)
-                else:
-                    logger.warning(str(
-                        context) + " is no class and doesn't provide attribute with name " + str(
-                        fn.__name__) + ". Couldn't access " + str(
-                        fn) + " on it.")
+            context.store_original(fn)
+            if context.is_class():
+                return self._wrap_on_class(fn, context, matched_mappings)
+            elif hasattr(context.container, fn.__name__):
+                return self._wrap_on_object(fn, context, matched_mappings)
+            else:
+                logger.warning(str(
+                    context) + " is no class and doesn't provide attribute with name " + str(
+                    fn.__name__) + ". Couldn't access " + str(
+                    fn) + " on it.")
 
     def _wrap_on_object(self, fn, context: Context, mappings: Set[MatchedMapping]):
         # Add module of class to the changed modules

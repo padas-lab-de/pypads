@@ -43,6 +43,9 @@ class Hook:
     def library(self):  # type: () -> LibSelector
         return self._source.library
 
+    def __str__(self):
+        return "Hook[anchor=" + str(self.anchor) + ", lib=" + str(self.library) + "]"
+
 
 class HookEventConfig(OrderMixin):
     def __init__(self, anchor, event_name, parameters=None, *args, **kwargs):
