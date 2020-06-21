@@ -159,3 +159,11 @@ Deployment is done by poetry.
 ``
 poetry publish
 ``
+
+# Building the documentation locally
+
+To build the documentation locally execute:
+
+``
+sphinx-build -b html docs out_folder
+``
