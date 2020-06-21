@@ -118,7 +118,7 @@ class CommonSklearnTest(BaseSklearnTest):
         predicted = model.predict(dataset.data)
         # summarize the fit of the model
         print(metrics.classification_report(expected, predicted))
-        print(metrics.confusion_matrix(expected, predicted))
+        # print(metrics.confusion_matrix(expected, predicted))
 
         # assert statements
         # assert tracker._experiment.regex == "ConfiguredExperiment"
