@@ -4,10 +4,10 @@
 PyPads Class
 ============
 
-To start and activate the tracking of your modules, classes and functions, An instantiation of the base class has to be done.
+This class represents the app. To start and activate the tracking of your modules, classes and functions, the app class has to be instantiated.
 
 .. note::
-It is recommended to initialize the tracking **before** importing the modules to be tracked.
+It is recommended to initialize the tracking **before** importing the modules to be tracked. While extending the importlib and reloading the modules may work sometimes doing so may result in unforeseen issues.
 
 .. autoclass:: pypads.base.PyPads
 
