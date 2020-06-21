@@ -37,7 +37,7 @@ class CommonSklearnTest(BaseSklearnTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, autostart=True)
+        tracker = PyPads(uri=TEST_FOLDER)
         tracker.activate_tracking()
         tracker.start_track()
 
@@ -102,7 +102,8 @@ class CommonSklearnTest(BaseSklearnTest):
     def test_experiment_configuration(self):
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(name="ConfiguredExperiment", autostart=True)
+        tracker = PyPads()
+        tracker.start_track(experiment_name="ConfiguredExperiment")
         from sklearn import datasets, metrics
         from sklearn.tree import DecisionTreeClassifier
 

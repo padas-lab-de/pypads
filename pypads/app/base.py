@@ -133,7 +133,7 @@ class PyPads:
         self._managed_git_factory = ManagedGitFactory(self)
 
         # Store config into cache
-        self.config = config or DEFAULT_CONFIG
+        self.config = {**DEFAULT_CONFIG, **config} if config else DEFAULT_CONFIG
 
         # Store config into cache
         self._cache.add("mappings", mappings)

@@ -2,7 +2,7 @@ import os
 import pathlib
 
 from pypads.app.injections.base_logger import LoggingFunction
-from pypads.utils import dict_merge
+from pypads.utils.util import dict_merge
 from test.base_test import TEST_FOLDER, BaseTest
 
 
