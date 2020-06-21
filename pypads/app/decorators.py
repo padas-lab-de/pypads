@@ -76,7 +76,7 @@ class DecoratorPluginManager(ExtendableMixin):
 pypads_decorators = PyPadsDecorators()
 
 
-def actuators():
+def decorators():
     """
     Returns classes of
     :return:

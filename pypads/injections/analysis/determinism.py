@@ -3,7 +3,7 @@ import os
 import tensorflow
 
 from pypads import logger
-from pypads.utils.util import _is_package_available
+from pypads.utils.util import is_package_available
 
 
 def check_determinism():
@@ -20,7 +20,7 @@ def check_determinism():
 
         if ("TF_CUDNN_DETERMINISTIC" not in os.environ or (not os.environ["TF_CUDNN_DETERMINISTIC"] and os.environ[
             "TF_CUDNN_DETERMINISTIC"] is not 1)):
-            if not _is_package_available("tfdeterminism"):
+            if not is_package_available("tfdeterminism"):
                 logger.warning(
                     "Your experiment might include a gpu-specific sources of non-determinism."
                     " See https://github.com/NVIDIA/tensorflow-determinism")

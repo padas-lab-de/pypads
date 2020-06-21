@@ -141,7 +141,7 @@ class PyPads:
         self._cache.add("hooks", hooks)
 
         # Store function registry into cache
-        self._cache.add("functions", events)
+        self._cache.add("events", events)
 
         # Init mapping registry
         self._mapping_registry = MappingRegistry.from_params(self, mappings)
@@ -186,48 +186,115 @@ class PyPads:
                 self.start_track()
 
     @staticmethod
-    def existing_loggers():
+    def available_loggers():
+        """
+        Return a list of available LoggingFunctions for mappings in the current installation of PyPads.
+        :return: Logging function classes
+        """
         from pypads.app.injections.base_logger import logging_functions
         return logging_functions()
 
     @staticmethod
-    def existing_pre_run_functions():
+    def available_setup_functions():
+        """
+        Return a list of available setup function in the current installation of PyPads.
+        :return: Setup function classes
+        """
         from pypads.app.injections.run_loggers import pre_run_functions
         return pre_run_functions()
 
     @staticmethod
-    def existing_post_run_functions():
+    def available_teardown_functions():
+        """
+        Return a list of available setup function in the current installation of PyPads.
+        :return: Teardown function classes
+        """
         from pypads.app.injections.run_loggers import post_run_functions
         return post_run_functions()
 
     @staticmethod
-    def existing_anchors():
+    def available_anchors():
+        """
+        Return a list of available anchors in the current installation of PyPads. Anchors are names for hooks.
+        :return: Anchors
+        """
         from pypads.bindings.anchors import anchors
         return anchors
 
     @staticmethod
-    def existing_events():
+    def available_events():
+        """
+        Return a list of available events (event types) in the current installation of PyPads. Events are triggered by hooks and map to functions.
+        :return: Event types
+        """
         from pypads.bindings.event_types import event_types
         return event_types
 
     @staticmethod
-    def existing_validators():
-        return validators
+    def available_validators():
+        """
+        Return a list of available validators in the current installation of PyPads.
+        :return: Validator classes
+        """
+        return validators()
+
+    @staticmethod
+    def available_decorators():
+        """
+        Return a list of available decorators in the current installation of PyPads.
+        :return: Decorator classes
+        """
+        from pypads.app.decorators import decorators
+        return decorators()
+
+    @staticmethod
+    def available_actuators():
+        """
+        Return a list of available actuators in the current installation of PyPads.
+        :return: Actuator classes
+        """
+        from pypads.app.actuators import actuators
+        return actuators()
+
+    @staticmethod
+    def available_cmds():
+        """
+        Return a list of available api commands in the current installation of PyPads.
+        :return: API commands classes
+        """
+        from pypads.app.api import api
+        return api()
 
     @property
     def cache(self):
+        """
+        Return the cache of pypads. This holds generic cache data and run cache data.
+        :return:
+        """
         return self._cache
 
     @property
     def uri(self):
+        """
+        Return the tracking uri pypads uses for mlflow.
+        :return:
+        """
         return self._cache.get("uri")
 
     @property
     def folder(self):
+        """
+        Return the local folder pypads uses for its temporary storage, configuration etc.
+        :return:
+        """
         return self._cache.get("folder")
 
     @property
     def config(self):
+        """
+        Return the configuration of pypads.
+        :return: Configuration dict
+        """
         if self._cache.exists("config"):
             return self._cache.get("config")
         if self.api.active_run() is not None:
@@ -243,6 +310,11 @@ class PyPads:
 
     @config.setter
     def config(self, value: dict):
+        """
+        Set the configuration of pypads.
+        :param value: Dict containing config key, values
+        :return:
+        """
         # Set the config as tag
         if self.api.active_run() is not None:
             mlflow.set_tag(CONFIG_NAME, value)
@@ -256,58 +328,114 @@ class PyPads:
 
     @property
     def mapping_registry(self):
+        """
+        Access the mapping registry holding all references to mapping files etc.
+        :return: Mapping registry
+        """
         return self._mapping_registry
 
     @property
     def mappings(self):
+        """
+        Get the to the constructor passed mappings.
+        :return: Additional mapping files.
+        """
         return self._cache.get("mappings")
 
     @property
     def hook_registry(self):
+        """
+        Access the hook registry holding all mappings of anchors/hooks to events
+        :return: Hook registry
+        """
         return self._hook_registry
 
     @property
     def hooks(self):
+        """
+        Get the to the constructor passed hook / event mappings.
+        :return: Hook configuration.
+        """
         return self._cache.get("hooks")
 
     @property
     def function_registry(self):
+        """
+        Access the function registry holding all mappings of events to logging functions
+        :return: Function registry
+        """
         return self._function_registry
 
     @property
-    def functions(self):
-        return self._cache.get("functions")
+    def events(self):
+        """
+        Get the to the constructor passed event / logging function mappings.
+        :return: Hook configuration.
+        """
+        return self._cache.get("events")
 
     @property
     def api(self):
+        """
+        Access the api of pypads.
+        :return: PyPadsAPI
+        """
         return self._api
 
     @property
     def decorators(self):
+        """
+        Access the decorators of pypads.
+        :return: PyPadsDecorators
+        """
         return self._decorators
 
     @property
     def validators(self):
+        """
+        Access the validators of pypads.
+        :return: PyPadsValidators
+        """
         return self._validators
 
     @property
     def actuators(self):
+        """
+        Access the actuators of pypads.
+        :return: PyPadsActuators
+        """
         return self._actuators
 
     @property
     def wrap_manager(self):
+        """
+        Return the wrap manager of PyPads. This is used to wrap modules, functions and classes.
+        :return: WrapManager
+        """
         return self._wrap_manager
 
     @property
     def call_tracker(self):
+        """
+        Return the call tracker of PyPads. This is used to keep track of the calls of hooked functions.
+        :return: CallTracker
+        """
         return self._call_tracker
 
     @property
     def backend(self):
+        """
+        Return the backend of PyPads. This is currently hardcoded to mlflow.
+        :return: Backend
+        """
         return self._backend
 
     @property
     def mlf(self):
+        """
+        Return a mlflow client to interact with stored data.
+        :return: MlflowClient
+        """
         return self._backend.mlf
 
     def add_atexit_fn(self, fn):
@@ -326,12 +454,12 @@ class PyPads:
         self._atexit_fns.append(defensive_atexit)
         atexit.register(defensive_atexit)
 
-    def _is_affected_module(self, name, affected_modules=None):
+    def is_affected_module(self, name, affected_modules=None):
         """
         Check if a given module name is in the list of affected modules.
         You can pass a list of affected modules or take the one of the wrap_manager.
-        :param name:
-        :param affected_modules:
+        :param name: Name of the module to check
+        :param affected_modules: The list of affected modules (can be None and will be extracted automatically)
         :return:
         """
         if affected_modules is None:
@@ -369,7 +497,7 @@ class PyPads:
             import importlib
             loaded_modules = [(name, module) for name, module in sys.modules.items()]
             for name, module in loaded_modules:
-                if self._is_affected_module(name, affected_modules):
+                if self.is_affected_module(name, affected_modules):
                     if reload_warnings:
                         logger.warning(
                             name + " was imported before PyPads. To enable tracking import PyPads before or use "
@@ -395,6 +523,12 @@ class PyPads:
         return self
 
     def deactivate_tracking(self, run_atexits=False, reload_modules=True):
+        """
+        Deacticate the current tracking and cleanup.
+        :param run_atexits: Run the registered atexit functions of pypads
+        :param reload_modules: Force a reload of affected modules
+        :return:
+        """
         # run atexit fns if needed
         if run_atexits:
             for fn in self._atexit_fns:
@@ -408,7 +542,7 @@ class PyPads:
         import importlib
         loaded_modules = [(name, module) for name, module in sys.modules.items()]
         for name, module in loaded_modules:
-            if self._is_affected_module(name):
+            if self.is_affected_module(name):
                 del sys.modules[name]
 
                 if reload_modules:
@@ -431,9 +565,9 @@ class PyPads:
 
     def start_track(self, experiment_name="Default-PyPads", disable_run_init=False):
         """
-        Start a new run to track
-        :param experiment_name:
-        :param disable_run_init:
+        Start a new run to track.
+        :param experiment_name: The name of the mlflow experiment
+        :param disable_run_init: Flag to indicate if the run_init functions are to be run on an already existing run.
         :return:
         """
         if not tracking_active:

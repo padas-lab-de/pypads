@@ -18,8 +18,8 @@ class Cache:
         return self._cache
 
     def merge(self, other):
-        from pypads.utils.util import merge_dicts
-        self._cache = merge_dicts(self.cache, other.cache)
+        from pypads.utils.util import dict_merge_caches
+        self._cache = dict_merge_caches(self.cache, other.cache)
         return self
 
     def add(self, key, value):
@@ -110,8 +110,8 @@ class PypadsCache(Cache):
 
     def merge(self, other):
         super().merge(other)
-        from pypads.utils.util import merge_dicts
-        self._run_caches = merge_dicts(self.run_caches, other.run_caches)
+        from pypads.utils.util import dict_merge_caches
+        self._run_caches = dict_merge_caches(self.run_caches, other.run_caches)
 
     @property
     def run_caches(self):

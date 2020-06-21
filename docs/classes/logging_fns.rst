@@ -21,12 +21,12 @@ respectively.
 
 * Pre Run loggers
 
-.. autoclass:: pypads.functions.pre_run.pre_run.PreRunFunction
+.. autoclass:: pypads.app.injections.run_loggers.PreRunFunction
     :private-members: _call
 
 * Post Run loggers
 
-.. autoclass:: pypads.functions.post_run.post_run.PostRunFunction
+.. autoclass:: pypads.app.injections.run_loggers.PostRunFunction
     :private-members: _call
 
 
@@ -35,5 +35,5 @@ Mlflow autolog (experimental)
 
 Pypads also support mlflow autologging functionalities. More on that can be found at `MLflow <https://mlflow.org/docs/latest/tracking.html#automatic-logging>`_.
 
-.. autoclass:: pypads.functions.loggers.mlflow.mlflow_autolog.MlflowAutologger
+.. autoclass:: pypads.injections.loggers.mlflow.mlflow_autolog.MlflowAutologger
     :special-members: __call_wrapped__
