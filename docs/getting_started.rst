@@ -19,8 +19,7 @@ PyPads is a tracking framework for your python programs. It implements an infras
 
 The framework was developed for machine learning experiments and is based on mlflow. The main focus for PyPads is based in its ulterior, but pythonic manner of use. PyPads aims to deliver a way to harmonize results of a multitude of libraries in a structured way, while stepping out of the way if needed. Most dependencies of PyPads are to be considered as optional and are only used to extend on more sophisticated logging functions.
 
-In its core app, PyPads allows for registering plugin extensions. These can be used to define packages introducing new loggers, validators, actuators, decorators etc.
-.. _extensions: TODO link to PyPads_Padre
+In its core app, PyPads allows for registering plugin :ref:`extensions <extensions>`. These can be used to define packages introducing new loggers, validators, actuators, decorators etc.
 
 
 Quick start
@@ -62,7 +61,7 @@ A simple example looks like the following.
 
 Results
 ====================
-By default results can be found in the .mlruns folder in the home directory of the executing user. While this can be changed when initializing the app, you can also specify a env variable called MLFLOW_PATH to define a custom location.
+By default results can be found in the :literal:`.mlruns` folder in the home directory of the executing user. While this can be changed when initializing the app, you can also specify the environment variable :literal:`MLFLOW_PATH` to define a custom location.
 
 Concepts
 ----------------
