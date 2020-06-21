@@ -34,7 +34,7 @@ Install PyPads assuming Python 3 is already installed:
 
 
 Usage
------
+====================
 .. _usage_example:
 
 Activating PyPads for tracking in its default setting is as easy as adding two lines to your experiment.
@@ -60,6 +60,10 @@ A simple example looks like the following.
     predicted = model.predict(dataset.data) # pypads will track only the output of the model predict function.
 
 
+Results
+====================
+By default results can be found in the .mlruns folder in the home directory of the executing user. While this can be changed when initializing the app, you can also specify a env variable called MLFLOW_PATH to define a custom location.
+
 Concepts
 ----------------
 
@@ -67,7 +71,8 @@ PyPads includes a set of concepts, of which some are to be followed because of t
 
 
 Actuators
-    Actuators are features of PyPads manipulating experiments. When using an actuator the result of the experiment may be or is impacted. Actuators can include changes to the underlying machine learning code, setup and more. An exemplary actuator is an actuator enforcing a random seed setup. Custom, new or other actuators can be added to an IActuators plugin exposing them to PyPads.
+=========
+Actuators are features of PyPads manipulating experiments. When using an actuator the result of the experiment may be or is impacted. Actuators can include changes to the underlying machine learning code, setup and more. An exemplary actuator is an actuator enforcing a random seed setup. Custom, new or other actuators can be added to an IActuators plugin exposing them to PyPads.
 
 .. code-block:: python
 
@@ -93,7 +98,8 @@ To call an actuator you can use the app.
 
 
 API
-    The PyPads API delivers standard functionality of PyPads. This also pipes some of mlflow features. You can start, stop runs, log artifacts, metrics or parameters, set tags and write meta information about them. Additionally the PyPads API inroduces setup and teardown (also called pre and post run) functions to be called and also to manually mark functions for tracking. A full documentation can be found :ref:`here <api>`. To call the api you can use the app.
+=========
+The PyPads API delivers standard functionality of PyPads. This also pipes some of mlflow features. You can start, stop runs, log artifacts, metrics or parameters, set tags and write meta information about them. Additionally the PyPads API inroduces setup and teardown (also called pre and post run) functions to be called and also to manually mark functions for tracking. A full documentation can be found :ref:`here <api>`. To call the api you can use the app.
 .. code-block:: python
 
     from pypads.app.base import PyPads
@@ -102,7 +108,8 @@ API
 
 
 Validators
-    Validators are to be used if the experimental status or code has to be checked on some properties. These should normally not log anything, but a validation report. A validation report should be an optional tag or at max a text file. In general validators should inform the user on runtime about errors and problems. It is planned to add the possibility to interrupt an execution if validators fail in the future. Some validators will be logging functions bound to library functions. An examplary validator which will want to be bound to the usage of pytorch is the determinism check for pytorch.
+=========
+Validators are to be used if the experimental status or code has to be checked on some properties. These should normally not log anything, but a validation report. A validation report should be an optional tag or at max a text file. In general validators should inform the user on runtime about errors and problems. It is planned to add the possibility to interrupt an execution if validators fail in the future. Some validators will be logging functions bound to library functions. An examplary validator which will want to be bound to the usage of pytorch is the determinism check for pytorch.
 
 .. code-block:: python
 
@@ -120,7 +127,8 @@ To call the api you can use the app.
 
 
 Setup / Teardown functions
-    Setup or teardown functions are to be called when a run starts or ends. These mostly are used to log meta information about the experiment including data about git, hardware and the environment. A list of currently defined decorators can be found :ref:`here <prepost>`.
+=========
+Setup or teardown functions are to be called when a run starts or ends. These mostly are used to log meta information about the experiment including data about git, hardware and the environment. A list of currently defined decorators can be found :ref:`here <prepost>`.
 
 .. code-block:: python
 
@@ -148,15 +156,18 @@ Configuring setup or teardown functions can be done via the app constructor or a
 
 
 MappingFiles
-    Mapping files deliver hooks into libraries to trigger tracking functionality. They are written in yml and defining a syntax to markup functions, classes and modules.
+=========
+Mapping files deliver hooks into libraries to trigger tracking functionality. They are written in yml and defining a syntax to markup functions, classes and modules.
 
 
 Decorators
-    Decorators can be used instead of a mapping file to denote hooks in code. Because most libraries are not to be changed directly they are currently used sparingly. In PyPads defined decorators can be found :ref:`here <decorators>`.
+=========
+Decorators can be used instead of a mapping file to denote hooks in code. Because most libraries are not to be changed directly they are currently used sparingly. In PyPads defined decorators can be found :ref:`here <decorators>`.
 
 
 Logging functions
-    Logging functions are the generic functions performing tracking tasks bound to hooked functions of libraries. Everything not fitting into other concepts is just called logging function. Following function would track the input to the hooked function.
+=========
+Logging functions are the generic functions performing tracking tasks bound to hooked functions of libraries. Everything not fitting into other concepts is just called logging function. Following function would track the input to the hooked function.
 
 .. code-block:: python
 
@@ -258,11 +269,15 @@ Mapping files or mappings are a more permanent, shareable and modular approach.
 
 
 Check points
-    Check points are currently not implemented. They will introduce a structured way to denote cache able states. By defining check points we hope to be able to define marks from which an experiment can be rerun in the future.
+=========
+Check points are currently not implemented. They will introduce a structured way to denote cache able states. By defining check points we hope to be able to define marks from which an experiment can be rerun in the future.
 
 
-Small example
--------------
+Examples
+--------
+
+Sklearn DecisionTree example
+====================
 Following shows how PyPads can be used to track the parameters, input and output of a sklearn experiment.#
 
 .. code-block:: python

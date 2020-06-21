@@ -1,7 +1,7 @@
-.. _padrepads:
+.. _pypadre:
 
 =========
-PadrePads
+PyPaDRE
 =========
 
 PyPaDRE was the original experimental project developed on the context of padre-lab to track machine learning experiments. After identifying drawbacks in the basic architecture or pypadre the development on pypads was started.
