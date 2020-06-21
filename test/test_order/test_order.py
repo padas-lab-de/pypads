@@ -75,7 +75,7 @@ class PypadsOrderTest(BaseTest):
         # Activate tracking of pypads
         from pypads.app.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
-        tracker.api.track(experiment, hooks=["order"], ctx=sys.modules[__name__])
+        tracker.api.track(experiment, anchors=["order"], ctx=sys.modules[__name__])
 
         import timeit
         t = timeit.Timer(experiment)

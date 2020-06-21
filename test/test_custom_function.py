@@ -61,7 +61,7 @@ class PypadsCustomFunctionTest(BaseTest):
             print("I'm an function level experiment")
             return "I'm a return value."
 
-        experiment = tracker.api.track(experiment, hooks=["pypads_log"])
+        experiment = tracker.api.track(experiment, anchors=["pypads_log"])
 
         import timeit
         t = timeit.Timer(experiment)
