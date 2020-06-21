@@ -100,7 +100,10 @@ def is_package_available(name):
     :return:
     """
     import importlib
-    spam_loader = importlib.util.find_spec(name)
+    try:
+        spam_loader = importlib.util.find_spec(name)
+    except Exception as e:
+        spam_loader = importlib.find_loader(name)
     return spam_loader is not None
 
 
