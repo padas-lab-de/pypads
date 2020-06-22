@@ -6,7 +6,7 @@ metadata:
     version: "2.3.1"
 
 mappings:
-  :keras.metrics.{re:.*}:
+  :keras.metrics.Metric:
     hooks: ["pypads_metric"]
     data:
       concepts: ["keras classification metrics"]
