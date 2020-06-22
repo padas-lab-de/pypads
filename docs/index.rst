@@ -162,6 +162,8 @@ Related Projects
 
    related_projects
 
+.. include:: ../CHANGELOG.rst
+
 About Us
 --------
 This work has been developed within the **Data Science Chair** of the University of Passau.
@@ -175,13 +177,3 @@ and Research** in the project "**Provenance Analytics**" with grant agreement nu
    :caption: About Us:
 
    about
-
-
-.. include:: ../CHANGELOG.rst
-
-.. toctree::
-   :maxdepth: 2
-   :hidden:
-   :caption: Change log:
-
-   changelog
