@@ -162,6 +162,8 @@ Related Projects
 
    related_projects
 
+.. include:: ../CHANGELOG.rst
+
 About Us
 --------
 This work has been developed within the **Data Science Chair** of the University of Passau.
