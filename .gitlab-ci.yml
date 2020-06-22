@@ -42,7 +42,8 @@ stages:
 #test-python-3.5:
 #  <<: *test
 #  image: python:3.5
-#
+
+# Tensorflow 2.2.0 not available
 #test-python-3.6:
 #  <<: *test
 #  image: python:3.6
@@ -51,6 +52,7 @@ test-python-3.7:
   <<: *test
   image: python:3.7
 
+# Numpy currently not supported
 #test-python-3.8:
 #  <<: *test
 #  image: python:3.8

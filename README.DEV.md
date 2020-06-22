@@ -1,5 +1,17 @@
 # Building and installing local version
 
+To install the poetry project locally use:
+
+``
+poetry install
+``
+
+You might want to clear your caches if versions changed:
+
+``
+poetry cache clear --all pypi
+``
+
 To build the package you can just run:
 
 ``
@@ -9,7 +21,7 @@ poetry build
 A wheel is created which can be used to install the package into the local python env.
 
 ``
-pip install ./dist/padrepads-0.1.4.tar.gz
+pip install ./dist/pypads-0.1.4.tar.gz
 ``
 
 # Publishing a new version
@@ -146,4 +158,12 @@ Deployment is done by poetry.
 
 ``
 poetry publish
+``
+
+# Building the documentation locally
+
+To build the documentation locally execute:
+
+``
+sphinx-build -b html docs out_folder
 ``

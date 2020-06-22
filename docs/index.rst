@@ -134,11 +134,26 @@ PyPads
    :hidden:
    :caption: PyPads:
 
-   pypads
+   classes/base_class
+   classes/logging_fns
+   classes/utilities
+   mapping_files
+
+Extensions
+----------------
+- **PaDRe-Pads** is a tool that builds on PyPads and add some semantics to the tracked data of Machine learning experiments. See the `padre-pads documentation <https://github.com/padre-lab-eu/padre-pads>`_.
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Extensions and Plugins:
+
+   extensions
+
 
 Related Projects
 ----------------
-- **PaDRe-Pads** is a tool that builds on PyPads and add some semantics to the tracked data of Machine learning experiments. See the `padre-pads documentation <https://github.com/padre-lab-eu/padre-pads>`_.
+- **PyPadre** is the predecessor of PadrePads. Its development has been discontinued.
 
 .. toctree::
    :maxdepth: 2

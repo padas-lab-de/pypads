@@ -10,13 +10,15 @@ def experiment():
 
 logger = RanLogger()
 
-event_mapping = {
+events = {
     "ran_logger": logger
 }
 
-config = {"events": {
+hooks = {
     "ran_logger": {"on": ["pypads_log"]},
-},
+}
+
+config = {
     "recursion_identity": False,
     "recursion_depth": -1}
 
@@ -30,8 +32,8 @@ class PypadsCustomFunctionTest(BaseTest):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
+        from pypads.app.base import PyPads
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
 
         tracker.api.track(experiment, ctx=sys.modules[__name__])
 
@@ -40,7 +42,7 @@ class PypadsCustomFunctionTest(BaseTest):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        from pypads.pypads import get_current_pads
+        from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         assert pads.cache.run_exists(id(logger))
         # !-------------------------- asserts ---------------------------
@@ -52,21 +54,21 @@ class PypadsCustomFunctionTest(BaseTest):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
+        from pypads.app.base import PyPads
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
 
         def experiment():
             print("I'm an function level experiment")
             return "I'm a return value."
 
-        experiment = tracker.api.track(experiment, events=["pypads_log"])
+        experiment = tracker.api.track(experiment, anchors=["pypads_log"])
 
         import timeit
         t = timeit.Timer(experiment)
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        from pypads.pypads import get_current_pads
+        from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         assert pads.cache.run_exists(id(logger))
         # !-------------------------- asserts ---------------------------
@@ -78,8 +80,8 @@ class PypadsCustomFunctionTest(BaseTest):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
+        from pypads.app.base import PyPads
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
 
         @tracker.decorators.track()
         def experiment():
@@ -91,7 +93,7 @@ class PypadsCustomFunctionTest(BaseTest):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        from pypads.pypads import get_current_pads
+        from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         assert pads.cache.run_exists(id(logger))
         # !-------------------------- asserts ---------------------------
@@ -103,8 +105,8 @@ class PypadsCustomFunctionTest(BaseTest):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
+        from pypads.app.base import PyPads
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
 
         @tracker.decorators.track(event="pypads_log")
         def experiment():
@@ -116,7 +118,7 @@ class PypadsCustomFunctionTest(BaseTest):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        from pypads.pypads import get_current_pads
+        from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         assert pads.cache.run_exists(id(logger))
         # !-------------------------- asserts ---------------------------
@@ -128,8 +130,8 @@ class PypadsCustomFunctionTest(BaseTest):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
+        from pypads.app.base import PyPads
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
 
         @tracker.decorators.track(event="pypads_log")
         def experiment():
@@ -148,8 +150,8 @@ class PypadsCustomFunctionTest(BaseTest):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
+        from pypads.app.base import PyPads
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
 
         i = 0
 
@@ -168,7 +170,7 @@ class PypadsCustomFunctionTest(BaseTest):
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        from pypads.pypads import get_current_pads
+        from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         assert pads.cache.run_exists(id(logger))
         # TODO add asserts

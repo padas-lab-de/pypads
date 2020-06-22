@@ -1,0 +1,26 @@
+metadata:
+  author: "Thomas Weißgerber"
+  version: "0.1.0"
+  library:
+    name: "sklearn"
+    version: "0.19.1"
+
+fragments:
+  default_model:
+    .__init__:
+      events: "pypads_init"
+    .{re:(fit|.fit_predict|fit_transform)$}:
+      events: "pypads_fit"
+    .{re:(fit_predict|predict|score)$}:
+      events: "pypads_predict"
+    .{re:(fit_transform|transform)$}:
+      events: "pypads_transform"
+
+mappings:
+  sklearn:
+    .base.BaseEstimator:
+      concepts: "algorithm"
+      ::default_model: ~
+    .metrics.classification.{re:.*}:
+      concepts: "Sklearn provided metric"
+      events: "pypads_metric"

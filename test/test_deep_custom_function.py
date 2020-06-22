@@ -23,13 +23,15 @@ def experiment():
 
 logger = RanLogger()
 
-event_mapping = {
+events = {
     "ran_logger": logger
 }
 
-config = {"events": {
+hooks = {
     "ran_logger": {"on": ["ran"]},
-},
+}
+
+config = {
     "recursion_identity": False,
     "recursion_depth": -1}
 
@@ -43,24 +45,24 @@ class PypadsHookTest(BaseTest):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
+        from pypads.app.base import PyPads
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
 
         global experiment
-        experiment = tracker.api.track(experiment, events=["ran"])
+        experiment = tracker.api.track(experiment, anchors=["ran"])
 
         global sub_experiment
-        sub_experiment = tracker.api.track(sub_experiment, events=["ran"])
+        sub_experiment = tracker.api.track(sub_experiment, anchors=["ran"])
 
         global more_experiment
-        more_experiment = tracker.api.track(more_experiment, events=["ran"])
+        more_experiment = tracker.api.track(more_experiment, anchors=["ran"])
 
         import timeit
         t = timeit.Timer(experiment)
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        from pypads.pypads import get_current_pads
+        from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         assert pads.cache.run_exists(id(logger))
         assert pads.cache.run_get(id(logger)) == 16

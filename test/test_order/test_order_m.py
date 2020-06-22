@@ -3,15 +3,18 @@ import sys
 from test.base_test import BaseTest, TEST_FOLDER
 from test.test_order.test_order import First, Second, Third, experiment
 
-event_mapping = {
-    "ordered_loggers": [First(order=3), Second(order=2), Third(order=1)]
+events = {
+    "ordered_loggers": [First(order=1), Second(order=2), Third(order=3)]
 }
 
-config = {"events": {
+hooks = {
     "ordered_loggers": {"on": ["order"]}
-},
+}
+
+config = {
     "recursion_identity": False,
-    "recursion_depth": -1}
+    "recursion_depth": -1
+}
 
 
 class PypadsOrderTest(BaseTest):
@@ -23,16 +26,16 @@ class PypadsOrderTest(BaseTest):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
-        tracker.api.track(experiment, events=["order"], ctx=sys.modules[__name__])
+        from pypads.app.base import PyPads
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
+        tracker.api.track(experiment, anchors=["order"], ctx=sys.modules[__name__])
 
         import timeit
         t = timeit.Timer(experiment)
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        from pypads.pypads import get_current_pads
+        from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         assert pads.cache.run_exists(0, 1, 2)
         # !-------------------------- asserts ---------------------------

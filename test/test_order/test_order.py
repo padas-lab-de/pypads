@@ -1,7 +1,7 @@
 import sys
 
-from pypads.functions.analysis.call_tracker import LoggingEnv
-from pypads.functions.loggers.base_logger import LoggingFunction
+from pypads.app.injections.base_logger import LoggingFunction
+from pypads.injections.analysis.call_tracker import LoggingEnv
 from test.base_test import BaseTest, TEST_FOLDER
 
 
@@ -15,7 +15,7 @@ class First(LoggingFunction):
         pass
 
     def __pre__(ctx, *args, _pypads_env: LoggingEnv, **kwargs):
-        from pypads.pypads import get_current_pads
+        from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         print("first")
         pads.cache.run_add(0, True)
@@ -26,7 +26,7 @@ class Second(LoggingFunction):
         pass
 
     def __pre__(ctx, *args, _pypads_env: LoggingEnv, **kwargs):
-        from pypads.pypads import get_current_pads
+        from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         print("second")
         if not pads.cache.run_exists(0):
@@ -39,7 +39,7 @@ class Third(LoggingFunction):
         pass
 
     def __pre__(ctx, *args, _pypads_env: LoggingEnv, **kwargs):
-        from pypads.pypads import get_current_pads
+        from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         print("third")
         if not pads.cache.run_exists(1):
@@ -47,17 +47,19 @@ class Third(LoggingFunction):
         pads.cache.run_add(2, True)
 
 
-event_mapping = {
+events = {
     "first": First(),
     "second": Second(),
     "third": Third()
 }
 
-config = {"events": {
-    "first": {"on": ["order"], "order": 3},
+hooks = {
+    "first": {"on": ["order"], "order": 1},
     "second": {"on": ["order"], "order": 2},
-    "third": {"on": ["order"], "order": 1},
-},
+    "third": {"on": ["order"], "order": 3},
+}
+
+config = {
     "recursion_identity": False,
     "recursion_depth": -1}
 
@@ -71,16 +73,16 @@ class PypadsOrderTest(BaseTest):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-        from pypads.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
-        tracker.api.track(experiment, events=["order"], ctx=sys.modules[__name__])
+        from pypads.app.base import PyPads
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
+        tracker.api.track(experiment, anchors=["order"], ctx=sys.modules[__name__])
 
         import timeit
         t = timeit.Timer(experiment)
         print(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        from pypads.pypads import get_current_pads
+        from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         assert pads.cache.run_exists(0, 1, 2)
         # !-------------------------- asserts ---------------------------

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pypads"
-version = "0.1.12"
+version = "0.2.0"
 description = "PyPaDS aims to to add tracking functionality to machine learning libraries."
 authors = ["Thomas Weißgerber <thomas.weissgerber@uni-passau.de>", "Ben Amor Mehdi <Mehdi.BenAmor@uni-passau.de>", "Christofer Fellicious <Christofer.Fellicious@uni-passau.de>"]
 license = "GPL-3.0-or-later"
@@ -12,24 +12,25 @@ keywords = ["tracking", "reproducibility", "provenance", "function injection", "
 classifiers = ["Development Status :: 3 - Alpha", "Intended Audience :: Developers", "Intended Audience :: Science/Research", "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)", "Natural Language :: English", "Operating System :: MacOS", "Operating System :: Microsoft :: Windows", "Operating System :: Unix", "Programming Language :: Python :: 3.7", "Programming Language :: Python :: 3.8", "Programming Language :: Python :: 3.9", "Topic :: Scientific/Engineering :: Artificial Intelligence"]
 
 [tool.poetry.dependencies]
-python = "^3.7.0"
+python = "^3.6.0"
 cloudpickle = "^1.3.0"
 mlflow = "^1.6.0"
 boltons = "^19.3.0"
 loguru = "^0.4.1"
+poetry = "1.0.9"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2.5"
 pytest-faulthandler = "^2.0.1"
 scikit-learn = "^0.21.3"
-keras = "^2.3.1"
+keras = "^2.2.0"
 tensorflow = "^2.0.0b1"
 psutil = "^5.7.0"
 networkx = "^2.4"
 sphinx = "^2.0.1"
 sphinx_rtd_theme = "^0.4.3"
 taskipy = "^1.1.2"
-bump2version = "^0.6.0"
+bump2version = "^1.0.0"
 coverage = {version = "^5.0", extras = ["toml"]}
 gitchangelog = "^3.0.4"
 
@@ -37,6 +38,11 @@ gitchangelog = "^3.0.4"
 docs = ["sphinx", "sphinx_rtd_theme"]
 
 [tool.taskipy.tasks]
+#pre_publish = "poetry test"
+publish = "bump2version"
+post_publish = "gitchangelog && git add ./CHANGELOG.rst && git commit -m 'auto: Updated changelog' && git push --tags && task doc"
+doc = "make -C ./docs html"
+post_doc = "task deploy"
 deploy = "poetry build && poetry publish"
 
 [tool.coverage.run]

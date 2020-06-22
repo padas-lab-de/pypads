@@ -1,0 +1,20 @@
+metadata:
+  author: "Thomas Weißgerber"
+  version: "0.1.0"
+  library:
+    name: "sklearn"
+    version: "0.19.1"
+
+mappings:
+  !!python/pPath sklearn:
+    !!python/pPath base.BaseEstimator:
+      data:
+        concepts: ["algorithm"]
+    !!python/pPath __init__:
+      hooks: "pypads_init"
+    !!python/rSeg (fit|.fit_predict|fit_transform)$:
+      hooks: "pypads_fit"
+    !!python/rSeg (fit_predict|predict|score)$:
+      hooks: "pypads_predict"
+    !!python/rSeg (fit_transform|transform)$:
+      hooks: "pypads_transform"
