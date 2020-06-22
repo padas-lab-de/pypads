@@ -43,13 +43,23 @@ class ManagedGit:
         # if path is a file we init on the parent directory
         if os.path.isfile(path):
             path = os.path.dirname(path)
-
+        # if path is not representing the source code path
+        path = self._verify_path(path)
         from git import InvalidGitRepositoryError
         try:
             self.repo = git.Repo(path, search_parent_directories=True)
         except InvalidGitRepositoryError:
             logger.warning("No existing git repository was found on {0}, initializing a new one...".format(path))
             self._init_git_repo(path)
+
+    def _verify_path(self,path, pads=None):
+        # Fix: when using PyPads within a IPython Notebook.
+        if path != os.getcwd():
+            path = os.getcwd()
+            if pads:
+                from mlflow.utils.mlflow_tags import MLFLOW_SOURCE_NAME
+                pads.api.set_tag(MLFLOW_SOURCE_NAME, path)
+        return path
 
     def _init_git_repo(self, path):
         import git
