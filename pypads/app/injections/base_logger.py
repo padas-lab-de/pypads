@@ -127,16 +127,25 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
 
     """
 
-    def __init__(self, *args, static_parameters=None, **kwargs):
+    def __init__(self, *args, static_parameters=None, identity=None, **kwargs):
         super().__init__(*args, **kwargs)
         if static_parameters is None:
             static_parameters = {}
         self._static_parameters = static_parameters
+        self._identify = identity
 
         if not hasattr(self, "_pre"):
             self._pre = LoggingExecutor(fn=self.__pre__)
         if not hasattr(self, "_post"):
             self._post = LoggingExecutor(fn=self.__post__)
+
+    @property
+    def identity(self):
+        """
+        Return the identity of the logger. This should be unique for the same functionality across multiple versions.
+        :return:
+        """
+        return self._identify
 
     def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
         try:

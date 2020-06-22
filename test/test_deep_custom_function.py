@@ -49,13 +49,13 @@ class PypadsHookTest(BaseTest):
         tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
 
         global experiment
-        experiment = tracker.api.track(experiment, hooks=["ran"])
+        experiment = tracker.api.track(experiment, anchors=["ran"])
 
         global sub_experiment
-        sub_experiment = tracker.api.track(sub_experiment, hooks=["ran"])
+        sub_experiment = tracker.api.track(sub_experiment, anchors=["ran"])
 
         global more_experiment
-        more_experiment = tracker.api.track(more_experiment, hooks=["ran"])
+        more_experiment = tracker.api.track(more_experiment, anchors=["ran"])
 
         import timeit
         t = timeit.Timer(experiment)

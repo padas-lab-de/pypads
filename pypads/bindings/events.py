@@ -103,6 +103,26 @@ class FunctionRegistry:
         if not self.has(event_name):
             return set()
         fns = self._fns[event_name] if isinstance(self._fns[event_name], Iterable) else [self._fns[event_name]]
-        fitting_fns = [fn for fn in fns if any([lib.allows_any(lib_selector) for lib in fn.supported_libraries()])]
-        # TODO reduce only to the best fits. Can we decide that in any way?
-        return fitting_fns
+        fitting_fns = []
+        for fn in fns:
+            fitting_fns = fitting_fns + [(lib.specificity, fn) for lib in fn.supported_libraries() if
+                                         lib.allows_any(lib_selector)]
+
+        # Filter for specificity and identity
+        identities = {}
+        filtered_fns = set()
+        for spec, fn in fitting_fns:
+            if fn.identity is None:
+                filtered_fns.add(fn)
+            elif fn.identity in identities:
+                # If we are more specific and have the same identity remove old fn
+                if identities[fn.identity][0] <= spec:
+                    if identities[fn.identity][0] < spec:
+                        filtered_fns.remove(fn.identity)
+                    filtered_fns.add(fn)
+                    identities[fn.identity] = (spec, fn)
+            else:
+                # If not seen add it
+                filtered_fns.add(fn)
+                identities[fn.identity] = (spec, fn)
+        return filtered_fns

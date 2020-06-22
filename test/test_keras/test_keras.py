@@ -83,6 +83,12 @@ class PypadsKerasTest(BaseTest):
 
         class Predictions(LoggingFunction):
 
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, identity="predictions", **kwargs)
+
+            def supported_libraries(self):
+                return {LibSelector("keras", "2.3.1", specificity=0)}
+
             def __pre__(self, ctx, *args, _pypads_env, _args, _kwargs, **kwargs):
                 # Fallback logging function
                 global callback
@@ -94,8 +100,11 @@ class PypadsKerasTest(BaseTest):
 
         class KerasPredictions(LoggingFunction):
 
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, identity="predictions", **kwargs)
+
             def supported_libraries(self):
-                return {LibSelector("keras", "*")}
+                return {LibSelector("keras", "*", specificity=1)}
 
             def __pre__(self, ctx, *args, _pypads_env, _args, _kwargs, **kwargs):
                 # Fallback logging function
@@ -108,8 +117,11 @@ class PypadsKerasTest(BaseTest):
 
         class Keras231Predictions(LoggingFunction):
 
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, identity="predictions", **kwargs)
+
             def supported_libraries(self):
-                return {LibSelector("keras", "2.3.1")}
+                return {LibSelector("keras", "2.3.1", specificity=2)}
 
             def __pre__(self, ctx, *args, _pypads_env, _args, _kwargs, **kwargs):
                 global callback

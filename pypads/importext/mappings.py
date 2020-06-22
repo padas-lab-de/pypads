@@ -24,10 +24,11 @@ class LibSelector:
     Selector class holding version constraint and name of a library. @see poetry sem versioning
     """
 
-    def __init__(self, name, version: str):
+    def __init__(self, name, version: str, specificity=None):
         super().__init__()
         self._name = name
         self._constraint = parse_constraint(version)
+        self._specificity = specificity or self._calc_specificity()
 
     @staticmethod
     def from_dict(library):
@@ -42,6 +43,22 @@ class LibSelector:
     @property
     def version(self):
         return self._constraint
+
+    def _calc_specificity(self):
+        """
+        Calculates a value how specific the selector is. The more specific it is the higher the value is.
+        TODO do some magic here
+        :return:
+        """
+        return 0
+
+    @property
+    def specificity(self):
+        """
+        Returns a value how specific the selector is.
+        :return:
+        """
+        return self._specificity
 
     def allows_any(self, other):  # type: (LibSelector) -> bool
         """
