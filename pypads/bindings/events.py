@@ -103,6 +103,6 @@ class FunctionRegistry:
         if not self.has(event_name):
             return set()
         fns = self._fns[event_name] if isinstance(self._fns[event_name], Iterable) else [self._fns[event_name]]
-        # TODO reduce only to the best fits
         fitting_fns = [fn for fn in fns if any([lib.allows_any(lib_selector) for lib in fn.supported_libraries()])]
+        # TODO reduce only to the best fits. Can we decide that in any way?
         return fitting_fns

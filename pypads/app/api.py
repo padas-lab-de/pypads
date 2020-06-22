@@ -127,7 +127,7 @@ class PyPadsApi(IApi):
                               _anchors, {"concept": fn.__name__})
 
         # Wrap the function of given context and return it
-        return self.pypads.wrap_manager.wrap(fn, ctx=ctx, matched_mapping={MatchedMapping(mapping, PackagePath(
+        return self.pypads.wrap_manager.wrap(fn, ctx=ctx, matched_mappings={MatchedMapping(mapping, PackagePath(
             ctx_path + "." + fn.__name__))})
 
     @cmd

@@ -28,8 +28,8 @@ events = {
 }
 
 hooks = {
-            "ran_logger": {"on": ["ran"]},
-        },
+    "ran_logger": {"on": ["ran"]},
+}
 
 config = {
     "recursion_identity": False,
