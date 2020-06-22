@@ -7,11 +7,10 @@ An example of using PyPads to track different functions and classes used in a mi
 from pypads import logger
 from pypads.app.base import PyPads
 
-# tracker = PyPads(uri="git://Users/weissger/.pypads/results11")
-# tracker.add_result_remote("fim-gitlab", "git@git.fim.uni-passau.de:weissger/pypads-results-test.git")
 
 tracker = PyPads(uri="git://home/mehdi/.pypads/results")
-tracker.add_result_remote("origin", "ssh://git@gitlab.padim.fim.uni-passau.de:13003/Mehdi/pypads-results-testt.git")
+tracker.backend.add_result_remote("origin",
+                                  "ssh://git@gitlab.padim.fim.uni-passau.de:13003/Mehdi/pypads-results-testt.git")
 
 
 from sklearn import datasets
