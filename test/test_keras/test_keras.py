@@ -2,6 +2,7 @@ import os
 import pathlib
 
 from pypads.app.injections.base_logger import LoggingFunction
+from pypads.importext.mappings import LibSelector
 from pypads.utils.util import dict_merge
 from test.base_test import TEST_FOLDER, BaseTest
 
@@ -93,6 +94,9 @@ class PypadsKerasTest(BaseTest):
 
         class KerasPredictions(LoggingFunction):
 
+            def supported_libraries(self):
+                return {LibSelector("keras", "*")}
+
             def __pre__(self, ctx, *args, _pypads_env, _args, _kwargs, **kwargs):
                 # Fallback logging function
                 global callback
@@ -104,6 +108,9 @@ class PypadsKerasTest(BaseTest):
 
         class Keras231Predictions(LoggingFunction):
 
+            def supported_libraries(self):
+                return {LibSelector("keras", "2.3.1")}
+
             def __pre__(self, ctx, *args, _pypads_env, _args, _kwargs, **kwargs):
                 global callback
                 callback = "predictions for keras v 2.3.1"
@@ -113,9 +120,7 @@ class PypadsKerasTest(BaseTest):
                 pass
 
         keras_events = {
-            "predictions": Predictions(),
-            ("predictions", "keras"): KerasPredictions(),
-            ("predictions", "keras", "2.3.1"): Keras231Predictions()
+            "predictions": [Predictions(), KerasPredictions(), Keras231Predictions()]
         }
         keras_hooks = {
             "predictions": {"on": ["pypads_predict"]}

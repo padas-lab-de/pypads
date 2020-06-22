@@ -30,6 +30,9 @@ class Anchor:
         """
         return self._description
 
+    def __str__(self):
+        return self._name
+
 
 def init_anchors():
     if not all([a.name in anchors for a in DEFAULT_ANCHORS]):

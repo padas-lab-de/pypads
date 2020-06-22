@@ -48,15 +48,15 @@ class Hook:
 
 
 class HookEventConfig(OrderMixin):
-    def __init__(self, anchor, event_name, parameters=None, *args, **kwargs):
-        self._anchor = anchor
+    def __init__(self, hook, event_name, parameters=None, *args, **kwargs):
+        self._hook = hook
         self._event_name = event_name
         self._parameters = parameters
         super().__init__(*args, **kwargs)
 
     @property
     def anchor(self):
-        return self._anchor
+        return self._hook
 
     @property
     def event_name(self):
@@ -91,12 +91,13 @@ class HookRegistry:
     def get_logging_functions(self, *hooks: Hook):
         configs = []
         for hook in hooks:
-            configs = configs + list(self.get_configs_for_hook(hook))
-        OrderMixin.sort_mutable(configs, reverse=True)
+            configs = configs + [(hook, c) for c in list(self.get_configs_for_hook(hook))]
+        configs.sort(key=lambda e: -e[1].order())
 
         fns = []
-        for c in configs:
-            found_fns = [(f, c.parameters) for f in self._pypads.function_registry.get_functions(c.event_name)]
+        for hook, c in configs:
+            found_fns = [(f, c.parameters) for f in
+                         self._pypads.function_registry.get_functions(c.event_name, hook.library)]
             found_fns.sort(key=lambda e: -e[0].order())
             fns = fns + found_fns
         return fns

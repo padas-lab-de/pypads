@@ -12,7 +12,7 @@ from pypads.injections.analysis.call_tracker import LoggingEnv
 from pypads.injections.analysis.time_keeper import TimingDefined, add_run_time
 from pypads.utils.util import inheritors
 
-ANY_SELECTOR = LibSelector("_pypads_dummy", "1.0.0")
+ANY_SELECTOR = LibSelector(".*", "*")
 
 
 class LibrarySpecificMixin(SuperStop):
@@ -25,12 +25,12 @@ class LibrarySpecificMixin(SuperStop):
         return s
 
     def allows_any(self, lib_selector: LibSelector):
-        if ANY_SELECTOR in LibSelector:
+        if ANY_SELECTOR in self.supported_libraries():
             return True
-        return any([s.allows_any(lib_selector.version) for s in self.supported_libraries()])
+        return any([s.allows_any(lib_selector) for s in self.supported_libraries()])
 
     def allows(self, name, version):
-        if ANY_SELECTOR in LibSelector:
+        if ANY_SELECTOR in self.supported_libraries():
             return True
         return any([s.allows(version) for s in self.supported_libraries() if s == name])
 

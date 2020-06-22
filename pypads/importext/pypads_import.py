@@ -67,7 +67,6 @@ def duck_punch_loader(spec):
             # For every var on module
             for name, obj in inspect.getmembers(module,
                                                 lambda x: hasattr(x, "__module__") and x.__module__ == module.__name__):
-
                 if obj is not None:
                     obj_ref = ".".join([reference, name])
                     package = Package(module, PackagePath(obj_ref))
@@ -89,7 +88,8 @@ def duck_punch_loader(spec):
                                 else:
                                     mro_entry_history[entry].append(obj)
                                 if hasattr(entry, "_pypads_mapping_" + entry.__name__):
-                                    mappings.union(_add_inherited_mapping(obj, entry))
+                                    found_mappings = _add_inherited_mapping(obj, entry)
+                                    mappings = mappings.union(found_mappings)
                         except Exception as e:
                             logger.debug("Skipping some superclasses of " + str(obj) + ". " + str(e))
                     mappings = mappings.union(_get_relevant_mappings(package))

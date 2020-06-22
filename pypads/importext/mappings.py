@@ -1,5 +1,6 @@
 import glob
 import os
+import re
 from typing import List, Set, Tuple, Generator, Iterable
 
 import pkg_resources
@@ -10,7 +11,7 @@ from pypads.bindings.anchors import Anchor, get_anchor
 from pypads.bindings.hooks import Hook
 from pypads.importext.package_path import RegexMatcher, PackagePath, PackagePathMatcher, \
     SerializableMatcher, Package
-from pypads.importext.semver import parse_constraint, VersionConstraint
+from pypads.importext.semver import parse_constraint
 
 default_mapping_file_paths = []
 default_mapping_file_paths.extend(glob.glob(
@@ -42,22 +43,23 @@ class LibSelector:
     def version(self):
         return self._constraint
 
-    def allows_any(self, other):  # type: (VersionConstraint) -> bool
+    def allows_any(self, other):  # type: (LibSelector) -> bool
         """
         Check if the constraint overlaps with another constaint.
         :param other:
         :return:
         """
-        return self._constraint.allows_any(other)
+        return re.compile(self._name).match(other.name) and self._constraint.allows_any(other.version)
 
-    def allows(self, version):  # type: ("Version") -> bool
+    def allows(self, name, version):  # type: (str, "Version") -> bool
         """
         Check if the constraint allows given version number.
+        :param name:
         :param version:
         :return:
         """
         from pypads.importext.semver import Version
-        return self._constraint.allows(Version.parse(version))
+        return re.compile(self._name).match(name) and self._constraint.allows(Version.parse(version))
 
 
 class Mapping:
@@ -475,7 +477,7 @@ class MappingRegistry:
             # Take only mappings which are fitting for versions
             if lib_version:
                 for k, collection in [(s, c) for s, c in self.get_entries() if
-                                      s.name == package.path.segments[0] and s.allows(lib_version)]:
+                                      s.allows(str(package.path.segments[0]), lib_version)]:
                     for m in collection.find_mappings(package.path.segments):
                         mappings.add(m)
             else:

@@ -50,4 +50,4 @@ class Parameters(LoggingFunction):
                 for key, value in ctx.get_params().items():
                     persist_parameter(_pypads_env, key, value)
         except Exception as e:
-            logger.error(e)
+            logger.error("Couldn't extract parameters on " + str(_pypads_env) + " due to " + str(e))

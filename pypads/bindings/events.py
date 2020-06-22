@@ -2,6 +2,7 @@ from typing import Iterable
 
 from pypads.bindings.event_types import EventType
 from pypads.bindings.hooks import Hook
+from pypads.importext.mappings import LibSelector
 from pypads.injections.analysis.parameters import Parameters
 from pypads.injections.loggers.data_flow import Output, Input
 from pypads.injections.loggers.debug import Log, LogInit
@@ -98,10 +99,10 @@ class FunctionRegistry:
         """
         return event_name in self._fns
 
-    def get_functions(self, event_name):
+    def get_functions(self, event_name, lib_selector: LibSelector):
         if not self.has(event_name):
             return set()
-        fns = self._fns[event_name]
-        if not isinstance(fns, Iterable):
-            fns = [fns]
-        return fns
+        fns = self._fns[event_name] if isinstance(self._fns[event_name], Iterable) else [self._fns[event_name]]
+        # TODO reduce only to the best fits
+        fitting_fns = [fn for fn in fns if any([lib.allows_any(lib_selector) for lib in fn.supported_libraries()])]
+        return fitting_fns
