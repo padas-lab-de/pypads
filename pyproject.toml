@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pypads"
-version = "0.1.20"
+version = "0.2.0"
 description = "PyPaDS aims to to add tracking functionality to machine learning libraries."
 authors = ["Thomas Weißgerber <thomas.weissgerber@uni-passau.de>", "Ben Amor Mehdi <Mehdi.BenAmor@uni-passau.de>", "Christofer Fellicious <Christofer.Fellicious@uni-passau.de>"]
 license = "GPL-3.0-or-later"
