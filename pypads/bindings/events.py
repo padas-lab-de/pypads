@@ -118,7 +118,8 @@ class FunctionRegistry:
                 # If we are more specific and have the same identity remove old fn
                 if identities[fn.identity][0] <= spec:
                     if identities[fn.identity][0] < spec:
-                        filtered_fns.remove(fn.identity)
+                        if fn.identity in identities:
+                            filtered_fns.remove(identities[fn.identity][1])
                     filtered_fns.add(fn)
                     identities[fn.identity] = (spec, fn)
             else:
