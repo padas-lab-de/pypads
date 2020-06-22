@@ -30,4 +30,4 @@ predicted = model.predict(dataset.data)
 # summarize the fit of the model
 logger.error("Score: " + str(f1_score(expected, predicted, average="macro")))
 
-# tracker.api.end_run()
+tracker.api.end_run()
