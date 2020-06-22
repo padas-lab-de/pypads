@@ -57,7 +57,7 @@ class IDisk(PreRunFunction):
     def _call(self, pads, *args, **kwargs):
         import psutil
         # see https://www.thepythoncode.com/article/get-hardware-system-information-python
-        path = local_uri_to_path(pads.uri)
+        path = local_uri_to_path(pads.backend.uri)
         disk_usage = psutil.disk_usage(path)
         pads.api.set_tag("pypads.system.disk.total", sizeof_fmt(disk_usage.total))
 
