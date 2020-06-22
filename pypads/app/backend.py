@@ -30,6 +30,7 @@ class MLFlowBackend:
             result_path = self._uri[5:]
             self._uri = os.path.join(self._uri[5:], "r_" + str(string_to_int(uri)), "experiments")
             self.manage_results(result_path)
+            pypads.cache.add('uri', self._uri)
 
         # Set the tracking uri
         mlflow.set_tracking_uri(self._uri)

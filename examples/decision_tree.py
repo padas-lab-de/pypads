@@ -6,12 +6,12 @@ An example of using PyPads to track different functions and classes used in a mi
 """
 from pypads import logger
 from pypads.app.base import PyPads
+import os
 
-# tracker = PyPads(uri="git://Users/weissger/.pypads/results11")
-# tracker.add_result_remote("fim-gitlab", "git@git.fim.uni-passau.de:weissger/pypads-results-test.git")
+path = os.path.expanduser('~')
 
-tracker = PyPads(uri="git://home/mehdi/.pypads/results")
-tracker.add_result_remote("origin", "ssh://git@gitlab.padim.fim.uni-passau.de:13003/Mehdi/pypads-results-testt.git")
+tracker = PyPads(uri="git:/{}/.pypads/results".format(path), autostart=True)
+# tracker.backend.add_result_remote("origin", "ssh://git@gitlab.padim.fim.uni-passau.de:13003/Mehdi/pypads-results-testt.git")
 
 
 from sklearn import datasets
@@ -30,4 +30,4 @@ predicted = model.predict(dataset.data)
 # summarize the fit of the model
 logger.error("Score: " + str(f1_score(expected, predicted, average="macro")))
 
-tracker.api.end_run()
+# tracker.api.end_run()

@@ -128,11 +128,11 @@ class PyPads:
         # Store uri into cache
         self._cache.add("uri", uri or os.environ.get('MLFLOW_PATH') or os.path.join(self.folder, ".mlruns"))
 
-        self._backend = MLFlowBackend(self.uri, self)
-
         # Enable git tracking of the current repository
         from pypads.app.misc.managed_git import ManagedGitFactory
         self._managed_git_factory = ManagedGitFactory(self)
+
+        self._backend = MLFlowBackend(self.uri, self)
 
         # Store config into cache
         self.config = {**DEFAULT_CONFIG, **config} if config else DEFAULT_CONFIG
@@ -187,10 +187,6 @@ class PyPads:
                 self.start_track(autostart)
             else:
                 self.start_track()
-
-    @property
-    def managed_git_factory(self):
-        return self._managed_git_factory
 
     @staticmethod
     def available_loggers():
@@ -428,6 +424,14 @@ class PyPads:
         :return: CallTracker
         """
         return self._call_tracker
+
+    @property
+    def managed_git_factory(self):
+        """
+        Return Git manager of PyPads. This used to create and manages git repositories.
+        :return: ManagedGitFactory
+        """
+        return self._managed_git_factory
 
     @property
     def backend(self):
