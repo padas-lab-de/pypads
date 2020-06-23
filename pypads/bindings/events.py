@@ -103,8 +103,7 @@ class FunctionRegistry:
         if not self.has(event_name):
             return set()
         fns = self._fns[event_name] if isinstance(self._fns[event_name], Iterable) else [self._fns[event_name]]
-        if self.has(event_name = (event_name,lib_selector.name)):
-            fns = self._fns[(event_name,lib_selector.name)] if isinstance(self._fns[(event_name,lib_selector.name)], Iterable) else [self._fns[(event_name,lib_selector.name)]]
+
         fitting_fns = []
         for fn in fns:
             fitting_fns = fitting_fns + [(lib.specificity, fn) for lib in fn.supported_libraries() if
