@@ -80,32 +80,33 @@ predicted = model.predict(dataset.data) # pypads will track only the output of t
 ```
         
         
-The used hooks for each event are defined in the mapping json file where each hook represents the functions to listen to.
-In the [sklearn mapping](pypads/bindings/resources/mapping/sklearn_0_19_1.json) json file, an example entry would be:
+The used hooks for each event are defined in the mapping file where each hook represents the functions to listen to.
+Users can use regex for goruping functions and even provide paths to hook functions.
+In the [sklearn mapping](pypads/bindings/resources/mapping/sklearn_0_19_1.yml) YAML file, an example entry would be:
+```yaml
+fragments:
+  default_model:
+    !!python/pPath __init__:
+      hooks: "pypads_init"
+    !!python/rSeg (fit|.fit_predict|fit_transform)$:
+      hooks: "pypads_fit"
+    !!python/rSeg (fit_predict|predict|score)$:
+      hooks: "pypads_predict"
+    !!python/rSeg (fit_transform|transform)$:
+      hooks: "pypads_transform"
 
-    {
-      "name": "base sklearn estimator",
-      "other_names": [],
-      "implementation": {
-        "sklearn": "sklearn.base.BaseEstimator"
-      },
-      "hooks": {
-        "pypads_fit": [
-          "fit",
-          "fit_predict",
-          "fit_transform"
-        ],
-        "pypads_predict": [
-          "fit_predict",
-          "predict"
-        ],
-        "pypads_transform": [
-          "fit_transform",
-          "transform"
-        ]
-      }
-    }
-
+mappings:
+  !!python/pPath sklearn:
+    !!python/pPath base.BaseEstimator:
+      ;default_model: ~
+      data:
+        concepts: ["algorithm"]
+    !!python/pPath metrics.classification:
+      !!python/rSeg .*:
+        hooks: "pypads_metric"
+        data:
+          concepts: ["Sklearn provided metric"]
+```
 For instance, "pypads_fit" is an event listener on any fit, fit_predict and fit_transform call made by the tracked model class which is in this case **BaseEstimator** that most estimators inherits from.
 
 ### Defining hooks
