@@ -1,12 +1,15 @@
 import inspect
 
-from pypads.app.misc.caches import Cache
-import inspect
-
+from pypads import logger
 from pypads.app.misc.caches import Cache
 
 
 def get_class_that_defined_method(meth):
+    """
+    Try to find the class / module which defined given method.
+    :param meth: Method for which we search an origin.
+    :return:
+    """
     if inspect.ismethod(meth):
         for cls in inspect.getmro(meth.__self__.__class__):
             if cls.__dict__.get(meth.__name__) is meth:
@@ -21,6 +24,11 @@ def get_class_that_defined_method(meth):
 
 
 def dict_merge(*dicts):
+    """
+    Simple merge of dicts
+    :param dicts:
+    :return:
+    """
     merged = {}
     for d in dicts:
         if isinstance(d, dict):
@@ -34,6 +42,12 @@ def dict_merge(*dicts):
 
 
 def sizeof_fmt(num, suffix='B'):
+    """
+    Get the mem / disk size in a human readable way.
+    :param num:
+    :param suffix:
+    :return:
+    """
     if num == 0:
         return '0'
     import math
@@ -53,13 +67,12 @@ def local_uri_to_path(uri):
     return urllib.request.url2pathname(path)
 
 
-def is_package_available(name):
-    import importlib
-    spam_loader = importlib.util.find_spec(name)
-    return spam_loader is not None
-
-
 def string_to_int(s):
+    """
+    Build a int from a given string.
+    :param s:
+    :return:
+    """
     ord3 = lambda x: '%.3d' % ord(x)
     return int(''.join(map(ord3, s)))
 
@@ -81,13 +94,21 @@ def inheritors(clazz):
     return subclasses
 
 
-def _is_package_available(name):
+def is_package_available(name):
+    """
+    Check if given package is available.
+    :param name: Name of the package
+    :return:
+    """
     import importlib
-    spam_loader = importlib.util.find_spec(name)
+    try:
+        spam_loader = importlib.util.find_spec(name)
+    except Exception as e:
+        spam_loader = importlib.find_loader(name)
     return spam_loader is not None
 
 
-def merge_dicts(*dicts):
+def dict_merge_caches(*dicts):
     """
     Merge two dicts. Entries are overwritten if not mergeable. Cache is supported.
     :param dicts: dicts to merge
@@ -102,7 +123,15 @@ def merge_dicts(*dicts):
                     merged[key] = dict_merge(node, value)
                 elif isinstance(value, list):
                     node = merged.setdefault(key, [])
-                    merged[key] = node.extend(value)
+                    try:
+                        node.extend(value)
+                    except AttributeError as e:
+                        try:
+                            node = [node]
+                            node.extend(value)
+                        except Exception as e:
+                            logger.error("Failed merging dictionaries in dict_merge_caches : {}".format(str(e)))
+                    merged[key] = node
                 elif isinstance(value, set):
                     s: set = merged.setdefault(key, set())
                     for v in value:

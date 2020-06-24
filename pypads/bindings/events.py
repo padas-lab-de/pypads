@@ -1,7 +1,8 @@
-from typing import Iterable
+from typing import Iterable, Union
 
 from pypads.bindings.event_types import EventType
 from pypads.bindings.hooks import Hook
+from pypads.importext.mappings import LibSelector
 from pypads.injections.analysis.parameters import Parameters
 from pypads.injections.loggers.data_flow import Output, Input
 from pypads.injections.loggers.debug import Log, LogInit
@@ -90,7 +91,7 @@ class FunctionRegistry:
         for fn in fns:
             self._fns[event_name].add(fn)
 
-    def has(self, event_name: str):
+    def has(self, event_name: Union[str,tuple]):
         """
         Check if at least one function with event key is in map.
         :param event_name: Key of the function
@@ -98,10 +99,32 @@ class FunctionRegistry:
         """
         return event_name in self._fns
 
-    def get_functions(self, event_name):
+    def get_functions(self, event_name, lib_selector: LibSelector):
         if not self.has(event_name):
             return set()
-        fns = self._fns[event_name]
-        if not isinstance(fns, Iterable):
-            fns = [fns]
-        return fns
+        fns = self._fns[event_name] if isinstance(self._fns[event_name], Iterable) else [self._fns[event_name]]
+
+        fitting_fns = []
+        for fn in fns:
+            fitting_fns = fitting_fns + [(lib.specificity, fn) for lib in fn.supported_libraries() if
+                                         lib.allows_any(lib_selector)]
+
+        # Filter for specificity and identity
+        identities = {}
+        filtered_fns = set()
+        for spec, fn in fitting_fns:
+            if fn.identity is None:
+                filtered_fns.add(fn)
+            elif fn.identity in identities:
+                # If we are more specific and have the same identity remove old fn
+                if identities[fn.identity][0] <= spec:
+                    if identities[fn.identity][0] < spec:
+                        if fn.identity in identities:
+                            filtered_fns.remove(identities[fn.identity][1])
+                    filtered_fns.add(fn)
+                    identities[fn.identity] = (spec, fn)
+            else:
+                # If not seen add it
+                filtered_fns.add(fn)
+                identities[fn.identity] = (spec, fn)
+        return filtered_fns

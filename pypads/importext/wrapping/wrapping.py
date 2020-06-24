@@ -1,5 +1,6 @@
 import inspect
 from types import ModuleType
+from typing import Set
 
 from pypads.importext.mappings import MatchedMapping
 from pypads.importext.wrapping.base_wrapper import Context
@@ -33,9 +34,11 @@ class WrapManager:
     def function_wrapper(self):
         return self._function_wrapper
 
-    def wrap(self, wrappee, ctx, matched_mapping: MatchedMapping):
+    def wrap(self, wrappee, ctx, matched_mappings: Set[MatchedMapping]):
         """
         Wrap given object with pypads functionality
+        :param ctx:
+        :param matched_mappings:
         :param wrappee:
         :param args:
         :param kwargs:
@@ -53,12 +56,12 @@ class WrapManager:
                     ctx = Context(dummy)
 
             if inspect.ismodule(wrappee):
-                return self._module_wrapper.wrap(wrappee, ctx, matched_mapping)
+                return self._module_wrapper.wrap(wrappee, ctx, matched_mappings)
 
             elif inspect.isclass(wrappee):
-                return self._class_wrapper.wrap(wrappee, ctx, matched_mapping)
+                return self._class_wrapper.wrap(wrappee, ctx, matched_mappings)
 
             elif inspect.isfunction(wrappee):
-                return self._function_wrapper.wrap(wrappee, ctx, matched_mapping)
+                return self._function_wrapper.wrap(wrappee, ctx, matched_mappings)
         else:
             return wrappee

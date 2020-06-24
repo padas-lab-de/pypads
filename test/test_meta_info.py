@@ -7,7 +7,7 @@ class PypadsHookTest(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER)
+        tracker = PyPads(uri=TEST_FOLDER, autostart=True)
         meta = "{'url': 'https://some.param.url'}"
         tracker.api.log_param("some_param", 1, meta=meta)
 
@@ -19,7 +19,7 @@ class PypadsHookTest(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER)
+        tracker = PyPads(uri=TEST_FOLDER, autostart=True)
         meta = "{'url': 'https://some.metric.url'}"
         tracker.api.log_metric("some_metric", 1, meta=meta)
 
@@ -31,7 +31,7 @@ class PypadsHookTest(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER)
+        tracker = PyPads(uri=TEST_FOLDER, autostart=True)
 
         obj = object()
         meta = "{'url': 'https://some.atrifact.url'}"

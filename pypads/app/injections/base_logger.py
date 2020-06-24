@@ -12,7 +12,7 @@ from pypads.injections.analysis.call_tracker import LoggingEnv
 from pypads.injections.analysis.time_keeper import TimingDefined, add_run_time
 from pypads.utils.util import inheritors
 
-ANY_SELECTOR = LibSelector("_pypads_dummy", "1.0.0")
+ANY_SELECTOR = LibSelector(".*", "*")
 
 
 class LibrarySpecificMixin(SuperStop):
@@ -25,12 +25,12 @@ class LibrarySpecificMixin(SuperStop):
         return s
 
     def allows_any(self, lib_selector: LibSelector):
-        if ANY_SELECTOR in LibSelector:
+        if ANY_SELECTOR in self.supported_libraries():
             return True
-        return any([s.allows_any(lib_selector.version) for s in self.supported_libraries()])
+        return any([s.allows_any(lib_selector) for s in self.supported_libraries()])
 
     def allows(self, name, version):
-        if ANY_SELECTOR in LibSelector:
+        if ANY_SELECTOR in self.supported_libraries():
             return True
         return any([s.allows(version) for s in self.supported_libraries() if s == name])
 
@@ -127,16 +127,25 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
 
     """
 
-    def __init__(self, *args, static_parameters=None, **kwargs):
+    def __init__(self, *args, static_parameters=None, identity=None, **kwargs):
         super().__init__(*args, **kwargs)
         if static_parameters is None:
             static_parameters = {}
         self._static_parameters = static_parameters
+        self._identify = identity
 
         if not hasattr(self, "_pre"):
             self._pre = LoggingExecutor(fn=self.__pre__)
         if not hasattr(self, "_post"):
             self._post = LoggingExecutor(fn=self.__post__)
+
+    @property
+    def identity(self):
+        """
+        Return the identity of the logger. This should be unique for the same functionality across multiple versions.
+        :return:
+        """
+        return self._identify
 
     def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
         try:

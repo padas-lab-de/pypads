@@ -33,7 +33,7 @@ release = '0.1.20'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.autosummary', 'sphinx.ext.intersphinx', 'sphinx.ext.doctest',
-              'sphinx.ext.napoleon','sphinx.ext.linkcode']
+              'sphinx.ext.napoleon', 'sphinx.ext.linkcode']
 
 autodoc_default_options = {
     'members': None,

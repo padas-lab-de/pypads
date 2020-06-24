@@ -47,17 +47,19 @@ class Third(LoggingFunction):
         pads.cache.run_add(2, True)
 
 
-event_mapping = {
+events = {
     "first": First(),
     "second": Second(),
     "third": Third()
 }
 
-config = {"events": {
-    "first": {"on": ["order"], "order": 3},
+hooks = {
+    "first": {"on": ["order"], "order": 1},
     "second": {"on": ["order"], "order": 2},
-    "third": {"on": ["order"], "order": 1},
-},
+    "third": {"on": ["order"], "order": 3},
+}
+
+config = {
     "recursion_identity": False,
     "recursion_depth": -1}
 
@@ -72,8 +74,8 @@ class PypadsOrderTest(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, logging_fns=event_mapping)
-        tracker.api.track(experiment, hooks=["order"], ctx=sys.modules[__name__])
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
+        tracker.api.track(experiment, anchors=["order"], ctx=sys.modules[__name__])
 
         import timeit
         t = timeit.Timer(experiment)

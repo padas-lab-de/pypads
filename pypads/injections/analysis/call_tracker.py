@@ -96,6 +96,9 @@ class FunctionReference:
                 return id(getattr(self.context, self.wrappee.__name__))
         return str(id(self.context)) + "." + str(id(self.wrappee))
 
+    def __str__(self):
+        return str(self._real_context) + "." + str(self._function.__name__)
+
 
 class CallAccessor(FunctionReference):
 
@@ -240,11 +243,11 @@ class Call:
 
 class LoggingEnv:
 
-    def __init__(self, mapping, hook, parameter, callback, call: Call):
+    def __init__(self, mappings, hook, parameter, callback, call: Call):
         self._call = call
         self._callback = callback
         self._hook = hook
-        self._mapping = mapping
+        self._mappings = mappings
         self._parameter = parameter
 
     @property
@@ -260,8 +263,8 @@ class LoggingEnv:
         return self._hook
 
     @property
-    def mapping(self):
-        return self._mapping
+    def mappings(self):
+        return self._mappings
 
     @property
     def parameter(self):

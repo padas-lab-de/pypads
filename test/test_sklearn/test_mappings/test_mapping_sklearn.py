@@ -9,6 +9,10 @@ from test.test_sklearn.base_sklearn_test import sklearn_pipeline_experiment, skl
 minimal = MappingFile(os.path.join(os.path.dirname(__file__), "sklearn_minimal.yml"))
 regex = MappingFile(os.path.join(os.path.dirname(__file__), "sklearn_regex.yml"))
 
+config = {
+    "include_default_mappings": False
+}
+
 
 class MappingSklearnTest(BaseTest):
 
@@ -17,7 +21,7 @@ class MappingSklearnTest(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, mapping=minimal)
+        tracker = PyPads(uri=TEST_FOLDER, config=config, mappings=[minimal], autostart=True)
 
         import timeit
         t = timeit.Timer(sklearn_pipeline_experiment)
@@ -34,7 +38,7 @@ class MappingSklearnTest(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, mapping=regex)
+        tracker = PyPads(uri=TEST_FOLDER, config=config, mappings=[minimal], autostart=True)
 
         import timeit
         t = timeit.Timer(sklearn_simple_decision_tree_experiment)

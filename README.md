@@ -3,8 +3,9 @@
 Building on the [MLFlow](https://github.com/mlflow/mlflow/) toolset this project aims to extend the functionality for MLFlow, increase the automation and therefore reduce the workload for the user. The production of structured results is an additional goal of the extension.
 
 [![Documentation Status](https://readthedocs.org/projects/pypads/badge/?version=latest)](https://pypads.readthedocs.io/en/latest/?badge=latest)
-[![PyPI version](https://badge.fury.io/py/pypads.svg)](https://badge.fury.io/py/pypads)
+[![PyPI version](https://badge.fury.io/py/pypads.svg)](https://badge.fury.io/py/pypads)  
 
+![Build status](https://gitlab.padim.fim.uni-passau.de/RP-17-PaDReP/ontopads/badges/master/pipeline.svg)
 
 # Intalling
 This tool requires those libraries to work:

@@ -10,6 +10,7 @@ if is_package_available("joblib"):
 
     original_delayed = joblib.delayed
 
+
     @wraps(original_delayed)
     def punched_delayed(fn):
         """Decorator used to capture the arguments of a function."""
@@ -27,7 +28,7 @@ if is_package_available("joblib"):
                 from pypads.app import pypads
                 import mlflow
 
-                is_new_process = not pypads.app.pypads.current_pads
+                is_new_process = not pypads.current_pads
 
                 # If pads has to be reinitialized
                 if is_new_process:
@@ -40,12 +41,14 @@ if is_package_available("joblib"):
                     start_time = time.time()
                     logger.debug("Init Pypads in:" + str(time.time() - start_time))
 
+                    # TODO update to new format
                     from pypads.app.base import PyPads
-                    _pypads = PyPads(uri=_pypads_tracking_uri, reload_warnings=False,
+                    _pypads = PyPads(uri=_pypads_tracking_uri,
                                      config=_pypads_config,
-                                     affected_modules=_pypads_affected_modules,
-                                     clear_imports=True, pre_initialized_cache=_pypads_cache, reload_modules=True,
-                                     disable_run_init=True)
+                                     pre_initialized_cache=_pypads_cache)
+                    _pypads.activate_tracking(reload_warnings=False, affected_modules=_pypads_affected_modules,
+                                              clear_imports=True, reload_modules=True, )
+                    _pypads.start_track(disable_run_init=True)
 
                     def clear_mlflow():
                         """
@@ -104,7 +107,7 @@ if is_package_available("joblib"):
                     kwargs = {"_pypads_cache": pads.cache,
                               "_pypads_config": pads.config,
                               "_pypads_active_run_id": run.info.run_id,
-                              "_pypads_tracking_uri": pads.tracking_uri,
+                              "_pypads_tracking_uri": pads.uri,
                               "_pypads_affected_modules": pads.wrap_manager.module_wrapper.punched_module_names,
                               "_pypads_triggering_process": os.getpid()}
             from pypads.pads_loguru import logger_manager

@@ -17,13 +17,14 @@ def _add_found_class(mapping):
     return get_current_pads().mapping_registry.add_found_class(mapping)
 
 
-def _get_relevant_mappings(package: Package, search_found):
+def _get_relevant_mappings(package: Package):
     from pypads.app.pypads import get_current_pads
-    return get_current_pads().mapping_registry.get_relevant_mappings(package, search_found)
+    return get_current_pads().mapping_registry.get_relevant_mappings(package)
 
 
 def _add_inherited_mapping(clazz, super_class):
     from pypads.app.pypads import get_current_pads
+    found_mappings = set()
     if clazz.__name__ not in get_current_pads().wrap_manager.class_wrapper.punched_class_names:
         if hasattr(super_class, "_pypads_mapping_" + super_class.__name__):
             for matched_mapping in getattr(super_class, "_pypads_mapping_" + super_class.__name__):
@@ -35,11 +36,12 @@ def _add_inherited_mapping(clazz, super_class):
                     ".".join(filter(lambda s: len(s) > 0,
                                     [clazz.__module__, clazz.__qualname__,
                                      ".".join([h.serialize() for h in
-                                               matched_mapping.package_path[
-                                               len(matched_mapping.matcher.matchers):]])]))),
-                    matched_mapping.mapping.in_collection, matched_mapping.mapping.hooks,
+                                               matched_mapping.mapping.matcher.matchers[
+                                               len(matched_mapping.package_path.segments):]])]))),
+                    matched_mapping.mapping.in_collection, {h.anchor for h in matched_mapping.mapping.hooks},
                     matched_mapping.mapping.values)
-                _add_found_class(found_mapping)
+                found_mappings.add(found_mapping)
+    return found_mappings
 
 
 def duck_punch_loader(spec):
@@ -63,9 +65,16 @@ def duck_punch_loader(spec):
             #  This looks at every imported class and every mapping.
             # On execution of a module we search for relevant mappings
             # For every var on module
-            for name in dir(module):
-                obj = getattr(module, name)
+            try:
+                members = inspect.getmembers(module,
+                                             lambda x: hasattr(x, "__module__") and x.__module__ == module.__name__)
+            except Exception as e:
+                logger.debug(
+                    "getmembers of inspect failed on module '" + str(module.__name__) + "' with expection" + str(
+                        e) + ". Falling back to dir to get the members of the module.")
+                members = [(name, getattr(module, name)) for name in dir(module)]
 
+            for name, obj in members:
                 if obj is not None:
                     obj_ref = ".".join([reference, name])
                     package = Package(module, PackagePath(obj_ref))
@@ -75,8 +84,8 @@ def duck_punch_loader(spec):
                         if not module.__name__.split(".")[0] == obj.__name__.split(".")[0]:
                             continue
 
+                    mappings = set()
                     if inspect.isclass(obj) and hasattr(obj, "mro"):
-                        found = []
                         try:
 
                             # Look at the MRO and add classes to be punched which inherit from our punched classes
@@ -87,17 +96,14 @@ def duck_punch_loader(spec):
                                 else:
                                     mro_entry_history[entry].append(obj)
                                 if hasattr(entry, "_pypads_mapping_" + entry.__name__):
-                                    _add_inherited_mapping(obj, entry)
-                                    found.append(entry)
+                                    found_mappings = _add_inherited_mapping(obj, entry)
+                                    mappings = mappings.union(found_mappings)
                         except Exception as e:
                             logger.debug("Skipping some superclasses of " + str(obj) + ". " + str(e))
-                        mappings = _get_relevant_mappings(package, len(found) > 0)
-                    else:
-                        mappings = _get_relevant_mappings(package, False)
-
-                    for mapping in mappings:
+                    mappings = mappings.union(_get_relevant_mappings(package))
+                    if len(mappings) > 0:
                         current_pads.wrap_manager.wrap(obj, Context(module, reference),
-                                                       MatchedMapping(mapping, package.path))
+                                                       {MatchedMapping(mapping, package.path) for mapping in mappings})
         return out
 
     spec.loader.exec_module = types.MethodType(exec_module, spec.loader)

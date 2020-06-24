@@ -4,6 +4,7 @@ from mlflow.utils.autologging_utils import try_mlflow_log
 from pypads import logger
 from pypads.app.injections.base_logger import LoggingFunction
 from pypads.injections.analysis.call_tracker import LoggingEnv
+from pypads.utils.util import dict_merge
 
 
 def persist_parameter(_pypads_env, key, value):
@@ -30,8 +31,12 @@ class Parameters(LoggingFunction):
         :return:
         """
         try:
-            if 'hyper_parameters' in _pypads_env.mapping.values['data']:
-                for type, parameters in _pypads_env.mapping.values['data']['hyper_parameters'].items():
+            data = {}
+            for mm in _pypads_env.mappings:
+                if "data" in mm.mapping.values and 'hyper_parameters' in mm.mapping.values['data']:
+                    data = dict_merge(data, mm.mapping.values['data']['hyper_parameters'])
+            if len(data) > 0:
+                for type, parameters in data.items():
                     for parameter in parameters:
                         key = parameter["name"]
                         if "path" in parameter and hasattr(ctx, parameter["path"]):
@@ -42,7 +47,7 @@ class Parameters(LoggingFunction):
             else:
                 logger.warning("No parameters are defined on the mapping file for " + str(
                     ctx.__class__) + ". Trying to extract by other means...")
-                for key, value in ctx.get_params():
+                for key, value in ctx.get_params().items():
                     persist_parameter(_pypads_env, key, value)
         except Exception as e:
-            logger.error(e)
+            logger.error("Couldn't extract parameters on " + str(_pypads_env) + " due to " + str(e))

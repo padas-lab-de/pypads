@@ -1,6 +1,6 @@
 from typing import Iterable, Set
 
-from pypads.app.misc.mixins import OrderMixin
+from pypads.app.misc.mixins import OrderMixin, DEFAULT_ORDER
 from pypads.utils.logging_util import WriteFormats
 
 # Maps hooks to events
@@ -43,17 +43,20 @@ class Hook:
     def library(self):  # type: () -> LibSelector
         return self._source.library
 
+    def __str__(self):
+        return "Hook[anchor=" + str(self.anchor) + ", lib=" + str(self.library) + "]"
+
 
 class HookEventConfig(OrderMixin):
-    def __init__(self, anchor, event_name, parameters=None, *args, **kwargs):
-        self._anchor = anchor
+    def __init__(self, hook, event_name, parameters=None, *args, **kwargs):
+        self._hook = hook
         self._event_name = event_name
         self._parameters = parameters
         super().__init__(*args, **kwargs)
 
     @property
     def anchor(self):
-        return self._anchor
+        return self._hook
 
     @property
     def event_name(self):
@@ -73,11 +76,11 @@ class HookRegistry:
         self._pypads = pypads
         self._hook_event_mapping = {}
 
-    def add_reference(self, event_name: str, *hook_names: str, parameters=None):
+    def add_reference(self, event_name: str, *hook_names: str, order=DEFAULT_ORDER, parameters=None):
         for hook_name in hook_names:
             if hook_name not in self._hook_event_mapping:
                 self._hook_event_mapping[hook_name] = set()
-            self._hook_event_mapping[hook_name].add(HookEventConfig(hook_name, event_name, parameters))
+            self._hook_event_mapping[hook_name].add(HookEventConfig(hook_name, event_name, parameters, order=order))
 
     def get_configs_for_hook(self, hook: Hook) -> Set[HookEventConfig]:
         if hook.anchor.name not in self._hook_event_mapping:
@@ -88,13 +91,14 @@ class HookRegistry:
     def get_logging_functions(self, *hooks: Hook):
         configs = []
         for hook in hooks:
-            configs = configs + list(self.get_configs_for_hook(hook))
-        OrderMixin.sort_mutable(configs)
+            configs = configs + [(hook, c) for c in list(self.get_configs_for_hook(hook))]
+        configs.sort(key=lambda e: -e[1].order())
 
         fns = []
-        for c in configs:
-            found_fns = [(f, c.parameters) for f in self._pypads.function_registry.get_functions(c.event_name)]
-            found_fns.sort(key=lambda e: e[0].order())
+        for hook, c in configs:
+            found_fns = [(f, c.parameters) for f in
+                         self._pypads.function_registry.get_functions(c.event_name, hook.library)]
+            found_fns.sort(key=lambda e: -e[0].order())
             fns = fns + found_fns
         return fns
 
@@ -114,8 +118,9 @@ class HookRegistry:
         for key, value in hook_mapping.items():
             parameters = value["with"] if "with" in value else {}
             hook_names = value["on"]
+            order = value["order"] if "order" in value else DEFAULT_ORDER
             if isinstance(hook_names, Iterable):
-                registry.add_reference(key, *hook_names, parameters=parameters)
+                registry.add_reference(key, *hook_names, order=order, parameters=parameters)
             else:
-                registry.add_reference(key, hook_names, parameters=parameters)
+                registry.add_reference(key, hook_names, order=order, parameters=parameters)
         return registry

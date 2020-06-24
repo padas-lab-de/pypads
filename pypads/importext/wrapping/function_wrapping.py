@@ -1,8 +1,10 @@
 import types
 from contextlib import contextmanager
 from functools import wraps
+from typing import Set
 
 from pypads import logger
+from pypads.importext.mappings import MatchedMapping
 from pypads.importext.wrapping.base_wrapper import BaseWrapper, Context
 from pypads.injections.analysis.call_tracker import CallAccessor, FunctionReference, add_call, LoggingEnv, finish_call, \
     Call
@@ -12,28 +14,27 @@ error = False
 
 class FunctionWrapper(BaseWrapper):
 
-    def wrap(self, fn, context: Context, matched_mapping):
+    def wrap(self, fn, context: Context, matched_mappings: Set[MatchedMapping]):
         # Only wrap functions not starting with "__"
         if (fn.__name__.startswith("__") or fn.__name__.startswith("_pypads")) and fn.__name__ is not "__init__":
             return fn
 
-        if not context.has_wrap_meta(matched_mapping.mapping, fn):
-            context.store_wrap_meta(matched_mapping, fn)
+        if not context.has_original(fn) or not context.defined_stored_original(fn):
+            for matched_mapping in matched_mappings:
+                context.store_wrap_meta(matched_mapping, fn)
 
-            if not context.has_original(fn) or not context.defined_stored_original(fn):
-                context.store_original(fn)
-
+            context.store_original(fn)
             if context.is_class():
-                return self._wrap_on_class(fn, context, matched_mapping.mapping)
+                return self._wrap_on_class(fn, context, matched_mappings)
             elif hasattr(context.container, fn.__name__):
-                return self._wrap_on_object(fn, context, matched_mapping.mapping)
+                return self._wrap_on_object(fn, context, matched_mappings)
             else:
                 logger.warning(str(
                     context) + " is no class and doesn't provide attribute with name " + str(
                     fn.__name__) + ". Couldn't access " + str(
                     fn) + " on it.")
 
-    def _wrap_on_object(self, fn, context: Context, mapping):
+    def _wrap_on_object(self, fn, context: Context, mappings: Set[MatchedMapping]):
         # Add module of class to the changed modules
         if hasattr(context.container, "__module__"):
             self._pypads.add_punched_module_name(context.container.__module__)
@@ -45,14 +46,14 @@ class FunctionWrapper(BaseWrapper):
             fn = getattr(context.container, fn.__name__)
 
         # Get and add hooks
-        hooks = self._get_hooked_fns(mapping)
+        hooks = self._get_hooked_fns(mappings)
         if len(hooks) > 0:
             fn_reference = FunctionReference(context, fn)
-            return self.wrap_method_helper(fn_reference=fn_reference, hooks=hooks, mapping=mapping)
+            return self.wrap_method_helper(fn_reference=fn_reference, hooks=hooks, mappings=mappings)
         else:
             return fn
 
-    def _wrap_on_class(self, fn, context: Context, mapping):
+    def _wrap_on_class(self, fn, context: Context, mappings: Set[MatchedMapping]):
         fn_name = fn.__name__
 
         # Find the real defining class
@@ -83,10 +84,10 @@ class FunctionWrapper(BaseWrapper):
         if isinstance(fn, property):
             fn = fn.fget
 
-        hooks = self._get_hooked_fns(mapping)
+        hooks = self._get_hooked_fns(mappings)
         if len(hooks) > 0:
             fn_reference = FunctionReference(context, fn)
-            return self.wrap_method_helper(fn_reference=fn_reference, hooks=hooks, mapping=mapping)
+            return self.wrap_method_helper(fn_reference=fn_reference, hooks=hooks, mappings=mappings)
 
     @contextmanager
     def _make_call(self, instance, fn_reference):
@@ -107,19 +108,19 @@ class FunctionWrapper(BaseWrapper):
                 # print("cc:" + str(current_call))
                 finish_call(call)
 
-    def wrap_method_helper(self, fn_reference: FunctionReference, hooks, mapping):
+    def wrap_method_helper(self, fn_reference: FunctionReference, hooks, mappings: Set[MatchedMapping]):
         """
         Helper to differentiate between functions, classmethods, static methods and wrap them
         :param fn_reference:
         :param hooks:
-        :param mapping:
+        :param mappings:
         :return:
         """
         fn = fn_reference.wrappee
 
         if fn_reference.is_static_method():
             @wraps(fn)
-            def entry(*args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
+            def entry(*args, _pypads_hooks=hooks, _pypads_mapped_by=mappings, **kwargs):
                 logger.debug("Call to tracked static method or function " + str(fn))
 
                 global error
@@ -137,7 +138,7 @@ class FunctionWrapper(BaseWrapper):
                             return out
 
                         for (h, params) in hooks:
-                            c = self._add_hook(h, params, callback, call, mapping)
+                            c = self._add_hook(h, params, callback, call, mappings)
                             if c:
                                 callback = c
 
@@ -152,7 +153,7 @@ class FunctionWrapper(BaseWrapper):
                 return out
         elif fn_reference.is_function():
             @wraps(fn)
-            def entry(_self, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
+            def entry(_self, *args, _pypads_hooks=hooks, _pypads_mapped_by=mappings, **kwargs):
                 # print("Call to tracked class method " + str(fn) + str(id(fn)))
                 logger.debug("Call to tracked method " + str(fn))
 
@@ -172,7 +173,7 @@ class FunctionWrapper(BaseWrapper):
                             return out
 
                         for (h, params) in hooks:
-                            c = self._add_hook(h, params, callback, call, mapping)
+                            c = self._add_hook(h, params, callback, call, mappings)
                             if c:
                                 callback = types.MethodType(c, _self)
 
@@ -189,7 +190,7 @@ class FunctionWrapper(BaseWrapper):
 
         elif fn_reference.is_class_method():
             @wraps(fn)
-            def entry(_cls, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
+            def entry(_cls, *args, _pypads_hooks=hooks, _pypads_mapped_by=mappings, **kwargs):
                 logger.debug("Call to tracked class method " + str(fn))
 
                 global error
@@ -208,7 +209,7 @@ class FunctionWrapper(BaseWrapper):
                             return out
 
                         for (h, params) in hooks:
-                            c = self._add_hook(h, params, callback, call, mapping)
+                            c = self._add_hook(h, params, callback, call, mappings)
                             if c:
                                 callback = types.MethodType(c, _cls)
 
@@ -227,7 +228,7 @@ class FunctionWrapper(BaseWrapper):
             tmp_fn = getattr(fn_reference.context.container, fn.__name__)
 
             @wraps(tmp_fn)
-            def entry(_self, *args, _pypads_hooks=hooks, _pypads_mapped_by=mapping, **kwargs):
+            def entry(_self, *args, _pypads_hooks=hooks, _pypads_mapped_by=mappings, **kwargs):
                 logger.debug("Call to tracked _IffHasAttrDescriptor " + str(fn))
 
                 global error
@@ -246,7 +247,7 @@ class FunctionWrapper(BaseWrapper):
                             return out
 
                         for (h, params) in hooks:
-                            c = self._add_hook(h, params, callback, call, mapping)
+                            c = self._add_hook(h, params, callback, call, mappings)
                             if c:
                                 callback = types.MethodType(c, _self)
 
@@ -267,10 +268,10 @@ class FunctionWrapper(BaseWrapper):
         # print("Wrapped " + str(fn) + str(id(fn)))
         return entry
 
-    def _add_hook(self, hook, params, callback, call: Call, mapping):
+    def _add_hook(self, hook, params, callback, call: Call, mappings):
         # For every hook we defined on the given function in out mapping file execute it before running the code
         if not call.has_hook(hook):
-            return self._get_env_setter(_pypads_env=LoggingEnv(mapping, hook, params, callback, call))
+            return self._get_env_setter(_pypads_env=LoggingEnv(mappings, hook, params, callback, call))
         else:
             logger.debug(str(hook) + " is tracked multiple times on " + str(call) + ". Ignoring second hooking.")
             return None
@@ -284,6 +285,7 @@ class FunctionWrapper(BaseWrapper):
         call: Call = env.call
         cid = call.call_id
 
+        # TODO maybe use https://gist.github.com/MacHu-GWU/0170849f693aa5f8d129aa03fc358305
         if cid.is_static_method():
             @wraps(cid.wrappee)
             def env_setter(*args, _pypads_env=env, **kwargs):
@@ -329,20 +331,23 @@ class FunctionWrapper(BaseWrapper):
 
         env = _pypads_env
         call = env.call
-        call.add_hook(env.hook)
+        if not call.has_hook(env.hook):
+            call.add_hook(env.hook)
 
-        try:
-            # check for name collision in parameters
-            if set([k for k, v in kwargs.items()]) & set(
-                    [k for k, v in env.parameter.items()]):
-                logger.warning("Hook parameter is overwriting a parameter in the standard "
-                               "model call. This most likely will produce side effects.")
+            try:
+                # check for name collision in parameters
+                if set([k for k, v in kwargs.items()]) & set(
+                        [k for k, v in env.parameter.items()]):
+                    logger.warning("Hook parameter is overwriting a parameter in the standard "
+                                   "model call. This most likely will produce side effects.")
 
-            if env.hook:
-                return env.hook(_self, _pypads_env=_pypads_env, *args, **kwargs)
+                if env.hook:
+                    return env.hook(_self, _pypads_env=_pypads_env, *args, **kwargs)
+                return env.callback(*args, **kwargs)
+            finally:
+                call.remove_hook(env.hook)
+        else:
             return env.callback(*args, **kwargs)
-        finally:
-            call.remove_hook(env.hook)
 
     def _is_skip_recursion(self, accessor):
         try:

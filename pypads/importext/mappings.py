@@ -1,6 +1,6 @@
 import glob
 import os
-from itertools import chain
+import re
 from typing import List, Set, Tuple, Generator, Iterable
 
 import pkg_resources
@@ -11,7 +11,7 @@ from pypads.bindings.anchors import Anchor, get_anchor
 from pypads.bindings.hooks import Hook
 from pypads.importext.package_path import RegexMatcher, PackagePath, PackagePathMatcher, \
     SerializableMatcher, Package
-from pypads.importext.semver import parse_constraint, VersionConstraint
+from pypads.importext.semver import parse_constraint
 
 default_mapping_file_paths = []
 default_mapping_file_paths.extend(glob.glob(
@@ -24,10 +24,11 @@ class LibSelector:
     Selector class holding version constraint and name of a library. @see poetry sem versioning
     """
 
-    def __init__(self, name, version: str):
+    def __init__(self, name, version: str, specificity=None):
         super().__init__()
         self._name = name
         self._constraint = parse_constraint(version)
+        self._specificity = specificity or self._calc_specificity()
 
     @staticmethod
     def from_dict(library):
@@ -43,21 +44,39 @@ class LibSelector:
     def version(self):
         return self._constraint
 
-    def allows_any(self, other):  # type: (VersionConstraint) -> bool
+    def _calc_specificity(self):
+        """
+        Calculates a value how specific the selector is. The more specific it is the higher the value is.
+        TODO do some magic here
+        :return:
+        """
+        return 0
+
+    @property
+    def specificity(self):
+        """
+        Returns a value how specific the selector is.
+        :return:
+        """
+        return self._specificity
+
+    def allows_any(self, other):  # type: (LibSelector) -> bool
         """
         Check if the constraint overlaps with another constaint.
         :param other:
         :return:
         """
-        return self._constraint.allows_any(other)
+        return re.compile(self._name).match(other.name) and self._constraint.allows_any(other.version)
 
-    def allows(self, version):  # type: ("Version") -> bool
+    def allows(self, name, version):  # type: (str, "Version") -> bool
         """
         Check if the constraint allows given version number.
+        :param name:
         :param version:
         :return:
         """
-        return self._constraint.allows(version)
+        from pypads.importext.semver import Version
+        return re.compile(self._name).match(name) and self._constraint.allows(Version.parse(version))
 
 
 class Mapping:
@@ -130,13 +149,13 @@ class Mapping:
         return self._matcher
 
     def __str__(self):
-        return "Mapping[" + str(self.reference) + ", lib=" + str(self.library) + "]"
+        return "Mapping[" + str(self.reference) + ", lib=" + str(self.library) + ", hooks=" + str(self.hooks) + "]"
 
     def __eq__(self, other):
-        return self.reference == other.reference and self.hooks == other.hooks
+        return self.reference == other.reference and self.hooks == other.hooks and self.values == other.values
 
     def __hash__(self):
-        return hash((self.reference, "|".join([str(h) for h in self.hooks])))
+        return hash((self.reference, "|".join([str(h) for h in self.hooks]), str(self.values)))
 
 
 class MappingCollection:
@@ -373,8 +392,6 @@ class MappingRegistry:
             mapping_file_paths.extend(paths)
 
         self._mappings = {}
-        self._found_mappings = MappingCollection("_pypads_found", "0.0.0",
-                                                 {"name": "_pypads_found", "version": "0.0.0"})
 
         for path in mapping_file_paths:
             self.load_mapping(path)
@@ -442,22 +459,6 @@ class MappingRegistry:
         """
         self.add_mapping(MappingFile(path))
 
-    def add_found_class(self, mapping):
-        """
-        Add a mapping for a found class to the found_class mapping cache.
-        :param mapping: Mapping of a found class
-        :return:
-        """
-        self._found_mappings.add_mapping(mapping)
-
-    def iter_found_mappings(self, package: Package):
-        """
-        Iterate over found mappings and find fitting mappings for given package.
-        :param package: Package object referencing a module.
-        :return:
-        """
-        return self._found_mappings.find_mappings(package.path.segments)
-
     def get_libraries(self):
         """
         Find all supported libraries in the mapping registry.
@@ -468,47 +469,40 @@ class MappingRegistry:
             all_libs.add(mapping.lib)
         return all_libs
 
-    def get_relevant_mappings(self, package: Package, search_found):
+    def get_relevant_mappings(self, package: Package):
         """
         Function to find all relevant mappings. This produces a generator getting extended with found subclasses
         :return:
         """
-        if search_found:
-            return set(chain(self.get_static_mappings(package), self.iter_found_mappings(package)))
-        else:
-            return set(self.get_static_mappings(package))
+        if any([package.path.segments[0] == s.name for s, _ in self.get_entries()]):
+            lib_version = None
 
-    def get_static_mappings(self, package: Package):
-        """
-        Get all mappings defined in all mapping files.
-        :return:
-        """
+            # TODO what about libraries where package name != pip name
+            # Try to get version of installed package
+            try:
+                import sys
+                base_package = sys.modules[str(package.path.segments[0])]
+                if hasattr(base_package, "__version__"):
+                    lib_version = getattr(base_package, "__version__")
+                else:
+                    lib_version = pkg_resources.get_distribution(str(package.path.segments[0])).version
+            except Exception as e:
+                logger.debug("Couldn't get version of package {}".format(package.path))
 
-        lib_version = None
+            mappings = set()
 
-        # TODO what about libraries where package name != pip name
-        # Try to get version of installed package
-        try:
-            if hasattr("__version__", package.content):
-                lib_version = getattr(package, "__version__")
+            # Take only mappings which are fitting for versions
+            if lib_version:
+                for k, collection in [(s, c) for s, c in self.get_entries() if
+                                      s.allows(str(package.path.segments[0]), lib_version)]:
+                    for m in collection.find_mappings(package.path.segments):
+                        mappings.add(m)
             else:
-                lib_version = pkg_resources.get_distribution("construct").version
-        except Exception as e:
-            logger.debug("Couldn't get version of package {}".format(package.path))
-
-        mappings = []
-
-        # Take only mappings which are fitting for versions
-        if lib_version:
-            for k, collection in [(s, c) for s, c in self.get_entries() if
-                                  s.name == package.path.segments[0] and s.allows(lib_version)]:
-                for m in collection.find_mappings(package.path.segments):
-                    mappings.append(m)
-        else:
-            for k, collection in [(s, c) for s, c in self.get_entries() if s.name == package.path.segments[0]]:
-                for m in collection.find_mappings(package.path.segments):
-                    mappings.append(m)
-        return mappings
+                for k, collection in [(s, c) for s, c in self.get_entries() if s.name == package.path.segments[0]]:
+                    for m in collection.find_mappings(package.path.segments):
+                        mappings.add(m)
+            return mappings
+        return set()
 
 
 class MatchedMapping:
@@ -527,3 +521,9 @@ class MatchedMapping:
     @property
     def mapping(self) -> Mapping:
         return self._mapping
+
+    def __hash__(self):
+        return self._mapping.__hash__()
+
+    def __eq__(self, other):
+        return self.mapping == other.mapping and self.package_path == other.package_path

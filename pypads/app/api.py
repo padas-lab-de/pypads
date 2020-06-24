@@ -127,8 +127,8 @@ class PyPadsApi(IApi):
                               _anchors, {"concept": fn.__name__})
 
         # Wrap the function of given context and return it
-        return self.pypads.wrap_manager.wrap(fn, ctx=ctx, matched_mapping=MatchedMapping(mapping, PackagePath(
-            ctx_path + "." + fn.__name__)))
+        return self.pypads.wrap_manager.wrap(fn, ctx=ctx, matched_mappings={MatchedMapping(mapping, PackagePath(
+            ctx_path + "." + fn.__name__))})
 
     @cmd
     def start_run(self, run_id=None, experiment_id=None, run_name=None, nested=False, _pypads_env=None):
@@ -149,21 +149,20 @@ class PyPadsApi(IApi):
 
     # ---- logging ----
     @cmd
-    def log_artifact(self, local_path, meta=None, preserve_folder=True, ):
+    def log_artifact(self, local_path, meta=None):
         """
         Function to log an artifact on local disk. This artifact is transferred into the context of mlflow.
         The context might be a local repository, sftp etc.
         :param local_path: Path of the artifact to log
         :param meta: Meta information you want to store about the artifact. This is an extension by pypads creating a
         json containing some meta information.
-        :param preserve_folder: Preserve the folder structure at path
         :return:
         """
-        try_mlflow_log(mlflow.log_artifact, local_path, preserve_folder)
+        try_mlflow_log(mlflow.log_artifact, local_path)
         self._write_meta(_to_artifact_meta_name(os.path.basename(local_path)), meta)
 
     @cmd
-    def log_mem_artifact(self, name, obj, write_format=WriteFormats.text.name, meta=None):
+    def log_mem_artifact(self, name, obj, write_format=WriteFormats.text.name, meta=None, preserve_folder=True):
         """
         See log_artifact. This logs directly from memory by storing the memory to a temporary file.
         :param name: Name of the new file to create.
@@ -171,9 +170,10 @@ class PyPadsApi(IApi):
         :param write_format: Format to write to. WriteFormats currently include text and binary.
         :param meta: Meta information you want to store about the artifact. This is an extension by pypads creating a
         json containing some meta information.
+        :param preserve_folder: Preserve the folder structure
         :return:
         """
-        try_write_artifact(name, obj, write_format)
+        try_write_artifact(name, obj, write_format, preserve_folder)
         self._write_meta(_to_artifact_meta_name(name), meta)
 
     @cmd

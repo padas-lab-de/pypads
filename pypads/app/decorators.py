@@ -62,7 +62,7 @@ class PyPadsDecorators(IDecorators):
         def track_decorator(fn):
             ctx = get_class_that_defined_method(fn)
             events = event if isinstance(event, List) else [event]
-            return self.pypads.api.track(ctx=ctx, fn=fn, hooks=events, mapping=mapping)
+            return self.pypads.api.track(ctx=ctx, fn=fn, anchors=events, mapping=mapping)
 
         return track_decorator
 
@@ -76,7 +76,7 @@ class DecoratorPluginManager(ExtendableMixin):
 pypads_decorators = PyPadsDecorators()
 
 
-def actuators():
+def decorators():
     """
     Returns classes of
     :return:

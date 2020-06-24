@@ -2,9 +2,10 @@ import inspect
 from _py_abc import ABCMeta
 from abc import abstractmethod
 from copy import copy
+from typing import Set
 
 from pypads import logger
-from pypads.importext.mappings import MatchedMapping, Mapping
+from pypads.importext.mappings import MatchedMapping
 
 
 def fullname(o):
@@ -50,8 +51,9 @@ class Context:
                 holder = self._c
             # Set self reference
             if not hasattr(holder, "_pypads_mapping_" + wrappee.__name__):
-                setattr(holder, "_pypads_mapping_" + wrappee.__name__, [])
-            getattr(holder, "_pypads_mapping_" + wrappee.__name__).append(matched_mapping)
+                setattr(holder, "_pypads_mapping_" + wrappee.__name__, set())
+            getattr(holder, "_pypads_mapping_" + wrappee.__name__).add(matched_mapping)
+
         except TypeError as e:
             logger.debug("Can't set attribute '" + wrappee.__name__ + "' on '" + str(self._c) + "'.")
             raise e
@@ -162,10 +164,10 @@ class BaseWrapper:
         self._pypads: PyPads = pypads
 
     @abstractmethod
-    def wrap(self, wrappee, ctx, matched_mapping: MatchedMapping):
+    def wrap(self, wrappee, ctx, matched_mappings: Set[MatchedMapping]):
         raise NotImplementedError()
 
-    def _get_hooked_fns(self, mapping: Mapping):
+    def _get_hooked_fns(self, matched_mappings: Set[MatchedMapping]):
         """
         For a given fn find the hook functions defined in a mapping and configured in a configuration.
         :param fn:
@@ -173,7 +175,12 @@ class BaseWrapper:
         :return:
         """
         fns = []
-        for hook in mapping.hooks:
+        hooks = set()
+        for matched_mapping in matched_mappings:
+            for hook in matched_mapping.mapping.hooks:
+                hooks.add(hook)
+
+        for hook in hooks:
             fns = fns + self._pypads.hook_registry.get_logging_functions(hook)
         return fns
 
