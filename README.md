@@ -56,13 +56,13 @@ A simple example looks like the following,
 from pypads.app.base import PyPads
 # define the configuration, in this case we want to track the parameters, 
 # outputs and the inputs of each called function included in the hooks (pypads_fit, pypads_predict)
-config = {"events": {
+hook_mappings = {
     "parameters": {"on": ["pypads_fit"]},
     "output": {"on": ["pypads_fit", "pypads_predict"]},
     "input": {"on": ["pypads_fit"]}
-}}
+}
 # A simple initialization of the class will activate the tracking
-PyPads(config=config)
+PyPads(hooks=hook_mappings)
 
 # An example
 from sklearn import datasets, metrics
