@@ -341,7 +341,7 @@ Once the hooks are defined, they are then linked to the events we want them to t
 
 .. code-block:: python
 
-    events = {
+    hook_mappings = {
                 "Metrics" : {"on": ["pypads_metrics"]}
              }
 
