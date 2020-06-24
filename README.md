@@ -112,7 +112,7 @@ mappings:
           hooks: "pypads_fit"
         :{re:(fit_predict|predict|score)$}:
           hooks: "pypads_predict"
-        {re:(fit_transform|transform)$}:
+        :{re:(fit_transform|transform)$}:
           hooks: "pypads_transform"
 ```
 
