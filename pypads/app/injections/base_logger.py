@@ -5,6 +5,7 @@ from typing import Set
 import mlflow
 
 from pypads import logger
+from pypads.app.tracking.base import TrackingObject
 from pypads.app.misc.mixins import DependencyMixin, DefensiveCallableMixin, TimedCallableMixin, \
     IntermediateCallableMixin, NoCallAllowedError, OrderMixin, ConfigurableCallableMixin, CallableMixin, SuperStop
 from pypads.importext.mappings import LibSelector
@@ -126,6 +127,8 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
     .. note:: It is not recommended to change the __call_wrapped__ method, only if really needed.
 
     """
+    TRACKINGOBJECT = TrackingObject
+    _tracking_object = None
 
     def __init__(self, *args, static_parameters=None, identity=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -146,6 +149,13 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
         :return:
         """
         return self._identify
+
+    @property
+    def tracking_object(self):
+        return self._tracking_object
+
+    def _reset(self):
+        self._tracking_object = None
 
     def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
         try:
@@ -201,14 +211,21 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
         """
         pass
 
-    def _extract_runtime(self, out, _pypads_env, label):
+    def _extract_runtime(self, out, _pypads_env, label, key):
         if type(out) is tuple and len(out) is 2:
             _return = out[0]
             time = out[1]
             if time != 0:
                 add_run_time(self, str(_pypads_env.call) + "." + self.__class__.__name__ + "." + label, time)
+                self._tracking_object.add_runtime(key, time)
 
     def __real_call__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+        # Initialize the tracking object
+        self._tracking_object = pads.tracking_object_factory(*args,
+                                                             _pypads_env=_pypads_env, logging_fn=self, **kwargs)
+
         # Add the static parameters to our passed parameters
         _pypads_hook_params = {**self._static_parameters, **_pypads_env.parameter}
 
@@ -216,8 +233,8 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
         try:
 
             _pre_result = self._pre(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs,
-                            **_pypads_hook_params)
-            self._extract_runtime(_pre_result, _pypads_env, "__pre__")
+                                    **_pypads_hook_params)
+            self._extract_runtime(_pre_result, _pypads_env, "__pre__", TrackingObject.PRE_TIME)
         except TimingDefined:
             pass
         _return = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs, **_pypads_hook_params)
@@ -225,9 +242,18 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
         try:
             out = self._post(ctx, _pypads_pre_return=_pre_result, _pypads_result=_return, _pypads_env=_pypads_env,
                              _args=args, _kwargs=kwargs, **_pypads_hook_params)
-            self._extract_runtime(out, _pypads_env, "__post__")
+            self._extract_runtime(out, _pypads_env, "__post__", TrackingObject.POST_TIME)
         except TimingDefined:
             pass
+
+        try:
+            self._tracking_object.serialize()
+        except Exception as e:
+            logger.warning(
+                "Storing tracked object failed for " + str(self) + ":" + str(e) + "\nTrace:\n" + traceback.format_exc())
+            # TODO error handling
+
+        self._reset()
         return _return
 
     def __call_wrapped__(self, ctx, *args, _pypads_env: LoggingEnv, _args, _kwargs, **_pypads_hook_params):
@@ -240,6 +266,7 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
         _return, time = OriginalExecutor(fn=_pypads_env.callback)(*_args, **_kwargs)
         try:
             add_run_time(None, str(_pypads_env.call), time)
+            self._tracking_object.add_runtime(TrackingObject.EXECUTION_TIME, time)
         except TimingDefined as e:
             pass
         return _return

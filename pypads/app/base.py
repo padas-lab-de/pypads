@@ -134,6 +134,10 @@ class PyPads:
 
         self._backend = MLFlowBackend(self.uri, self)
 
+        # Create tracking object factory
+        from pypads.app.tracking.base import TrackingObjectFactory
+        self._tracking_object_factory = TrackingObjectFactory(self)
+
         # Store config into cache
         self.config = {**DEFAULT_CONFIG, **config} if config else DEFAULT_CONFIG
 
@@ -432,6 +436,14 @@ class PyPads:
         :return: ManagedGitFactory
         """
         return self._managed_git_factory
+
+    @property
+    def tracking_object_factory(self):
+        """
+        Return tracked object manager of PyPads. This is used to create and manage tracked object.
+        :return: TrackingOjbectFactory
+        """
+        return self._tracking_object_factory
 
     @property
     def backend(self):

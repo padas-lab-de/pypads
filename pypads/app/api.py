@@ -162,7 +162,8 @@ class PyPadsApi(IApi):
         self._write_meta(_to_artifact_meta_name(os.path.basename(local_path)), meta)
 
     @cmd
-    def log_mem_artifact(self, name, obj, write_format=WriteFormats.text.name, meta=None, preserve_folder=True):
+    def log_mem_artifact(self, name, obj, write_format=WriteFormats.text.name, path=None, meta=None,
+                         preserve_folder=True):
         """
         See log_artifact. This logs directly from memory by storing the memory to a temporary file.
         :param name: Name of the new file to create.
@@ -170,11 +171,16 @@ class PyPadsApi(IApi):
         :param write_format: Format to write to. WriteFormats currently include text and binary.
         :param meta: Meta information you want to store about the artifact. This is an extension by pypads creating a
         json containing some meta information.
+        :param path: Path to which to save this artifact.
         :param preserve_folder: Preserve the folder structure
         :return:
         """
+        meta_name = _to_artifact_meta_name(name)
+        if path:
+            name = os.path.join(path, name)
+            meta_name = "metadata"
         try_write_artifact(name, obj, write_format, preserve_folder)
-        self._write_meta(_to_artifact_meta_name(name), meta)
+        self._write_meta(meta_name, meta)
 
     @cmd
     def log_metric(self, key, value, step=None, meta=None):
@@ -213,7 +219,7 @@ class PyPadsApi(IApi):
         """
         return mlflow.set_tag(key, value)
 
-    def _write_meta(self, name, meta):
+    def _write_meta(self, name, meta, write_format=WriteFormats.yaml):
         """
         Write the meta information about an given object name as artifact.
         :param name: Name of the object
@@ -221,7 +227,7 @@ class PyPadsApi(IApi):
         :return:
         """
         if meta:
-            try_write_artifact(name + ".meta", meta, WriteFormats.text, preserve_folder=True)
+            try_write_artifact(name + ".meta", meta, write_format, preserve_folder=True)
 
     def _read_meta(self, name):
         """
