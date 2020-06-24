@@ -11,7 +11,7 @@ class ValidateableMixin(SuperStop):
     """ This class implements basic logic for validating the tracked object"""
 
     # noinspection PyBroadException
-    def __init__(self, *args, metadata, **kwargs):
+    def __init__(self, *args, metadata, json_schema=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.validate(metadata=metadata, **kwargs)
@@ -21,7 +21,6 @@ class ValidateableMixin(SuperStop):
         raise NotImplementedError()
 
 
-
 class MetadataMixin(ValidateableMixin):
     __metaclass__ = ABCMeta
     """
@@ -29,25 +28,30 @@ class MetadataMixin(ValidateableMixin):
     The metadata should contain all necessary non-binary data to describe an entity.
     """
 
-    METADATA = "metadata"
+    METADATA = 'metadata'
     CREATED_AT = 'created_at'
     LAST_MODIFIED_BY = 'last_modified_by'
-    COMPUTED_BY = 'computed_by'
     EXECUTION_TIME = 'execution_time'
+    PROCESS = 'process'
+    THREAD = 'thread'
+    CONTEXT = 'context'
+    INSTANCE = 'instance'
+    COMPUTED_BY = 'computed_by'
+    CALL = 'call'
     TRACKED_BY = 'tracked_by'
     LOGGING_TIME = 'logging_time'
-
+    DEPENDENCIES = 'dependencies'
 
     @abstractmethod
-    def __init__(self, *, _pypads_env:LoggingEnv, metadata: dict, **kwargs):
+    def __init__(self, *, _pypads_env: LoggingEnv, metadata: dict, **kwargs):
 
         import time
-        #Todo add metadata
+        # Todo add metadata
+
         self._metadata = {**{"id": uuid.uuid4().__str__(), self.CREATED_AT: time.time()},
-                    **metadata}
+                          **metadata}
 
         super().__init__(**{"metadata": metadata, **kwargs})
-
 
     @property
     def id(self):
@@ -131,22 +135,23 @@ class MetadataMixin(ValidateableMixin):
                 pass
 
 
-class TrackedObject(MetadataMixin):
+class TrackingObject(MetadataMixin):
     __metaclass__ = ABCMeta
     """
     Base class for tracked objects with logging functions.
     """
 
-    def __init__(self, _pypads_env: LoggingEnv, **kwargs):
+    def __init__(self, *args, _pypads_env: LoggingEnv, **kwargs):
         self._env = _pypads_env
+        super().__init__(*args, **kwargs)
 
     @abstractmethod
     def write_meta(self, **metadata):
         raise NotImplementedError
 
     @abstractmethod
-    def write_content(self,*args,**kwargs):
+    def write_content(self, *args, **kwargs):
         raise NotImplementedError
 
-    def serialize(self,*args,**kwargs):
+    def serialize(self, *args, **kwargs):
         raise NotImplementedError
