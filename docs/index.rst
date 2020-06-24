@@ -8,6 +8,9 @@ additional goal of the extension.
 
 .. _PyPaDS: https://github.com/padre-lab-eu/pypads
 
+.. note::
+    A larger update regarding the mapping files was released recently. Mapping files are now based on YML and are more hook centric. Read more about mapping files :ref:`here <mapping_files>`.
+
 Install PyPads
 --------------
 
