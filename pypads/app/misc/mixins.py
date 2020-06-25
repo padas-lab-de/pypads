@@ -1,8 +1,9 @@
+import uuid
 from _py_abc import ABCMeta
 from abc import abstractmethod
 from typing import List
 
-from pypads.utils.util import is_package_available
+from pypads.utils.util import is_package_available, dict_merge
 
 DEFAULT_ORDER = 1
 
@@ -204,3 +205,91 @@ class ConfigurableCallableMixin(CallableMixin):
 
     def __call__(self, *args, **kwargs):
         super().__call__(*args, **{**self._kwargs, **kwargs})
+
+
+class ValidateableMixin(SuperStop):
+    __metaclass__ = ABCMeta
+    """ This class implements basic logic for validating a validateble object"""
+
+    # noinspection PyBroadException
+    def __init__(self, *args, metadata, schema=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._schema = schema
+        self.validate(metadata=metadata, ** kwargs)
+
+    @abstractmethod
+    def validate(self, metadata, **kwargs):
+        raise NotImplementedError()
+
+
+class MetadataMixin(ValidateableMixin):
+    """
+    Base object for tracked objects that manage metadata. A MetadataEntity manages and id and a dict of metadata.
+    The metadata should contain all necessary non-binary data to describe an entity.
+    """
+    # Metadata attributes
+    METADATA = 'metadata'
+    CREATED_AT = 'created_at'
+    EXPERIMENT_ID = 'experiment_id'
+    RUN_ID = 'run_id'
+
+    @abstractmethod
+    def __init__(self, *args, metadata: dict, pads=None, **kwargs):
+        if pads is None:
+            from pypads.app.pypads import get_current_pads
+            pads = get_current_pads()
+        self.pads = pads
+        run = self.pads.api.active_run()
+        import time
+        self._metadata = {
+            **{"id": uuid.uuid4().__str__(), self.CREATED_AT: time.time(), self.EXPERIMENT_ID: run.info.experiment_id,
+               self.RUN_ID: run.info.run_id}, **metadata}
+
+        super().__init__(*args, **{self.METADATA: metadata, **kwargs})
+
+    @property
+    def id(self):
+        """
+        returns the unique id of the data set. Data sets will be managed on the basis of this id
+        :return: string
+        """
+        return self.metadata["id"]
+
+    @id.setter
+    def id(self, _id):
+        """
+        used for updating the id after the undlerying generic has assigned one
+        :param _id: id, ideally an url
+        :return:
+        """
+        self.metadata["id"] = _id
+
+    @property
+    def name(self):
+        """
+        returns the name of this object, which is expected in field "name" of the metadata. If this field does not
+        exist, the id is returned
+        :return:
+        """
+        if self.metadata and "name" in self.metadata:
+            return self.metadata["name"]
+        else:
+            return str(self.id)
+
+    @name.setter
+    def name(self, name):
+        self.metadata["name"] = name
+
+    @property
+    def created_at(self):
+        if self.CREATED_AT in self.metadata:
+            return self.metadata[self.CREATED_AT]
+        else:
+            return None
+
+    @property
+    def metadata(self):
+        return self._metadata
+
+    def merge_metadata(self, metadata: dict):
+        self._metadata = dict_merge(self.metadata, metadata)

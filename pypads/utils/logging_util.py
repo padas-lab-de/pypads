@@ -1,8 +1,10 @@
+import json
 import os
 import pickle
 from enum import Enum
 
 import mlflow
+import yaml
 from mlflow.tracking import MlflowClient
 from mlflow.utils.autologging_utils import try_mlflow_log
 
@@ -37,6 +39,8 @@ def get_run_folder():
 class WriteFormats(Enum):
     pickle = 1
     text = 2
+    yaml = 3
+    json = 4
 
 
 # extract all tags of runs by experiment id
@@ -86,10 +90,30 @@ def try_write_artifact(file_name, obj, write_format, preserve_folder=True):
             logger.warning("Couldn't pickle output. Trying to save toString instead. " + str(e))
             return write_text(p, o)
 
+    def write_yaml(p, o):
+        try:
+            with open(p + ".yml", "w+") as fd:
+                yaml.dump(o, fd)
+                return fd.name
+        except Exception as e:
+            logger.warning("Couldn't write meta as yaml. Trying to save it as json instead. " + str(e))
+            return write_json(p, o)
+
+    def write_json(p, o):
+        try:
+            with open(p + ".json", "w+") as fd:
+                json.dump(o, fd)
+                return fd.name
+        except Exception as e:
+            logger.warning("Couldn't write meta as json. Trying to save it as text instead. " + str(e))
+            return write_text(p, o)
+
     # Options to write to
     options = {
         WriteFormats.pickle: write_pickle,
-        WriteFormats.text: write_text
+        WriteFormats.text: write_text,
+        WriteFormats.yaml: write_yaml,
+        WriteFormats.json: write_json
     }
 
     # Write to disk
