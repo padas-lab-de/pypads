@@ -29,7 +29,7 @@ class TrackingObjectMixin(MetadataMixin):
     THREAD = 'thread'
     DATA = 'data'
 
-    def __init__(self, *args, source = None, metadata=None, **kwargs):
+    def __init__(self, *args, source=None, metadata=None, **kwargs):
         if source:
             metadata = {**{self.SOURCE: str(source)}, **metadata}
         self._data = []
@@ -117,7 +117,16 @@ class LoggerTrackingObject(TrackingObjectMixin):
     def to_name(self):
         return '.'.join([self._call.context.container.__name__, self._call.wrappee.__name__, str(self.id)])
 
+    def add_timings(self, pre=None, call=None, post=None):
+        if pre:
+            self.add_runtime(self.PRE_TIME, pre)
+        if call:
+            self.add_runtime(self.EXECUTION_TIME, call)
+        if post:
+            self.add_runtime(self.POST_TIME, post)
+
     def store(self):
+        # TODO rework
         meta = {self.DATA: []}
         for item in self.data:
             self.pads.api.write_data_item(item.get("name"), item.get("object"), data_format=item.get("format"))
@@ -127,7 +136,7 @@ class LoggerTrackingObject(TrackingObjectMixin):
         self.merge_metadata(metadata=meta)
 
         # Write the metadata
-        self.pads.api.write_tracking_object_meta(self.to_meta_path(), self.metadata)
+        self.pads.api.write_tracking_object_meta(self.to_meta_path(), self.metadata, meta_format=self.META_FORMAT)
 
 
 class TrackingObjectFactory(DefensiveCallableMixin):
@@ -143,7 +152,7 @@ class TrackingObjectFactory(DefensiveCallableMixin):
         logger.warning("Couldn't initialize tracking object because of exception: {0}".format(error))
 
     def __real_call__(self, ctx, *args, source: Any = None, object_class=TrackingObjectMixin, **kwargs):
-        return object_class(*args, source= source, pads=self.pads, **kwargs)
+        return object_class(*args, source=source, pads=self.pads, **kwargs)
 
 
 def get_tracked_objects():

@@ -1,5 +1,6 @@
 import traceback
 from abc import abstractmethod, ABCMeta
+from collections import OrderedDict
 from typing import Set
 
 import mlflow
@@ -147,13 +148,6 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
         """
         return self._identify
 
-    @property
-    def tracking_object(self):
-        return self._tracking_object
-
-    def _reset(self):
-        self._tracking_object = None
-
     def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
         try:
             raise error
@@ -214,27 +208,47 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
             time = out[1]
             if time != 0:
                 add_run_time(self, str(_pypads_env.call) + "." + self.__class__.__name__ + "." + label, time)
-                # self._tracking_object.add_runtime(key, time)
+                return time
+        return None
+
+    def _check_object_store(self, pre_time=None, call_time=None, post_time=None):
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+        if pads.cache.run_exists(id(self)):
+            objects_store: OrderedDict = pads.cache.run_get(id(self))
+            for k, o in objects_store.items():
+                obj = o[0]
+                if o[1]:
+                    obj.add_timings(pre=pre_time, call=call_time, post=post_time)
+                    obj.store()
+                    objects_store.pop(k)
+
+            pads.cache.run_add(id(self), objects_store)
 
     def __real_call__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
         _pypads_hook_params = {**self._static_parameters, **_pypads_env.parameter}
 
         _pre_result = None
+        _pre_time = None
         try:
 
             _pre_result = self._pre(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs,
                                     **_pypads_hook_params)
-            self._extract_runtime(_pre_result, _pypads_env, "__pre__")
+            _pre_time = self._extract_runtime(_pre_result, _pypads_env, "__pre__")
         except TimingDefined:
             pass
-        _return = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs, **_pypads_hook_params)
+        _return, time = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs,
+                                              **_pypads_hook_params)
 
+        _post_time = None
         try:
             out = self._post(ctx, _pypads_pre_return=_pre_result, _pypads_result=_return, _pypads_env=_pypads_env,
                              _args=args, _kwargs=kwargs, **_pypads_hook_params)
-            self._extract_runtime(out, _pypads_env, "__post__")
+            _post_time = self._extract_runtime(out, _pypads_env, "__post__")
         except TimingDefined:
             pass
+
+        self._check_object_store(pre_time=_pre_time, post_time=_post_time, call_time=time)
 
         return _return
 
@@ -246,7 +260,7 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
         :return: _pypads_result
         """
         _return, time = OriginalExecutor(fn=_pypads_env.callback)(*_args, **_kwargs)
-        return _return
+        return _return, time
 
 
 def logging_functions():

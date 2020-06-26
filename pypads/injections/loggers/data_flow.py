@@ -1,9 +1,7 @@
-import os
-
 from pypads.app.injections.base_logger import LoggingFunction
 from pypads.app.tracking.base import LoggerTrackingObject
 from pypads.injections.analysis.call_tracker import LoggingEnv
-from pypads.utils.logging_util import WriteFormats, try_write_artifact
+from pypads.utils.logging_util import WriteFormats, add_to_store_object
 
 
 class DataFlow(LoggerTrackingObject):
@@ -44,7 +42,7 @@ class Input(LoggingFunction):
         for (k, v) in _kwargs.items():
             input_flow.write_data(str(k), v, path_prefix='Kwarg', data_format=_pypads_write_format)
 
-        input_flow.store()
+        add_to_store_object(self, input_flow, store=True)
 
 
 class Output(LoggingFunction):
@@ -64,7 +62,7 @@ class Output(LoggingFunction):
         pads = get_current_pads()
         output_flow = pads.tracking_object_factory(ctx, source=self, _pypads_env=_pypads_env, object_class=DataFlow)
         output_flow.set_suffix('Outputs')
-        output_flow.write_data('0', _pypads_result, path_prefix='Returned_value',
-                                  data_format=_pypads_write_format)
+        output_flow.write_data('Returned_value', _pypads_result,
+                               data_format=_pypads_write_format)
 
-        output_flow.store()
+        add_to_store_object(self, output_flow, store=True)
