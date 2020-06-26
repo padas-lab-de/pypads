@@ -12,6 +12,7 @@ from pypads.app.injections.base_logger import FunctionHolder
 from pypads.app.injections.run_loggers import PreRunFunction, PostRunFunction
 from pypads.app.misc.caches import Cache
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
+from pypads.app.tracking.base import TrackingObjectMixin
 from pypads.bindings.anchors import get_anchor, Anchor
 from pypads.importext.mappings import Mapping, MatchedMapping, make_run_time_mapping_collection
 from pypads.importext.package_path import PackagePathMatcher, PackagePath
@@ -218,6 +219,29 @@ class PyPadsApi(IApi):
         :return:
         """
         return mlflow.set_tag(key, value)
+
+    def write_data_item(self, path, content_item, data_format=None, preserve_folder=True):
+        """
+        Function to log a tracking object content item on local disk. This artifact is transferred into the context of mlflow.
+        The context might be a local repository, sftp etc.
+        :param path: path to where to store the content item of a tracking object.
+        :param content_item: the content item of a tracking object.
+        :param content_format: write format for the object content
+        :param preserve_folder:  Preserve the folder structure
+        :return:
+        """
+        try_write_artifact(path, content_item, write_format=data_format, preserve_folder=preserve_folder)
+
+    def write_tracking_object_meta(self, path, meta, meta_format=None, preserve_folder=True):
+        """
+        Function to store the metadata of a tracking object.
+        :param path: path to where to store the metadata of a tracking object.
+        :param meta: the metadata dictionary.
+        :param meta_format: write format for the object metadata
+        :param preserve_folder: Preserve the folder structure
+        :return:
+        """
+        try_write_artifact(path, meta, write_format=meta_format, preserve_folder=preserve_folder)
 
     def _write_meta(self, name, meta, write_format=WriteFormats.yaml):
         """

@@ -1,25 +1,23 @@
 import os
 
 from pypads.app.injections.base_logger import LoggingFunction
-from pypads.app.tracking.base import TrackingObject
+from pypads.app.tracking.base import LoggerTrackingObject
 from pypads.injections.analysis.call_tracker import LoggingEnv
 from pypads.utils.logging_util import WriteFormats, try_write_artifact
 
 
-class DataFlow(TrackingObject):
+class DataFlow(LoggerTrackingObject):
     """
     Tracking object class for inputs and outputs of your tracked workflow.
     """
     PATH = "DataFlow"
     CONTENT_FORMAT = WriteFormats.pickle
 
-    def write_content(self, name, obj, prefix=None, write_format=None):
-        if prefix:
-            name = '.'.join([prefix, name])
-        _entry = {'name': name, 'obj': obj}
-        if write_format:
-            _entry.update({'format': write_format})
-        self.content.append(_entry)
+    def write_data(self, name, obj, path_prefix=None, data_format=None):
+        if path_prefix:
+            name = '.'.join([path_prefix, name])
+        _entry = {"name": self.to_path(name), "object": obj, "format": data_format or self.CONTENT_FORMAT}
+        self.data.append(_entry)
 
 
 class Input(LoggingFunction):
@@ -27,9 +25,7 @@ class Input(LoggingFunction):
     Function logging the input parameters of the current pipeline object function call.
     """
 
-    TRACKINGOBJECT = DataFlow
-
-    def __pre__(self, ctx, *args, _pypads_write_format=None, _pypads_env: LoggingEnv, **kwargs):
+    def __pre__(self, ctx, *args, _pypads_write_format=None, _pypads_env: LoggingEnv, _args, _kwargs, **kwargs):
         """
         :param ctx:
         :param args:
@@ -37,30 +33,24 @@ class Input(LoggingFunction):
         :param kwargs:
         :return:
         """
-        self.tracking_object.add_suffix('Inputs')
-        for i in range(len(args)):
-            arg = args[i]
-            self.tracking_object.write_content('Arg', str(i), arg, write_format=_pypads_write_format)
-            # arg = args[i]
-            # name = os.path.join(_pypads_env.call.to_folder(),
-            #                     "args",
-            #                     str(i) + "_" + str(id(_pypads_env.callback)))
-            # try_write_artifact(name, arg, _pypads_write_format)
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+        input_flow = pads.tracking_object_factory(ctx, source=self, _pypads_env=_pypads_env, object_class=DataFlow)
+        input_flow.set_suffix('Inputs')
+        for i in range(len(_args)):
+            arg = _args[i]
+            input_flow.write_data(str(i), arg, path_prefix='Arg', data_format=_pypads_write_format)
 
-        for (k, v) in kwargs.items():
-            self.tracking_object.write_content('Kwarg', str(k), v, write_format=_pypads_write_format)
-            # name = os.path.join(_pypads_env.call.to_folder(),
-            #                     "kwargs",
-            #                     str(k) + "_" + str(id(_pypads_env.callback)))
-            # try_write_artifact(name, v, _pypads_write_format)
+        for (k, v) in _kwargs.items():
+            input_flow.write_data(str(k), v, path_prefix='Kwarg', data_format=_pypads_write_format)
+
+        input_flow.store()
 
 
 class Output(LoggingFunction):
     """
     Function logging the output of the current pipeline object function call.
     """
-
-    TRACKINGOBJECT = DataFlow
 
     def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.pickle, _pypads_env, _pypads_result, **kwargs):
         """
@@ -70,9 +60,11 @@ class Output(LoggingFunction):
         :param kwargs:
         :return:
         """
-        self.tracking_object.add_suffix('Outputs')
-        self.tracking_object.write_content('Returned_value', _pypads_result, write_format=_pypads_write_format)
-        # name = os.path.join(_pypads_env.call.to_folder(),
-        #                     "returns",
-        #                     str(id(_pypads_env.callback)))
-        # try_write_artifact(name, kwargs["_pypads_result"], _pypads_write_format)
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+        output_flow = pads.tracking_object_factory(ctx, source=self, _pypads_env=_pypads_env, object_class=DataFlow)
+        output_flow.set_suffix('Outputs')
+        output_flow.write_data('0', _pypads_result, path_prefix='Returned_value',
+                                  data_format=_pypads_write_format)
+
+        output_flow.store()

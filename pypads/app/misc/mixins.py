@@ -215,11 +215,11 @@ class ValidateableMixin(SuperStop):
     def __init__(self, *args, metadata, schema=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._schema = schema
-        self.validate(metadata=metadata, ** kwargs)
+        self.validate(metadata=metadata, **kwargs)
 
     @abstractmethod
     def validate(self, metadata, **kwargs):
-        raise NotImplementedError()
+        pass
 
 
 class MetadataMixin(ValidateableMixin):
@@ -253,7 +253,7 @@ class MetadataMixin(ValidateableMixin):
         returns the unique id of the data set. Data sets will be managed on the basis of this id
         :return: string
         """
-        return self.metadata["id"]
+        return self.metadata.get("id", None)
 
     @id.setter
     def id(self, _id):
@@ -271,10 +271,7 @@ class MetadataMixin(ValidateableMixin):
         exist, the id is returned
         :return:
         """
-        if self.metadata and "name" in self.metadata:
-            return self.metadata["name"]
-        else:
-            return str(self.id)
+        return self.metadata.get("name", None)
 
     @name.setter
     def name(self, name):
@@ -282,10 +279,15 @@ class MetadataMixin(ValidateableMixin):
 
     @property
     def created_at(self):
-        if self.CREATED_AT in self.metadata:
-            return self.metadata[self.CREATED_AT]
-        else:
-            return None
+        return self.metadata.get(self.CREATED_AT, None)
+
+    @property
+    def run_id(self):
+        return self.metadata.get(self.RUN_ID, None)
+
+    @property
+    def experiment_id(self):
+        return self.metadata.get(self.EXPERIMENT_ID, None)
 
     @property
     def metadata(self):
