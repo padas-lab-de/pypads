@@ -76,8 +76,6 @@ class PypadsKerasTest(BaseTest):
 
     def test_keras_custom_logging(self):
         # --------------------------- setup of the tracking ---------------------------
-        global callback
-        callback = None
 
         # custom logging
 
@@ -151,6 +149,7 @@ class PypadsKerasTest(BaseTest):
 
         # --------------------------- asserts ---------------------------
         # TODO add asserts
+        global callback
         assert callback == "predictions for keras v 2.3.1"
         # !-------------------------- asserts ---------------------------
 

@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Iterable, Union
 
 from pypads.bindings.event_types import EventType
 from pypads.bindings.hooks import Hook
@@ -91,7 +91,7 @@ class FunctionRegistry:
         for fn in fns:
             self._fns[event_name].add(fn)
 
-    def has(self, event_name: str):
+    def has(self, event_name: Union[str,tuple]):
         """
         Check if at least one function with event key is in map.
         :param event_name: Key of the function
@@ -103,6 +103,7 @@ class FunctionRegistry:
         if not self.has(event_name):
             return set()
         fns = self._fns[event_name] if isinstance(self._fns[event_name], Iterable) else [self._fns[event_name]]
+
         fitting_fns = []
         for fn in fns:
             fitting_fns = fitting_fns + [(lib.specificity, fn) for lib in fn.supported_libraries() if

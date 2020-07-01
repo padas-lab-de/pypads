@@ -1,5 +1,6 @@
 import inspect
 
+from pypads import logger
 from pypads.app.misc.caches import Cache
 
 
@@ -122,7 +123,15 @@ def dict_merge_caches(*dicts):
                     merged[key] = dict_merge(node, value)
                 elif isinstance(value, list):
                     node = merged.setdefault(key, [])
-                    merged[key] = node.extend(value)
+                    try:
+                        node.extend(value)
+                    except AttributeError as e:
+                        try:
+                            node = [node]
+                            node.extend(value)
+                        except Exception as e:
+                            logger.error("Failed merging dictionaries in dict_merge_caches : {}".format(str(e)))
+                    merged[key] = node
                 elif isinstance(value, set):
                     s: set = merged.setdefault(key, set())
                     for v in value:
