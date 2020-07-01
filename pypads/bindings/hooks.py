@@ -43,6 +43,12 @@ class Hook:
     def library(self):  # type: () -> LibSelector
         return self._source.library
 
+    def __eq__(self, other):
+        return self.anchor == other.anchor
+
+    def __hash__(self):
+        return hash(self.anchor)
+
     def __str__(self):
         return "Hook[anchor=" + str(self.anchor) + ", lib=" + str(self.library) + "]"
 
