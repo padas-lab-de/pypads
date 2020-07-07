@@ -1,6 +1,7 @@
 import json
 import os
 import pickle
+from collections import OrderedDict
 from enum import Enum
 
 import mlflow
@@ -10,6 +11,19 @@ from mlflow.utils.autologging_utils import try_mlflow_log
 
 from pypads import logger
 
+
+def add_to_store_object(source, obj, store=True):
+    from pypads.app.pypads import get_current_pads
+    pads = get_current_pads()
+    if not pads.cache.run_exists(id(source)):
+        pads.cache.run_add(id(source), OrderedDict())
+
+    objects_store : OrderedDict = pads.cache.run_get(id(source))
+
+    if id(obj) not in objects_store:
+        objects_store[id(obj)] = (obj, store)
+    else:
+        logger.warning("Object already added to the store")
 
 def get_temp_folder(run=None):
     """
