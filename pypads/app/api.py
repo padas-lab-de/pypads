@@ -9,10 +9,9 @@ from mlflow.utils.autologging_utils import try_mlflow_log
 
 from pypads import logger
 from pypads.app.injections.base_logger import FunctionHolder
-from pypads.app.injections.run_loggers import PreRunFunction, PostRunFunction
+from pypads.app.injections.run_loggers import RunSetupFunction, RunTeardownFunction
 from pypads.app.misc.caches import Cache
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
-from pypads.app.tracking.base import TrackingObjectMixin
 from pypads.bindings.anchors import get_anchor, Anchor
 from pypads.importext.mappings import Mapping, MatchedMapping, make_run_time_mapping_collection
 from pypads.importext.package_path import PackagePathMatcher, PackagePath
@@ -160,7 +159,7 @@ class PyPadsApi(IApi):
         :return:
         """
         try_mlflow_log(mlflow.log_artifact, local_path)
-        self._write_meta(_to_artifact_meta_name(os.path.basename(local_path)), meta)
+        self.log_artifact_meta(os.path.basename(local_path), meta)
 
     @cmd
     def log_mem_artifact(self, name, obj, write_format=WriteFormats.text.name, path=None, meta=None,
@@ -176,12 +175,14 @@ class PyPadsApi(IApi):
         :param preserve_folder: Preserve the folder structure
         :return:
         """
-        meta_name = _to_artifact_meta_name(name)
         if path:
             name = os.path.join(path, name)
-            meta_name = "metadata"
         try_write_artifact(name, obj, write_format, preserve_folder)
-        self._write_meta(meta_name, meta)
+        self.log_artifact_meta(name, meta)
+
+    @cmd
+    def log_artifact_meta(self, name, meta=None):
+        self._write_meta(_to_artifact_meta_name(name), meta)
 
     @cmd
     def log_metric(self, key, value, step=None, meta=None):
@@ -195,6 +196,10 @@ class PyPadsApi(IApi):
         :return:
         """
         mlflow.log_metric(key, value, step)
+        self.log_metric_meta(key, meta)
+
+    @cmd
+    def log_metric_meta(self, key, meta=None):
         self._write_meta(_to_metric_meta_name(key), meta)
 
     @cmd
@@ -208,6 +213,10 @@ class PyPadsApi(IApi):
         :return:
         """
         mlflow.log_param(key, value)
+        self.log_param_meta(key, meta)
+
+    @cmd
+    def log_param_meta(self, key, meta=None):
         self._write_meta(_to_param_meta_name(key), meta)
 
     @cmd
@@ -231,17 +240,6 @@ class PyPadsApi(IApi):
         :return:
         """
         try_write_artifact(path, content_item, write_format=data_format, preserve_folder=preserve_folder)
-
-    def write_tracking_object_meta(self, path, meta, meta_format=None, preserve_folder=True):
-        """
-        Function to store the metadata of a tracking object.
-        :param path: path to where to store the metadata of a tracking object.
-        :param meta: the metadata dictionary.
-        :param meta_format: write format for the object metadata
-        :param preserve_folder: Preserve the folder structure
-        :return:
-        """
-        try_write_artifact(path, meta, write_format=meta_format, preserve_folder=preserve_folder)
 
     def _write_meta(self, name, meta, write_format=WriteFormats.yaml):
         """
@@ -325,7 +323,7 @@ class PyPadsApi(IApi):
         return self.pypads.cache.get("pre_run_fns")
 
     @cmd
-    def register_setup(self, name, pre_fn: PreRunFunction, silent=True):
+    def register_setup(self, name, pre_fn: RunSetupFunction, silent=True):
         """
         Register a new pre_run function.
         :param name: Name of the registration
@@ -355,7 +353,7 @@ class PyPadsApi(IApi):
         :param silent:
         :return:
         """
-        self.register_setup(name, PreRunFunction(fn=fn, nested=nested, intermediate=intermediate, order=order),
+        self.register_setup(name, RunSetupFunction(fn=fn, nested=nested, intermediate=intermediate, order=order),
                             silent=silent)
 
     @cmd
@@ -364,7 +362,7 @@ class PyPadsApi(IApi):
         fns = []
         for k, v in cache.items():
             fns.append(v)
-        fns.sort(key=lambda f: f.order())
+        fns.sort(key=lambda f: f.order)
         for fn in fns:
             if callable(fn):
                 fn(self, _pypads_env=_pypads_env)
@@ -388,7 +386,7 @@ class PyPadsApi(IApi):
         return self.pypads.cache.run_get("post_run_fns")
 
     @cmd
-    def register_teardown(self, name, post_fn: PostRunFunction, silent=True):
+    def register_teardown(self, name, post_fn: RunTeardownFunction, silent=True):
         """
         Register a new post run function.
         :param name: Name of the registration
@@ -421,8 +419,8 @@ class PyPadsApi(IApi):
         :return:
         """
         self.register_teardown(name,
-                               post_fn=PostRunFunction(fn=fn, message=error_message, nested=nested,
-                                                       intermediate=intermediate, order=order), silent=silent)
+                               post_fn=RunTeardownFunction(fn=fn, message=error_message, nested=nested,
+                                                           intermediate=intermediate, order=order), silent=silent)
 
     @cmd
     def active_run(self):
@@ -451,7 +449,7 @@ class PyPadsApi(IApi):
 
         chached_fns = self._get_teardown_cache()
         fn_list = [v for i, v in chached_fns.items()]
-        fn_list.sort(key=lambda t: t.order())
+        fn_list.sort(key=lambda t: t.order)
         for fn in fn_list:
             try:
                 fn(self, _pypads_env=None)

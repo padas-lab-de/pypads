@@ -74,11 +74,11 @@ class RanLogger(LoggingFunction):
         super().__init__(*args, **kwargs)
         self._run_count = 0
 
-    def __pre__(self, ctx, *args, _pypads_env, _args, _kwargs, **kwargs):
+    def __pre__(self, ctx, *args, _logger_call, _args, _kwargs, **kwargs):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         self._run_count += 1
         pads.cache.run_add(id(self), self._run_count)
 
-    def __post__(self, ctx, *args, _pypads_env, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
+    def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
         pass

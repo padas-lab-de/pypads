@@ -37,10 +37,10 @@ def get_run_folder():
 
 
 class WriteFormats(Enum):
-    pickle = 1
-    text = 2
-    yaml = 3
-    json = 4
+    pickle = 'pickle'
+    text = 'text'
+    yaml = 'yaml'
+    json = 'json'
 
 
 # extract all tags of runs by experiment id
@@ -93,7 +93,11 @@ def try_write_artifact(file_name, obj, write_format, preserve_folder=True):
     def write_yaml(p, o):
         try:
             with open(p + ".yml", "w+") as fd:
-                yaml.dump(o, fd)
+                if isinstance(o, str):
+                    fd.write(o)
+                    # TODO check if valid json?
+                else:
+                    yaml.dump(o, fd)
                 return fd.name
         except Exception as e:
             logger.warning("Couldn't write meta as yaml. Trying to save it as json instead. " + str(e))
@@ -102,7 +106,11 @@ def try_write_artifact(file_name, obj, write_format, preserve_folder=True):
     def write_json(p, o):
         try:
             with open(p + ".json", "w+") as fd:
-                json.dump(o, fd)
+                if isinstance(o, str):
+                    fd.write(o)
+                    # TODO check if valid json?
+                else:
+                    json.dump(o, fd)
                 return fd.name
         except Exception as e:
             logger.warning("Couldn't write meta as json. Trying to save it as text instead. " + str(e))

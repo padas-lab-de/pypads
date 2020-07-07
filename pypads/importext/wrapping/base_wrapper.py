@@ -6,6 +6,7 @@ from typing import Set
 
 from pypads import logger
 from pypads.importext.mappings import MatchedMapping
+from pypads.model.models import MetadataHolder, ContextModel
 
 
 def fullname(o):
@@ -16,14 +17,15 @@ def fullname(o):
         return module + '.' + o.__class__.__name__
 
 
-class Context:
+class Context(MetadataHolder):
     __metaclass__ = ABCMeta
 
-    def __init__(self, context, reference=None):
+    def __init__(self, context, reference=None, *args, **kwargs):
+        reference = reference if reference is not None else fullname(context)
+        super().__init__(*args, model_cls=ContextModel, reference=reference, **kwargs)
         if context is None:
             raise ValueError("A context has to be passed for a object to be wrapped.")
         self._c = context
-        self._reference = reference if reference is not None else fullname(context)
 
     def overwrite(self, key, obj):
         setattr(self._c, key, obj)
@@ -144,10 +146,6 @@ class Context:
     @property
     def container(self):
         return self._c
-
-    @property
-    def reference(self):
-        return self._reference
 
     def get_dict(self):
         return self._c.__dict__

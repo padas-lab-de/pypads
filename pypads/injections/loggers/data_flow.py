@@ -1,23 +1,57 @@
 import os
+from typing import List
 
-from pypads.app.injections.base_logger import LoggingFunction
-from pypads.app.tracking.base import LoggerTrackingObject
-from pypads.injections.analysis.call_tracker import LoggingEnv
-from pypads.utils.logging_util import WriteFormats, try_write_artifact
+from pydantic import BaseModel
+
+from pypads.app.injections.base_logger import LoggingFunction, LoggerCall, LoggerTrackingObject
+from pypads.model.models import ArtifactMetaModel, LoggerCallModel
+from pypads.utils.logging_util import WriteFormats
 
 
-class DataFlow(LoggerTrackingObject):
+# TODO Literal for python 3.7 / 3.8?
+class InputTO(LoggerTrackingObject):
     """
-    Tracking object class for inputs and outputs of your tracked workflow.
+    Tracking object class for inputs of your tracked workflow.
     """
-    PATH = "DataFlow"
-    CONTENT_FORMAT = WriteFormats.pickle
 
-    def write_data(self, name, obj, path_prefix=None, data_format=None):
-        if path_prefix:
-            name = '.'.join([path_prefix, name])
-        _entry = {"name": self.to_path(name), "object": obj, "format": data_format or self.CONTENT_FORMAT}
-        self.data.append(_entry)
+    class InputModel(BaseModel):
+        class ParamModel(BaseModel):
+            content_format: WriteFormats = WriteFormats.pickle
+            name: str = ...
+            value: str = ...  # path to the artifact containing the param
+            type: str = ...
+
+            class Config:
+                orm_mode = True
+                arbitrary_types_allowed = True
+
+        input: List[ParamModel] = []
+        call: LoggerCallModel = ...
+
+        class Config:
+            orm_mode = True
+
+    def __init__(self, *args, call: LoggerCall, **kwargs):
+        super().__init__(*args, model_cls=self.InputModel, call=call, **kwargs)
+
+    def add_arg(self, name, value, format):
+        self._add_param(name, value, format, 0)
+
+    def add_kwarg(self, name, value, format):
+        self._add_param(name, value, format, "kwarg")
+
+    def _add_param(self, name, value, format, type):
+        # TODO try to extract parameter documentation?
+        index = len(self.input)
+        path = os.path.join(self._base_path(), self._get_artifact_path(name))
+        self.input.append(self.InputModel.ParamModel(content_format=format, name=name, value=path, type=type))
+        self._store_artifact(value, ArtifactMetaModel(path=path,
+                                                      description="Input to function with index {} and type {}".format(
+                                                          index, type),
+                                                      format=format))
+
+    def _get_artifact_path(self, name):
+        return os.path.join(self.call.call.to_folder(), "input", name)
 
 
 class Input(LoggingFunction):
@@ -25,7 +59,13 @@ class Input(LoggingFunction):
     Function logging the input parameters of the current pipeline object function call.
     """
 
-    def __pre__(self, ctx, *args, _pypads_write_format=None, _pypads_env: LoggingEnv, _args, _kwargs, **kwargs):
+    name = "InputLogger"
+    url = "https://www.padre-lab.eu/onto/input-logger"
+
+    def tracking_object_schemata(self):
+        return [InputTO.InputModel.schema()]
+
+    def __pre__(self, ctx, *args, _pypads_write_format=None, _logger_call: LoggerCall, _args, _kwargs, **kwargs):
         """
         :param ctx:
         :param args:
@@ -33,18 +73,40 @@ class Input(LoggingFunction):
         :param kwargs:
         :return:
         """
-        from pypads.app.pypads import get_current_pads
-        pads = get_current_pads()
-        input_flow = pads.tracking_object_factory(ctx, source=self, _pypads_env=_pypads_env, object_class=DataFlow)
-        input_flow.set_suffix('Inputs')
+
+        inputs = InputTO(call=_logger_call)
         for i in range(len(_args)):
             arg = _args[i]
-            input_flow.write_data(str(i), arg, path_prefix='Arg', data_format=_pypads_write_format)
+            inputs.add_arg(str(i), arg, format=_pypads_write_format)
 
         for (k, v) in _kwargs.items():
-            input_flow.write_data(str(k), v, path_prefix='Kwarg', data_format=_pypads_write_format)
+            inputs.add_kwarg(str(k), v, format=_pypads_write_format)
 
-        input_flow.store()
+
+class OutputTO(LoggerTrackingObject):
+    """
+    Tracking object class for inputs of your tracked workflow.
+    """
+
+    def _path_name(self):
+        return "inputs"
+
+    class OutputModel(BaseModel):
+        content_format: WriteFormats = WriteFormats.pickle
+        output: str = ...  # Path to the output holding file
+        call: LoggerCallModel = ...
+
+        class Config:
+            orm_mode = True
+            arbitrary_types_allowed = True
+
+    def __init__(self, value, format, *args, call: LoggerCall, **kwargs):
+        super().__init__(*args, model_cls=self.OutputModel, output="", content_format=format, call=call, **kwargs)
+        path = os.path.join(self._base_path(), self.call.call.to_folder(), "output")
+        self.output = path
+        self._store_artifact(value, ArtifactMetaModel(path=path,
+                                                      description="Output of function call {}".format(self.call.call),
+                                                      format=format))
 
 
 class Output(LoggingFunction):
@@ -52,7 +114,13 @@ class Output(LoggingFunction):
     Function logging the output of the current pipeline object function call.
     """
 
-    def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.pickle, _pypads_env, _pypads_result, **kwargs):
+    def tracking_object_schemata(self):
+        return [OutputTO.OutputModel.schema()]
+
+    name = "OutputLogger"
+    url = "https://www.padre-lab.eu/onto/output-logger"
+
+    def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.pickle, _logger_call, _pypads_result, **kwargs):
         """
         :param ctx:
         :param args:
@@ -60,11 +128,4 @@ class Output(LoggingFunction):
         :param kwargs:
         :return:
         """
-        from pypads.app.pypads import get_current_pads
-        pads = get_current_pads()
-        output_flow = pads.tracking_object_factory(ctx, source=self, _pypads_env=_pypads_env, object_class=DataFlow)
-        output_flow.set_suffix('Outputs')
-        output_flow.write_data('0', _pypads_result, path_prefix='Returned_value',
-                                  data_format=_pypads_write_format)
-
-        output_flow.store()
+        OutputTO(_pypads_result, _pypads_write_format, call=_logger_call)

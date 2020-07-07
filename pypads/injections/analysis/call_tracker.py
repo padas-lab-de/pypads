@@ -4,26 +4,21 @@ from collections.__init__ import OrderedDict
 
 from pypads import logger
 from pypads.importext.wrapping.base_wrapper import Context
+from pypads.model.models import FunctionReferenceModel, CallAccessorModel, CallIdModel, CallModel, \
+    MetadataObject
 
 
-class FunctionReference:
+class FunctionReference(MetadataObject):
 
-    def __init__(self, _pypads_context: Context, _pypads_wrappee):
-        self._context = _pypads_context
-        self._function = _pypads_wrappee
+    def __init__(self, _pypads_context: Context, _pypads_wrappee, *args, **kwargs):
+        self.wrappee = _pypads_wrappee
+        super().__init__(*args, context=_pypads_context, fn_name=_pypads_wrappee.__name__,
+                         **{**{"model_cls": FunctionReferenceModel}, **kwargs})
         self._real_context = None
         self._function_type = None
 
         if self.is_wrapped():
-            self._function = self.context.container.__dict__[self._function.__name__]
-
-    @property
-    def context(self):
-        return self._context
-
-    @property
-    def wrappee(self):
-        return self._function
+            self.wrappee = self.context.container.__dict__[self.wrappee.__name__]
 
     def real_context(self):
         """
@@ -34,7 +29,7 @@ class FunctionReference:
         # Return if already found
         if self._real_context:
             return self._real_context
-        self._real_context = self._context.real_context(self._function.__name__)
+        self._real_context = self.context.real_context(self.wrappee.__name__)
         return self._real_context
 
     def function_type(self):
@@ -55,9 +50,9 @@ class FunctionReference:
                 real_ctx = self.real_context()
                 if real_ctx is None:
                     raise ValueError("Couldn't find real context.")
-                function_type = type(real_ctx.get_dict()[self._function.__name__])
+                function_type = type(real_ctx.get_dict()[self.wrappee.__name__])
             except Exception as e:
-                logger.warning("Couldn't get function type of '" + str(self._function.__name__) + "' on '" + str(
+                logger.warning("Couldn't get function type of '" + str(self.wrappee.__name__) + "' on '" + str(
                     self.real_context()) + ". Omit logging. " + str(e))
                 return None
 
@@ -68,7 +63,7 @@ class FunctionReference:
             #     if function_type == _IffHasAttrDescriptor:
             if str(function_type) == "<class 'sklearn.utils.metaestimators._IffHasAttrDescriptor'>":
                 function_type = "wrapped"
-                self._function = self.real_context().get_dict()[self._function.__name__]
+                self.wrappee = self.real_context().get_dict()[self.wrappee.__name__]
 
             # Set cached result
             self._function_type = function_type
@@ -97,26 +92,24 @@ class FunctionReference:
         return str(id(self.context)) + "." + str(id(self.wrappee))
 
     def __str__(self):
-        return str(self._real_context) + "." + str(self._function.__name__)
+        return str(self._real_context) + "." + str(self.wrappee.__name__)
 
 
 class CallAccessor(FunctionReference):
 
-    def __init__(self, instance, _pypads_context, _pypads_wrappee):
-        super().__init__(_pypads_context, _pypads_wrappee)
+    def __init__(self, *args, instance, _pypads_context, _pypads_wrappee, **kwargs):
+        super().__init__(_pypads_context, _pypads_wrappee, instance_id=id(instance),
+                         **{**{"model_cls": CallAccessorModel}, **kwargs})
         self._instance = instance
 
     @property
     def instance(self):
         return self._instance
 
-    @property
-    def instance_id(self):
-        return id(self.instance)
-
     @classmethod
     def from_function_reference(cls, function_reference: FunctionReference, instance):
-        return CallAccessor(instance, function_reference.context, function_reference.wrappee)
+        return CallAccessor(instance=instance, _pypads_context=function_reference.context,
+                            _pypads_wrappee=function_reference.wrappee)
 
     def is_call_identity(self, other):
         if other.is_class_method() or other.is_static_method() or other.is_wrapped():
@@ -139,39 +132,21 @@ class CallAccessor(FunctionReference):
 #     def mapping(self):
 #         return self._mapping
 
-
 class CallId(CallAccessor):
 
     def __init__(self, instance, _pypads_context,
-                 _pypads_wrappee, instance_number, call_number):
-        super().__init__(instance, _pypads_context, _pypads_wrappee)
-        self._process = os.getpid()
-        self._thread = threading.get_ident()
-        self._instance_number = instance_number
-        self._call_number = call_number
+                 _pypads_wrappee, instance_number, call_number, **kwargs):
+        super().__init__(instance=instance, _pypads_context=_pypads_context, _pypads_wrappee=_pypads_wrappee,
+                         process=os.getpid(), thread=threading.get_ident(),
+                         instance_number=instance_number, call_number=call_number,
+                         **{**{"model_cls": CallIdModel}, **kwargs})
 
     @classmethod
     def from_accessor(cls, accessor: CallAccessor, instance_number, call_number):
         return CallId(accessor.instance, accessor.context, accessor.wrappee, instance_number, call_number)
 
-    @property
-    def process(self):
-        return self._process
-
-    @property
-    def thread(self):
-        return self._thread
-
-    @property
-    def instance_number(self):
-        return self._instance_number
-
-    @property
-    def call_number(self):
-        return self._call_number
-
     def to_parent_folder(self):
-        return os.path.join("process_" + str(self._process) + str(self._thread))
+        return os.path.join("process_" + str(self.process) + str(self.thread))
 
     def to_folder(self):
         return os.path.join(*self.to_fragements())
@@ -180,33 +155,20 @@ class CallId(CallAccessor):
         return ".".join(self.to_fragements())
 
     def to_fragements(self):
-        return ("process_" + str(self._process), "thread_" + str(self._thread),
+        return ("process_" + str(self.process), "thread_" + str(self.thread),
                 "context_" + self.context.container.__name__,
                 "instance_" + str(
-                    self.instance_number), "function_" + self.wrappee.__name__, "call_" + str(self._call_number))
+                    self.instance_number), "function_" + self.wrappee.__name__, "call_" + str(self.call_number))
 
 
-class Call:
+class Call(MetadataObject):
 
-    def __init__(self, call_id: CallId):
-        self._call_id = call_id
-        self._finished = False
+    def __init__(self, call_id: CallId, *args, **kwargs):
+        super().__init__(*args, model_cls=CallModel, call_id=call_id, **kwargs)
         self._active_hooks = set()
 
-    @property
-    def call_id(self):
-        return self._call_id
-
-    @property
-    def finished(self):
-        return self._finished
-
-    @property
-    def active_hooks(self):
-        return self._active_hooks
-
     def finish(self):
-        self._finished = True
+        self.finished = True
 
     def add_hook(self, hook):
         self._active_hooks.add(hook)
@@ -217,28 +179,8 @@ class Call:
     def remove_hook(self, hook):
         self._active_hooks.remove(hook)
 
-    def __str__(self):
-        return self.call_id.__str__()
-
     def to_folder(self):
         return self.call_id.to_folder()
-
-    # def __getstate__(self):
-    #     """
-    #     Overwrite standard pickling by excluding the functions
-    #     :return:
-    #     """
-    #     # can't pickle call_ids here
-    #     self.call_id_fragments = str(self.call_id.to_fragements())
-    #     state = self.__dict__.copy()
-    #     del state["_call_id"]
-    #     return state
-    #
-    # def __setstate__(self, state):
-    #     self.__dict__.update(state)
-    #     state["_call_id"] = None
-    #     # can we rebuild call_id?
-    #     return state
 
 
 class LoggingEnv:
@@ -396,7 +338,7 @@ class CallTracker:
 def add_call(accessor):
     from pypads.app.pypads import get_current_pads
     pads = get_current_pads()
-    call = Call(pads.call_tracker.make_call_id(accessor))
+    call = Call(call_id=pads.call_tracker.make_call_id(accessor))
     return pads.call_tracker.add(call)
 
 

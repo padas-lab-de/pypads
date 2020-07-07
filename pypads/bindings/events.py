@@ -2,7 +2,7 @@ from typing import Iterable, Union
 
 from pypads.bindings.event_types import EventType
 from pypads.bindings.hooks import Hook
-from pypads.importext.mappings import LibSelector
+from pypads.importext.versioning import LibSelector
 from pypads.injections.analysis.parameters import Parameters
 from pypads.injections.loggers.data_flow import Output, Input
 from pypads.injections.loggers.debug import Log, LogInit
@@ -106,25 +106,25 @@ class FunctionRegistry:
 
         fitting_fns = []
         for fn in fns:
-            fitting_fns = fitting_fns + [(lib.specificity, fn) for lib in fn.supported_libraries() if
+            fitting_fns = fitting_fns + [(lib.specificity, fn) for lib in fn.supported_libraries if
                                          lib.allows_any(lib_selector)]
 
         # Filter for specificity and identity
         identities = {}
         filtered_fns = set()
         for spec, fn in fitting_fns:
-            if fn.identity is None:
+            if fn.uid is None:
                 filtered_fns.add(fn)
-            elif fn.identity in identities:
+            elif fn.uid in identities:
                 # If we are more specific and have the same identity remove old fn
-                if identities[fn.identity][0] <= spec:
-                    if identities[fn.identity][0] < spec:
-                        if fn.identity in identities:
-                            filtered_fns.remove(identities[fn.identity][1])
+                if identities[fn.uid][0] <= spec:
+                    if identities[fn.uid][0] < spec:
+                        if fn.uid in identities:
+                            filtered_fns.remove(identities[fn.uid][1])
                     filtered_fns.add(fn)
-                    identities[fn.identity] = (spec, fn)
+                    identities[fn.uid] = (spec, fn)
             else:
                 # If not seen add it
                 filtered_fns.add(fn)
-                identities[fn.identity] = (spec, fn)
+                identities[fn.uid] = (spec, fn)
         return filtered_fns

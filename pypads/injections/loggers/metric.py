@@ -11,7 +11,7 @@ class Metric(LoggingFunction):
     Function logging the wrapped metric function
     """
 
-    def __post__(self, ctx, *args, _pypads_artifact_fallback=False, _pypads_env, _pypads_result, **kwargs):
+    def __post__(self, ctx, *args, _pypads_artifact_fallback=False, _logger_call, _pypads_result, **kwargs):
         """
 
         :param ctx:
@@ -26,16 +26,16 @@ class Metric(LoggingFunction):
         if result is not None:
             if isinstance(result, float):
                 try_mlflow_log(mlflow.log_metric,
-                               _pypads_env.call.call_id.context.container.__name__ + "." + _pypads_env.call.call_id.wrappee.__name__ + ".txt",
-                               result, step=_pypads_env.call.call_id.call_number)
+                               _logger_call.call.call_id.context.container.__name__ + "." + _logger_call.call.call_id.wrappee.__name__ + ".txt",
+                               result, step=_logger_call.call.call_id.call_number)
             else:
                 logger.warning("Mlflow metrics have to be doubles. Could log the return value of type '" + str(
                     type(
-                        result)) + "' of '" + _pypads_env.call.call_id.context.container.__name__ + "." + _pypads_env.call.call_id.wrappee.__name__ + "' as artifact instead.")
+                        result)) + "' of '" + _logger_call.call.call_id.context.container.__name__ + "." + _logger_call.call.call_id.wrappee.__name__ + "' as artifact instead.")
 
                 # TODO search callstack for already logged functions and ignore?
                 if _pypads_artifact_fallback:
                     logger.info(
-                        "Logging result if '" + _pypads_env.call.call_id.context.container.__name__ + "' as artifact.")
-                    try_write_artifact(_pypads_env.call.call_id.context.container.__name__, str(result),
+                        "Logging result if '" + _logger_call.call.call_id.context.container.__name__ + "' as artifact.")
+                    try_write_artifact(_logger_call.call.call_id.context.container.__name__, str(result),
                                        WriteFormats.text)

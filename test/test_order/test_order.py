@@ -11,10 +11,10 @@ def experiment():
 
 
 class First(LoggingFunction):
-    def __post__(self, ctx, *args, _pypads_env, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
+    def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
         pass
 
-    def __pre__(ctx, *args, _pypads_env: LoggingEnv, **kwargs):
+    def __pre__(ctx, *args, _logger_call: LoggingEnv, **kwargs):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         print("first")
@@ -22,10 +22,10 @@ class First(LoggingFunction):
 
 
 class Second(LoggingFunction):
-    def __post__(self, ctx, *args, _pypads_env, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
+    def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
         pass
 
-    def __pre__(ctx, *args, _pypads_env: LoggingEnv, **kwargs):
+    def __pre__(ctx, *args, _logger_call: LoggingEnv, **kwargs):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         print("second")
@@ -35,10 +35,10 @@ class Second(LoggingFunction):
 
 
 class Third(LoggingFunction):
-    def __post__(self, ctx, *args, _pypads_env, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
+    def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
         pass
 
-    def __pre__(ctx, *args, _pypads_env: LoggingEnv, **kwargs):
+    def __pre__(ctx, *args, _logger_call: LoggingEnv, **kwargs):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         print("third")

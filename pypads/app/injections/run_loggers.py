@@ -53,7 +53,7 @@ class BaseRunLogger(BaseDefensiveCallable, IntermediateCallableMixin, FunctionHo
         return NotImplementedError()
 
 
-class PreRunFunction(BaseRunLogger, metaclass=ABCMeta):
+class RunSetupFunction(BaseRunLogger, metaclass=ABCMeta):
     """
     This class should be used to define new pre run functions
     """
@@ -67,7 +67,7 @@ class PreRunFunction(BaseRunLogger, metaclass=ABCMeta):
         return super().__real_call__(get_current_pads(), *args, **kwargs)
 
 
-class PostRunFunction(BaseRunLogger, metaclass=ABCMeta):
+class RunTeardownFunction(BaseRunLogger, metaclass=ABCMeta):
     """
     This class should be used to define new post run functions
     """
@@ -81,17 +81,17 @@ class PostRunFunction(BaseRunLogger, metaclass=ABCMeta):
         return super().__real_call__(get_current_pads(), *args, **kwargs)
 
 
-def pre_run_functions():
+def run_setup_functions():
     """
     Find all pre run functions defined in our imported context.
     :return:
     """
-    return inheritors(PreRunFunction)
+    return inheritors(RunSetupFunction)
 
 
-def post_run_functions():
+def run_teardown_functions():
     """
     Find all post run functions defined in our imported context.
     :return:
     """
-    return inheritors(PostRunFunction)
+    return inheritors(RunTeardownFunction)

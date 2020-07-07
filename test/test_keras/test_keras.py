@@ -2,7 +2,7 @@ import os
 import pathlib
 
 from pypads.app.injections.base_logger import LoggingFunction
-from pypads.importext.mappings import LibSelector
+from pypads.importext.versioning import LibSelector
 from pypads.utils.util import dict_merge
 from test.base_test import TEST_FOLDER, BaseTest
 
@@ -82,50 +82,47 @@ class PypadsKerasTest(BaseTest):
         class Predictions(LoggingFunction):
 
             def __init__(self, *args, **kwargs):
-                super().__init__(*args, identity="predictions", **kwargs)
+                super().__init__(*args, uid="predictions", **kwargs)
 
-            def supported_libraries(self):
-                return {LibSelector("keras", "2.3.1", specificity=0)}
+            supported_libraries = {LibSelector(name="keras", constraint="2.3.1", specificity=0)}
 
-            def __pre__(self, ctx, *args, _pypads_env, _args, _kwargs, **kwargs):
+            def __pre__(self, ctx, *args, _logger_call, _args, _kwargs, **kwargs):
                 # Fallback logging function
                 global callback
                 callback = "predictions"
 
-            def __post__(self, ctx, *args, _pypads_env, _pypads_pre_return, _pypads_result, _args, _kwargs,
+            def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs,
                          **kwargs):
                 pass
 
         class KerasPredictions(LoggingFunction):
 
             def __init__(self, *args, **kwargs):
-                super().__init__(*args, identity="predictions", **kwargs)
+                super().__init__(*args, uid="predictions", **kwargs)
 
-            def supported_libraries(self):
-                return {LibSelector("keras", "*", specificity=1)}
+            supported_libraries = {LibSelector(name="keras", constraint="2.3.1", specificity=1)}
 
-            def __pre__(self, ctx, *args, _pypads_env, _args, _kwargs, **kwargs):
+            def __pre__(self, ctx, *args, _logger_call, _args, _kwargs, **kwargs):
                 # Fallback logging function
                 global callback
                 callback = "predictions for keras"
 
-            def __post__(self, ctx, *args, _pypads_env, _pypads_pre_return, _pypads_result, _args, _kwargs,
+            def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs,
                          **kwargs):
                 pass
 
         class Keras231Predictions(LoggingFunction):
 
             def __init__(self, *args, **kwargs):
-                super().__init__(*args, identity="predictions", **kwargs)
+                super().__init__(*args, uid="predictions", **kwargs)
 
-            def supported_libraries(self):
-                return {LibSelector("keras", "2.3.1", specificity=2)}
+            supported_libraries = {LibSelector(name="keras", constraint="2.3.1", specificity=0)}
 
-            def __pre__(self, ctx, *args, _pypads_env, _args, _kwargs, **kwargs):
+            def __pre__(self, ctx, *args, _logger_call, _args, _kwargs, **kwargs):
                 global callback
                 callback = "predictions for keras v 2.3.1"
 
-            def __post__(self, ctx, *args, _pypads_env, _pypads_pre_return, _pypads_result, _args, _kwargs,
+            def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs,
                          **kwargs):
                 pass
 

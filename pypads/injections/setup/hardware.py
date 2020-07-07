@@ -1,12 +1,9 @@
-from pypads.app.injections.run_loggers import PreRunFunction
+from pypads.app.injections.run_loggers import RunSetupFunction
 from pypads.utils.util import sizeof_fmt, local_uri_to_path
 
 
-class ISystem(PreRunFunction):
-
-    @staticmethod
-    def _needed_packages():
-        return ["platform"]
+class ISystem(RunSetupFunction):
+    _dependencies = {"psutil"}
 
     def _call(self, pads, *args, **kwargs):
         import platform
@@ -19,11 +16,8 @@ class ISystem(PreRunFunction):
         pads.api.set_tag("pypads.system.processor", uname.processor)
 
 
-class ICpu(PreRunFunction):
-
-    @staticmethod
-    def _needed_packages():
-        return ["psutil"]
+class ICpu(RunSetupFunction):
+    _dependencies = {"psutil"}
 
     def _call(self, pads, *args, **kwargs):
         import psutil
@@ -34,11 +28,8 @@ class ICpu(PreRunFunction):
         pads.api.set_tag("pypads.system.cpu.min_freq", f"{freq.min:2f}Mhz")
 
 
-class IRam(PreRunFunction):
-
-    @staticmethod
-    def _needed_packages():
-        return ["psutil"]
+class IRam(RunSetupFunction):
+    _dependencies = {"psutil"}
 
     def _call(self, pads, *args, **kwargs):
         import psutil
@@ -48,11 +39,8 @@ class IRam(PreRunFunction):
         pads.api.set_tag("pypads.system.swap.total", sizeof_fmt(swap.total))
 
 
-class IDisk(PreRunFunction):
-
-    @staticmethod
-    def _needed_packages():
-        return ["psutil"]
+class IDisk(RunSetupFunction):
+    _dependencies = {"psutil"}
 
     def _call(self, pads, *args, **kwargs):
         import psutil
@@ -62,11 +50,8 @@ class IDisk(PreRunFunction):
         pads.api.set_tag("pypads.system.disk.total", sizeof_fmt(disk_usage.total))
 
 
-class IPid(PreRunFunction):
-
-    @staticmethod
-    def _needed_packages():
-        return ["psutil"]
+class IPid(RunSetupFunction):
+    _dependencies = {"psutil"}
 
     def _call(self, pads, *args, **kwargs):
         import psutil
@@ -79,7 +64,7 @@ class IPid(PreRunFunction):
         pads.api.set_tag("pypads.system.process.memory_usage", str(process.memory_percent()) + "%")
 
 
-class ISocketInfo(PreRunFunction):
+class ISocketInfo(RunSetupFunction):
 
     def _call(self, pads, *args, **kwargs):
         import socket
@@ -87,7 +72,7 @@ class ISocketInfo(PreRunFunction):
         pads.api.set_tag("pypads.system.ip-address", socket.gethostbyname(socket.gethostname()))
 
 
-class IMacAddress(PreRunFunction):
+class IMacAddress(RunSetupFunction):
 
     def _call(self, pads, *args, **kwargs):
         import re, uuid

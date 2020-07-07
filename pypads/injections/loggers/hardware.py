@@ -11,11 +11,10 @@ class Cpu(LoggingFunction):
     This function only writes an information of a constructor execution to the stdout.
     """
 
-    def _needed_packages(self):
-        return ["psutil"]
+    _dependencies = {"psutil"}
 
-    def __pre__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
-        name = os.path.join(_pypads_env.call.to_folder(), "pre_cpu_usage")
+    def __pre__(self, ctx, *args, _logger_call: LoggingEnv, **kwargs):
+        name = os.path.join(_logger_call.call.to_folder(), "pre_cpu_usage")
         try_write_artifact(name, _get_cpu_usage(), WriteFormats.text)
 
     def __call_wrapped__(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
@@ -23,8 +22,8 @@ class Cpu(LoggingFunction):
         return super().__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=_args, _kwargs=_kwargs,
                                         **_pypads_hook_params)
 
-    def __post__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
-        name = os.path.join(_pypads_env.call.to_folder(), "post_cpu_usage")
+    def __post__(self, ctx, *args, _logger_call: LoggingEnv, **kwargs):
+        name = os.path.join(_logger_call.call.to_folder(), "post_cpu_usage")
         try_write_artifact(name, _get_cpu_usage(), WriteFormats.text)
 
 
@@ -43,11 +42,10 @@ class Ram(LoggingFunction):
     This function only writes an information of a constructor execution to the stdout.
     """
 
-    def _needed_packages(self):
-        return ["psutil"]
+    _dependencies = {"psutil"}
 
-    def __pre__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
-        name = os.path.join(_pypads_env.call.to_folder(), "pre_memory_usage")
+    def __pre__(self, ctx, *args, _logger_call: LoggingEnv, **kwargs):
+        name = os.path.join(_logger_call.call.to_folder(), "pre_memory_usage")
         try_write_artifact(name, _get_memory_usage(), WriteFormats.text)
 
     def __call_wrapped__(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
@@ -55,8 +53,8 @@ class Ram(LoggingFunction):
         return super().__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=_args, _kwargs=_kwargs,
                                         **_pypads_hook_params)
 
-    def __post__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
-        name = os.path.join(_pypads_env.call.to_folder(), "post_memory_usage")
+    def __post__(self, ctx, *args, _logger_call: LoggingEnv, **kwargs):
+        name = os.path.join(_logger_call.call.to_folder(), "post_memory_usage")
         try_write_artifact(name, _get_memory_usage(), WriteFormats.text)
 
 
@@ -81,15 +79,16 @@ class Disk(LoggingFunction):
     This function only writes an information of a constructor execution to the stdout.
     """
 
-    def _needed_packages(self):
+    @classmethod
+    def _needed_packages(cls):
         return ["psutil"]
 
-    def __pre__(self, ctx, *args, _pypads_env, **kwargs):
+    def __pre__(self, ctx, *args, _logger_call, **kwargs):
         from pypads.app.base import PyPads
         from pypads.app.pypads import get_current_pads
         pads: PyPads = get_current_pads()
         path = local_uri_to_path(pads.uri)
-        name = os.path.join(_pypads_env.call.to_folder(), "pre_disk_usage")
+        name = os.path.join(_logger_call.call.to_folder(), "pre_disk_usage")
         try_write_artifact(name, _get_disk_usage(path), WriteFormats.text)
 
     def __call_wrapped__(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
@@ -97,12 +96,12 @@ class Disk(LoggingFunction):
         return super().__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=_args, _kwargs=_kwargs,
                                         **_pypads_hook_params)
 
-    def __post__(self, ctx, *args, _pypads_env, **kwargs):
+    def __post__(self, ctx, *args, _logger_call, **kwargs):
         from pypads.app.base import PyPads
         from pypads.app.pypads import get_current_pads
         pads: PyPads = get_current_pads()
         path = local_uri_to_path(pads.uri)
-        name = os.path.join(_pypads_env.call.to_folder(), "post_disk_usage")
+        name = os.path.join(_logger_call.call.to_folder(), "post_disk_usage")
         try_write_artifact(name, _get_disk_usage(path), WriteFormats.text)
 
 

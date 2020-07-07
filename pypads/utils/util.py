@@ -1,5 +1,7 @@
 import inspect
 
+import pkg_resources
+
 from pypads import logger
 from pypads.app.misc.caches import Cache
 
@@ -94,6 +96,18 @@ def inheritors(clazz):
     return subclasses
 
 
+def find_package_regex_versions(regex):
+    import pkgutil
+    import re
+    versions = {
+        name: find_package_version(name)
+        for finder, name, ispkg
+        in pkgutil.iter_modules()
+        if re.compile(regex).match(name)
+    }
+    return versions
+
+
 def is_package_available(name):
     """
     Check if given package is available.
@@ -106,6 +120,20 @@ def is_package_available(name):
     except Exception as e:
         spam_loader = importlib.find_loader(name)
     return spam_loader is not None
+
+
+def find_package_version(name: str):
+    try:
+        import sys
+        base_package = sys.modules[name]
+        if hasattr(base_package, "__version__"):
+            lib_version = getattr(base_package, "__version__")
+        else:
+            lib_version = pkg_resources.get_distribution(name).version
+        return lib_version
+    except Exception as e:
+        logger.debug("Couldn't get version of package {}".format(name))
+        return None
 
 
 def dict_merge_caches(*dicts):

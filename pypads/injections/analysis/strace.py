@@ -4,11 +4,11 @@ import subprocess
 from sys import platform
 
 from pypads import logger
-from pypads.app.injections.run_loggers import PreRunFunction, PostRunFunction
+from pypads.app.injections.run_loggers import RunSetupFunction, RunTeardownFunction
 from pypads.utils.logging_util import get_temp_folder
 
 
-class STrace(PreRunFunction):
+class STrace(RunSetupFunction):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -50,7 +50,7 @@ class STrace(PreRunFunction):
         pads.add_atexit_fn(safety_hook)
 
 
-class STraceStop(PostRunFunction):
+class STraceStop(RunTeardownFunction):
 
     def __init__(self, *args, _pypads_proc=None, _pypads_trace_file=None, **kwargs):
         super().__init__(*args, **kwargs)

@@ -1,12 +1,9 @@
-from pypads.app.injections.run_loggers import PreRunFunction
+from pypads.app.injections.run_loggers import RunSetupFunction
 from pypads.app.misc.managed_git import ManagedGit
 
 
-class IGit(PreRunFunction):
-
-    @staticmethod
-    def _needed_packages():
-        return ['git']
+class IGit(RunSetupFunction):
+    _dependencies = {"git"}
 
     def _call(self, pads, *args, **kwargs):
         _pypads_timeout = kwargs.get("_pypads_timeout") if kwargs.get("_pypads_timeout") else 5

@@ -1,17 +1,15 @@
 import os
 
 from pypads import logger
-from pypads.app.injections.run_loggers import PreRunFunction
+from pypads.app.injections.run_loggers import RunSetupFunction
 
 
-class RunInfo(PreRunFunction):
+class RunInfo(RunSetupFunction):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    @staticmethod
-    def _needed_packages():
-        return ["pip"]
+    _dependencies = {"pip"}
 
     def _call(self, pads, *args, **kwargs):
         logger.info("Tracking execution to run with id " + pads.api.active_run().info.run_id)
@@ -26,7 +24,7 @@ class RunInfo(PreRunFunction):
         pads.api.log_mem_artifact("pip_freeze", "\n".join(freeze.freeze()))
 
 
-class RunLogger(PreRunFunction):
+class RunLogger(RunSetupFunction):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

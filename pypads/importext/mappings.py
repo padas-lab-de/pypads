@@ -1,9 +1,7 @@
 import glob
 import os
-import re
 from typing import List, Set, Tuple, Generator, Iterable
 
-import pkg_resources
 import yaml
 
 from pypads import logger
@@ -11,72 +9,13 @@ from pypads.bindings.anchors import Anchor, get_anchor
 from pypads.bindings.hooks import Hook
 from pypads.importext.package_path import RegexMatcher, PackagePath, PackagePathMatcher, \
     SerializableMatcher, Package
-from pypads.importext.semver import parse_constraint
+from pypads.importext.versioning import LibSelector
+from pypads.utils.util import find_package_version
 
 default_mapping_file_paths = []
 default_mapping_file_paths.extend(glob.glob(
     os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "bindings", "resources", "mapping", "**.yml"))))
-
-
-class LibSelector:
-    """
-    Selector class holding version constraint and name of a library. @see poetry sem versioning
-    """
-
-    def __init__(self, name, version: str, specificity=None):
-        super().__init__()
-        self._name = name
-        self._constraint = parse_constraint(version)
-        self._specificity = specificity or self._calc_specificity()
-
-    @staticmethod
-    def from_dict(library):
-        if library is None:
-            return None
-        return LibSelector(library["name"], library["version"])
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def version(self):
-        return self._constraint
-
-    def _calc_specificity(self):
-        """
-        Calculates a value how specific the selector is. The more specific it is the higher the value is.
-        TODO do some magic here
-        :return:
-        """
-        return 0
-
-    @property
-    def specificity(self):
-        """
-        Returns a value how specific the selector is.
-        :return:
-        """
-        return self._specificity
-
-    def allows_any(self, other):  # type: (LibSelector) -> bool
-        """
-        Check if the constraint overlaps with another constaint.
-        :param other:
-        :return:
-        """
-        return re.compile(self._name).match(other.name) and self._constraint.allows_any(other.version)
-
-    def allows(self, name, version):  # type: (str, "Version") -> bool
-        """
-        Check if the constraint allows given version number.
-        :param name:
-        :param version:
-        :return:
-        """
-        from pypads.importext.semver import Version
-        return re.compile(self._name).match(name) and self._constraint.allows(Version.parse(version))
 
 
 class Mapping:
@@ -94,6 +33,12 @@ class Mapping:
         self._matcher = matcher
 
     def is_applicable(self, ctx, obj):
+        """
+        Check if mapping fits next step on object of given context.
+        :param ctx: Context of the object
+        :param obj: Object to check
+        :return:
+        """
         if not hasattr(obj, "__name__"):
             return False
         reference = ctx.reference + "." + obj.__name__ if ctx is not None else obj.__name__
@@ -102,11 +47,9 @@ class Mapping:
     def applicable_filter(self, ctx):
         """
         Create a filter to check if the mapping is applicable
-        :param ctx:
-        :param mapping:
+        :param ctx: Context on which we search an matching object
         :return:
         """
-
         def mapping_applicable_filter(name):
             if hasattr(ctx.container, name):
                 try:
@@ -475,28 +418,17 @@ class MappingRegistry:
         :return:
         """
         if any([package.path.segments[0] == s.name for s, _ in self.get_entries()]):
-            lib_version = None
-
-            # TODO what about libraries where package name != pip name
-            # Try to get version of installed package
-            try:
-                import sys
-                base_package = sys.modules[str(package.path.segments[0])]
-                if hasattr(base_package, "__version__"):
-                    lib_version = getattr(base_package, "__version__")
-                else:
-                    lib_version = pkg_resources.get_distribution(str(package.path.segments[0])).version
-            except Exception as e:
-                logger.debug("Couldn't get version of package {}".format(package.path))
-
+            lib_version = find_package_version(str(package.path.segments[0]))
             mappings = set()
 
-            # Take only mappings which are fitting for versions
+            # Take only mappings which are fitting for versions if we have a selector
             if lib_version:
-                for k, collection in [(s, c) for s, c in self.get_entries() if
-                                      s.allows(str(package.path.segments[0]), lib_version)]:
+                lib_selector = LibSelector(name=str(package.path.segments[0]), constraint=lib_version)
+                for k, collection in [(s, c) for s, c in self.get_entries() if s.allows_any(lib_selector)]:
                     for m in collection.find_mappings(package.path.segments):
                         mappings.add(m)
+
+            # Otherwise just use all name fitting mappings
             else:
                 for k, collection in [(s, c) for s, c in self.get_entries() if s.name == package.path.segments[0]]:
                     for m in collection.find_mappings(package.path.segments):

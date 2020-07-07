@@ -134,10 +134,6 @@ class PyPads:
 
         self._backend = MLFlowBackend(self.uri, self)
 
-        # Create tracking object factory
-        from pypads.app.tracking.base import TrackingObjectFactory
-        self._tracking_object_factory = TrackingObjectFactory(self)
-
         # Store config into cache
         self.config = {**DEFAULT_CONFIG, **config} if config else DEFAULT_CONFIG
 
@@ -207,8 +203,8 @@ class PyPads:
         Return a list of available setup function in the current installation of PyPads.
         :return: Setup function classes
         """
-        from pypads.app.injections.run_loggers import pre_run_functions
-        return pre_run_functions()
+        from pypads.app.injections.run_loggers import run_setup_functions
+        return run_setup_functions()
 
     @staticmethod
     def available_teardown_functions():
@@ -216,8 +212,8 @@ class PyPads:
         Return a list of available setup function in the current installation of PyPads.
         :return: Teardown function classes
         """
-        from pypads.app.injections.run_loggers import post_run_functions
-        return post_run_functions()
+        from pypads.app.injections.run_loggers import run_teardown_functions
+        return run_teardown_functions()
 
     @staticmethod
     def available_anchors():
@@ -273,7 +269,7 @@ class PyPads:
         return api()
 
     @property
-    def cache(self):
+    def cache(self) -> PypadsCache:
         """
         Return the cache of pypads. This holds generic cache data and run cache data.
         :return:
@@ -438,14 +434,6 @@ class PyPads:
         return self._managed_git_factory
 
     @property
-    def tracking_object_factory(self):
-        """
-        Return tracked object manager of PyPads. This is used to create and manage tracked object.
-        :return: TrackingOjbectFactory
-        """
-        return self._tracking_object_factory
-
-    @property
     def backend(self):
         """
         Return the backend of PyPads. This is currently hardcoded to mlflow.
@@ -505,8 +493,8 @@ class PyPads:
         """
         if affected_modules is None:
             # Modules are affected if they are mapped by a library or are already punched
-            affected_modules = self.wrap_manager.module_wrapper.punched_module_names | set(
-                [l.name for l in self.mapping_registry.get_libraries()])
+            affected_modules = self.wrap_manager.module_wrapper.punched_module_names | \
+                               {l.name for l in self.mapping_registry.get_libraries()}
 
         global tracking_active
         if not tracking_active:
