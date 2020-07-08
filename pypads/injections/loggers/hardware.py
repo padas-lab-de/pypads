@@ -27,7 +27,7 @@ class CPUTO(LoggerTrackingObject):
 
     class CPUModel(BaseModel):
         class ParamModel(BaseModel):
-            content_format: WriteFormats = WriteFormats.pickle
+            content_format: WriteFormats = WriteFormats.text
             name: str = ...
             value: str = ...  # path to the artifact containing the param
             type: str = ...
