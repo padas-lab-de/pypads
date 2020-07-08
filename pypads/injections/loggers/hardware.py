@@ -178,35 +178,85 @@ def _get_memory_usage():
     return memory_usage
 
 
+class DiskTO(LoggerTrackingObject):
+    """
+    Function logging the input parameters of the current pipeline object function call.
+    """
+
+    class DiskModel(BaseModel):
+        class ParamModel(BaseModel):
+            content_format: WriteFormats = WriteFormats.text
+            name: str = ...
+            value: str = ...  # path to the artifact containing the param
+            type: str = ...
+
+            class Config:
+                orm_mode = True
+                arbitrary_types_allowed = True
+
+        input: List[ParamModel] = []
+        call: LoggerCallModel = ...
+
+        class Config:
+            orm_mode = True
+
+    def __init__(self, *args, call: LoggerCall, **kwargs):
+        super().__init__(*args, model_cls=self.DiskModel, call=call, **kwargs)
+
+    def add_arg(self, name, value, format):
+        self._add_param(name, value, format, 0)
+
+    def add_kwarg(self, name, value, format):
+        self._add_param(name, value, format, "kwarg")
+
+    def _add_param(self, name, value, format, type):
+        # TODO try to extract parameter documentation?
+        index = len(self.input)
+        path = os.path.join(self._base_path(), self._get_artifact_path(name))
+        self.input.append(self.DiskModel.ParamModel(content_format=format, name=name, value=path, type=type))
+        self._store_artifact(value, ArtifactMetaModel(path=path,
+                                                      description="Disk usage",
+                                                      format=format))
+
+    def _get_artifact_path(self, name):
+        return os.path.join(self.call.call.to_folder(), "disk_usage", name)
+
+
 class Disk(LoggingFunction):
     """
     This function only writes an information of a constructor execution to the stdout.
     """
 
+    name = "DiskLogger"
+    url = "https://www.padre-lab.eu/onto/disk-logger"
+
+    def tracking_object_schemata(self):
+        return [DiskTO.DiskModel.schema()]
+
     @classmethod
     def _needed_packages(cls):
         return ["psutil"]
 
-    def __pre__(self, ctx, *args, _logger_call, **kwargs):
+    def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call: LoggerCall, _args, _kwargs, **kwargs):
         from pypads.app.base import PyPads
         from pypads.app.pypads import get_current_pads
         pads: PyPads = get_current_pads()
         path = local_uri_to_path(pads.uri)
-        name = os.path.join(_logger_call.call.to_folder(), "pre_disk_usage")
-        try_write_artifact(name, _get_disk_usage(path), WriteFormats.text)
+        inputs = DiskTO(call=_logger_call)
+        inputs.add_arg("pre_disk_usage", _get_disk_usage(path), _pypads_write_format)
 
     def __call_wrapped__(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
         # TODO track while executing instead of before and after
         return super().__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=_args, _kwargs=_kwargs,
                                         **_pypads_hook_params)
 
-    def __post__(self, ctx, *args, _logger_call, **kwargs):
+    def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call, _pypads_result, **kwargs):
         from pypads.app.base import PyPads
         from pypads.app.pypads import get_current_pads
         pads: PyPads = get_current_pads()
         path = local_uri_to_path(pads.uri)
-        name = os.path.join(_logger_call.call.to_folder(), "post_disk_usage")
-        try_write_artifact(name, _get_disk_usage(path), WriteFormats.text)
+        inputs = DiskTO(call=_logger_call)
+        inputs.add_arg("post_disk_usage", _get_disk_usage(path), _pypads_write_format)
 
 
 def _get_disk_usage(path):
