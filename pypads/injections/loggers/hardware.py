@@ -61,7 +61,7 @@ class CPUTO(LoggerTrackingObject):
                                                       format=format))
 
     def _get_artifact_path(self, name):
-        return os.path.join(self.call.call.to_folder(), "pre_cpu_usage", name)
+        return os.path.join(self.call.call.to_folder(), "cpu_usage", name)
 
 
 class Cpu(LoggingFunction):
@@ -76,7 +76,7 @@ class Cpu(LoggingFunction):
 
     _dependencies = {"psutil"}
 
-    def __pre__(self, ctx, *args, _pypads_write_format=None, _logger_call: LoggerCall, _args, _kwargs, **kwargs):
+    def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call: LoggerCall, _args, _kwargs, **kwargs):
 
         inputs = CPUTO(call=_logger_call)
         inputs.add_arg("pre_cpu_usage", _get_cpu_usage(), _pypads_write_format)
@@ -91,7 +91,7 @@ class Cpu(LoggingFunction):
         return super().__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=_args, _kwargs=_kwargs,
                                         **_pypads_hook_params)
 
-    def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.pickle, _logger_call, _pypads_result, **kwargs):
+    def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call, _pypads_result, **kwargs):
         output = CPUTO(call=_logger_call)
         output.add_arg("post_cpu_usage", _get_cpu_usage(), _pypads_write_format)
 
