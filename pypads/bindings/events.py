@@ -18,7 +18,7 @@ DEFAULT_LOGGING_FNS = {
     "parameters": Parameters(),
     "output": Output(_pypads_write_format=WriteFormats.text.name),
     "input": Input(_pypads_write_format=WriteFormats.text.name),
-    "hardware": [Cpu(), Ram(), Disk()],
+    "hardware": [Cpu(_pypads_write_format=WriteFormats.text.name), Ram(), Disk()],
     "metric": Metric(),
     "autolog": MlflowAutologger(),
     "pipeline": PipelineTracker(_pypads_pipeline_type="normal", _pypads_pipeline_args=False),
