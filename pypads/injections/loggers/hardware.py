@@ -81,11 +81,6 @@ class Cpu(LoggingFunction):
         inputs = CPUTO(call=_logger_call)
         inputs.add_arg("pre_cpu_usage", _get_cpu_usage(), _pypads_write_format)
 
-        """
-        name = os.path.join(_logger_call.call.to_folder(), "pre_cpu_usage")
-        try_write_artifact(name, _get_cpu_usage(), WriteFormats.text)
-        """
-
     def __call_wrapped__(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
         # TODO track while executing instead of before and after
         return super().__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=_args, _kwargs=_kwargs,
@@ -96,25 +91,75 @@ class Cpu(LoggingFunction):
         output.add_arg("post_cpu_usage", _get_cpu_usage(), _pypads_write_format)
 
 
+class RAMTO(LoggerTrackingObject):
+    """
+    Function logging the input parameters of the current pipeline object function call.
+    """
+
+    class RAMModel(BaseModel):
+        class ParamModel(BaseModel):
+            content_format: WriteFormats = WriteFormats.text
+            name: str = ...
+            value: str = ...  # path to the artifact containing the param
+            type: str = ...
+
+            class Config:
+                orm_mode = True
+                arbitrary_types_allowed = True
+
+        input: List[ParamModel] = []
+        call: LoggerCallModel = ...
+
+        class Config:
+            orm_mode = True
+
+    def __init__(self, *args, call: LoggerCall, **kwargs):
+        super().__init__(*args, model_cls=self.RAMModel, call=call, **kwargs)
+
+    def add_arg(self, name, value, format):
+        self._add_param(name, value, format, 0)
+
+    def add_kwarg(self, name, value, format):
+        self._add_param(name, value, format, "kwarg")
+
+    def _add_param(self, name, value, format, type):
+        # TODO try to extract parameter documentation?
+        index = len(self.input)
+        path = os.path.join(self._base_path(), self._get_artifact_path(name))
+        self.input.append(self.RAMModel.ParamModel(content_format=format, name=name, value=path, type=type))
+        self._store_artifact(value, ArtifactMetaModel(path=path,
+                                                      description="RAM usage",
+                                                      format=format))
+
+    def _get_artifact_path(self, name):
+        return os.path.join(self.call.call.to_folder(), "ram_usage", name)
+
+
 class Ram(LoggingFunction):
     """
     This function only writes an information of a constructor execution to the stdout.
     """
 
+    name = "RAMLogger"
+    url = "https://www.padre-lab.eu/onto/ram-logger"
+
+    def tracking_object_schemata(self):
+        return [RAMTO.RAMModel.schema()]
+
     _dependencies = {"psutil"}
 
-    def __pre__(self, ctx, *args, _logger_call: LoggingEnv, **kwargs):
-        name = os.path.join(_logger_call.call.to_folder(), "pre_memory_usage")
-        try_write_artifact(name, _get_memory_usage(), WriteFormats.text)
+    def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call: LoggerCall, _args, _kwargs, **kwargs):
+        inputs = RAMTO(call=_logger_call)
+        inputs.add_arg("pre_memory_usage", _get_memory_usage(), _pypads_write_format)
 
     def __call_wrapped__(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
         # TODO track while executing instead of before and after
         return super().__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=_args, _kwargs=_kwargs,
                                         **_pypads_hook_params)
 
-    def __post__(self, ctx, *args, _logger_call: LoggingEnv, **kwargs):
-        name = os.path.join(_logger_call.call.to_folder(), "post_memory_usage")
-        try_write_artifact(name, _get_memory_usage(), WriteFormats.text)
+    def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call, _pypads_result, **kwargs):
+        inputs = RAMTO(call=_logger_call)
+        inputs.add_arg("post_memory_usage", _get_memory_usage(), _pypads_write_format)
 
 
 def _get_memory_usage():
