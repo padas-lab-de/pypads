@@ -4,7 +4,6 @@ from typing import List
 from pydantic import BaseModel
 
 from pypads.app.injections.base_logger import LoggingFunction, LoggerCall, LoggerTrackingObject
-from pypads.injections.analysis.call_tracker import LoggingEnv
 from pypads.model.models import LoggerCallModel, ArtifactMetaModel
 from pypads.utils.logging_util import try_write_artifact, WriteFormats
 from pypads.utils.util import local_uri_to_path, sizeof_fmt
@@ -20,7 +19,7 @@ def _get_cpu_usage():
     return cpu_usage
 
 
-class CPUTO(LoggerTrackingObject):
+class CpuTO(LoggerTrackingObject):
     """
     Function logging the input parameters of the current pipeline object function call.
     """
@@ -34,7 +33,6 @@ class CPUTO(LoggerTrackingObject):
 
             class Config:
                 orm_mode = True
-                arbitrary_types_allowed = True
 
         input: List[ParamModel] = []
         call: LoggerCallModel = ...
@@ -45,15 +43,7 @@ class CPUTO(LoggerTrackingObject):
     def __init__(self, *args, call: LoggerCall, **kwargs):
         super().__init__(*args, model_cls=self.CPUModel, call=call, **kwargs)
 
-    def add_arg(self, name, value, format):
-        self._add_param(name, value, format, 0)
-
-    def add_kwarg(self, name, value, format):
-        self._add_param(name, value, format, "kwarg")
-
-    def _add_param(self, name, value, format, type):
-        # TODO try to extract parameter documentation?
-        index = len(self.input)
+    def add_arg(self, name, value, format, type=0):
         path = os.path.join(self._base_path(), self._get_artifact_path(name))
         self.input.append(self.CPUModel.ParamModel(content_format=format, name=name, value=path, type=type))
         self._store_artifact(value, ArtifactMetaModel(path=path,
@@ -72,13 +62,13 @@ class Cpu(LoggingFunction):
     url = "https://www.padre-lab.eu/onto/cpu-logger"
 
     def tracking_object_schemata(self):
-        return [CPUTO.CPUModel.schema()]
+        return [CpuTO.CPUModel.schema()]
 
     _dependencies = {"psutil"}
 
     def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call: LoggerCall, _args, _kwargs, **kwargs):
 
-        inputs = CPUTO(call=_logger_call)
+        inputs = CpuTO(call=_logger_call)
         inputs.add_arg("pre_cpu_usage", _get_cpu_usage(), _pypads_write_format)
 
     def __call_wrapped__(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
@@ -87,11 +77,11 @@ class Cpu(LoggingFunction):
                                         **_pypads_hook_params)
 
     def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call, _pypads_result, **kwargs):
-        output = CPUTO(call=_logger_call)
+        output = CpuTO(call=_logger_call)
         output.add_arg("post_cpu_usage", _get_cpu_usage(), _pypads_write_format)
 
 
-class RAMTO(LoggerTrackingObject):
+class RamTO(LoggerTrackingObject):
     """
     Function logging the input parameters of the current pipeline object function call.
     """
@@ -116,13 +106,7 @@ class RAMTO(LoggerTrackingObject):
     def __init__(self, *args, call: LoggerCall, **kwargs):
         super().__init__(*args, model_cls=self.RAMModel, call=call, **kwargs)
 
-    def add_arg(self, name, value, format):
-        self._add_param(name, value, format, 0)
-
-    def add_kwarg(self, name, value, format):
-        self._add_param(name, value, format, "kwarg")
-
-    def _add_param(self, name, value, format, type):
+    def add_arg(self, name, value, format, type=0):
         # TODO try to extract parameter documentation?
         index = len(self.input)
         path = os.path.join(self._base_path(), self._get_artifact_path(name))
@@ -144,12 +128,12 @@ class Ram(LoggingFunction):
     url = "https://www.padre-lab.eu/onto/ram-logger"
 
     def tracking_object_schemata(self):
-        return [RAMTO.RAMModel.schema()]
+        return [RamTO.RAMModel.schema()]
 
     _dependencies = {"psutil"}
 
     def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call: LoggerCall, _args, _kwargs, **kwargs):
-        inputs = RAMTO(call=_logger_call)
+        inputs = RamTO(call=_logger_call)
         inputs.add_arg("pre_memory_usage", _get_memory_usage(), _pypads_write_format)
 
     def __call_wrapped__(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
@@ -158,7 +142,7 @@ class Ram(LoggingFunction):
                                         **_pypads_hook_params)
 
     def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call, _pypads_result, **kwargs):
-        inputs = RAMTO(call=_logger_call)
+        inputs = RamTO(call=_logger_call)
         inputs.add_arg("post_memory_usage", _get_memory_usage(), _pypads_write_format)
 
 
@@ -192,7 +176,6 @@ class DiskTO(LoggerTrackingObject):
 
             class Config:
                 orm_mode = True
-                arbitrary_types_allowed = True
 
         input: List[ParamModel] = []
         call: LoggerCallModel = ...
@@ -203,13 +186,7 @@ class DiskTO(LoggerTrackingObject):
     def __init__(self, *args, call: LoggerCall, **kwargs):
         super().__init__(*args, model_cls=self.DiskModel, call=call, **kwargs)
 
-    def add_arg(self, name, value, format):
-        self._add_param(name, value, format, 0)
-
-    def add_kwarg(self, name, value, format):
-        self._add_param(name, value, format, "kwarg")
-
-    def _add_param(self, name, value, format, type):
+    def add_arg(self, name, value, format, type=0):
         # TODO try to extract parameter documentation?
         index = len(self.input)
         path = os.path.join(self._base_path(), self._get_artifact_path(name))
@@ -263,24 +240,30 @@ def _get_disk_usage(path):
     import psutil
     # See https://www.thepythoncode.com/article/get-hardware-system-information-python
     disk_usage = psutil.disk_usage(path)
-    output_ = "Disk usage:"
-    output_ += f"\n\tFree:{sizeof_fmt(disk_usage.free)}"
-    output_ += f"\n\tUsed:{sizeof_fmt(disk_usage.used)}"
-    output_ += f"\n\tPercentage:{disk_usage.percent}%"
-    output_ += f"\nPartitions:"
+    output_dict = dict()
+    output_dict['free'] = sizeof_fmt(disk_usage.free)
+    output_dict['used'] = sizeof_fmt(disk_usage.used)
+    output_dict['percentage'] = disk_usage.percent
+
+    partition_dict = dict()
     partitions = psutil.disk_partitions()
-    for partition in partitions:
-        output_ += f"\n+Partition1:"
-        output_ += f"\n\tDevice:{partition.device}"
-        output_ += f"\n\tMountpoint:{partition.mountpoint}"
-        output_ += f"\n\tFile system:{partition.fstype}"
-        output_ += f"\n\tStats:"
+    for idx, partition in enumerate(partitions):
+        temp_dict = dict()
+        temp_dict['device'] = partition.device
+        temp_dict['MountPoint'] = partition.mountpoint
+        temp_dict['FileSystem'] = partition.fstype
+        partition_usage = None
         try:
             partition_usage = psutil.disk_usage(partition.mountpoint)
         except PermissionError:
-            output_ += f"\n\t\t Busy!"
+            # output_ += f"\n\t\t Busy!"
             continue
-        output_ += f"\n\t\tFree:{partition_usage.free}"
-        output_ += f"\n\t\tUsed:{partition_usage.used}"
-        output_ += f"\n\t\tPercentage:{partition_usage.percent}%"
-    return output_
+
+        temp_dict['free'] = partition_usage.free
+        temp_dict['used'] = partition_usage.used
+        temp_dict['percentage'] = partition_usage.percent
+
+        partition_dict['partition' + str(idx)] = temp_dict
+
+    output_dict['partitions'] = partition_dict
+    return output_dict
