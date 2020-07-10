@@ -88,10 +88,10 @@ class RamTO(LoggerTrackingObject):
 
     class RAMModel(BaseModel):
         class ParamModel(BaseModel):
-            content_format: WriteFormats = WriteFormats.text
+            content_format: WriteFormats = WriteFormats.json
+            ram_dict: dict = ...
+            swap_dict: dict = ...
             name: str = ...
-            value: str = ...  # path to the artifact containing the param
-            type: str = ...
 
             class Config:
                 orm_mode = True
@@ -106,17 +106,40 @@ class RamTO(LoggerTrackingObject):
     def __init__(self, *args, call: LoggerCall, **kwargs):
         super().__init__(*args, model_cls=self.RAMModel, call=call, **kwargs)
 
-    def add_arg(self, name, value, format, type=0):
+    def add_arg(self, name, ram_info, swap_info, format, type=0):
+        self.input.append(self.RAMModel.ParamModel(content_format=format, name=name,
+                                                   ram_dict=ram_info, swap_dict=swap_info, type=type))
+        merged_dict = dict()
+        merged_dict['RAM'] = ram_info
+        merged_dict['swap'] = swap_info
+        self.persist_arg(name, merged_dict, format)
+
+    def persist_arg(self, name, memory_info, format):
         # TODO try to extract parameter documentation?
         index = len(self.input)
         path = os.path.join(self._base_path(), self._get_artifact_path(name))
-        self.input.append(self.RAMModel.ParamModel(content_format=format, name=name, value=path, type=type))
-        self._store_artifact(value, ArtifactMetaModel(path=path,
-                                                      description="RAM usage",
-                                                      format=format))
+
+        if format == WriteFormats.text:
+            _info = self.to_string(memory_info)
+        else:
+            _info = memory_info
+
+        self._store_artifact(_info, ArtifactMetaModel(path=path,
+                                                         description="Memory Information",
+                                                         format=format))
 
     def _get_artifact_path(self, name):
         return os.path.join(self.call.call.to_folder(), "ram_usage", name)
+
+    def to_string(self, memory_dict):
+        memory_usage = "Memory usage:"
+        memory_usage += f"\n\tUsed:{sizeof_fmt(memory_dict.get('RAM', dict()).get('used', 0.0))}"
+        memory_usage += f"\n\tPercentage:{memory_dict.get('RAM', dict()).get('percent',0.0)}%"
+        memory_usage += f"\nSwap usage::"
+        memory_usage += f"\n\tFree:{sizeof_fmt(memory_dict.get('swap', dict()).get('free', 0.0))}"
+        memory_usage += f"\n\tUsed:{sizeof_fmt(memory_dict.get('swap', dict()).get('used', 0.0))}"
+        memory_usage += f"\n\tPercentage:{memory_dict.get('swap', dict()).get('percent', 0.0)}%"
+        return memory_usage
 
 
 class Ram(LoggingFunction):
@@ -132,34 +155,28 @@ class Ram(LoggingFunction):
 
     _dependencies = {"psutil"}
 
-    def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call: LoggerCall, _args, _kwargs, **kwargs):
-        inputs = RamTO(call=_logger_call)
-        inputs.add_arg("pre_memory_usage", _get_memory_usage(), _pypads_write_format)
+    def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.json, _logger_call: LoggerCall, _args, _kwargs, **kwargs):
+        pre_ram_usage = RamTO(call=_logger_call)
+        ram_info, swap_info = _get_memory_usage()
+        pre_ram_usage.add_arg("pre_memory_usage", ram_info, swap_info, WriteFormats.text)
 
     def __call_wrapped__(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
         # TODO track while executing instead of before and after
         return super().__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=_args, _kwargs=_kwargs,
                                         **_pypads_hook_params)
 
-    def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call, _pypads_result, **kwargs):
-        inputs = RamTO(call=_logger_call)
-        inputs.add_arg("post_memory_usage", _get_memory_usage(), _pypads_write_format)
+    def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.json, _logger_call, _pypads_result, **kwargs):
+        post_ram_usage = RamTO(call=_logger_call)
+        ram_info, swap_info = _get_memory_usage()
+        post_ram_usage.add_arg("post_memory_usage", ram_info, swap_info, _pypads_write_format)
 
 
 def _get_memory_usage():
     import psutil
     memory = psutil.virtual_memory()
     swap = psutil.swap_memory()
-    memory_usage = "Memory usage:"
-    memory_usage += f"\n\tAvailable:{sizeof_fmt(memory.available)}"
-    memory_usage += f"\n\tUsed:{sizeof_fmt(memory.used)}"
-    memory_usage += f"\n\tPercentage:{memory.percent}%"
-    memory_usage += f"\nSwap usage::"
-    memory_usage += f"\n\tFree:{sizeof_fmt(swap.free)}"
-    memory_usage += f"\n\tUsed:{sizeof_fmt(memory.used)}"
-    memory_usage += f"\n\tPercentage:{memory.percent}%"
 
-    return memory_usage
+    return dict(memory._asdict()), dict(swap._asdict())
 
 
 class DiskTO(LoggerTrackingObject):
@@ -186,14 +203,14 @@ class DiskTO(LoggerTrackingObject):
     def __init__(self, *args, call: LoggerCall, **kwargs):
         super().__init__(*args, model_cls=self.DiskModel, call=call, **kwargs)
 
-    def add_arg(self, name, value, format, type=0):
+    def add_arg(self, name, value, _format, type=0):
         # TODO try to extract parameter documentation?
         index = len(self.input)
         path = os.path.join(self._base_path(), self._get_artifact_path(name))
-        self.input.append(self.DiskModel.ParamModel(content_format=format, name=name, value=path, type=type))
+        self.input.append(self.DiskModel.ParamModel(content_format=_format, name=name, value=path, type=type))
         self._store_artifact(value, ArtifactMetaModel(path=path,
                                                       description="Disk usage",
-                                                      format=format))
+                                                      format=_format))
 
     def _get_artifact_path(self, name):
         return os.path.join(self.call.call.to_folder(), "disk_usage", name)
