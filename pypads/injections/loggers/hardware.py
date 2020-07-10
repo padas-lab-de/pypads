@@ -89,8 +89,7 @@ class RamTO(LoggerTrackingObject):
     class RAMModel(BaseModel):
         class ParamModel(BaseModel):
             content_format: WriteFormats = WriteFormats.json
-            ram_dict: dict = ...
-            swap_dict: dict = ...
+            mem_dict: dict = ...
             name: str = ...
 
             class Config:
@@ -103,12 +102,23 @@ class RamTO(LoggerTrackingObject):
         class Config:
             orm_mode = True
 
+        def to_string(_input):
+            memory_usage = "Memory usage:"
+            for item in _input:
+                memory_usage += f"\n\tType:{item.name}"
+                memory_usage += f"\n\t\tUsed:{sizeof_fmt(item.mem_dict.get('used', 0.0))}"
+                memory_usage += f"\n\t\tUsed:{sizeof_fmt(item.mem_dict.get('free', 0.0))}"
+                memory_usage += f"\n\t\tPercentage:{item.mem_dict.get('percent', 0.0)}%"
+            return memory_usage
+
     def __init__(self, *args, call: LoggerCall, **kwargs):
         super().__init__(*args, model_cls=self.RAMModel, call=call, **kwargs)
 
     def add_arg(self, name, ram_info, swap_info, format, type=0):
-        self.input.append(self.RAMModel.ParamModel(content_format=format, name=name,
-                                                   ram_dict=ram_info, swap_dict=swap_info, type=type))
+        self.input.append(self.RAMModel.ParamModel(content_format=format, name='ram_usage',
+                                                   mem_dict=ram_info, type=type))
+        self.input.append(self.RAMModel.ParamModel(content_format=format, name='swap_usage',
+                                                   mem_dict=swap_info, type=type))
         merged_dict = dict()
         merged_dict['RAM'] = ram_info
         merged_dict['swap'] = swap_info
@@ -116,30 +126,19 @@ class RamTO(LoggerTrackingObject):
 
     def persist_arg(self, name, memory_info, format):
         # TODO try to extract parameter documentation?
-        index = len(self.input)
         path = os.path.join(self._base_path(), self._get_artifact_path(name))
 
         if format == WriteFormats.text:
-            _info = self.to_string(memory_info)
+            _info = self.RAMModel.to_string(self.input)
         else:
             _info = memory_info
 
         self._store_artifact(_info, ArtifactMetaModel(path=path,
-                                                         description="Memory Information",
-                                                         format=format))
+                                                      description="Memory Information",
+                                                      format=format))
 
     def _get_artifact_path(self, name):
         return os.path.join(self.call.call.to_folder(), "ram_usage", name)
-
-    def to_string(self, memory_dict):
-        memory_usage = "Memory usage:"
-        memory_usage += f"\n\tUsed:{sizeof_fmt(memory_dict.get('RAM', dict()).get('used', 0.0))}"
-        memory_usage += f"\n\tPercentage:{memory_dict.get('RAM', dict()).get('percent',0.0)}%"
-        memory_usage += f"\nSwap usage::"
-        memory_usage += f"\n\tFree:{sizeof_fmt(memory_dict.get('swap', dict()).get('free', 0.0))}"
-        memory_usage += f"\n\tUsed:{sizeof_fmt(memory_dict.get('swap', dict()).get('used', 0.0))}"
-        memory_usage += f"\n\tPercentage:{memory_dict.get('swap', dict()).get('percent', 0.0)}%"
-        return memory_usage
 
 
 class Ram(LoggingFunction):
@@ -158,7 +157,7 @@ class Ram(LoggingFunction):
     def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.json, _logger_call: LoggerCall, _args, _kwargs, **kwargs):
         pre_ram_usage = RamTO(call=_logger_call)
         ram_info, swap_info = _get_memory_usage()
-        pre_ram_usage.add_arg("pre_memory_usage", ram_info, swap_info, WriteFormats.text)
+        pre_ram_usage.add_arg("pre_memory_usage", ram_info, swap_info, _pypads_write_format)
 
     def __call_wrapped__(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
         # TODO track while executing instead of before and after
