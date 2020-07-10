@@ -89,7 +89,9 @@ class RamTO(LoggerTrackingObject):
     class RAMModel(BaseModel):
         class ParamModel(BaseModel):
             content_format: WriteFormats = WriteFormats.json
-            mem_dict: dict = ...
+            used: int = ...
+            free: int = ...
+            percent: int = ...
             name: str = ...
 
             class Config:
@@ -106,19 +108,33 @@ class RamTO(LoggerTrackingObject):
             memory_usage = "Memory usage:"
             for item in _input:
                 memory_usage += f"\n\tType:{item.name}"
-                memory_usage += f"\n\t\tUsed:{sizeof_fmt(item.mem_dict.get('used', 0.0))}"
-                memory_usage += f"\n\t\tUsed:{sizeof_fmt(item.mem_dict.get('free', 0.0))}"
-                memory_usage += f"\n\t\tPercentage:{item.mem_dict.get('percent', 0.0)}%"
+                memory_usage += f"\n\t\tUsed:{sizeof_fmt(item.used)}"
+                memory_usage += f"\n\t\tUsed:{sizeof_fmt(item.free)}"
+                memory_usage += f"\n\t\tPercentage:{item.percent}%"
             return memory_usage
+
+        def json(_input):
+            output = []
+            for item in _input:
+                output.append(item.json())
+            return output
 
     def __init__(self, *args, call: LoggerCall, **kwargs):
         super().__init__(*args, model_cls=self.RAMModel, call=call, **kwargs)
 
     def add_arg(self, name, ram_info, swap_info, format, type=0):
+
+        used = ram_info.get('used')
+        free = ram_info.get('free')
+        percent = ram_info.get('percent')
         self.input.append(self.RAMModel.ParamModel(content_format=format, name='ram_usage',
-                                                   mem_dict=ram_info, type=type))
+                                                   used=used, free=free, percent=percent, type=type))
+
+        used = swap_info.get('used')
+        free = swap_info.get('free')
+        percent = swap_info.get('percent')
         self.input.append(self.RAMModel.ParamModel(content_format=format, name='swap_usage',
-                                                   mem_dict=swap_info, type=type))
+                                                   used=used, free=free, percent=percent, type=type))
         merged_dict = dict()
         merged_dict['RAM'] = ram_info
         merged_dict['swap'] = swap_info
@@ -130,6 +146,8 @@ class RamTO(LoggerTrackingObject):
 
         if format == WriteFormats.text:
             _info = self.RAMModel.to_string(self.input)
+        elif format == WriteFormats.json:
+            _info = self.RAMModel.json(self.input)
         else:
             _info = memory_info
 
