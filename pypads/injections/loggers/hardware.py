@@ -140,20 +140,20 @@ class RamTO(LoggerTrackingObject):
         merged_dict['swap'] = swap_info
         self.persist_arg(name, merged_dict, format)
 
-    def persist_arg(self, name, memory_info, format):
+    def persist_arg(self, name, memory_info, _format):
         # TODO try to extract parameter documentation?
         path = os.path.join(self._base_path(), self._get_artifact_path(name))
 
-        if format == WriteFormats.text:
+        if _format == WriteFormats.text:
             _info = self.RAMModel.to_string(self.input)
-        elif format == WriteFormats.json:
+        elif _format == WriteFormats.json:
             _info = self.RAMModel.json(self.input)
         else:
             _info = memory_info
 
         self._store_artifact(_info, ArtifactMetaModel(path=path,
                                                       description="Memory Information",
-                                                      format=format))
+                                                      format=_format))
 
     def _get_artifact_path(self, name):
         return os.path.join(self.call.call.to_folder(), "ram_usage", name)
@@ -205,8 +205,13 @@ class DiskTO(LoggerTrackingObject):
         class ParamModel(BaseModel):
             content_format: WriteFormats = WriteFormats.text
             name: str = ...
-            value: str = ...  # path to the artifact containing the param
             type: str = ...
+            device: str = ...
+            file_system: str = ...
+            mount_point: str = ...
+            free: int = ...
+            used: int = ...
+            percent: float = ...
 
             class Config:
                 orm_mode = True
@@ -217,6 +222,24 @@ class DiskTO(LoggerTrackingObject):
         class Config:
             orm_mode = True
 
+        def to_string(_input):
+            memory_usage = "Memory usage:"
+            for item in _input:
+                memory_usage += f"\n\tPartition Name: {item.name}"
+                memory_usage += f"\n\t\tDevice: {item.device}"
+                memory_usage += f"\n\t\tFile System: {item.file_system}"
+                memory_usage += f"\n\t\tMount Point: {item.mount_point}"
+                memory_usage += f"\n\t\tUsed: {sizeof_fmt(item.used)}"
+                memory_usage += f"\n\t\tUsed: {sizeof_fmt(item.free)}"
+                memory_usage += f"\n\t\tPercentage: {item.percent}%"
+            return memory_usage
+
+        def json(_input):
+            output = []
+            for item in _input:
+                output.append(item.json())
+            return output
+
     def __init__(self, *args, call: LoggerCall, **kwargs):
         super().__init__(*args, model_cls=self.DiskModel, call=call, **kwargs)
 
@@ -224,8 +247,35 @@ class DiskTO(LoggerTrackingObject):
         # TODO try to extract parameter documentation?
         index = len(self.input)
         path = os.path.join(self._base_path(), self._get_artifact_path(name))
-        self.input.append(self.DiskModel.ParamModel(content_format=_format, name=name, value=path, type=type))
-        self._store_artifact(value, ArtifactMetaModel(path=path,
+
+        _name = 'disk'
+        file_system = 'disk'
+        device = 'disk'
+        mount_point = ''
+        free = value.get('free')
+        used = value.get('used')
+        percent = value.get('percentage')
+
+        self.input.append(self.DiskModel.ParamModel(content_format=_format, name=_name, file_system=file_system,
+                          device=device, mount_point=mount_point, free=free, used=used, percent=percent, type=type))
+        for partition, info in value.get('partitions', dict()).items():
+            _name = partition
+            file_system = info.get('FileSystem')
+            device = info.get('device')
+            mount_point = info.get('MountPoint')
+            free = info.get('free')
+            used = info.get('used')
+            percent = info.get('percentage')
+            self.input.append(self.DiskModel.ParamModel(content_format=_format, name=_name, file_system=file_system,
+                              device=device, mount_point=mount_point, free=free, used=used, percent=percent, type=type))
+
+        if _format == WriteFormats.text:
+            _info = self.DiskModel.to_string(self.input)
+        elif _format == WriteFormats.json:
+            _info = self.DiskModel.json(self.input)
+        else:
+            _info = value
+        self._store_artifact(_info, ArtifactMetaModel(path=path,
                                                       description="Disk usage",
                                                       format=_format))
 
@@ -275,8 +325,8 @@ def _get_disk_usage(path):
     # See https://www.thepythoncode.com/article/get-hardware-system-information-python
     disk_usage = psutil.disk_usage(path)
     output_dict = dict()
-    output_dict['free'] = sizeof_fmt(disk_usage.free)
-    output_dict['used'] = sizeof_fmt(disk_usage.used)
+    output_dict['free'] = disk_usage.free
+    output_dict['used'] = disk_usage.used
     output_dict['percentage'] = disk_usage.percent
 
     partition_dict = dict()
