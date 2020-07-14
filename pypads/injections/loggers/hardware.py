@@ -11,11 +11,16 @@ from pypads.utils.util import local_uri_to_path, sizeof_fmt
 
 def _get_cpu_usage():
     import psutil
+    """
     cpu_usage = "CPU usage for cores:"
     for i, percentage in enumerate(psutil.cpu_percent(percpu=True)):
         cpu_usage += f"\nCore {i}: {percentage}%"
     cpu_usage += f"\nTotal CPU usage: {psutil.cpu_percent()}%"
-
+    """
+    cpu_usage = []
+    for i, percentage in enumerate(psutil.cpu_percent(percpu=True)):
+        cpu_usage.append(percentage)
+    cpu_usage.append(psutil.cpu_percent())
     return cpu_usage
 
 
@@ -28,8 +33,8 @@ class CpuTO(LoggerTrackingObject):
         class ParamModel(BaseModel):
             content_format: WriteFormats = WriteFormats.text
             name: str = ...
-            value: str = ...  # path to the artifact containing the param
             type: str = ...
+            usage: float = ...
 
             class Config:
                 orm_mode = True
@@ -40,15 +45,40 @@ class CpuTO(LoggerTrackingObject):
         class Config:
             orm_mode = True
 
+        def to_string(_input):
+            memory_usage = "CPU usage:"
+            for item in _input[:-1]:
+                memory_usage += f"\n\t{item.name}"
+                memory_usage += f"\n\t\tusage: {item.usage}%"
+            memory_usage += f"\n\tTotal CPU Usage: {_input[-1].usage}%"
+            return memory_usage
+
+        def json(_input):
+            output = []
+            for item in _input:
+                output.append(item.json())
+            return output
+
     def __init__(self, *args, call: LoggerCall, **kwargs):
         super().__init__(*args, model_cls=self.CPUModel, call=call, **kwargs)
 
-    def add_arg(self, name, value, format, type=0):
+    def add_arg(self, name, cores, _format, type=0):
         path = os.path.join(self._base_path(), self._get_artifact_path(name))
-        self.input.append(self.CPUModel.ParamModel(content_format=format, name=name, value=path, type=type))
-        self._store_artifact(value, ArtifactMetaModel(path=path,
+        for idx, usage in enumerate(cores[:-1]):
+            self.input.append(self.CPUModel.ParamModel(content_format=_format, name='Core:' + str(idx),
+                                                       type=type, usage=usage))
+        self.input.append(self.CPUModel.ParamModel(content_format=_format, name='Total Usage:',
+                                                   type=type, usage=cores[-1]))
+        _format = WriteFormats.json
+        if _format == WriteFormats.text:
+            _info = self.CPUModel.to_string(self.input)
+        elif _format == WriteFormats.json:
+            _info = self.CPUModel.json(self.input)
+        else:
+            _info = cores
+        self._store_artifact(_info, ArtifactMetaModel(path=path,
                                                       description="CPU usage",
-                                                      format=format))
+                                                      format=_format))
 
     def _get_artifact_path(self, name):
         return os.path.join(self.call.call.to_folder(), "cpu_usage", name)
