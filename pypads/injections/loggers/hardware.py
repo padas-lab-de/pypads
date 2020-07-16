@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from pypads.app.injections.base_logger import LoggingFunction, LoggerCall, LoggerTrackingObject
 from pypads.model.models import LoggerCallModel, ArtifactMetaModel
-from pypads.utils.logging_util import try_write_artifact, WriteFormats
+from pypads.utils.logging_util import WriteFormats
 from pypads.utils.util import local_uri_to_path, sizeof_fmt
 
 
@@ -89,7 +89,7 @@ class Cpu(LoggingFunction):
     This function only writes an information of a constructor execution to the stdout.
     """
     name = "CPULogger"
-    url = "https://www.padre-lab.eu/onto/cpu-logger"
+    uri = "https://www.padre-lab.eu/onto/cpu-logger"
 
     def tracking_object_schemata(self):
         return [CpuTO.CPUModel.schema()]
@@ -195,7 +195,7 @@ class Ram(LoggingFunction):
     """
 
     name = "RAMLogger"
-    url = "https://www.padre-lab.eu/onto/ram-logger"
+    uri = "https://www.padre-lab.eu/onto/ram-logger"
 
     def tracking_object_schemata(self):
         return [RamTO.RAMModel.schema()]
@@ -319,7 +319,7 @@ class Disk(LoggingFunction):
     """
 
     name = "DiskLogger"
-    url = "https://www.padre-lab.eu/onto/disk-logger"
+    uri = "https://www.padre-lab.eu/onto/disk-logger"
 
     def tracking_object_schemata(self):
         return [DiskTO.DiskModel.schema()]

@@ -1,19 +1,21 @@
 import os
 import traceback
 from abc import abstractmethod, ABCMeta
-from typing import Set
+from typing import Set, Type
 
 import mlflow
+from pydantic import HttpUrl
 
 from pypads import logger
 from pypads.app.misc.inheritance import SuperStop
 from pypads.app.misc.mixins import DependencyMixin, DefensiveCallableMixin, TimedCallableMixin, \
     IntermediateCallableMixin, NoCallAllowedError, OrderMixin, ConfigurableCallableMixin, CallableMixin
+from pypads.app.misc.provenance import ProvenanceMixin
 from pypads.importext.versioning import LibSelector
 from pypads.injections.analysis.call_tracker import LoggingEnv
 from pypads.injections.analysis.time_keeper import TimingDefined
-from pypads.model.models import MetadataObject, LoggerModel, LoggerCallModel, TrackedComponentModel, MetricMetaModel, \
-    ParameterMetaModel, ArtifactMetaModel, LoggerOutputModel
+from pypads.model.models import LoggerModel, LoggerCallModel, TrackedComponentModel, MetricMetaModel, \
+    ParameterMetaModel, ArtifactMetaModel, LoggerOutputModel, TrackingObjectModel
 from pypads.utils.logging_util import WriteFormats
 from pypads.utils.util import inheritors
 
@@ -111,7 +113,7 @@ class LoggingExecutor(DefensiveCallableMixin, FunctionHolder, TimedCallableMixin
             return None, 0
 
 
-class LoggerCall(MetadataObject):
+class LoggerCall(ProvenanceMixin):
 
     def __init__(self, *args, logging_env: LoggingEnv, **kwargs):
         super().__init__(*args, model_cls=LoggerCallModel, call=logging_env.call, **kwargs)
@@ -126,7 +128,7 @@ class LoggerCall(MetadataObject):
 
 # noinspection PyBroadException
 class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, DependencyMixin, OrderMixin,
-                      LibrarySpecificMixin, MetadataObject, metaclass=ABCMeta):
+                      LibrarySpecificMixin, ProvenanceMixin, metaclass=ABCMeta):
     """
     This class should be used to define new custom loggers. The user has to define __pre__ and/or __post__ methods
     depending on the specific use case.
@@ -137,6 +139,7 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
 
     """
     _stored_general_schema = False
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/logging-function"
 
     # Default allow all libraries
     supported_libraries = {LibSelector(name=".*", constraint="*")}
@@ -266,9 +269,9 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
         return []
 
 
-class LoggerTrackingObject(MetadataObject):
+class LoggerTrackingObject(ProvenanceMixin):
 
-    def __init__(self, *args, call: LoggerCall, model_cls, **kwargs):
+    def __init__(self, *args, call: LoggerCall, model_cls: Type[TrackingObjectModel], **kwargs):
         super().__init__(*args, model_cls=model_cls, call=call, **kwargs)
         self._component_model = TrackedComponentModel(tracking_component=self._base_path())
         self._known_metrics = set()

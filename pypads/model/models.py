@@ -5,7 +5,7 @@ from collections import deque
 from typing import List, Optional
 
 import mlflow
-from pydantic import ValidationError, BaseModel, Field, AnyUrl, validate_model
+from pydantic import ValidationError, BaseModel, Field, validate_model, HttpUrl
 
 from pypads.app.misc.inheritance import SuperStop
 from pypads.utils.logging_util import WriteFormats
@@ -87,7 +87,16 @@ def get_run_id():
     return None
 
 
-class ReferenceObject(BaseModel):
+class OntologyEntry(BaseModel):
+    uri: HttpUrl = ...
+
+
+class LibraryModel(BaseModel):
+    name: str = ...
+    version: str = ...
+
+
+class ReferenceObject(OntologyEntry):
     """
     Base object for tracked objects that manage metadata. A MetadataEntity manages and id and a dict of metadata.
     The metadata should contain all necessary non-binary data to describe an entity.
@@ -97,6 +106,8 @@ class ReferenceObject(BaseModel):
     created_at: float = Field(default_factory=time.time)
     experiment_id: Optional[str] = Field(default_factory=get_experiment_id)
     run_id: Optional[str] = Field(default_factory=get_run_id)
+    is_a: HttpUrl = ...
+    defined_in: LibraryModel = ...  # In which package the object was defined
 
     def store(self):
         from pypads.app.pypads import get_current_pads
@@ -188,13 +199,13 @@ class LibSelectorModel(BaseModel):
         orm_mode = True
 
 
-class LoggerModel(BaseModel):
+class LoggerModel(ReferenceObject):
     """
     Holds meta data about a logger
     """
     uid: uuid.UUID = Field(default_factory=uuid.uuid4)
-    url: AnyUrl = "https://www.padre-lab.eu/onto/generic-logger"
     name: str = "GenericLogger"
+    uri: HttpUrl = "https://www.padre-lab.eu/onto/generic-logger"
     dependencies: List[LibSelectorModel] = {}
     supported_libraries: List[LibSelectorModel] = ...
     allow_nested: bool = True
@@ -244,7 +255,7 @@ class CallIdModel(CallAccessorModel):
 
 
 class CallModel(ReferenceObject):
-    # TODO more data needed?
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/Call"
     call_id: CallIdModel = ...  # Id of the call
 
     class Config:
@@ -277,6 +288,7 @@ class TrackedComponentModel(BaseModel):
 
 class LoggerOutputModel(ReferenceObject):
     objects: List[TrackedComponentModel] = []
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerOutput"
 
     def store_tracked_object(self, cls, *args, **kwargs):
         tracked_object = cls(*args, **kwargs)
@@ -294,8 +306,16 @@ class LoggerCallModel(ReferenceObject):
     child_time: float = ...
     call: CallModel = ...  # Triggered by following call
     output: Optional[LoggerOutputModel] = ...  # Outputs of the logger
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerCall"
 
     # tracked_by: str = ...
+
+    class Config:
+        orm_mode = True
+
+
+class TrackingObjectModel(ReferenceObject):
+    call: LoggerCallModel = ...
 
     class Config:
         orm_mode = True

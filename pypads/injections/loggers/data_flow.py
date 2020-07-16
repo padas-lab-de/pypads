@@ -1,10 +1,10 @@
 import os
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 
 from pypads.app.injections.base_logger import LoggingFunction, LoggerCall, LoggerTrackingObject
-from pypads.model.models import ArtifactMetaModel, LoggerCallModel
+from pypads.model.models import ArtifactMetaModel, TrackingObjectModel
 from pypads.utils.logging_util import WriteFormats
 
 
@@ -14,7 +14,9 @@ class InputTO(LoggerTrackingObject):
     Tracking object class for inputs of your tracked workflow.
     """
 
-    class InputModel(BaseModel):
+    class InputModel(TrackingObjectModel):
+        uri: HttpUrl = "https://www.padre-lab.eu/onto/FunctionInput"
+
         class ParamModel(BaseModel):
             content_format: WriteFormats = WriteFormats.pickle
             name: str = ...
@@ -26,10 +28,6 @@ class InputTO(LoggerTrackingObject):
                 arbitrary_types_allowed = True
 
         input: List[ParamModel] = []
-        call: LoggerCallModel = ...
-
-        class Config:
-            orm_mode = True
 
     def __init__(self, *args, call: LoggerCall, **kwargs):
         super().__init__(*args, model_cls=self.InputModel, call=call, **kwargs)
@@ -60,7 +58,7 @@ class Input(LoggingFunction):
     """
 
     name = "InputLogger"
-    url = "https://www.padre-lab.eu/onto/input-logger"
+    uri = "https://www.padre-lab.eu/onto/input-logger"
 
     def tracking_object_schemata(self):
         return [InputTO.InputModel.schema()]
@@ -91,10 +89,9 @@ class OutputTO(LoggerTrackingObject):
     def _path_name(self):
         return "inputs"
 
-    class OutputModel(BaseModel):
+    class OutputModel(TrackingObjectModel):
         content_format: WriteFormats = WriteFormats.pickle
         output: str = ...  # Path to the output holding file
-        call: LoggerCallModel = ...
 
         class Config:
             orm_mode = True
@@ -118,7 +115,7 @@ class Output(LoggingFunction):
         return [OutputTO.OutputModel.schema()]
 
     name = "OutputLogger"
-    url = "https://www.padre-lab.eu/onto/output-logger"
+    uri = "https://www.padre-lab.eu/onto/output-logger"
 
     def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.pickle, _logger_call, _pypads_result, **kwargs):
         """

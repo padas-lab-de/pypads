@@ -3,6 +3,7 @@ import threading
 from collections.__init__ import OrderedDict
 
 from pypads import logger
+from pypads.app.misc.provenance import ProvenanceMixin
 from pypads.importext.wrapping.base_wrapper import Context
 from pypads.model.models import FunctionReferenceModel, CallAccessorModel, CallIdModel, CallModel, \
     MetadataObject
@@ -161,7 +162,7 @@ class CallId(CallAccessor):
                     self.instance_number), "function_" + self.wrappee.__name__, "call_" + str(self.call_number))
 
 
-class Call(MetadataObject):
+class Call(ProvenanceMixin):
 
     def __init__(self, call_id: CallId, *args, **kwargs):
         super().__init__(*args, model_cls=CallModel, call_id=call_id, **kwargs)

@@ -134,7 +134,7 @@ def _step_number(network, label):
 
 class PipelineTracker(LoggingFunction):
     name = "PipeLineLogger"
-    url = "https://www.padre-lab.eu/onto/pipeline-logger"
+    uri = "https://www.padre-lab.eu/onto/pipeline-logger"
 
     _dependencies = {"networkx"}
 
