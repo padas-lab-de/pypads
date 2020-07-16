@@ -90,6 +90,8 @@ class OutputTO(LoggerTrackingObject):
         return "inputs"
 
     class OutputModel(TrackingObjectModel):
+        uri: HttpUrl = "https://www.padre-lab.eu/onto/FunctionOutput"
+
         content_format: WriteFormats = WriteFormats.pickle
         output: str = ...  # Path to the output holding file
 

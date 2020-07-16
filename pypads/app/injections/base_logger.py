@@ -1,5 +1,6 @@
 import os
 import traceback
+import uuid
 from abc import abstractmethod, ABCMeta
 from typing import Set, Type
 
@@ -270,6 +271,7 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
 
 
 class LoggerTrackingObject(ProvenanceMixin):
+    is_a = "https://www.padre-lab.eu/onto/tracking_object"
 
     def __init__(self, *args, call: LoggerCall, model_cls: Type[TrackingObjectModel], **kwargs):
         super().__init__(*args, model_cls=model_cls, call=call, **kwargs)
@@ -282,7 +284,9 @@ class LoggerTrackingObject(ProvenanceMixin):
     def _add_logger_output(self):
         self._produced_output = True
         if self.call.output is None:
-            self.call.output = LoggerOutputModel()
+            uid = uuid.uuid4()
+            self.call.output = LoggerOutputModel(uid=uid, uri="{}-output#{}".format(self.uri, uid),
+                                                 defined_in=self.defined_in)
         self.call.output.objects.append(self._component_model)
 
     def _store_metric(self, val, meta: MetricMetaModel, step=0):

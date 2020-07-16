@@ -1,10 +1,10 @@
 import os
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 
 from pypads.app.injections.base_logger import LoggingFunction, LoggerCall, LoggerTrackingObject
-from pypads.model.models import LoggerCallModel, ArtifactMetaModel
+from pypads.model.models import LoggerCallModel, ArtifactMetaModel, TrackingObjectModel
 from pypads.utils.logging_util import WriteFormats
 from pypads.utils.util import local_uri_to_path, sizeof_fmt
 
@@ -29,7 +29,9 @@ class CpuTO(LoggerTrackingObject):
     Function logging the input parameters of the current pipeline object function call.
     """
 
-    class CPUModel(BaseModel):
+    class CPUModel(TrackingObjectModel):
+        uri: HttpUrl = "https://www.padre-lab.eu/onto/CpuData"
+
         class ParamModel(BaseModel):
             content_format: WriteFormats = WriteFormats.text
             name: str = ...
@@ -40,7 +42,6 @@ class CpuTO(LoggerTrackingObject):
                 orm_mode = True
 
         input: List[ParamModel] = []
-        call: LoggerCallModel = ...
 
         class Config:
             orm_mode = True
@@ -116,7 +117,9 @@ class RamTO(LoggerTrackingObject):
     Function logging the input parameters of the current pipeline object function call.
     """
 
-    class RAMModel(BaseModel):
+    class RAMModel(TrackingObjectModel):
+        uri: HttpUrl = "https://www.padre-lab.eu/onto/RamData"
+
         class ParamModel(BaseModel):
             content_format: WriteFormats = WriteFormats.json
             used: int = ...
@@ -231,7 +234,9 @@ class DiskTO(LoggerTrackingObject):
     Function logging the input parameters of the current pipeline object function call.
     """
 
-    class DiskModel(BaseModel):
+    class DiskModel(TrackingObjectModel):
+        uri: HttpUrl = "https://www.padre-lab.eu/onto/DiskData"
+
         class ParamModel(BaseModel):
             content_format: WriteFormats = WriteFormats.text
             name: str = ...
