@@ -3,7 +3,7 @@ import sys
 import gorilla
 from mlflow.utils import experimental
 
-from pypads.app.injections.base_logger import LoggingFunction
+from pypads.app.injections.base_logger import InjectionLoggerFunction
 from pypads.injections.analysis.call_tracker import InjectionLoggingEnv
 from pypads.utils.util import is_package_available
 
@@ -32,7 +32,7 @@ gorilla.get_original_attribute = fake_gorilla_get_original_attribute
 
 
 # Could also be a normal function right now
-class MlflowAutologger(LoggingFunction):
+class MlflowAutologger(InjectionLoggerFunction):
     """
     MlflowAutologger is the intergration of the mlflow autologging functionalities into PyPads tracking system.
 

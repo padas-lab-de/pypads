@@ -3,7 +3,7 @@ from typing import List
 
 from pydantic import BaseModel, HttpUrl
 
-from pypads.app.injections.base_logger import LoggingFunction, LoggerCall, LoggerTrackingObject
+from pypads.app.injections.base_logger import InjectionLoggerFunction, LoggerCall, LoggerTrackingObject
 from pypads.model.models import ArtifactMetaModel, TrackingObjectModel
 from pypads.utils.logging_util import WriteFormats
 
@@ -13,7 +13,6 @@ class InputTO(LoggerTrackingObject):
     """
     Tracking object class for inputs of your tracked workflow.
     """
-
     class InputModel(TrackingObjectModel):
         uri: HttpUrl = "https://www.padre-lab.eu/onto/FunctionInput"
 
@@ -52,7 +51,7 @@ class InputTO(LoggerTrackingObject):
         return os.path.join(self.call.original_call.to_folder(), "input", name)
 
 
-class Input(LoggingFunction):
+class Input(InjectionLoggerFunction):
     """
     Function logging the input parameters of the current pipeline object function call.
     """
@@ -110,7 +109,7 @@ class OutputTO(LoggerTrackingObject):
                                                       format=format))
 
 
-class Output(LoggingFunction):
+class Output(InjectionLoggerFunction):
     """
     Function logging the output of the current pipeline object function call.
     """

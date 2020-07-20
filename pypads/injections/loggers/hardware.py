@@ -3,7 +3,7 @@ from typing import List
 
 from pydantic import BaseModel, HttpUrl
 
-from pypads.app.injections.base_logger import LoggingFunction, LoggerCall, LoggerTrackingObject
+from pypads.app.injections.base_logger import InjectionLoggerFunction, LoggerCall, LoggerTrackingObject
 from pypads.model.models import InjectionLoggerCallModel, ArtifactMetaModel, TrackingObjectModel
 from pypads.utils.logging_util import WriteFormats
 from pypads.utils.util import local_uri_to_path, sizeof_fmt
@@ -85,7 +85,7 @@ class CpuTO(LoggerTrackingObject):
         return os.path.join(self.call.original_call.to_folder(), "cpu_usage", name)
 
 
-class Cpu(LoggingFunction):
+class Cpu(InjectionLoggerFunction):
     """
     This function only writes an information of a constructor execution to the stdout.
     """
@@ -192,7 +192,7 @@ class RamTO(LoggerTrackingObject):
         return os.path.join(self.call.original_call.to_folder(), "ram_usage", name)
 
 
-class Ram(LoggingFunction):
+class Ram(InjectionLoggerFunction):
     """
     This function only writes an information of a constructor execution to the stdout.
     """
@@ -318,7 +318,7 @@ class DiskTO(LoggerTrackingObject):
         return os.path.join(self.call.original_call.to_folder(), "disk_usage", name)
 
 
-class Disk(LoggingFunction):
+class Disk(InjectionLoggerFunction):
     """
     This function only writes an information of a constructor execution to the stdout.
     """

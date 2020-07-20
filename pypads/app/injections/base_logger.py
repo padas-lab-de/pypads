@@ -137,14 +137,6 @@ class InjectionLoggerCall(LoggerCall):
         super().__init__(*args, call=logging_env.call, logging_env=logging_env, **kwargs)
 
 
-class RunLoggerFunction(LoggerFunction, OrderMixin, metaclass=ABCMeta):
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/run-logger"
-
-    @classmethod
-    def get_model_cls(cls) -> Type[BaseModel]:
-        return RunLoggerModel
-
-
 class InjectionLoggerFunction(LoggerFunction, OrderMixin, metaclass=ABCMeta):
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/injection-logger"
 

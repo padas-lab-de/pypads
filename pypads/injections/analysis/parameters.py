@@ -2,7 +2,7 @@ import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 
 from pypads import logger
-from pypads.app.injections.base_logger import LoggingFunction
+from pypads.app.injections.base_logger import InjectionLoggerFunction
 from pypads.injections.analysis.call_tracker import InjectionLoggingEnv
 from pypads.utils.util import dict_merge
 
@@ -20,7 +20,7 @@ def persist_parameter(_pypads_env, key, value):
                        str(_pypads_env.original_call) + "." + key + ".txt", value)
 
 
-class Parameters(LoggingFunction):
+class Parameters(InjectionLoggerFunction):
 
     def __post__(self, ctx, *args, _pypads_env: InjectionLoggingEnv, **kwargs):
         """

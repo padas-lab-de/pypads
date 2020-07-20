@@ -369,7 +369,7 @@ class PyPadsApi(IApi):
 
     def _get_teardown_cache(self):
         """
-        Register a new post run function.
+        Get the teardown function registry from cache
         :return:
         """
         # General post run cache

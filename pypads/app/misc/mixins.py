@@ -253,7 +253,7 @@ class FunctionHolderMixin(CallableMixin):
         return self._fn(*args, **kwargs)
 
 
-class ProvenanceMixin(ModelObject, ABC):
+class ProvenanceMixin(ModelObject, metaclass=ABCMeta):
     """
     Class extracting its library reference automatically if possible.
     """

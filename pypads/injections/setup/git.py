@@ -5,7 +5,8 @@ from pypads.app.misc.managed_git import ManagedGit
 class IGit(RunSetupFunction):
     _dependencies = {"git"}
 
-    def _call(self, pads, *args, **kwargs):
+    def _call(self, _pypads_env, *args, **kwargs):
+        pads = _pypads_env.pypads
         _pypads_timeout = kwargs.get("_pypads_timeout") if kwargs.get("_pypads_timeout") else 5
         run = pads.api.active_run()
         tags = run.data.tags

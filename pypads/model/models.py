@@ -76,6 +76,7 @@ class LoggerModel(RunObject):
     A reference object for a logger.
     """
     name: str = "GenericTrackingFunction"
+    uid: uuid.UUID = Field(default_factory=uuid.uuid4)
     uri: HttpUrl = "https://www.padre-lab.eu/onto/generic-tracking-function"
     dependencies: List[LibSelectorModel] = {}
     supported_libraries: List[LibSelectorModel] = ...
@@ -101,7 +102,6 @@ class InjectionLoggerModel(LoggerModel):
     """
     Tracking function being exectured on injection hook execution
     """
-    uid: uuid.UUID = Field(default_factory=uuid.uuid4)
     name: str = "GenericInjectionLogger"
     uri: HttpUrl = "https://www.padre-lab.eu/onto/generic-injection-logger"
     static_parameters: dict = {}
@@ -191,19 +191,19 @@ class LoggerCallModel(RunObject):
     """
     created_by: Type[LoggerModel]
     execution_time: float = ...
+    output: Optional[LoggerOutputModel] = ...  # Outputs of the logger
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerCall"
 
 
 class InjectionLoggerCallModel(LoggerCallModel):
     """
-    Holds meta data about a logger execution
+    Holds meta data about an injection logger execution
     """
     created_by: InjectionLoggerModel
     pre_time: float = ...
     post_time: float = ...
     child_time: float = ...
     original_call: CallModel = ...  # Triggered by following call
-    output: Optional[LoggerOutputModel] = ...  # Outputs of the logger
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/InjectionLoggerCall"
 
     class Config:
@@ -212,9 +212,9 @@ class InjectionLoggerCallModel(LoggerCallModel):
 
 class TrackingObjectModel(RunObject):
     """
-    Data of a tracking object
+    Data of a tracking object.
     """
-    tracked_by: InjectionLoggerCallModel = ...
+    tracked_by: LoggerCallModel = ...
 
     class Config:
         orm_mode = True

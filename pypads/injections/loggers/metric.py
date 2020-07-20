@@ -2,11 +2,11 @@ import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 
 from pypads import logger
-from pypads.app.injections.base_logger import LoggingFunction
+from pypads.app.injections.base_logger import InjectionLoggerFunction
 from pypads.utils.logging_util import try_write_artifact, WriteFormats
 
 
-class Metric(LoggingFunction):
+class Metric(InjectionLoggerFunction):
     """
     Function logging the wrapped metric function
     """

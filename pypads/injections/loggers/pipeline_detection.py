@@ -4,7 +4,7 @@ import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 
 from pypads import logger
-from pypads.app.injections.base_logger import LoggingFunction, LoggerCall
+from pypads.app.injections.base_logger import InjectionLoggerFunction, LoggerCall
 from pypads.utils.logging_util import WriteFormats, get_temp_folder, try_write_artifact
 from pypads.utils.util import is_package_available
 
@@ -132,7 +132,7 @@ def _step_number(network, label):
     return str(network.number_of_edges()) + ": " + label
 
 
-class PipelineTracker(LoggingFunction):
+class PipelineTracker(InjectionLoggerFunction):
     name = "PipeLineLogger"
     uri = "https://www.padre-lab.eu/onto/pipeline-logger"
 

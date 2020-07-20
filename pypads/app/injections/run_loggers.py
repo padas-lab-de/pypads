@@ -1,10 +1,24 @@
 from abc import abstractmethod, ABCMeta
 
+from pydantic.main import BaseModel
+from pydantic.networks import HttpUrl
+from typing import Type
+
 from pypads import logger
-from pypads.app.injections.base_logger import RunLoggerFunction
-from pypads.app.misc.mixins import BaseDefensiveCallableMixin, ConfigurableCallableMixin
+from pypads.app.injections.base_logger import LoggerFunction
+from pypads.app.misc.mixins import BaseDefensiveCallableMixin, ConfigurableCallableMixin, OrderMixin
 # Default init_run fns
+from pypads.injections.analysis.call_tracker import LoggingEnv
+from pypads.model.models import RunLoggerModel
 from pypads.utils.util import inheritors
+
+
+class RunLoggerFunction(LoggerFunction, OrderMixin, metaclass=ABCMeta):
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/run-logger"
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return RunLoggerModel
 
 
 class BaseRunLogger(RunLoggerFunction, BaseDefensiveCallableMixin, ConfigurableCallableMixin):
@@ -14,10 +28,8 @@ class BaseRunLogger(RunLoggerFunction, BaseDefensiveCallableMixin, ConfigurableC
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def __init__(self, *args, fn=None, **kwargs):
-        super().__init__(*args, fn=fn, **kwargs)
-        if self._fn is None:
-            self._fn = self._call
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     @property
     def __name__(self):
@@ -27,7 +39,7 @@ class BaseRunLogger(RunLoggerFunction, BaseDefensiveCallableMixin, ConfigurableC
             return self.__class__.__name__
 
     @abstractmethod
-    def _call(self, pads, *args, **kwargs):
+    def _call(self, _pypads_env: LoggingEnv, *args, **kwargs):
         """
         Function where to add you custom code to execute before starting or ending the run.
 

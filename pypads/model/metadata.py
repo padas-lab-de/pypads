@@ -1,4 +1,4 @@
-from abc import abstractmethod, ABC
+from abc import abstractmethod, ABC, ABCMeta
 from collections import deque
 from typing import Type, List
 
@@ -40,7 +40,7 @@ class ModelInterface(SuperStop):
         return self.get_model_cls().__fields__
 
 
-class ModelObject(ModelInterface, ABC):
+class ModelObject(ModelInterface, metaclass=ABCMeta):
     """
     An object building the model from itself on the fly.
     """
@@ -74,7 +74,7 @@ class ModelObject(ModelInterface, ABC):
         return self.get_model_cls().from_orm(self).json()
 
 
-class ModelHolder(ModelInterface, ABC):
+class ModelHolder(ModelInterface, metaclass=ABCMeta):
     """
     Used for objects storing their information directly into a validated base model
     """
