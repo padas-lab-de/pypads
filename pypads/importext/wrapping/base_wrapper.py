@@ -2,14 +2,22 @@ import inspect
 from _py_abc import ABCMeta
 from abc import abstractmethod
 from copy import copy
-from typing import Set
+from typing import Set, Type
+
+from pydantic import BaseModel
 
 from pypads import logger
 from pypads.importext.mappings import MatchedMapping
-from pypads.model.models import MetadataHolder, ContextModel
+from pypads.model.metadata import ModelHolder
+from pypads.model.models import ContextModel
 
 
 def fullname(o):
+    """
+    Build the full name for a given object
+    :param o: object
+    :return:
+    """
     module = o.__class__.__module__
     if module is None or module == str.__class__.__module__:
         return o.__class__.__name__  # Don't report __builtin__
@@ -17,12 +25,18 @@ def fullname(o):
         return module + '.' + o.__class__.__name__
 
 
-class Context(MetadataHolder):
-    __metaclass__ = ABCMeta
+class Context(ModelHolder):
+    """
+    Context of the wrapping. In general this is a class or module
+    """
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return ContextModel
 
     def __init__(self, context, reference=None, *args, **kwargs):
         reference = reference if reference is not None else fullname(context)
-        super().__init__(*args, model_cls=ContextModel, reference=reference, **kwargs)
+        super().__init__(*args, reference=reference, **kwargs)
         if context is None:
             raise ValueError("A context has to be passed for a object to be wrapped.")
         self._c = context

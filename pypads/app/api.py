@@ -8,10 +8,10 @@ import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 
 from pypads import logger
-from pypads.app.injections.base_logger import FunctionHolder
 from pypads.app.injections.run_loggers import RunSetupFunction, RunTeardownFunction
 from pypads.app.misc.caches import Cache
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
+from pypads.app.misc.mixins import FunctionHolderMixin
 from pypads.bindings.anchors import get_anchor, Anchor
 from pypads.importext.mappings import Mapping, MatchedMapping, make_run_time_mapping_collection
 from pypads.importext.package_path import PackagePathMatcher, PackagePath
@@ -22,7 +22,7 @@ from pypads.utils.util import inheritors
 api_plugins = set()
 
 
-class Cmd(FunctionHolder, metaclass=ABCMeta):
+class Cmd(FunctionHolderMixin, metaclass=ABCMeta):
 
     def __init__(self, *args, fn, **kwargs):
         super().__init__(*args, fn=fn, **kwargs)

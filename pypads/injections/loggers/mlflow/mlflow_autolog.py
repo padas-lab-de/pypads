@@ -4,7 +4,7 @@ import gorilla
 from mlflow.utils import experimental
 
 from pypads.app.injections.base_logger import LoggingFunction
-from pypads.injections.analysis.call_tracker import LoggingEnv
+from pypads.injections.analysis.call_tracker import InjectionLoggingEnv
 from pypads.utils.util import is_package_available
 
 added_autologs = set()
@@ -41,7 +41,8 @@ class MlflowAutologger(LoggingFunction):
         super().__init__(*args, order=order, **kwargs)
 
     @experimental
-    def __call_wrapped__(self, ctx, *args, _args, _kwargs, _pypads_autologgers=None, _pypads_env=LoggingEnv, **kwargs):
+    def __call_wrapped__(self, ctx, *args, _args, _kwargs, _pypads_autologgers=None, _pypads_env=InjectionLoggingEnv,
+                         **kwargs):
         """
             Function used to enable autologgers of mlflow.
         """

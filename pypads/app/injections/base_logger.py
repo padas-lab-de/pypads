@@ -2,46 +2,22 @@ import os
 import traceback
 import uuid
 from abc import abstractmethod, ABCMeta
-from typing import Set, Type
+from typing import Type
 
 import mlflow
-from pydantic import HttpUrl
+from pydantic import HttpUrl, BaseModel
 
 from pypads import logger
-from pypads.app.misc.inheritance import SuperStop
 from pypads.app.misc.mixins import DependencyMixin, DefensiveCallableMixin, TimedCallableMixin, \
-    IntermediateCallableMixin, NoCallAllowedError, OrderMixin, ConfigurableCallableMixin, CallableMixin
-from pypads.app.misc.provenance import ProvenanceMixin
+    IntermediateCallableMixin, NoCallAllowedError, OrderMixin, ConfigurableCallableMixin, LibrarySpecificMixin, \
+    FunctionHolderMixin, ProvenanceMixin
 from pypads.importext.versioning import LibSelector
-from pypads.injections.analysis.call_tracker import LoggingEnv
+from pypads.injections.analysis.call_tracker import InjectionLoggingEnv, LoggingEnv
 from pypads.injections.analysis.time_keeper import TimingDefined
-from pypads.model.models import LoggerModel, LoggerCallModel, TrackedComponentModel, MetricMetaModel, \
-    ParameterMetaModel, ArtifactMetaModel, LoggerOutputModel, TrackingObjectModel
+from pypads.model.models import InjectionLoggerModel, InjectionLoggerCallModel, TrackedComponentModel, MetricMetaModel, \
+    ParameterMetaModel, ArtifactMetaModel, LoggerOutputModel, TrackingObjectModel, RunLoggerModel, LoggerCallModel
 from pypads.utils.logging_util import WriteFormats
 from pypads.utils.util import inheritors
-
-
-class LibrarySpecificMixin(SuperStop):
-    __metaclass__ = ABCMeta
-
-    supported_libraries: Set[LibSelector] = set()
-
-    def allows_any(self, lib_selector: LibSelector):
-        libraries = self.supported_libraries
-        return len(libraries) == 0 or any([s.allows_any(lib_selector) for s in libraries])
-
-    def allows(self, version):
-        libraries = self.supported_libraries
-        return len(libraries) == 0 or any([s.allows(version) for s in libraries])
-
-    def is_applicable(self, lib_selector: LibSelector, only_name=True):
-        if self.allows_any(lib_selector):
-            return True
-        if only_name:
-            for s in self.supported_libraries:
-                if s.name == lib_selector.name:
-                    return True
-        return False
 
 
 class PassThroughException(Exception):
@@ -53,24 +29,7 @@ class PassThroughException(Exception):
         super().__init__(*args)
 
 
-class FunctionHolder(CallableMixin):
-    """
-    Holds the given function in a timed callable.
-    """
-
-    def __init__(self, *args, fn, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._fn = fn
-
-    @property
-    def fn(self):
-        return self._fn
-
-    def __real_call__(self, *args, **kwargs):
-        return self._fn(*args, **kwargs)
-
-
-class OriginalExecutor(FunctionHolder, TimedCallableMixin):
+class OriginalExecutor(FunctionHolderMixin, TimedCallableMixin):
     """
     Class adding a time tracking to the original execution given as fn.
     """
@@ -79,10 +38,10 @@ class OriginalExecutor(FunctionHolder, TimedCallableMixin):
         super().__init__(*args, fn=fn, **kwargs)
 
 
-class LoggingExecutor(DefensiveCallableMixin, FunctionHolder, TimedCallableMixin, ConfigurableCallableMixin):
+class LoggingExecutor(DefensiveCallableMixin, FunctionHolderMixin, TimedCallableMixin, ConfigurableCallableMixin):
     __metaclass__ = ABCMeta
     """
-    Pre or Post executor for the logging function.
+    Executor for the functionality a tracking function provides.
     """
 
     @abstractmethod
@@ -90,9 +49,21 @@ class LoggingExecutor(DefensiveCallableMixin, FunctionHolder, TimedCallableMixin
         super().__init__(*args, **kwargs)
 
     def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
+        """
+        Function to handle an error executing the logging functionality. In general this should add a failure tag and
+        log to console.
+        :param args: Arguments passed to the function
+        :param ctx: Context of the function
+        :param _pypads_env: Pypads environment
+        :param error: Exception which was raised on the execution
+        :param kwargs: Kwargs passed to the function
+        :return:
+        """
         try:
             raise error
         except TimingDefined:
+
+            # Ignore if due to timing defined
             pass
         except NotImplementedError:
 
@@ -108,52 +79,144 @@ class LoggingExecutor(DefensiveCallableMixin, FunctionHolder, TimedCallableMixin
             try:
                 mlflow.set_tag("pypads_failure", str(error))
                 logger.error(
-                    "Tracking failed for " + str(_pypads_env.call) + " with: " + str(error))
+                    "Tracking failed for " + str(_pypads_env.original_call) + " with: " + str(error))
             except Exception as e:
-                logger.error("Tracking failed for " + str(_pypads_env.call.call_id.instance) + " with: " + str(error))
+                logger.error(
+                    "Tracking failed for " + str(_pypads_env.original_call.call_id.instance) + " with: " + str(error))
             return None, 0
 
 
-class LoggerCall(ProvenanceMixin):
-
-    def __init__(self, *args, logging_env: LoggingEnv, **kwargs):
-        super().__init__(*args, model_cls=LoggerCallModel, call=logging_env.call, **kwargs)
-        self._logging_env = logging_env
-
-    def store(self):
-        from pypads.app.pypads import get_current_pads
-        from pypads.utils.logging_util import WriteFormats
-        get_current_pads().api.log_mem_artifact(str(self.uid), self.json(), WriteFormats.json.value,
-                                                path=self.logger_meta.name)
-
-
-# noinspection PyBroadException
-class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, DependencyMixin, OrderMixin,
-                      LibrarySpecificMixin, ProvenanceMixin, metaclass=ABCMeta):
+class LoggerFunction(DefensiveCallableMixin, IntermediateCallableMixin, DependencyMixin,
+                     LibrarySpecificMixin, ProvenanceMixin, ConfigurableCallableMixin, metaclass=ABCMeta):
     """
-    This class should be used to define new custom loggers. The user has to define __pre__ and/or __post__ methods
-    depending on the specific use case.
-
-    :param static_parameters: dict, optional, static parameters (if needed) to be used when logging.
-
-    .. note:: It is not recommended to change the __call_wrapped__ method, only if really needed.
-
+    Generic tracking function used for storing information to a backend.
     """
-    _stored_general_schema = False
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/logging-function"
+
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/tracking-function"
 
     # Default allow all libraries
     supported_libraries = {LibSelector(name=".*", constraint="*")}
+    _stored_general_schema = False
 
     def __init__(self, *args, static_parameters=None, **kwargs):
         if static_parameters is None:
             static_parameters = {}
-        super().__init__(*args, model_cls=LoggerModel, static_parameters=static_parameters, **kwargs)
+        super().__init__(*args, static_parameters=static_parameters, **kwargs)
+
+    @classmethod
+    def schema(cls):
+        cls.schema()
+
+    @classmethod
+    def store_schema(cls):
+        if not cls._stored_general_schema:
+            from pypads.app.pypads import get_current_pads
+            get_current_pads().api.log_mem_artifact(os.path.join(cls.__name__ + "_content_schema"),
+                                                    cls.schema(), write_format=WriteFormats.json)
+            cls._stored_general_schema = True
+
+
+class LoggerCall(ProvenanceMixin):
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return LoggerCallModel
+
+    def __init__(self, *args, logging_env: LoggingEnv, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._logging_env = logging_env
+
+
+class InjectionLoggerCall(LoggerCall):
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return InjectionLoggerCallModel
+
+    def __init__(self, *args, logging_env: InjectionLoggingEnv, **kwargs):
+        super().__init__(*args, call=logging_env.call, logging_env=logging_env, **kwargs)
+
+
+class RunLoggerFunction(LoggerFunction, OrderMixin, metaclass=ABCMeta):
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/run-logger"
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return RunLoggerModel
+
+
+class InjectionLoggerFunction(LoggerFunction, OrderMixin, metaclass=ABCMeta):
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/injection-logger"
+
+    def __init__(self, *args, static_parameters=None, **kwargs):
+        super().__init__(*args, static_parameters=static_parameters, **kwargs)
 
         if not hasattr(self, "_pre"):
             self._pre = LoggingExecutor(fn=self.__pre__)
         if not hasattr(self, "_post"):
             self._post = LoggingExecutor(fn=self.__post__)
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return InjectionLoggerModel
+
+    def __pre__(self, ctx, *args, _logger_call, _args, _kwargs, **kwargs):
+        """
+        The function to be called before executing the log anchor. the value returned will be passed on to the __post__
+        function as **_pypads_pre_return**.
+
+
+        :return: _pypads_pre_return
+        """
+        pass
+
+    def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
+        """
+        The function to be called after executing the log anchor.
+
+        :param _pypads_pre_return: the value returned by __pre__.
+        :param _pypads_result: the value returned by __call_wrapped__.
+
+        :return: the wrapped function return value
+        """
+        pass
+
+    def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggingEnv, **kwargs):
+        self.store_schema()
+
+        _pypads_hook_params = {**self.static_parameters, **_pypads_env.parameter}
+
+        logger_call = InjectionLoggerCall(logging_env=_pypads_env, logger_meta=self.model())
+
+        # Trigger pre run functions
+        _pre_result, pre_time = self._pre(ctx, _pypads_env=_pypads_env, _logger_call=logger_call, _args=args,
+                                          _kwargs=kwargs,
+                                          **_pypads_hook_params)
+        logger_call.pre_time = pre_time
+
+        # Trigger function itself
+        _return, time = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs,
+                                              **_pypads_hook_params)
+        logger_call.child_time = time
+
+        # Trigger post run functions
+        _post_result, post_time = self._post(ctx, _pypads_env=_pypads_env, _pypads_pre_return=_pre_result,
+                                             _pypads_result=_return,
+                                             _logger_call=logger_call,
+                                             _args=args, _kwargs=kwargs, **_pypads_hook_params)
+        logger_call.post_time = post_time
+        logger_call.store()
+        return _return
+
+    def __call_wrapped__(self, ctx, *args, _pypads_env: InjectionLoggingEnv, _args, _kwargs, **_pypads_hook_params):
+        """
+        The real call of the wrapped function. Be carefull when you change this.
+        Exceptions here will not be catched automatically and might break your workflow. The returned value will be passed on to __post__ function.
+
+        :return: _pypads_result
+        """
+        _return, time = OriginalExecutor(fn=_pypads_env.callback)(*_args, **_kwargs)
+        return _return, time
 
     def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
         """
@@ -177,7 +240,7 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
             logger.error("Logging failed for " + str(self) + ": " + str(error) + "\nTrace:\n" + traceback.format_exc())
 
             # Try to call the original unwrapped function if something broke
-            original = _pypads_env.call.call_id.context.original(_pypads_env.callback)
+            original = _pypads_env.original_call.call_id.context.original(_pypads_env.callback)
             if callable(original):
                 try:
                     logger.error("Trying to recover from: " + str(e))
@@ -194,87 +257,15 @@ class LoggingFunction(DefensiveCallableMixin, IntermediateCallableMixin, Depende
 
                 # Original function was not accessiblete
                 raise Exception("Couldn't fall back to original function for " + str(
-                    _pypads_env.call.call_id.context.original_name(_pypads_env.callback)) + " on " + str(
-                    _pypads_env.call.call_id.context) + ". Can't recover from " + str(error))
-
-    def __pre__(self, ctx, *args, _logger_call, _args, _kwargs, **kwargs):
-        """
-        The function to be called before executing the log anchor. the value returned will be passed on to the __post__
-        function as **_pypads_pre_return**.
-
-
-        :return: _pypads_pre_return
-        """
-        pass
-
-    def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
-        """
-        The function to be called after executing the log anchor.
-
-        :param _pypads_pre_return: the value returned by __pre__.
-        :param _pypads_result: the value returned by __call_wrapped__.
-
-        :return: the wrapped function return value
-        """
-        pass
-
-    def __real_call__(self, ctx, *args, _pypads_env: LoggingEnv, **kwargs):
-        if not LoggingFunction._stored_general_schema:
-            from pypads.app.pypads import get_current_pads
-            get_current_pads().api.log_mem_artifact("logger_schema",
-                                                    self.schema(), write_format=WriteFormats.json)
-            LoggingFunction._stored_general_schema = True
-
-        schema_path = os.path.join(self.name, self.__class__.__name__ + "_content_schema")
-        if not os.path.exists(schema_path):
-            from pypads.app.pypads import get_current_pads
-            get_current_pads().api.log_mem_artifact(schema_path,
-                                                    self.tracking_object_schemata(), write_format=WriteFormats.json)
-            LoggingFunction._schema_stored = True
-
-        _pypads_hook_params = {**self.static_parameters, **_pypads_env.parameter}
-
-        logger_call = LoggerCall(logging_env=_pypads_env, logger_meta=self.model())
-
-        # Trigger pre run functions
-        _pre_result, pre_time = self._pre(ctx, _pypads_env=_pypads_env, _logger_call=logger_call, _args=args,
-                                          _kwargs=kwargs,
-                                          **_pypads_hook_params)
-        logger_call.pre_time = pre_time
-
-        # Trigger function itself
-        _return, time = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs,
-                                              **_pypads_hook_params)
-        logger_call.child_time = time
-
-        # Trigger post run functions
-        _post_result, post_time = self._post(ctx, _pypads_env=_pypads_env, _pypads_pre_return=_pre_result,
-                                             _pypads_result=_return,
-                                             _logger_call=logger_call,
-                                             _args=args, _kwargs=kwargs, **_pypads_hook_params)
-        logger_call.post_time = post_time
-        logger_call.store()
-        return _return
-
-    def __call_wrapped__(self, ctx, *args, _pypads_env: LoggingEnv, _args, _kwargs, **_pypads_hook_params):
-        """
-        The real call of the wrapped function. Be carefull when you change this.
-        Exceptions here will not be catched automatically and might break your workflow. The returned value will be passed on to __post__ function.
-
-        :return: _pypads_result
-        """
-        _return, time = OriginalExecutor(fn=_pypads_env.callback)(*_args, **_kwargs)
-        return _return, time
-
-    def tracking_object_schemata(self):
-        return []
+                    _pypads_env.original_call.call_id.context.original_name(_pypads_env.callback)) + " on " + str(
+                    _pypads_env.original_call.call_id.context) + ". Can't recover from " + str(error))
 
 
 class LoggerTrackingObject(ProvenanceMixin):
     is_a = "https://www.padre-lab.eu/onto/tracking_object"
 
     def __init__(self, *args, call: LoggerCall, model_cls: Type[TrackingObjectModel], **kwargs):
-        super().__init__(*args, model_cls=model_cls, call=call, **kwargs)
+        super().__init__(*args, model_cls=model_cls, original_call=call, **kwargs)
         self._component_model = TrackedComponentModel(tracking_component=self._base_path())
         self._known_metrics = set()
         self._known_params = set()
@@ -317,7 +308,7 @@ class LoggerTrackingObject(ProvenanceMixin):
                 self._add_logger_output()
 
     def _base_path(self):
-        return os.path.join(self.call.logger_meta.name, self.__class__.__name__)
+        return os.path.join(self.call.created_by.name, self.__class__.__name__)
 
     def meta_json(self):
         """
@@ -339,4 +330,4 @@ def logging_functions():
     Find all post run functions defined in our imported context.
     :return:
     """
-    return inheritors(LoggingFunction)
+    return inheritors(InjectionLoggerFunction)

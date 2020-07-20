@@ -1,7 +1,7 @@
 import sys
 
 from pypads.app.injections.base_logger import LoggingFunction
-from pypads.injections.analysis.call_tracker import LoggingEnv
+from pypads.injections.analysis.call_tracker import InjectionLoggingEnv
 from test.base_test import BaseTest, TEST_FOLDER
 
 
@@ -14,7 +14,7 @@ class First(LoggingFunction):
     def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
         pass
 
-    def __pre__(ctx, *args, _logger_call: LoggingEnv, **kwargs):
+    def __pre__(ctx, *args, _logger_call: InjectionLoggingEnv, **kwargs):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         print("first")
@@ -25,7 +25,7 @@ class Second(LoggingFunction):
     def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
         pass
 
-    def __pre__(ctx, *args, _logger_call: LoggingEnv, **kwargs):
+    def __pre__(ctx, *args, _logger_call: InjectionLoggingEnv, **kwargs):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         print("second")
@@ -38,7 +38,7 @@ class Third(LoggingFunction):
     def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
         pass
 
-    def __pre__(ctx, *args, _logger_call: LoggingEnv, **kwargs):
+    def __pre__(ctx, *args, _logger_call: InjectionLoggingEnv, **kwargs):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         print("third")

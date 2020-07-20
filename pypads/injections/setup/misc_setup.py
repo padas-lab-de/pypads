@@ -1,7 +1,9 @@
 import os
 
 from pypads import logger
+from pypads.app.injections.base_logger import LoggerCall
 from pypads.app.injections.run_loggers import RunSetupFunction
+from pypads.injections.analysis.call_tracker import LoggingEnv
 
 
 class RunInfo(RunSetupFunction):
@@ -29,6 +31,8 @@ class RunLogger(RunSetupFunction):
         super().__init__(*args, **kwargs)
 
     def _call(self, pads, *args, **kwargs):
+        call = LoggerCall(is_a="https://www.padre-lab.eu/onto/RunLoggerCall", logging_env=LoggingEnv({}))
+
         from pypads.app.api import PyPadsApi
         _api: PyPadsApi = pads.api
 

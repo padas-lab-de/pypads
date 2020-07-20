@@ -30,7 +30,7 @@ class InputTO(LoggerTrackingObject):
         input: List[ParamModel] = []
 
     def __init__(self, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args, model_cls=self.InputModel, call=call, **kwargs)
+        super().__init__(*args, model_cls=self.InputModel, original_call=call, **kwargs)
 
     def add_arg(self, name, value, format):
         self._add_param(name, value, format, 0)
@@ -49,7 +49,7 @@ class InputTO(LoggerTrackingObject):
                                                       format=format))
 
     def _get_artifact_path(self, name):
-        return os.path.join(self.call.call.to_folder(), "input", name)
+        return os.path.join(self.call.original_call.to_folder(), "input", name)
 
 
 class Input(LoggingFunction):
@@ -100,11 +100,13 @@ class OutputTO(LoggerTrackingObject):
             arbitrary_types_allowed = True
 
     def __init__(self, value, format, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args, model_cls=self.OutputModel, output="", content_format=format, call=call, **kwargs)
-        path = os.path.join(self._base_path(), self.call.call.to_folder(), "output")
+        super().__init__(*args, model_cls=self.OutputModel, output="", content_format=format, original_call=call,
+                         **kwargs)
+        path = os.path.join(self._base_path(), self.call.original_call.to_folder(), "output")
         self.output = path
         self._store_artifact(value, ArtifactMetaModel(path=path,
-                                                      description="Output of function call {}".format(self.call.call),
+                                                      description="Output of function call {}".format(
+                                                          self.call.original_call),
                                                       format=format))
 
 

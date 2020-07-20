@@ -1,30 +1,13 @@
 from abc import abstractmethod, ABCMeta
 
 from pypads import logger
-from pypads.app.injections.base_logger import FunctionHolder
-from pypads.app.misc.mixins import DefensiveCallableMixin, IntermediateCallableMixin, TimedCallableMixin, \
-    DependencyMixin, OrderMixin, ConfigurableCallableMixin
+from pypads.app.injections.base_logger import RunLoggerFunction
+from pypads.app.misc.mixins import BaseDefensiveCallableMixin, ConfigurableCallableMixin
 # Default init_run fns
 from pypads.utils.util import inheritors
 
 
-class BaseDefensiveCallable(DefensiveCallableMixin):
-    """
-    Defensive callable ignoring errors but printing a warning to console.
-    """
-    __metaclass__ = ABCMeta
-
-    @abstractmethod
-    def __init__(self, *args, message=None, **kwargs):
-        self._message = message if message else "Couldn't execute {}, because of exception: {}"
-        super().__init__(*args, **kwargs)
-
-    def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
-        logger.warning(self._message.format(str(self.__name__), str(error)))
-
-
-class BaseRunLogger(BaseDefensiveCallable, IntermediateCallableMixin, FunctionHolder, TimedCallableMixin,
-                    DependencyMixin, OrderMixin, ConfigurableCallableMixin):
+class BaseRunLogger(RunLoggerFunction, BaseDefensiveCallableMixin, ConfigurableCallableMixin):
     """
     Base run logger. This function is to be called after or before a mlflow run.
     """

@@ -1,10 +1,11 @@
-from _py_abc import ABCMeta
-from abc import abstractmethod
+from abc import abstractmethod, ABCMeta, ABC
 from typing import List, Union, Tuple, Set
 
 from pypads import logger
 from pypads.app.misc.inheritance import SuperStop
 from pypads.importext.versioning import LibSelector, VersionNotFoundException
+from pypads.model.metadata import ModelObject
+from pypads.model.models import LibraryModel
 
 DEFAULT_ORDER = 1
 
@@ -207,3 +208,91 @@ class ConfigurableCallableMixin(CallableMixin):
 
     def __call__(self, *args, **kwargs):
         super().__call__(*args, **{**self._kwargs, **kwargs})
+
+
+class LibrarySpecificMixin(SuperStop):
+    """
+    A class only being applicable for a certain library.
+    """
+    __metaclass__ = ABCMeta
+
+    supported_libraries: Set[LibSelector] = set()
+
+    def allows_any(self, lib_selector: LibSelector):
+        libraries = self.supported_libraries
+        return len(libraries) == 0 or any([s.allows_any(lib_selector) for s in libraries])
+
+    def allows(self, version):
+        libraries = self.supported_libraries
+        return len(libraries) == 0 or any([s.allows(version) for s in libraries])
+
+    def is_applicable(self, lib_selector: LibSelector, only_name=True):
+        if self.allows_any(lib_selector):
+            return True
+        if only_name:
+            for s in self.supported_libraries:
+                if s.name == lib_selector.name:
+                    return True
+        return False
+
+
+class FunctionHolderMixin(CallableMixin):
+    """
+    Holds the given function in a timed callable.
+    """
+
+    def __init__(self, *args, fn, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._fn = fn
+
+    @property
+    def fn(self):
+        return self._fn
+
+    def __real_call__(self, *args, **kwargs):
+        return self._fn(*args, **kwargs)
+
+
+class ProvenanceMixin(ModelObject, ABC):
+    """
+    Class extracting its library reference automatically if possible.
+    """
+
+    def __init__(self, *args, lib_model: LibraryModel = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if lib_model is None:
+            setattr(self, "defined_in", self._get_library_descriptor())
+        else:
+            setattr(self, "defined_in", lib_model)
+
+        if not hasattr(self, "uri") or getattr(self, "uri") is None:
+            setattr(self, "uri", "{}#{}".format(getattr(self, "is_a"), self.uid))
+
+    def _get_library_descriptor(self) -> LibraryModel:
+        """
+        Try to extract the defining package of this class.
+        :return:
+        """
+        # TODO extract reference to self package
+        try:
+            name = self.__module__.split(".")[0]
+            from pypads.utils.util import find_package_version
+            version = find_package_version(name)
+            return LibraryModel(name=name, version=version, extracted=True)
+        except Exception:
+            return LibraryModel(name="__unkown__", version="0.0", extracted=True)
+
+
+class BaseDefensiveCallableMixin(DefensiveCallableMixin):
+    """
+    Defensive callable ignoring errors but printing a warning to console.
+    """
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def __init__(self, *args, error_message=None, **kwargs):
+        self._message = error_message if error_message else "Couldn't execute {}, because of exception: {}"
+        super().__init__(*args, **kwargs)
+
+    def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
+        logger.warning(self._message.format(str(self.__name__), str(error)))

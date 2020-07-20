@@ -9,10 +9,10 @@ class Log(LoggingFunction):
     """
 
     def __pre__(self, ctx, *args, _logger_call, **kwargs):
-        logger.debug("Entered " + str(_logger_call.call))
+        logger.debug("Entered " + str(_logger_call.original_call))
 
     def __post__(self, ctx, *args, _logger_call, **kwargs):
-        logger.debug("Exited " + str(_logger_call.call))
+        logger.debug("Exited " + str(_logger_call.original_call))
 
 
 class LogInit(LoggingFunction):

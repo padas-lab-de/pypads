@@ -14,7 +14,7 @@ class TrackedObject(BaseModel):
 # from pypads.app.injections.base_logger import LoggingFunction
 # from pypads.app.misc.mixins import DefensiveCallableMixin, DependencyMixin
 # from pypads.concepts.mixins import MetadataMixin
-# from pypads.injections.analysis.call_tracker import LoggingEnv
+# from pypads.injections.analysis.call_tracker import InjectionLoggingEnv
 # # noinspection PyUnusedLocal,PyShadowingNames,PyProtectedMember
 # from pypads.utils.logging_util import WriteFormats
 # from pypads.utils.util import inheritors
@@ -155,7 +155,7 @@ class TrackedObject(BaseModel):
 #     POST_TIME = "post_time"
 #     LOGGING_TIME = 'logging_time'
 #
-#     def __init__(self, *args, _pypads_env: LoggingEnv, metadata=None, schema=None,
+#     def __init__(self, *args, _pypads_env: InjectionLoggingEnv, metadata=None, schema=None,
 #                  **kwargs):
 #         if metadata is None:
 #             metadata = dict()

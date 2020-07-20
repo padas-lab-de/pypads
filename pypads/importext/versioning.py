@@ -1,7 +1,8 @@
 import re
 
 from pypads.importext.semver import parse_constraint
-from pypads.model.models import LibSelectorModel, MetadataObject
+from pypads.model.metadata import ModelInterface
+from pypads.model.models import LibSelectorModel
 from pypads.utils.util import is_package_available, find_package_version, find_package_regex_versions
 
 
@@ -9,7 +10,7 @@ class VersionNotFoundException(Exception):
     pass
 
 
-class LibSelector(MetadataObject):
+class LibSelector(ModelInterface):
     """
     Selector class holding version constraint and name of a library. @see poetry sem versioning
     """

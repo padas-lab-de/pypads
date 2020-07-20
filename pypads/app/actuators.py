@@ -1,19 +1,20 @@
 from abc import ABCMeta
 from functools import wraps
 
-from pypads.app.injections.base_logger import FunctionHolder
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
+from pypads.app.misc.mixins import FunctionHolderMixin
 from pypads.utils.util import inheritors
 
 actuator_plugins = set()
 
 
-class Actuator(FunctionHolder, metaclass=ABCMeta):
+class Actuator(FunctionHolderMixin, metaclass=ABCMeta):
 
     def __init__(self, *args, fn, **kwargs):
         super().__init__(*args, fn=fn, **kwargs)
 
     def __call__(self, *args, **kwargs):
+        # TODO track actuator call
         return self.__real_call__(*args, **kwargs)
 
 

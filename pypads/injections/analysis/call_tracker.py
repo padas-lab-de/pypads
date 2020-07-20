@@ -1,15 +1,17 @@
 import os
 import threading
 from collections.__init__ import OrderedDict
+from typing import Type
+
+from pydantic import BaseModel
 
 from pypads import logger
-from pypads.app.misc.provenance import ProvenanceMixin
 from pypads.importext.wrapping.base_wrapper import Context
-from pypads.model.models import FunctionReferenceModel, CallAccessorModel, CallIdModel, CallModel, \
-    MetadataObject
+from pypads.model.metadata import ModelInterface, ModelHolder
+from pypads.model.models import FunctionReferenceModel, CallAccessorModel, CallIdModel, CallModel
 
 
-class FunctionReference(MetadataObject):
+class FunctionReference(ModelInterface):
 
     def __init__(self, _pypads_context: Context, _pypads_wrappee, *args, **kwargs):
         self.wrappee = _pypads_wrappee
@@ -162,10 +164,14 @@ class CallId(CallAccessor):
                     self.instance_number), "function_" + self.wrappee.__name__, "call_" + str(self.call_number))
 
 
-class Call(ProvenanceMixin):
+class Call(ModelHolder):
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return CallModel
 
     def __init__(self, call_id: CallId, *args, **kwargs):
-        super().__init__(*args, model_cls=CallModel, call_id=call_id, **kwargs)
+        super().__init__(*args, call_id=call_id, **kwargs)
         self._active_hooks = set()
 
     def finish(self):
@@ -186,12 +192,38 @@ class Call(ProvenanceMixin):
 
 class LoggingEnv:
 
-    def __init__(self, mappings, hook, parameter, callback, call: Call):
+    def __init__(self, parameter, experiment_id, run_id):
+        self._parameter = parameter
+        self._experiment_id = experiment_id
+        self._run_id = run_id
+        from pypads.app.pypads import get_current_pads
+        self._pypads = get_current_pads()
+
+    @property
+    def experiment_id(self):
+        return self._experiment_id
+
+    @property
+    def run_id(self):
+        return self._run_id
+
+    @property
+    def parameter(self):
+        return self._parameter
+
+    @property
+    def pypads(self):
+        return self._pypads
+
+
+class InjectionLoggingEnv(LoggingEnv):
+
+    def __init__(self, mappings, hook, callback, call: Call, parameter, experiment_id, run_id):
+        super().__init__(parameter, experiment_id, run_id)
         self._call = call
         self._callback = callback
         self._hook = hook
         self._mappings = mappings
-        self._parameter = parameter
 
     @property
     def call(self):
@@ -208,10 +240,6 @@ class LoggingEnv:
     @property
     def mappings(self):
         return self._mappings
-
-    @property
-    def parameter(self):
-        return self._parameter
 
 
 class CallTracker:

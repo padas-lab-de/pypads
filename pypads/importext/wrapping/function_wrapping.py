@@ -6,8 +6,9 @@ from typing import Set
 from pypads import logger
 from pypads.importext.mappings import MatchedMapping
 from pypads.importext.wrapping.base_wrapper import BaseWrapper, Context
-from pypads.injections.analysis.call_tracker import CallAccessor, FunctionReference, add_call, LoggingEnv, finish_call, \
-    Call
+from pypads.injections.analysis.call_tracker import CallAccessor, FunctionReference, add_call, finish_call, \
+    Call, InjectionLoggingEnv
+from pypads.utils.util import get_experiment_id, get_run_id
 
 error = False
 
@@ -271,12 +272,14 @@ class FunctionWrapper(BaseWrapper):
     def _add_hook(self, hook, params, callback, call: Call, mappings):
         # For every hook we defined on the given function in out mapping file execute it before running the code
         if not call.has_hook(hook):
-            return self._get_env_setter(_pypads_env=LoggingEnv(mappings, hook, params, callback, call))
+            return self._get_env_setter(
+                _pypads_env=InjectionLoggingEnv(mappings, hook, callback, call, params, get_experiment_id(),
+                                                get_run_id()))
         else:
             logger.debug(str(hook) + " is tracked multiple times on " + str(call) + ". Ignoring second hooking.")
             return None
 
-    def _get_env_setter(self, _pypads_env: LoggingEnv):
+    def _get_env_setter(self, _pypads_env: InjectionLoggingEnv):
         """
         This wrapper sets the context
         :return:
@@ -320,10 +323,11 @@ class FunctionWrapper(BaseWrapper):
         else:
             raise ValueError("Failed!")
 
-    def _wrapped_inner_function(self, _self, *args, _pypads_env: LoggingEnv, **kwargs):
+    @staticmethod
+    def _wrapped_inner_function(_self, *args, _pypads_env: InjectionLoggingEnv, **kwargs):
         """
         Wrapped function logic. This executes all hooks and the function itself.
-        :param _self:
+        :param _self: Reference to
         :param args:
         :param kwargs:
         :return:

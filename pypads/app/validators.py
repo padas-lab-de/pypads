@@ -1,7 +1,7 @@
 from abc import ABCMeta
 from functools import wraps
 
-from pypads.app.injections.base_logger import FunctionHolder
+from pypads.app.injections.base_logger import LoggerFunction
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
 from pypads.injections.analysis.determinism import check_determinism
 from pypads.utils.util import inheritors
@@ -9,12 +9,13 @@ from pypads.utils.util import inheritors
 validator_plugins = set()
 
 
-class Validator(FunctionHolder, metaclass=ABCMeta):
+class Validator(LoggerFunction, metaclass=ABCMeta):
 
     def __init__(self, *args, fn, **kwargs):
         super().__init__(*args, fn=fn, **kwargs)
 
     def __call__(self, *args, **kwargs):
+        # TODO validator call
         return self.__real_call__(*args, **kwargs)
 
 

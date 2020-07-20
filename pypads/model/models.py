@@ -1,196 +1,38 @@
 import os
 import time
 import uuid
-from collections import deque
-from typing import List, Optional
+from typing import List, Optional, Type
 
-import mlflow
-from pydantic import ValidationError, BaseModel, Field, validate_model, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl
 
-from pypads.app.misc.inheritance import SuperStop
 from pypads.utils.logging_util import WriteFormats
-
-
-class ValidationErrorHandler:
-    """ Class to handle errors on the validation of an validatable. """
-
-    def __init__(self, absolute_path=None, validator=None, handle=None):
-        self._absolute_path = absolute_path
-        self._validator = validator
-        self._handle = handle
-
-    @property
-    def validator(self):
-        return self._validator
-
-    @property
-    def absolute_path(self):
-        return self._absolute_path
-
-    def handle(self, cls, e, options):
-        if (not self._absolute_path or deque(self._absolute_path) == e.absolute_path) and (
-                not self._validator or self.validator == e.validator):
-            if self._handle is None:
-                self._default_handle(e)
-            else:
-                return self._handle(cls, e, options)
-        else:
-            raise e
-
-    def _default_handle(self, e):
-        print("Empty validation handler triggered: " + str(self))
-        raise e
-
-
-class ValidateableFactory:
-
-    @staticmethod
-    def from_object(cls: BaseModel, obj, handlers: List[ValidationErrorHandler] = None):
-        return ValidateableFactory._try_creation(cls, cls.from_orm, handlers=handlers, __history=[], obj=obj)
-
-    @staticmethod
-    def make(cls, *args, handlers: List[ValidationErrorHandler] = None, **options):
-        return ValidateableFactory._try_creation(cls, cls, *args, handlers=handlers, __history=[], **options)
-
-    @staticmethod
-    def _try_creation(cls, fn, *args, handlers: List[ValidationErrorHandler] = None, __history=None, **options):
-        if handlers is None:
-            handlers = []
-        try:
-            return fn(*args, **options)
-        except ValidationError as e:
-            # Raise error if we can't handle anything
-            if handlers is None:
-                raise e
-            for handler in handlers:
-                new_options = handler.handle(cls, e, options)
-                # If the handler could fix the problem return the new value
-                if new_options is not None and e not in __history and new_options not in __history:
-                    __history.append(e)
-                    __history.append(new_options)
-
-                    # Try to create object again
-                    return ValidateableFactory._try_creation(cls, handlers=handlers, __history=__history, **new_options)
-            # Raise error if we fail
-            raise e
-
-
-def get_experiment_id():
-    if mlflow.active_run():
-        return mlflow.active_run().info.experiment_id
-    return None
-
-
-def get_run_id():
-    if mlflow.active_run():
-        return mlflow.active_run().info.run_id
-    return None
+from pypads.utils.util import get_experiment_id, get_run_id
 
 
 class OntologyEntry(BaseModel):
+    """
+    Object representing an (potential) entry in a knowledge base
+    """
     uri: HttpUrl = ...
 
 
 class LibraryModel(BaseModel):
+    """
+    Representation of a package or library
+    """
     name: str = ...
     version: str = ...
-
-
-class ReferenceObject(OntologyEntry):
-    """
-    Base object for tracked objects that manage metadata. A MetadataEntity manages and id and a dict of metadata.
-    The metadata should contain all necessary non-binary data to describe an entity.
-    """
-
-    uid: uuid.UUID = Field(default_factory=uuid.uuid4)
-    created_at: float = Field(default_factory=time.time)
-    experiment_id: Optional[str] = Field(default_factory=get_experiment_id)
-    run_id: Optional[str] = Field(default_factory=get_run_id)
-    is_a: HttpUrl = ...
-    defined_in: LibraryModel = ...  # In which package the object was defined
-
-    def store(self):
-        from pypads.app.pypads import get_current_pads
-        from pypads.utils.logging_util import WriteFormats
-        get_current_pads().api.log_mem_artifact(self.uid, self.json(), WriteFormats.json.value,
-                                                path=os.path.join(self.__class__.__name__, str(self.uid)))
-
-
-class MetadataObject(SuperStop):
-    """
-    Used for objects representing a validateable base model
-    """
-
-    def __init__(self, *args, model_cls, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._model_cls = model_cls
-
-        fields = set(self._model_cls.__fields__.keys())
-
-        # Add given fields to metadata object if not already existing
-        for key, val in kwargs.items():
-            if key in fields and not self._has_direct_attr(key):
-                setattr(self, key, val)
-                fields.remove(key)
-
-        # Add defaults which are not given
-        for key in fields:
-            if not self._has_direct_attr(key) and self._model_cls.__fields__:
-                setattr(self, key, self._model_cls.__fields__[key].get_default())
-
-    def _has_direct_attr(self, name):
-        try:
-            object.__getattribute__(self, name)
-            return True
-        except AttributeError:
-            return False
-
-    def validate(self):
-        validate_model(self._model_cls, self.model())
-
-    def model(self):
-        return self._model_cls.from_orm(self)
-
-    def schema(self):
-        return self._model_cls.schema()
-
-    def json(self):
-        return self._model_cls.from_orm(self).json()
-
-
-class MetadataHolder(MetadataObject):
-    """
-    Used for objects storing their information directly into a validated base model
-    """
-
-    def __init__(self, *args, model_cls, model: ReferenceObject = None, **kwargs):
-        self._model = model_cls(*args, **kwargs) if model is None else model
-        super().__init__(*args, model_cls=model_cls, **kwargs)
-
-    def __getattr__(self, name):
-        if name not in ["_model", "_model_cls"] and name in self._model.__fields__.keys():
-            return getattr(self._model, name)
-        else:
-            return object.__getattribute__(self, name)
-
-    def __setattr__(self, name, value):
-        if name not in ["_model", "_model_cls"] and name in self._model.__fields__.keys():
-            setattr(self._model, name, value)
-        else:
-            return object.__setattr__(self, name, value)
-
-    def model(self):
-        return self._model
+    extracted: bool = False
 
 
 class LibSelectorModel(BaseModel):
     """
-    Data of a lib selector
+    Representation of a selector for a package
     """
-    name: str = ...
-    constraint: str
-    regex: bool = False
-    specificity: int
+    name: str = ...  # Name of the package. Either a direct string or a regex.
+    constraint: str  # Constraint for the version number
+    regex: bool = False  # Flag if the name of the selector is to be considered as a regex
+    specificity: int  # How specific the selector is ( important for a css like mapping of multiple selectors)
 
     def __hash__(self):
         return hash((self.name, self.constraint, self.specificity))
@@ -199,27 +41,73 @@ class LibSelectorModel(BaseModel):
         orm_mode = True
 
 
-class LoggerModel(ReferenceObject):
+class ComponentModel(OntologyEntry):
     """
-    Holds meta data about a logger
+    Base object for components of code. These can be loggers, actuators etc.
     """
-    uid: uuid.UUID = Field(default_factory=uuid.uuid4)
-    name: str = "GenericLogger"
-    uri: HttpUrl = "https://www.padre-lab.eu/onto/generic-logger"
+    uid: uuid.UUID = Field(default_factory=uuid.uuid4)  # Automatically created uuid for the object
+    created_at: float = Field(default_factory=time.time)  # Creation timestamp
+    defined_in: LibraryModel = ...  # In which package the object was defined
+    is_a: HttpUrl = ...  # A link to a ontology entry describing the concept of the reference object
+
+
+class RunObject(OntologyEntry):
+    """
+    Base object for tracked objects that manage metadata. A MetadataEntity manages and id and a dict of metadata.
+    The metadata should contain all necessary non-binary data to describe an entity.
+    """
+    experiment_id: Optional[str] = Field(default_factory=get_experiment_id)
+    run_id: Optional[str] = Field(default_factory=get_run_id)
+
+    def store(self):
+        """
+        Function to store the object as json into an artifact
+        :return:
+        """
+        from pypads.app.pypads import get_current_pads
+        from pypads.utils.logging_util import WriteFormats
+        get_current_pads().api.log_mem_artifact("{}#{}".format(self.__class__.__name__, self.uid), self.json(),
+                                                WriteFormats.json.value,
+                                                path=os.path.join(self.__class__.__name__, str(self.uid)))
+
+
+class LoggerModel(RunObject):
+    """
+    A reference object for a logger.
+    """
+    name: str = "GenericTrackingFunction"
+    uri: HttpUrl = "https://www.padre-lab.eu/onto/generic-tracking-function"
     dependencies: List[LibSelectorModel] = {}
     supported_libraries: List[LibSelectorModel] = ...
     allow_nested: bool = True
     allow_intermediate: bool = True
-    static_parameters: dict = {}
 
     class Config:
         orm_mode = True
 
-    # def store(self):
-    #     from pypads.app.pypads import get_current_pads
-    #     from pypads.utils.logging_util import WriteFormats
-    #     get_current_pads().api.log_mem_artifact(self.uid, self.json(), WriteFormats.json.value,
-    #                                             path="loggers")
+
+class RunLoggerModel(LoggerModel):
+    """
+    Tracking function being executed on run teardown or setup
+    """
+    name: str = "GenericRunLogger"
+    uri: HttpUrl = "https://www.padre-lab.eu/onto/generic-run-logger"
+
+    class Config:
+        orm_mode = True
+
+
+class InjectionLoggerModel(LoggerModel):
+    """
+    Tracking function being exectured on injection hook execution
+    """
+    uid: uuid.UUID = Field(default_factory=uuid.uuid4)
+    name: str = "GenericInjectionLogger"
+    uri: HttpUrl = "https://www.padre-lab.eu/onto/generic-injection-logger"
+    static_parameters: dict = {}
+
+    class Config:
+        orm_mode = True
 
 
 class ContextModel(BaseModel):
@@ -254,9 +142,10 @@ class CallIdModel(CallAccessorModel):
         orm_mode = True
 
 
-class CallModel(ReferenceObject):
+class CallModel(RunObject):
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/Call"
     call_id: CallIdModel = ...  # Id of the call
+    finished: bool = False
 
     class Config:
         orm_mode = True
@@ -286,7 +175,7 @@ class TrackedComponentModel(BaseModel):
     artifacts: List[ArtifactMetaModel] = []  # Paths of the artifacts related to the call model
 
 
-class LoggerOutputModel(ReferenceObject):
+class LoggerOutputModel(RunObject):
     objects: List[TrackedComponentModel] = []
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerOutput"
 
@@ -296,26 +185,36 @@ class LoggerOutputModel(ReferenceObject):
         self.objects.append(storage_model)
 
 
-class LoggerCallModel(ReferenceObject):
+class LoggerCallModel(RunObject):
     """
-    Holds meta data about a logger call
+    Holds meta data about a logger execution
     """
-    logger_meta: LoggerModel
+    created_by: Type[LoggerModel]
+    execution_time: float = ...
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerCall"
+
+
+class InjectionLoggerCallModel(LoggerCallModel):
+    """
+    Holds meta data about a logger execution
+    """
+    created_by: InjectionLoggerModel
     pre_time: float = ...
     post_time: float = ...
     child_time: float = ...
-    call: CallModel = ...  # Triggered by following call
+    original_call: CallModel = ...  # Triggered by following call
     output: Optional[LoggerOutputModel] = ...  # Outputs of the logger
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerCall"
-
-    # tracked_by: str = ...
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/InjectionLoggerCall"
 
     class Config:
         orm_mode = True
 
 
-class TrackingObjectModel(ReferenceObject):
-    call: LoggerCallModel = ...
+class TrackingObjectModel(RunObject):
+    """
+    Data of a tracking object
+    """
+    tracked_by: InjectionLoggerCallModel = ...
 
     class Config:
         orm_mode = True

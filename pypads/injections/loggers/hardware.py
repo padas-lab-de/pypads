@@ -4,7 +4,7 @@ from typing import List
 from pydantic import BaseModel, HttpUrl
 
 from pypads.app.injections.base_logger import LoggingFunction, LoggerCall, LoggerTrackingObject
-from pypads.model.models import LoggerCallModel, ArtifactMetaModel, TrackingObjectModel
+from pypads.model.models import InjectionLoggerCallModel, ArtifactMetaModel, TrackingObjectModel
 from pypads.utils.logging_util import WriteFormats
 from pypads.utils.util import local_uri_to_path, sizeof_fmt
 
@@ -61,7 +61,7 @@ class CpuTO(LoggerTrackingObject):
             return output
 
     def __init__(self, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args, model_cls=self.CPUModel, call=call, **kwargs)
+        super().__init__(*args, model_cls=self.CPUModel, original_call=call, **kwargs)
 
     def add_arg(self, name, cores, _format, type=0):
         path = os.path.join(self._base_path(), self._get_artifact_path(name))
@@ -82,7 +82,7 @@ class CpuTO(LoggerTrackingObject):
                                                       format=_format))
 
     def _get_artifact_path(self, name):
-        return os.path.join(self.call.call.to_folder(), "cpu_usage", name)
+        return os.path.join(self.call.original_call.to_folder(), "cpu_usage", name)
 
 
 class Cpu(LoggingFunction):
@@ -132,7 +132,7 @@ class RamTO(LoggerTrackingObject):
                 arbitrary_types_allowed = True
 
         input: List[ParamModel] = []
-        call: LoggerCallModel = ...
+        original_call: InjectionLoggerCallModel = ...
 
         class Config:
             orm_mode = True
@@ -153,7 +153,7 @@ class RamTO(LoggerTrackingObject):
             return output
 
     def __init__(self, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args, model_cls=self.RAMModel, call=call, **kwargs)
+        super().__init__(*args, model_cls=self.RAMModel, original_call=call, **kwargs)
 
     def add_arg(self, name, ram_info, swap_info, format, type=0):
 
@@ -189,7 +189,7 @@ class RamTO(LoggerTrackingObject):
                                                       format=_format))
 
     def _get_artifact_path(self, name):
-        return os.path.join(self.call.call.to_folder(), "ram_usage", name)
+        return os.path.join(self.call.original_call.to_folder(), "ram_usage", name)
 
 
 class Ram(LoggingFunction):
@@ -252,7 +252,7 @@ class DiskTO(LoggerTrackingObject):
                 orm_mode = True
 
         input: List[ParamModel] = []
-        call: LoggerCallModel = ...
+        original_call: InjectionLoggerCallModel = ...
 
         class Config:
             orm_mode = True
@@ -276,7 +276,7 @@ class DiskTO(LoggerTrackingObject):
             return output
 
     def __init__(self, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args, model_cls=self.DiskModel, call=call, **kwargs)
+        super().__init__(*args, model_cls=self.DiskModel, original_call=call, **kwargs)
 
     def add_arg(self, name, value, _format, type=0):
         # TODO try to extract parameter documentation?
@@ -315,7 +315,7 @@ class DiskTO(LoggerTrackingObject):
                                                       format=_format))
 
     def _get_artifact_path(self, name):
-        return os.path.join(self.call.call.to_folder(), "disk_usage", name)
+        return os.path.join(self.call.original_call.to_folder(), "disk_usage", name)
 
 
 class Disk(LoggingFunction):

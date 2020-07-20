@@ -1,5 +1,6 @@
 import inspect
 
+import mlflow
 import pkg_resources
 
 from pypads import logger
@@ -174,3 +175,29 @@ def dict_merge_caches(*dicts):
                 else:
                     merged[key] = value
     return merged
+
+
+def has_direct_attr(obj, name):
+    """
+    Check if self has an attribute
+    :param obj: object to check
+    :param name: name of the attribute
+    :return:
+    """
+    try:
+        object.__getattribute__(obj, name)
+        return True
+    except AttributeError:
+        return False
+
+
+def get_experiment_id():
+    if mlflow.active_run():
+        return mlflow.active_run().info.experiment_id
+    return None
+
+
+def get_run_id():
+    if mlflow.active_run():
+        return mlflow.active_run().info.run_id
+    return None
