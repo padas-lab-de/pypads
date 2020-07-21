@@ -1,11 +1,12 @@
 from pypads.app.injections.run_loggers import RunSetupFunction
 from pypads.app.misc.managed_git import ManagedGit
+from pypads.injections.analysis.call_tracker import LoggingEnv
 
 
 class IGit(RunSetupFunction):
     _dependencies = {"git"}
 
-    def _call(self, _pypads_env, *args, **kwargs):
+    def _call(self, *args, _pypads_env: LoggingEnv, **kwargs):
         pads = _pypads_env.pypads
         _pypads_timeout = kwargs.get("_pypads_timeout") if kwargs.get("_pypads_timeout") else 5
         run = pads.api.active_run()

@@ -1,11 +1,13 @@
 from pypads.app.injections.run_loggers import RunSetupFunction
+from pypads.injections.analysis.call_tracker import LoggingEnv
 from pypads.utils.util import sizeof_fmt, local_uri_to_path
 
 
 class ISystem(RunSetupFunction):
     _dependencies = {"psutil"}
 
-    def _call(self, pads, *args, **kwargs):
+    def _call(self, *args, _pypads_env: LoggingEnv, **kwargs):
+        pads = _pypads_env.pypads
         import platform
         uname = platform.uname()
         pads.api.set_tag("pypads.system", uname.system)
@@ -19,7 +21,8 @@ class ISystem(RunSetupFunction):
 class ICpu(RunSetupFunction):
     _dependencies = {"psutil"}
 
-    def _call(self, pads, *args, **kwargs):
+    def _call(self, *args, _pypads_env: LoggingEnv, **kwargs):
+        pads = _pypads_env.pypads
         import psutil
         pads.api.set_tag("pypads.system.cpu.physical_cores", psutil.cpu_count(logical=False))
         pads.api.set_tag("pypads.system.cpu.total_cores", psutil.cpu_count(logical=True))
@@ -31,7 +34,8 @@ class ICpu(RunSetupFunction):
 class IRam(RunSetupFunction):
     _dependencies = {"psutil"}
 
-    def _call(self, pads, *args, **kwargs):
+    def _call(self, *args, _pypads_env: LoggingEnv, **kwargs):
+        pads = _pypads_env.pypads
         import psutil
         memory = psutil.virtual_memory()
         pads.api.set_tag("pypads.system.memory.total", sizeof_fmt(memory.total))
@@ -42,7 +46,8 @@ class IRam(RunSetupFunction):
 class IDisk(RunSetupFunction):
     _dependencies = {"psutil"}
 
-    def _call(self, pads, *args, **kwargs):
+    def _call(self, *args, _pypads_env: LoggingEnv, **kwargs):
+        pads = _pypads_env.pypads
         import psutil
         # see https://www.thepythoncode.com/article/get-hardware-system-information-python
         path = local_uri_to_path(pads.backend.uri)
@@ -53,7 +58,8 @@ class IDisk(RunSetupFunction):
 class IPid(RunSetupFunction):
     _dependencies = {"psutil"}
 
-    def _call(self, pads, *args, **kwargs):
+    def _call(self, *args, _pypads_env: LoggingEnv, **kwargs):
+        pads = _pypads_env.pypads
         import psutil
         import os
         pid = os.getpid()
@@ -66,7 +72,8 @@ class IPid(RunSetupFunction):
 
 class ISocketInfo(RunSetupFunction):
 
-    def _call(self, pads, *args, **kwargs):
+    def _call(self, *args, _pypads_env: LoggingEnv, **kwargs):
+        pads = _pypads_env.pypads
         import socket
         pads.api.set_tag("pypads.system.hostname", socket.gethostname())
         pads.api.set_tag("pypads.system.ip-address", socket.gethostbyname(socket.gethostname()))
@@ -74,7 +81,8 @@ class ISocketInfo(RunSetupFunction):
 
 class IMacAddress(RunSetupFunction):
 
-    def _call(self, pads, *args, **kwargs):
+    def _call(self, *args, _pypads_env: LoggingEnv, **kwargs):
+        pads = _pypads_env.pypads
         import re, uuid
         pads.api.set_tag("pypads.system.macaddress", ':'.join(re.findall('..', '%012x' % uuid.getnode())))
 

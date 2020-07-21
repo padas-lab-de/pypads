@@ -13,7 +13,8 @@ class RunInfo(RunSetupFunction):
 
     _dependencies = {"pip"}
 
-    def _call(self, pads, *args, **kwargs):
+    def _call(self, *args, _pypads_env: LoggingEnv, **kwargs):
+        pads = _pypads_env.pypads
         logger.info("Tracking execution to run with id " + pads.api.active_run().info.run_id)
 
         # Execute pip freeze
@@ -30,8 +31,8 @@ class RunLogger(RunSetupFunction):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def _call(self, pads, *args, **kwargs):
-        call = LoggerCall(is_a="https://www.padre-lab.eu/onto/RunLoggerCall", logging_env=LoggingEnv({}))
+    def _call(self, *args, _pypads_env: LoggingEnv, **kwargs):
+        pads = _pypads_env.pypads
 
         from pypads.app.api import PyPadsApi
         _api: PyPadsApi = pads.api

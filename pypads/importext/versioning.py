@@ -1,7 +1,11 @@
 import re
 
+from typing import Type
+
+from pydantic.main import BaseModel
+
 from pypads.importext.semver import parse_constraint
-from pypads.model.metadata import ModelInterface
+from pypads.model.metadata import ModelObject
 from pypads.model.models import LibSelectorModel
 from pypads.utils.util import is_package_available, find_package_version, find_package_regex_versions
 
@@ -10,13 +14,17 @@ class VersionNotFoundException(Exception):
     pass
 
 
-class LibSelector(ModelInterface):
+class LibSelector(ModelObject):
     """
     Selector class holding version constraint and name of a library. @see poetry sem versioning
     """
 
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return LibSelectorModel
+
     def __init__(self, *args, name, regex=False, constraint: str = "*", specificity: int = None, **kwargs) -> None:
-        super().__init__(*args, model_cls=LibSelectorModel, name=name, regex=regex, constraint=constraint,
+        super().__init__(*args, name=name, regex=regex, constraint=constraint,
                          specificity=specificity or self._calc_specificity(), **kwargs)
         self._parsed_constraint = parse_constraint(constraint)
 

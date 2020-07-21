@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Type
 
 from pydantic import BaseModel, HttpUrl
 
@@ -60,8 +60,12 @@ class CpuTO(LoggerTrackingObject):
                 output.append(item.json())
             return output
 
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return cls.CPUModel
+
     def __init__(self, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args, model_cls=self.CPUModel, original_call=call, **kwargs)
+        super().__init__(*args, original_call=call, **kwargs)
 
     def add_arg(self, name, cores, _format, type=0):
         path = os.path.join(self._base_path(), self._get_artifact_path(name))
@@ -153,7 +157,11 @@ class RamTO(LoggerTrackingObject):
             return output
 
     def __init__(self, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args, model_cls=self.RAMModel, original_call=call, **kwargs)
+        super().__init__(*args, original_call=call, **kwargs)
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return cls.RAMModel
 
     def add_arg(self, name, ram_info, swap_info, format, type=0):
 
@@ -276,7 +284,11 @@ class DiskTO(LoggerTrackingObject):
             return output
 
     def __init__(self, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args, model_cls=self.DiskModel, original_call=call, **kwargs)
+        super().__init__(*args, original_call=call, **kwargs)
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return cls.DiskModel
 
     def add_arg(self, name, value, _format, type=0):
         # TODO try to extract parameter documentation?

@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Type
 
 from pydantic import BaseModel, HttpUrl
 
@@ -28,8 +28,11 @@ class InputTO(LoggerTrackingObject):
 
         input: List[ParamModel] = []
 
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return cls.InputModel
+
     def __init__(self, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args, model_cls=self.InputModel, original_call=call, **kwargs)
+        super().__init__(*args, original_call=call, **kwargs)
 
     def add_arg(self, name, value, format):
         self._add_param(name, value, format, 0)
@@ -98,8 +101,12 @@ class OutputTO(LoggerTrackingObject):
             orm_mode = True
             arbitrary_types_allowed = True
 
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return cls.OutputModel
+
     def __init__(self, value, format, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args, model_cls=self.OutputModel, output="", content_format=format, original_call=call,
+        super().__init__(*args, output="", content_format=format, original_call=call,
                          **kwargs)
         path = os.path.join(self._base_path(), self.call.original_call.to_folder(), "output")
         self.output = path

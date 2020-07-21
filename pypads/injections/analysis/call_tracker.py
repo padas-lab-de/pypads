@@ -7,16 +7,20 @@ from pydantic import BaseModel
 
 from pypads import logger
 from pypads.importext.wrapping.base_wrapper import Context
-from pypads.model.metadata import ModelInterface, ModelHolder
+from pypads.model.metadata import ModelObject, ModelHolder
 from pypads.model.models import FunctionReferenceModel, CallAccessorModel, CallIdModel, CallModel
 
 
-class FunctionReference(ModelInterface):
+class FunctionReference(ModelObject):
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return FunctionReferenceModel
 
     def __init__(self, _pypads_context: Context, _pypads_wrappee, *args, **kwargs):
         self.wrappee = _pypads_wrappee
         super().__init__(*args, context=_pypads_context, fn_name=_pypads_wrappee.__name__,
-                         **{**{"model_cls": FunctionReferenceModel}, **kwargs})
+                         **kwargs)
         self._real_context = None
         self._function_type = None
 
@@ -100,9 +104,13 @@ class FunctionReference(ModelInterface):
 
 class CallAccessor(FunctionReference):
 
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return CallAccessorModel
+
     def __init__(self, *args, instance, _pypads_context, _pypads_wrappee, **kwargs):
         super().__init__(_pypads_context, _pypads_wrappee, instance_id=id(instance),
-                         **{**{"model_cls": CallAccessorModel}, **kwargs})
+                         **kwargs)
         self._instance = instance
 
     @property
@@ -137,12 +145,16 @@ class CallAccessor(FunctionReference):
 
 class CallId(CallAccessor):
 
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return CallIdModel
+
     def __init__(self, instance, _pypads_context,
                  _pypads_wrappee, instance_number, call_number, **kwargs):
         super().__init__(instance=instance, _pypads_context=_pypads_context, _pypads_wrappee=_pypads_wrappee,
                          process=os.getpid(), thread=threading.get_ident(),
                          instance_number=instance_number, call_number=call_number,
-                         **{**{"model_cls": CallIdModel}, **kwargs})
+                         **kwargs)
 
     @classmethod
     def from_accessor(cls, accessor: CallAccessor, instance_number, call_number):

@@ -58,6 +58,7 @@ class RunObject(OntologyEntry):
     """
     experiment_id: Optional[str] = Field(default_factory=get_experiment_id)
     run_id: Optional[str] = Field(default_factory=get_run_id)
+    uid: uuid.UUID = Field(default_factory=uuid.uuid4)
 
     def store(self):
         """
@@ -93,7 +94,7 @@ class RunLoggerModel(LoggerModel):
     """
     name: str = "GenericRunLogger"
     uri: HttpUrl = "https://www.padre-lab.eu/onto/generic-run-logger"
-
+    static_parameters: dict = {}
     class Config:
         orm_mode = True
 
@@ -189,10 +190,13 @@ class LoggerCallModel(RunObject):
     """
     Holds meta data about a logger execution
     """
-    created_by: Type[LoggerModel]
+    created_by: LoggerModel
     execution_time: float = ...
     output: Optional[LoggerOutputModel] = ...  # Outputs of the logger
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerCall"
+
+    class Config:
+        orm_mode = True
 
 
 class InjectionLoggerCallModel(LoggerCallModel):

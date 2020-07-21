@@ -103,16 +103,16 @@ class LoggerFunction(DefensiveCallableMixin, IntermediateCallableMixin, Dependen
             static_parameters = {}
         super().__init__(*args, static_parameters=static_parameters, **kwargs)
 
-    @classmethod
-    def schema(cls):
-        cls.schema()
+    # @classmethod
+    # def schema(cls):
+    #     cls.schema()
 
     @classmethod
     def store_schema(cls):
         if not cls._stored_general_schema:
             from pypads.app.pypads import get_current_pads
             get_current_pads().api.log_mem_artifact(os.path.join(cls.__name__ + "_content_schema"),
-                                                    cls.schema(), write_format=WriteFormats.json)
+                                                    cls.schema(cls), write_format=WriteFormats.json)
             cls._stored_general_schema = True
 
 
@@ -125,6 +125,12 @@ class LoggerCall(ProvenanceMixin):
     def __init__(self, *args, logging_env: LoggingEnv, **kwargs):
         super().__init__(*args, **kwargs)
         self._logging_env = logging_env
+
+    def store(self):
+        from pypads.app.pypads import get_current_pads
+        from pypads.utils.logging_util import WriteFormats
+        get_current_pads().api.log_mem_artifact(str(self.uid), self.json(), WriteFormats.json.value,
+                                                path=self.created_by.name)
 
 
 class InjectionLoggerCall(LoggerCall):
@@ -256,8 +262,12 @@ class InjectionLoggerFunction(LoggerFunction, OrderMixin, metaclass=ABCMeta):
 class LoggerTrackingObject(ProvenanceMixin):
     is_a = "https://www.padre-lab.eu/onto/tracking_object"
 
-    def __init__(self, *args, call: LoggerCall, model_cls: Type[TrackingObjectModel], **kwargs):
-        super().__init__(*args, model_cls=model_cls, original_call=call, **kwargs)
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return TrackingObjectModel
+
+    def __init__(self, *args, call: LoggerCall, **kwargs):
+        super().__init__(*args,  original_call=call, **kwargs)
         self._component_model = TrackedComponentModel(tracking_component=self._base_path())
         self._known_metrics = set()
         self._known_params = set()

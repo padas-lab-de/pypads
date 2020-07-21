@@ -5,6 +5,7 @@ from sys import platform
 
 from pypads import logger
 from pypads.app.injections.run_loggers import RunSetupFunction, RunTeardownFunction
+from pypads.injections.analysis.call_tracker import LoggingEnv
 from pypads.utils.logging_util import get_temp_folder
 
 
@@ -13,7 +14,8 @@ class STrace(RunSetupFunction):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def _call(self, pads, *args, **kwargs):
+    def _call(self, *args, _pypads_env: LoggingEnv, **kwargs):
+        pads = _pypads_env.pypads
 
         file = os.path.join(get_temp_folder(), str(os.getpid()) + "_trace.txt")
         proc = None
@@ -57,7 +59,8 @@ class STraceStop(RunTeardownFunction):
         self._proc = _pypads_proc
         self._trace_file = _pypads_trace_file
 
-    def _call(self, pads, *args, **kwargs):
+    def _call(self, *args, _pypads_env: LoggingEnv, **kwargs):
+        pads = _pypads_env.pypads
         if self._proc and self._proc.poll() is None:
             os.killpg(os.getpgid(self._proc.pid), signal.SIGTERM)
             self._proc.terminate()

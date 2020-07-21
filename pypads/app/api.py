@@ -15,6 +15,7 @@ from pypads.app.misc.mixins import FunctionHolderMixin
 from pypads.bindings.anchors import get_anchor, Anchor
 from pypads.importext.mappings import Mapping, MatchedMapping, make_run_time_mapping_collection
 from pypads.importext.package_path import PackagePathMatcher, PackagePath
+from pypads.injections.analysis.call_tracker import LoggingEnv
 from pypads.utils.logging_util import WriteFormats, try_write_artifact, try_read_artifact, get_temp_folder, \
     _to_artifact_meta_name, _to_metric_meta_name, _to_param_meta_name
 from pypads.utils.util import inheritors
@@ -144,7 +145,8 @@ class PyPadsApi(IApi):
         :return: The newly spawned run
         """
         out = mlflow.start_run(run_id=run_id, experiment_id=experiment_id, run_name=run_name, nested=nested)
-        self.run_setups(_pypads_env)
+        self.run_setups(
+            _pypads_env=_pypads_env or LoggingEnv(parameter=dict(), experiment_id=experiment_id, run_id=run_id))
         return out
 
     # ---- logging ----
