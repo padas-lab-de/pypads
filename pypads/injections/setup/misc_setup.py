@@ -7,14 +7,14 @@ from typing import List, Type
 from pypads import logger
 from pypads.app.injections.base_logger import LoggerCall, TrackedObject
 from pypads.app.injections.run_loggers import RunSetupFunction
-from pypads.model.models import TrackingObjectModel, LibraryModel
+from pypads.model.models import TrackedObjectModel, LibraryModel
 
 
 class DependencyTO(TrackedObject):
     """
     Tracking object class for run env info, i.e dependencies.
     """
-    class DependencyModel(TrackingObjectModel):
+    class DependencyModel(TrackedObjectModel):
         uri: HttpUrl = "https://www.padre-lab.eu/onto/env/Dependencies"
         dependencies: List[LibraryModel] = []
 
@@ -24,8 +24,8 @@ class DependencyTO(TrackedObject):
     def __init__(self, *args, call: LoggerCall, **kwargs):
         super().__init__(*args, original_call=call, **kwargs)
 
-    def _add_dependency(self, name):
-        pass
+    def _add_dependency(self, name, version):
+        self.dependencies.append(LibraryModel(name=name, version=version))
 
 
 class DependencyRSF(RunSetupFunction):

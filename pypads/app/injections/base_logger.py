@@ -103,7 +103,7 @@ class LoggerFunction(BaseDefensiveCallableMixin, IntermediateCallableMixin, Depe
     @classmethod
     @abstractmethod
     def output_schema_class(cls):
-        raise NotImplementedError("A logger has to defined a schema for its output.")
+        raise NotImplementedError("A logger has to define a schema for its output.")
 
     @classmethod
     def output_schema(cls):
@@ -218,7 +218,6 @@ class TrackedObject(ProvenanceMixin):
         :return:
         """
         return self._component_model.schema()
-
 
     def store(self):
         from pypads.app.pypads import get_current_pads
