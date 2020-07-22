@@ -3,7 +3,8 @@ from typing import List, Type
 
 from pydantic import BaseModel, HttpUrl
 
-from pypads.app.injections.base_logger import InjectionLoggerFunction, LoggerCall, LoggerTrackingObject
+from pypads.app.injections.base_logger import LoggerCall, LoggerTrackingObject
+from pypads.app.injections.injection_loggers import InjectionLoggerFunction
 from pypads.model.models import InjectionLoggerCallModel, ArtifactMetaModel, TrackingObjectModel
 from pypads.utils.logging_util import WriteFormats
 from pypads.utils.util import local_uri_to_path, sizeof_fmt
@@ -95,9 +96,6 @@ class Cpu(InjectionLoggerFunction):
     """
     name = "CPULogger"
     uri = "https://www.padre-lab.eu/onto/cpu-logger"
-
-    def tracking_object_schemata(self):
-        return [CpuTO.CPUModel.schema()]
 
     _dependencies = {"psutil"}
 
@@ -207,9 +205,6 @@ class Ram(InjectionLoggerFunction):
 
     name = "RAMLogger"
     uri = "https://www.padre-lab.eu/onto/ram-logger"
-
-    def tracking_object_schemata(self):
-        return [RamTO.RAMModel.schema()]
 
     _dependencies = {"psutil"}
 

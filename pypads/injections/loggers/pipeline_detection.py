@@ -4,7 +4,8 @@ import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 
 from pypads import logger
-from pypads.app.injections.base_logger import InjectionLoggerFunction, LoggerCall
+from pypads.app.injections.base_logger import LoggerCall
+from pypads.app.injections.injection_loggers import InjectionLoggerFunction
 from pypads.utils.logging_util import WriteFormats, get_temp_folder, try_write_artifact
 from pypads.utils.util import is_package_available
 

@@ -3,7 +3,8 @@ from typing import List, Type
 
 from pydantic import BaseModel, HttpUrl
 
-from pypads.app.injections.base_logger import InjectionLoggerFunction, LoggerCall, LoggerTrackingObject
+from pypads.app.injections.base_logger import LoggerCall, LoggerTrackingObject
+from pypads.app.injections.injection_loggers import InjectionLoggerFunction
 from pypads.model.models import ArtifactMetaModel, TrackingObjectModel
 from pypads.utils.logging_util import WriteFormats
 
@@ -62,9 +63,6 @@ class Input(InjectionLoggerFunction):
     name = "InputLogger"
     uri = "https://www.padre-lab.eu/onto/input-logger"
 
-    def tracking_object_schemata(self):
-        return [InputTO.InputModel.schema()]
-
     def __pre__(self, ctx, *args, _pypads_write_format=None, _logger_call: LoggerCall, _args, _kwargs, **kwargs):
         """
         :param ctx:
@@ -120,9 +118,6 @@ class Output(InjectionLoggerFunction):
     """
     Function logging the output of the current pipeline object function call.
     """
-
-    def tracking_object_schemata(self):
-        return [OutputTO.OutputModel.schema()]
 
     name = "OutputLogger"
     uri = "https://www.padre-lab.eu/onto/output-logger"

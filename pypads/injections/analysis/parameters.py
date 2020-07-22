@@ -2,7 +2,7 @@ import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 
 from pypads import logger
-from pypads.app.injections.base_logger import InjectionLoggerFunction
+from pypads.app.injections.injection_loggers import InjectionLoggerFunction
 from pypads.injections.analysis.call_tracker import InjectionLoggingEnv
 from pypads.utils.util import dict_merge
 
