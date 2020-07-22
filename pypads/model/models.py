@@ -153,12 +153,12 @@ class CallModel(RunObject):
 class MetricMetaModel(BaseModel):
     name: str = ...
     description: str = ...
+    step: str = ...
 
 
 class ParameterMetaModel(BaseModel):
     name: str = ...
     description: str = ...
-    step: int = ...
     type: str = ...
 
 
@@ -173,15 +173,8 @@ class TagMetaModel(BaseModel):
     description: str = ...
 
 
-class TrackedComponentModel(BaseModel):
-    tracking_component: str = ...  # Path to json describing the tracking component
-    metrics: List[MetricMetaModel] = []  # Paths of the metrics meta related to the call model
-    parameters: List[ParameterMetaModel] = []  # Paths of the parameters related to the call model
-    artifacts: List[ArtifactMetaModel] = []  # Paths of the artifacts related to the call model
-
-
 class LoggerOutputModel(RunObject):
-    objects: List[TrackedComponentModel] = []
+    objects: List[str] = []  # Path to json describing the tracking objects
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerOutput"
 
     def store_tracked_object(self, cls, *args, **kwargs):

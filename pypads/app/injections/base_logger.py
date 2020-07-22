@@ -1,7 +1,6 @@
 import os
-import uuid
 from abc import abstractmethod, ABCMeta
-from typing import Type
+from typing import Type, Set
 
 import mlflow
 from pydantic import HttpUrl, BaseModel
@@ -13,8 +12,8 @@ from pypads.app.misc.mixins import DependencyMixin, DefensiveCallableMixin, Time
     FunctionHolderMixin, ProvenanceMixin, BaseDefensiveCallableMixin
 from pypads.importext.versioning import LibSelector
 from pypads.injections.analysis.time_keeper import TimingDefined
-from pypads.model.models import TrackedComponentModel, MetricMetaModel, \
-    ParameterMetaModel, ArtifactMetaModel, LoggerOutputModel, TrackedObjectModel, LoggerCallModel
+from pypads.model.models import MetricMetaModel, \
+    ParameterMetaModel, ArtifactMetaModel, TrackedObjectModel, LoggerCallModel
 from pypads.utils.logging_util import WriteFormats
 
 
@@ -84,57 +83,6 @@ class LoggingExecutor(DefensiveCallableMixin, FunctionHolderMixin, TimedCallable
             return None, 0
 
 
-class LoggerFunction(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMixin,
-                     LibrarySpecificMixin, ProvenanceMixin, ConfigurableCallableMixin, metaclass=ABCMeta):
-    """
-    Generic tracking function used for storing information to a backend.
-    """
-
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/tracking-function"
-
-    # Default allow all libraries
-    supported_libraries = {LibSelector(name=".*", constraint="*")}
-    _stored_general_schema = False
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._tracking_objects = set()
-
-    @classmethod
-    @abstractmethod
-    def output_schema_class(cls):
-        raise NotImplementedError("A logger has to defined a schema for its output.")
-
-    @classmethod
-    def output_schema(cls):
-        return cls.output_schema_class().schema()
-
-    @classmethod
-    def _default_output_class(cls, clazz):
-        class OutputClass(BaseModel):
-            output: clazz = ...
-
-        return OutputClass
-
-    def add_tracking_object(self, to: TrackedObject):
-        self._tracking_objects.add(to)
-
-    @classmethod
-    @abstractmethod
-    def load_output(self, json):
-        schema_class = self.output_schema_class()
-
-    @classmethod
-    def store_schema(cls):
-        if not cls._stored_general_schema:
-            from pypads.app.pypads import get_current_pads
-            get_current_pads().api.log_mem_artifact(os.path.join(cls.__name__ + "_schema"),
-                                                    cls.schema(), write_format=WriteFormats.json)
-            get_current_pads().api.log_mem_artifact(os.path.join(cls.__name__ + "_output_schema"),
-                                                    cls.output_schema(), write_format=WriteFormats.json)
-            cls._stored_general_schema = True
-
-
 class LoggerCall(ProvenanceMixin):
 
     @classmethod
@@ -161,64 +109,77 @@ class TrackedObject(ProvenanceMixin):
 
     def __init__(self, *args, call: LoggerCall, **kwargs):
         super().__init__(*args, original_call=call, **kwargs)
-        self._component_model = TrackedComponentModel(tracking_component=self._base_path())
-        self._known_metrics = set()
-        self._known_params = set()
-        self._known_artifacts = set()
-        self._produced_output = False
 
-    def _add_logger_output(self):
-        self._produced_output = True
-        if self.call.output is None:
-            uid = uuid.uuid4()
-            self.call.output = LoggerOutputModel(uid=uid, uri="{}-output#{}".format(self.uri, uid),
-                                                 defined_in=self.defined_in)
-        self.call.output.objects.append(self._component_model)
-
-    def _store_metric(self, val, meta: MetricMetaModel, step=0):
+    @staticmethod
+    def _store_metric(val, meta: MetricMetaModel):
         from pypads.app.pypads import get_current_pads
-        get_current_pads().api.log_metric(meta.name, val, step=step)
-        if meta.name not in self._known_metrics:
-            self._known_metrics.add(meta.name)
-            self._component_model.metrics.append(meta.name)
-            if not self._produced_output:
-                self._add_logger_output()
+        get_current_pads().api.log_metric(meta.name, val, step=meta.step)
 
-    def _store_param(self, val, meta: ParameterMetaModel):
+    @staticmethod
+    def _store_param(val, meta: ParameterMetaModel):
         from pypads.app.pypads import get_current_pads
         get_current_pads().api.log_param(meta.name, val)
-        if meta.name not in self._known_params:
-            self._known_params.add(meta.name)
-            self._component_model.parameters.append(meta.name)
-            if not self._produced_output:
-                self._add_logger_output()
 
-    def _store_artifact(self, val, meta: ArtifactMetaModel):
+    @staticmethod
+    def _store_artifact(val, meta: ArtifactMetaModel):
         from pypads.app.pypads import get_current_pads
         get_current_pads().api.log_mem_artifact(meta.path, val, write_format=meta.format)
-        if meta.path not in self._known_artifacts:
-            self._known_artifacts.add(meta.path)
-            self._component_model.artifacts.append(meta.path)
-            if not self._produced_output:
-                self._add_logger_output()
 
     def _base_path(self):
         return os.path.join(self.call.created_by.name, self.__class__.__name__)
 
-    def meta_json(self):
-        """
-        Returns a json referencing stored tracking objects, parameters, artifacts and metrics
-        :return:
-        """
-        return self._component_model.json()
-
-    def meta_schema(self):
-        """
-        Returns a json schema for referencing stored tracking objects, parameters, artifacts and metrics
-        :return:
-        """
-        return self._component_model.schema()
-
     def store(self):
         from pypads.app.pypads import get_current_pads
         get_current_pads().api.store_tracked_object(self)
+
+
+class LoggerFunction(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMixin,
+                     LibrarySpecificMixin, ProvenanceMixin, ConfigurableCallableMixin, metaclass=ABCMeta):
+    """
+    Generic tracking function used for storing information to a backend.
+    """
+
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/tracking-function"
+
+    # Default allow all libraries
+    supported_libraries = {LibSelector(name=".*", constraint="*")}
+    _stored_general_schema = False
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._tracked_objects: Set[TrackedObject] = set()
+
+    @classmethod
+    def output_schema_class(cls):
+        class EmptyOutput(BaseModel):
+            pass
+
+        return EmptyOutput
+
+    @classmethod
+    def output_schema(cls):
+        return cls.output_schema_class().schema()
+
+    @classmethod
+    def _default_output_class(cls, clazz):
+        class OutputClass(BaseModel):
+            output: clazz = ...
+
+        return OutputClass
+
+    def add_tracking_object(self, to: TrackedObject):
+        self._tracked_objects.add(to)
+
+    def store_output(self):
+        for t in self._tracked_objects:
+            t.store()
+
+    @classmethod
+    def store_schema(cls):
+        if not cls._stored_general_schema:
+            from pypads.app.pypads import get_current_pads
+            get_current_pads().api.log_mem_artifact(os.path.join(cls.__name__ + "_schema"),
+                                                    cls.schema(), write_format=WriteFormats.json)
+            get_current_pads().api.log_mem_artifact(os.path.join(cls.__name__ + "_output_schema"),
+                                                    cls.output_schema(), write_format=WriteFormats.json)
+            cls._stored_general_schema = True

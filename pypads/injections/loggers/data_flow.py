@@ -43,14 +43,13 @@ class InputTO(TrackedObject):
         self._add_param(name, value, format, "kwarg")
 
     def _add_param(self, name, value, format, type):
-        # TODO try to extract parameter documentation?
-        index = len(self.input)
         path = os.path.join(self._base_path(), self._get_artifact_path(name))
-        self.input.append(self.InputModel.ParamModel(content_format=format, name=name, value=path, type=type))
-        self._store_artifact(value, ArtifactMetaModel(path=path,
-                                                      description="Input to function with index {} and type {}".format(
-                                                          index, type),
-                                                      format=format))
+        meta = ArtifactMetaModel(path=path,
+                                 description="Input to function with index {} and type {}".format(len(self.input),
+                                                                                                  type),
+                                 format=format)
+        self.input.append(self.InputModel.ParamModel(content_format=format, name=name, value=meta, type=type))
+        self._store_artifact(value, meta)
 
     def _get_artifact_path(self, name):
         return os.path.join(self.call.original_call.to_folder(), "input", name)
