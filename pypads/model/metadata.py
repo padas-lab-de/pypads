@@ -1,4 +1,4 @@
-from abc import abstractmethod, ABC, ABCMeta
+from abc import abstractmethod, ABCMeta
 from collections import deque
 from typing import Type, List
 
@@ -67,8 +67,14 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
     def validate(self):
         validate_model(self.get_model_cls(), self.model().__dict__)
 
-    def schema(self):
-        return self.get_model_cls().schema()
+    @classmethod
+    def schema(cls):
+        schema = cls.get_model_cls().schema()
+
+        # Overwrite the model comment with the comment on the class if one exists
+        if cls.__doc__ is not None:
+            schema["description"] = cls.__doc__
+        return schema
 
     def json(self):
         return self.get_model_cls().from_orm(self).json()

@@ -3,8 +3,8 @@ import sys
 import gorilla
 from mlflow.utils import experimental
 
-from pypads.app.injections.base_logger import InjectionLoggerFunction
-from pypads.injections.analysis.call_tracker import InjectionLoggingEnv
+from app.env import InjectionLoggingEnv
+from pypads.app.injections.injection import InjectionLoggerFunction
 from pypads.utils.util import is_package_available
 
 added_autologs = set()

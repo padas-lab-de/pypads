@@ -1,12 +1,12 @@
 import os
 
+from app.env import LoggingEnv
 from pypads import logger
-from pypads.app.injections.base_logger import LoggerCall
 from pypads.app.injections.run_loggers import RunSetupFunction
-from pypads.injections.analysis.call_tracker import LoggingEnv
 
 
-class RunInfo(RunSetupFunction):
+class DependencyRSF(RunSetupFunction):
+    """Store information about dependencies used in the experimental environment."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

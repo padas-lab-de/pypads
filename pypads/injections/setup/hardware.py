@@ -1,5 +1,5 @@
+from app.env import LoggingEnv
 from pypads.app.injections.run_loggers import RunSetupFunction
-from pypads.injections.analysis.call_tracker import LoggingEnv
 from pypads.utils.util import sizeof_fmt, local_uri_to_path
 
 

@@ -1,7 +1,7 @@
 import os
 import time
 import uuid
-from typing import List, Optional, Type
+from typing import List, Optional
 
 from pydantic import BaseModel, Field, HttpUrl
 
@@ -94,7 +94,6 @@ class RunLoggerModel(LoggerModel):
     """
     name: str = "GenericRunLogger"
     uri: HttpUrl = "https://www.padre-lab.eu/onto/generic-run-logger"
-    static_parameters: dict = {}
     class Config:
         orm_mode = True
 
@@ -105,7 +104,6 @@ class InjectionLoggerModel(LoggerModel):
     """
     name: str = "GenericInjectionLogger"
     uri: HttpUrl = "https://www.padre-lab.eu/onto/generic-injection-logger"
-    static_parameters: dict = {}
 
     class Config:
         orm_mode = True
@@ -160,6 +158,7 @@ class MetricMetaModel(BaseModel):
 class ParameterMetaModel(BaseModel):
     name: str = ...
     description: str = ...
+    step: int = ...
     type: str = ...
 
 
@@ -167,6 +166,11 @@ class ArtifactMetaModel(BaseModel):
     path: str = ...
     description: str = ...
     format: WriteFormats = ...
+
+
+class TagMetaModel(BaseModel):
+    name: str = ...
+    description: str = ...
 
 
 class TrackedComponentModel(BaseModel):
@@ -214,7 +218,7 @@ class InjectionLoggerCallModel(LoggerCallModel):
         orm_mode = True
 
 
-class TrackingObjectModel(RunObject):
+class TrackedObjectModel(RunObject):
     """
     Data of a tracking object.
     """

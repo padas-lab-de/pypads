@@ -1,6 +1,6 @@
+from app.env import LoggingEnv
 from pypads.app.injections.run_loggers import RunSetupFunction
 from pypads.app.misc.managed_git import ManagedGit
-from pypads.injections.analysis.call_tracker import LoggingEnv
 
 
 class IGit(RunSetupFunction):

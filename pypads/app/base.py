@@ -11,7 +11,7 @@ import mlflow
 from pypads import logger
 from pypads.app.actuators import ActuatorPluginManager
 from pypads.app.api import ApiPluginManager
-from pypads.app.backend import MLFlowBackend
+from pypads.app.backends.backend import MLFlowBackend
 from pypads.app.decorators import DecoratorPluginManager
 from pypads.app.misc.caches import PypadsCache
 from pypads.app.validators import ValidatorPluginManager, validators
@@ -23,7 +23,7 @@ from pypads.importext.wrapping.wrapping import WrapManager
 from pypads.injections.analysis.call_tracker import CallTracker
 from pypads.injections.setup.git import IGit
 from pypads.injections.setup.hardware import ISystem, IRam, ICpu, IDisk, IPid, ISocketInfo, IMacAddress
-from pypads.injections.setup.misc_setup import RunInfo, RunLogger
+from pypads.injections.setup.misc_setup import DependencyRSF, RunLogger
 
 tracking_active = None
 
@@ -66,7 +66,7 @@ DEFAULT_CONFIG = {
     # is passed
 }
 
-DEFAULT_SETUP_FNS = {RunInfo(), RunLogger(), IGit(_pypads_timeout=3), ISystem(), IRam(), ICpu(), IDisk(), IPid(),
+DEFAULT_SETUP_FNS = {DependencyRSF(), RunLogger(), IGit(_pypads_timeout=3), ISystem(), IRam(), ICpu(), IDisk(), IPid(),
                      ISocketInfo(), IMacAddress()}
 
 # Tag name to save the config to in mlflow context.
@@ -194,7 +194,7 @@ class PyPads:
         Return a list of available LoggingFunctions for mappings in the current installation of PyPads.
         :return: Logging function classes
         """
-        from pypads.app.injections.base_logger import logging_functions
+        from pypads.app.injections.injection import logging_functions
         return logging_functions()
 
     @staticmethod
@@ -326,7 +326,8 @@ class PyPads:
             def set_config(*args, **kwargs):
                 mlflow.set_tag(CONFIG_NAME, value)
 
-            self.api.register_setup_fn("config_persist", set_config, nested=False, intermediate=False)
+            self.api.register_setup_fn("config_persist", "Function persisting the current pypads configuration.",
+                                       set_config, nested=False, intermediate=False)
         self._cache.add("config", value)
 
     @property
