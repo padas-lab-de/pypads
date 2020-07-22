@@ -3,9 +3,9 @@ import signal
 import subprocess
 from sys import platform
 
+from app.env import LoggingEnv
 from pypads import logger
 from pypads.app.injections.run_loggers import RunSetupFunction, RunTeardownFunction
-from pypads.injections.analysis.call_tracker import LoggingEnv
 from pypads.utils.logging_util import get_temp_folder
 
 

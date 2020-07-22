@@ -1,22 +1,21 @@
 import os
 
+from app.env import LoggingEnv
 from pydantic import HttpUrl, BaseModel
 from typing import List, Type
 
 from pypads import logger
-from pypads.app.injections.base_logger import LoggerTrackingObject, LoggerCall
+from pypads.app.injections.base_logger import LoggerCall, TrackedObject
 from pypads.app.injections.run_loggers import RunSetupFunction
-from pypads.injections.analysis.call_tracker import LoggingEnv
 from pypads.model.models import TrackingObjectModel, LibraryModel
 
 
-class DependencyTO(LoggerTrackingObject):
+class DependencyTO(TrackedObject):
     """
     Tracking object class for run env info, i.e dependencies.
     """
     class DependencyModel(TrackingObjectModel):
         uri: HttpUrl = "https://www.padre-lab.eu/onto/env/Dependencies"
-
         dependencies: List[LibraryModel] = []
 
     def get_model_cls(cls) -> Type[BaseModel]:
@@ -26,17 +25,14 @@ class DependencyTO(LoggerTrackingObject):
         super().__init__(*args, original_call=call, **kwargs)
 
     def _add_dependency(self, name):
+        pass
 
 
 class DependencyRSF(RunSetupFunction):
-    """
-    Function logging the environment dependencies using pip.
-    """
+    """Store information about dependencies used in the experimental environment."""
 
     name = "Dependencies Run Setup Logger"
     uri = "https://www.padre-lab.eu/onto/dependency-run-logger"
-
-
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

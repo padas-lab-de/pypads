@@ -1,9 +1,9 @@
 import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 
+from app.env import InjectionLoggingEnv
 from pypads import logger
-from pypads.app.injections.injection_loggers import InjectionLoggerFunction
-from pypads.injections.analysis.call_tracker import InjectionLoggingEnv
+from pypads.app.injections.injection import InjectionLoggerFunction
 from pypads.utils.util import dict_merge
 
 
@@ -11,13 +11,13 @@ def persist_parameter(_pypads_env, key, value):
     try:
         # TODO broken reference
         try_mlflow_log(mlflow.log_param,
-                       _pypads_env.original_call.call_id.context.container.__name__ + "." + key + ".txt",
+                       _pypads_env.call.call_id.context.container.__name__ + "." + key + ".txt",
                        value)
     except Exception as e:
         logger.warning(
             "Couldn't track parameter. " + str(e) + " Trying to track with another name.")
         try_mlflow_log(mlflow.log_param,
-                       str(_pypads_env.original_call) + "." + key + ".txt", value)
+                       str(_pypads_env.call) + "." + key + ".txt", value)
 
 
 class Parameters(InjectionLoggerFunction):

@@ -1,7 +1,7 @@
 import sys
 
+from app.env import InjectionLoggingEnv
 from pypads.app.injections.base_logger import LoggingFunction
-from pypads.injections.analysis.call_tracker import InjectionLoggingEnv
 from test.base_test import BaseTest, TEST_FOLDER
 
 

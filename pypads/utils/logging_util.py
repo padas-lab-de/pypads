@@ -25,6 +25,7 @@ def add_to_store_object(source, obj, store=True):
     else:
         logger.warning("Object already added to the store")
 
+
 def get_temp_folder(run=None):
     """
     Get the base folder to log tmp files to. For now it can't be changed. Todo make configurable

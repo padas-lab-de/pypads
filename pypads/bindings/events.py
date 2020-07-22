@@ -4,7 +4,7 @@ from pypads.bindings.event_types import EventType
 from pypads.bindings.hooks import Hook
 from pypads.importext.versioning import LibSelector
 from pypads.injections.analysis.parameters import Parameters
-from pypads.injections.loggers.data_flow import Output, Input
+from pypads.injections.loggers.data_flow import OutputILF, InputILF
 from pypads.injections.loggers.debug import Log, LogInit
 from pypads.injections.loggers.hardware import Cpu, Ram, Disk
 from pypads.injections.loggers.metric import Metric
@@ -16,8 +16,8 @@ from pypads.utils.logging_util import WriteFormats
 # Default event mappings. We allow to log parameters, output defor input
 DEFAULT_LOGGING_FNS = {
     "parameters": Parameters(),
-    "output": Output(_pypads_write_format=WriteFormats.text.name),
-    "input": Input(_pypads_write_format=WriteFormats.text.name),
+    "output": OutputILF(_pypads_write_format=WriteFormats.text.name),
+    "input": InputILF(_pypads_write_format=WriteFormats.text.name),
     "hardware": [Cpu(_pypads_write_format=WriteFormats.text.name), Ram(_pypads_write_format=WriteFormats.json.name),
                  Disk(_pypads_write_format=WriteFormats.json.name)],
     "metric": Metric(),

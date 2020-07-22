@@ -7,6 +7,7 @@ from typing import List, Iterable
 import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 
+from app.env import LoggingEnv
 from pypads import logger
 from pypads.app.injections.run_loggers import RunSetupFunction, RunTeardownFunction
 from pypads.app.misc.caches import Cache
@@ -15,7 +16,6 @@ from pypads.app.misc.mixins import FunctionHolderMixin
 from pypads.bindings.anchors import get_anchor, Anchor
 from pypads.importext.mappings import Mapping, MatchedMapping, make_run_time_mapping_collection
 from pypads.importext.package_path import PackagePathMatcher, PackagePath
-from pypads.injections.analysis.call_tracker import LoggingEnv
 from pypads.utils.logging_util import WriteFormats, try_write_artifact, try_read_artifact, get_temp_folder, \
     _to_artifact_meta_name, _to_metric_meta_name, _to_param_meta_name
 from pypads.utils.util import inheritors
@@ -161,6 +161,7 @@ class PyPadsApi(IApi):
         :return:
         """
         try_mlflow_log(mlflow.log_artifact, local_path)
+        self.pypads.backend.log_artifact(local_path, meta, write_format, preserve_folder=True)
         self.log_artifact_meta(os.path.basename(local_path), meta)
 
     @cmd
@@ -229,7 +230,7 @@ class PyPadsApi(IApi):
         :param value: Tag value
         :return:
         """
-        return mlflow.set_tag(key, value)
+        return self.pypads.backend.set_tag(key, value)
 
     def write_data_item(self, path, content_item, data_format=None, preserve_folder=True):
         """
@@ -251,7 +252,7 @@ class PyPadsApi(IApi):
         :return:
         """
         if meta:
-            try_write_artifact(name + ".meta", meta, write_format, preserve_folder=True)
+            self.pypads.backend.log_artifact(name + ".meta", meta, write_format, preserve_folder=True)
 
     def _read_meta(self, name):
         """
@@ -260,7 +261,11 @@ class PyPadsApi(IApi):
         :return:
         """
         # TODO format / json / etc?
-        return try_read_artifact(name + ".meta.txt")
+        return try_read_artifact(name + ".meta.yaml")
+
+    @cmd
+    def artifact(self, name):
+        return try_read_artifact(name)
 
     @cmd
     def metric_meta(self, name):
@@ -342,9 +347,10 @@ class PyPadsApi(IApi):
             cache.add(name, pre_fn)
 
     @cmd
-    def register_setup_fn(self, name, fn, nested=True, intermediate=True, order=0, silent=True):
+    def register_setup_fn(self, name, description, fn, nested=True, intermediate=True, order=0, silent=True):
         """
         Register a new pre_run_function by building it from given parameters.
+        :param description: A description of the setup function.
         :param name: Name of the registration
         :param fn: Function to register
         :param nested: Parameter if this function should be called on nested runs.
@@ -355,7 +361,13 @@ class PyPadsApi(IApi):
         :param silent:
         :return:
         """
-        self.register_setup(name, RunSetupFunction(fn=fn, nested=nested, intermediate=intermediate, order=order),
+
+        class TmpRunSetupFunction(RunSetupFunction):
+            pass
+
+        TmpRunSetupFunction.__doc__ = description
+
+        self.register_setup(name, TmpRunSetupFunction(fn=fn, nested=nested, intermediate=intermediate, order=order),
                             silent=silent)
 
     @cmd

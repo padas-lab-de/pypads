@@ -6,15 +6,15 @@ from typing import Type
 import mlflow
 from pydantic import HttpUrl, BaseModel
 
+from app.env import LoggingEnv
 from pypads import logger
 from pypads.app.misc.mixins import DependencyMixin, DefensiveCallableMixin, TimedCallableMixin, \
     IntermediateCallableMixin, NoCallAllowedError, ConfigurableCallableMixin, LibrarySpecificMixin, \
-    FunctionHolderMixin, ProvenanceMixin
+    FunctionHolderMixin, ProvenanceMixin, BaseDefensiveCallableMixin
 from pypads.importext.versioning import LibSelector
-from pypads.injections.analysis.call_tracker import LoggingEnv
 from pypads.injections.analysis.time_keeper import TimingDefined
 from pypads.model.models import TrackedComponentModel, MetricMetaModel, \
-    ParameterMetaModel, ArtifactMetaModel, LoggerOutputModel, TrackingObjectModel, LoggerCallModel
+    ParameterMetaModel, ArtifactMetaModel, LoggerOutputModel, LoggerCallModel, TrackedObjectModel
 from pypads.utils.logging_util import WriteFormats
 
 
@@ -77,14 +77,14 @@ class LoggingExecutor(DefensiveCallableMixin, FunctionHolderMixin, TimedCallable
             try:
                 mlflow.set_tag("pypads_failure", str(error))
                 logger.error(
-                    "Tracking failed for " + str(_pypads_env.original_call) + " with: " + str(error))
+                    "Tracking failed for " + str(_pypads_env.call) + " with: " + str(error))
             except Exception as e:
                 logger.error(
-                    "Tracking failed for " + str(_pypads_env.original_call.call_id.instance) + " with: " + str(error))
+                    "Tracking failed for " + str(_pypads_env.call.call_id.instance) + " with: " + str(error))
             return None, 0
 
 
-class LoggerFunction(DefensiveCallableMixin, IntermediateCallableMixin, DependencyMixin,
+class LoggerFunction(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMixin,
                      LibrarySpecificMixin, ProvenanceMixin, ConfigurableCallableMixin, metaclass=ABCMeta):
     """
     Generic tracking function used for storing information to a backend.
@@ -96,21 +96,42 @@ class LoggerFunction(DefensiveCallableMixin, IntermediateCallableMixin, Dependen
     supported_libraries = {LibSelector(name=".*", constraint="*")}
     _stored_general_schema = False
 
-    def __init__(self, *args, static_parameters=None, **kwargs):
-        if static_parameters is None:
-            static_parameters = {}
-        super().__init__(*args, static_parameters=static_parameters, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._tracking_objects = set()
 
-    # @classmethod
-    # def schema(cls):
-    #     cls.schema()
+    @classmethod
+    @abstractmethod
+    def output_schema_class(cls):
+        raise NotImplementedError("A logger has to defined a schema for its output.")
+
+    @classmethod
+    def output_schema(cls):
+        return cls.output_schema_class().schema()
+
+    @classmethod
+    def _default_output_class(cls, clazz):
+        class OutputClass(BaseModel):
+            output: clazz = ...
+
+        return OutputClass
+
+    def add_tracking_object(self, to: TrackedObject):
+        self._tracking_objects.add(to)
+
+    @classmethod
+    @abstractmethod
+    def load_output(self, json):
+        schema_class = self.output_schema_class()
 
     @classmethod
     def store_schema(cls):
         if not cls._stored_general_schema:
             from pypads.app.pypads import get_current_pads
-            get_current_pads().api.log_mem_artifact(os.path.join(cls.__name__ + "_content_schema"),
-                                                    cls.schema(cls), write_format=WriteFormats.json)
+            get_current_pads().api.log_mem_artifact(os.path.join(cls.__name__ + "_schema"),
+                                                    cls.schema(), write_format=WriteFormats.json)
+            get_current_pads().api.log_mem_artifact(os.path.join(cls.__name__ + "_output_schema"),
+                                                    cls.output_schema(), write_format=WriteFormats.json)
             cls._stored_general_schema = True
 
 
@@ -131,15 +152,15 @@ class LoggerCall(ProvenanceMixin):
                                                 path=self.created_by.name)
 
 
-class LoggerTrackingObject(ProvenanceMixin):
+class TrackedObject(ProvenanceMixin):
     is_a = "https://www.padre-lab.eu/onto/tracking_object"
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
-        return TrackingObjectModel
+        return TrackedObjectModel
 
     def __init__(self, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args,  original_call=call, **kwargs)
+        super().__init__(*args, original_call=call, **kwargs)
         self._component_model = TrackedComponentModel(tracking_component=self._base_path())
         self._known_metrics = set()
         self._known_params = set()
@@ -148,10 +169,11 @@ class LoggerTrackingObject(ProvenanceMixin):
 
     def _add_logger_output(self):
         self._produced_output = True
-        if self.tracked_by.output is None:
+        if self.call.output is None:
             uid = uuid.uuid4()
-            self.tracked_by.output = LoggerOutputModel(uid=uid, uri="{}-output#{}".format(self.uri, uid))
-        self.tracked_by.output.objects.append(self._component_model)
+            self.call.output = LoggerOutputModel(uid=uid, uri="{}-output#{}".format(self.uri, uid),
+                                                 defined_in=self.defined_in)
+        self.call.output.objects.append(self._component_model)
 
     def _store_metric(self, val, meta: MetricMetaModel, step=0):
         from pypads.app.pypads import get_current_pads
@@ -197,3 +219,7 @@ class LoggerTrackingObject(ProvenanceMixin):
         """
         return self._component_model.schema()
 
+
+    def store(self):
+        from pypads.app.pypads import get_current_pads
+        get_current_pads().api.store_tracked_object(self)

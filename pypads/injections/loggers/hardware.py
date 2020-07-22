@@ -3,9 +3,9 @@ from typing import List, Type
 
 from pydantic import BaseModel, HttpUrl
 
-from pypads.app.injections.base_logger import LoggerCall, LoggerTrackingObject
-from pypads.app.injections.injection_loggers import InjectionLoggerFunction
-from pypads.model.models import InjectionLoggerCallModel, ArtifactMetaModel, TrackingObjectModel
+from pypads.app.injections.base_logger import LoggerCall, TrackedObject
+from pypads.app.injections.injection import InjectionLoggerFunction
+from pypads.model.models import InjectionLoggerCallModel, ArtifactMetaModel, TrackedObjectModel
 from pypads.utils.logging_util import WriteFormats
 from pypads.utils.util import local_uri_to_path, sizeof_fmt
 
@@ -25,12 +25,12 @@ def _get_cpu_usage():
     return cpu_usage
 
 
-class CpuTO(LoggerTrackingObject):
+class CpuTO(TrackedObject):
     """
     Function logging the input parameters of the current pipeline object function call.
     """
 
-    class CPUModel(TrackingObjectModel):
+    class CPUModel(TrackedObjectModel):
         uri: HttpUrl = "https://www.padre-lab.eu/onto/CpuData"
 
         class ParamModel(BaseModel):
@@ -97,6 +97,9 @@ class Cpu(InjectionLoggerFunction):
     name = "CPULogger"
     uri = "https://www.padre-lab.eu/onto/cpu-logger"
 
+    def tracking_object_schemata(self):
+        return [CpuTO.CPUModel.schema()]
+
     _dependencies = {"psutil"}
 
     def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call: LoggerCall, _args, _kwargs, **kwargs):
@@ -114,12 +117,12 @@ class Cpu(InjectionLoggerFunction):
         output.add_arg("post_cpu_usage", _get_cpu_usage(), _pypads_write_format)
 
 
-class RamTO(LoggerTrackingObject):
+class RamTO(TrackedObject):
     """
     Function logging the input parameters of the current pipeline object function call.
     """
 
-    class RAMModel(TrackingObjectModel):
+    class RAMModel(TrackedObjectModel):
         uri: HttpUrl = "https://www.padre-lab.eu/onto/RamData"
 
         class ParamModel(BaseModel):
@@ -206,6 +209,9 @@ class Ram(InjectionLoggerFunction):
     name = "RAMLogger"
     uri = "https://www.padre-lab.eu/onto/ram-logger"
 
+    def tracking_object_schemata(self):
+        return [RamTO.RAMModel.schema()]
+
     _dependencies = {"psutil"}
 
     def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.json, _logger_call: LoggerCall, _args, _kwargs, **kwargs):
@@ -232,12 +238,12 @@ def _get_memory_usage():
     return dict(memory._asdict()), dict(swap._asdict())
 
 
-class DiskTO(LoggerTrackingObject):
+class DiskTO(TrackedObject):
     """
     Function logging the input parameters of the current pipeline object function call.
     """
 
-    class DiskModel(TrackingObjectModel):
+    class DiskModel(TrackedObjectModel):
         uri: HttpUrl = "https://www.padre-lab.eu/onto/DiskData"
 
         class ParamModel(BaseModel):

@@ -1,5 +1,6 @@
 from pypads import logger
-from pypads.app.injections.injection_loggers import InjectionLoggerFunction
+
+from pypads.app.injections.injection import InjectionLoggerFunction
 
 
 class Log(InjectionLoggerFunction):
