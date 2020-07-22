@@ -63,26 +63,37 @@ class InjectionLoggerFunction(LoggerFunction, OrderMixin, metaclass=ABCMeta):
 
         _pypads_hook_params = _pypads_env.parameter
 
-        logger_call = InjectionLoggerCall(logging_env=_pypads_env, logger_meta=self.model())
+        output = self.build_output()
+        logger_call = InjectionLoggerCall(logging_env=_pypads_env, output=output, logger_meta=self.model())
 
-        # Trigger pre run functions
-        _pre_result, pre_time = self._pre(ctx, _pypads_env=_pypads_env, _logger_call=logger_call, _args=args,
-                                          _kwargs=kwargs,
-                                          **_pypads_hook_params)
-        logger_call.pre_time = pre_time
-
-        # Trigger function itself
-        _return, time = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs,
+        try:
+            # Trigger pre run functions
+            _pre_result, pre_time = self._pre(ctx, _pypads_env=_pypads_env,
+                                              _logger_output=output,
+                                              _logger_call=logger_call,
+                                              _args=args,
+                                              _kwargs=kwargs,
                                               **_pypads_hook_params)
-        logger_call.child_time = time
+            logger_call.pre_time = pre_time
 
-        # Trigger post run functions
-        _post_result, post_time = self._post(ctx, _pypads_env=_pypads_env, _pypads_pre_return=_pre_result,
-                                             _pypads_result=_return,
-                                             _logger_call=logger_call,
-                                             _args=args, _kwargs=kwargs, **_pypads_hook_params)
-        logger_call.post_time = post_time
-        logger_call.store()
+            # Trigger function itself
+            _return, time = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs,
+                                                  **_pypads_hook_params)
+            logger_call.child_time = time
+
+            # Trigger post run functions
+            _post_result, post_time = self._post(ctx, _pypads_env=_pypads_env,
+                                                 _logger_output=output,
+                                                 _pypads_pre_return=_pre_result,
+                                                 _pypads_result=_return,
+                                                 _logger_call=logger_call,
+                                                 _args=args,
+                                                 _kwargs=kwargs,
+                                                 **_pypads_hook_params)
+            logger_call.post_time = post_time
+        finally:
+            output.store()
+            logger_call.store()
         return _return
 
     def __call_wrapped__(self, ctx, *args, _pypads_env: InjectionLoggingEnv, _args, _kwargs, **_pypads_hook_params):

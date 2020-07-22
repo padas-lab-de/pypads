@@ -16,6 +16,7 @@ from pypads.app.misc.mixins import FunctionHolderMixin
 from pypads.bindings.anchors import get_anchor, Anchor
 from pypads.importext.mappings import Mapping, MatchedMapping, make_run_time_mapping_collection
 from pypads.importext.package_path import PackagePathMatcher, PackagePath
+from pypads.model.models import TagMetaModel
 from pypads.utils.logging_util import WriteFormats, try_write_artifact, try_read_artifact, get_temp_folder, \
     _to_artifact_meta_name, _to_metric_meta_name, _to_param_meta_name
 from pypads.utils.util import inheritors
@@ -223,14 +224,15 @@ class PyPadsApi(IApi):
         self._write_meta(_to_param_meta_name(key), meta)
 
     @cmd
-    def set_tag(self, key, value):
+    def set_tag(self, key, value, description="No description given."):
         """
         Set a tag for your current run.
+        :param description: Description what this tag indicates
         :param key: Tag key
         :param value: Tag value
         :return:
         """
-        return self.pypads.backend.set_tag(key, value)
+        return self.pypads.backend.set_tag(value, TagMetaModel(name=key, description=description))
 
     def write_data_item(self, path, content_item, data_format=None, preserve_folder=True):
         """

@@ -29,8 +29,8 @@ class RunLoggerFunction(LoggerFunction, OrderMixin, metaclass=ABCMeta):
 
     @property
     def __name__(self):
-        if hasattr(self, "_fn") and self._fn is not self._call:
-            return self._fn.__name__
+        if self._fn.fn is not self._call:
+            return self._fn.fn.__name__
         else:
             return self.__class__.__name__
 

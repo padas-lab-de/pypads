@@ -1,7 +1,7 @@
 import os
 import time
 import uuid
-from typing import List, Optional
+from typing import List, Optional, Type
 
 from pydantic import BaseModel, Field, HttpUrl
 
@@ -174,13 +174,7 @@ class TagMetaModel(BaseModel):
 
 
 class LoggerOutputModel(RunObject):
-    objects: List[str] = []  # Path to json describing the tracking objects
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerOutput"
-
-    def store_tracked_object(self, cls, *args, **kwargs):
-        tracked_object = cls(*args, **kwargs)
-        storage_model = tracked_object.store()
-        self.objects.append(storage_model)
 
 
 class LoggerCallModel(RunObject):
@@ -189,7 +183,7 @@ class LoggerCallModel(RunObject):
     """
     created_by: LoggerModel
     execution_time: float = ...
-    output: Optional[LoggerOutputModel] = ...  # Outputs of the logger
+    output: Type[LoggerOutputModel] = ...  # Outputs of the logger
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerCall"
 
     class Config:

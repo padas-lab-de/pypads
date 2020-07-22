@@ -76,6 +76,8 @@ class InputILF(InjectionLoggerFunction):
         :return:
         """
 
+        output = _logger_call.output
+
         inputs = InputTO(call=_logger_call)
         for i in range(len(_args)):
             arg = _args[i]
@@ -83,7 +85,8 @@ class InputILF(InjectionLoggerFunction):
 
         for (k, v) in _kwargs.items():
             inputs.add_kwarg(str(k), v, format=_pypads_write_format)
-        inputs.store()
+
+        output.value = inputs
 
 
 class OutputTO(TrackedObject):

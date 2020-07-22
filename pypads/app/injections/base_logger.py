@@ -13,7 +13,7 @@ from pypads.app.misc.mixins import DependencyMixin, DefensiveCallableMixin, Time
 from pypads.importext.versioning import LibSelector
 from pypads.injections.analysis.time_keeper import TimingDefined
 from pypads.model.models import MetricMetaModel, \
-    ParameterMetaModel, ArtifactMetaModel, TrackedObjectModel, LoggerCallModel
+    ParameterMetaModel, ArtifactMetaModel, TrackedObjectModel, LoggerCallModel, LoggerOutputModel
 from pypads.utils.logging_util import WriteFormats
 
 
@@ -75,11 +75,9 @@ class LoggingExecutor(DefensiveCallableMixin, FunctionHolderMixin, TimedCallable
             # Catch other exceptions for this single logger
             try:
                 mlflow.set_tag("pypads_failure", str(error))
-                logger.error(
-                    "Tracking failed for " + str(_pypads_env.call) + " with: " + str(error))
             except Exception as e:
-                logger.error(
-                    "Tracking failed for " + str(_pypads_env.call.call_id.instance) + " with: " + str(error))
+                pass
+            logger.error("Tracking failed for " + str(_pypads_env) + " with: " + str(error))
             return None, 0
 
 
@@ -150,8 +148,12 @@ class LoggerFunction(BaseDefensiveCallableMixin, IntermediateCallableMixin, Depe
         self._tracked_objects: Set[TrackedObject] = set()
 
     @classmethod
-    def output_schema_class(cls):
-        class EmptyOutput(BaseModel):
+    def build_output(cls, **kwargs):
+        return cls.output_schema_class()(**kwargs)
+
+    @classmethod
+    def output_schema_class(cls) -> Type[LoggerOutputModel]:
+        class EmptyOutput(LoggerOutputModel):
             pass
 
         return EmptyOutput
@@ -161,13 +163,13 @@ class LoggerFunction(BaseDefensiveCallableMixin, IntermediateCallableMixin, Depe
         return cls.output_schema_class().schema()
 
     @classmethod
-    def _default_output_class(cls, clazz):
-        class OutputClass(BaseModel):
-            output: clazz = ...
+    def _default_output_class(cls, clazz: Type[TrackedObject]) -> Type[LoggerOutputModel]:
+        class OutputClass(LoggerOutputModel):
+            value: clazz = ...
 
         return OutputClass
 
-    def add_tracking_object(self, to: TrackedObject):
+    def add_tracking_object(self, to: Type[TrackedObject]):
         self._tracked_objects.add(to)
 
     def store_output(self):
