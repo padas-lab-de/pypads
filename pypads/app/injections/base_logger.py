@@ -127,7 +127,8 @@ class OutputModelHolder(ModelObject, metaclass=ABCMeta):
         curr = self
         for p in json_path:
             curr = getattr(curr, p)
-        setattr(curr, key, to.store())
+        from pypads.app.pypads import get_current_pads
+        setattr(curr, key, get_current_pads().api.store_tracked_object(to))
 
 
 class LoggerCall(ProvenanceMixin):
