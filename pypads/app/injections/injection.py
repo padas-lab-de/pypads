@@ -19,7 +19,7 @@ class InjectionLoggerCall(LoggerCall):
         return InjectionLoggerCallModel
 
     def __init__(self, *args, logging_env: InjectionLoggerEnv, **kwargs):
-        super().__init__(*args, call=logging_env.call, logging_env=logging_env, **kwargs)
+        super().__init__(*args, original_call=logging_env.call, logging_env=logging_env, **kwargs)
 
 
 class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
@@ -64,9 +64,8 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
 
         _pypads_hook_params = _pypads_env.parameter
 
-        logger_call = InjectionLoggerCall(logging_env=_pypads_env, created_by=self.store_schema(),
-                                          original_call=_pypads_env.call)
-        output = self.build_output(call=logger_call)
+        logger_call = InjectionLoggerCall(logging_env=_pypads_env, created_by=self.store_schema())
+        output = self.build_output(tracked_by=logger_call)
         logger_call.output = output
 
         try:

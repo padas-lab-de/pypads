@@ -22,7 +22,7 @@ class DependencyTO(TrackedObject):
         return cls.DependencyModel
 
     def __init__(self, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args, original_call=call, **kwargs)
+        super().__init__(*args, call=call, **kwargs)
 
     def _add_dependency(self, name, version):
         self.dependencies.append(LibraryModel(name=name, version=version))

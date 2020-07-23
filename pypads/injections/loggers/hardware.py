@@ -5,7 +5,7 @@ from pydantic import BaseModel, HttpUrl
 
 from pypads.app.injections.base_logger import LoggerCall, TrackedObject
 from pypads.app.injections.injection import InjectionLogger
-from pypads.model.models import InjectionLoggerCallModel, ArtifactMetaModel, TrackedObjectModel
+from pypads.model.models import InjectionLoggerCallModel, ArtifactMetaModel, TrackedObjectModel, OutputModel
 from pypads.utils.logging_util import WriteFormats
 from pypads.utils.util import local_uri_to_path, sizeof_fmt
 
@@ -46,6 +46,7 @@ class CpuTO(TrackedObject):
 
         class Config:
             orm_mode = True
+            arbitrary_types_allowed = True
 
         def to_string(_input):
             memory_usage = "CPU usage:"
@@ -65,8 +66,8 @@ class CpuTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.CPUModel
 
-    def __init__(self, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args, original_call=call, **kwargs)
+    def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
+        super().__init__(*args, tracked_by=tracked_by, **kwargs)
 
     def add_arg(self, name, cores, _format, type=0):
         path = os.path.join(self._base_path(), self._get_artifact_path(name))
@@ -87,7 +88,7 @@ class CpuTO(TrackedObject):
                                                       format=_format))
 
     def _get_artifact_path(self, name):
-        return os.path.join(self.call.original_call.to_folder(), "cpu_usage", name)
+        return os.path.join(self.tracked_by.original_call.to_folder(), "cpu_usage", name)
 
 
 class Cpu(InjectionLogger):
@@ -97,14 +98,15 @@ class Cpu(InjectionLogger):
     name = "CPULogger"
     uri = "https://www.padre-lab.eu/onto/cpu-logger"
 
-    def tracking_object_schemata(self):
-        return [CpuTO.CPUModel.schema()]
+    @classmethod
+    def output_schema_class(cls) -> Type[OutputModel]:
+        return cls._default_output_class(CpuTO)
 
     _dependencies = {"psutil"}
 
     def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call: LoggerCall, _args, _kwargs, **kwargs):
 
-        inputs = CpuTO(call=_logger_call)
+        inputs = CpuTO(tracked_by=_logger_call)
         inputs.add_arg("pre_cpu_usage", _get_cpu_usage(), _pypads_write_format)
 
     def __call_wrapped__(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
@@ -113,7 +115,7 @@ class Cpu(InjectionLogger):
                                         **_pypads_hook_params)
 
     def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call, _pypads_result, **kwargs):
-        output = CpuTO(call=_logger_call)
+        output = CpuTO(tracked_by=_logger_call)
         output.add_arg("post_cpu_usage", _get_cpu_usage(), _pypads_write_format)
 
 
@@ -137,10 +139,10 @@ class RamTO(TrackedObject):
                 arbitrary_types_allowed = True
 
         input: List[ParamModel] = []
-        original_call: InjectionLoggerCallModel = ...
 
         class Config:
             orm_mode = True
+            arbitrary_types_allowed = True
 
         def to_string(_input):
             memory_usage = "Memory usage:"
@@ -157,8 +159,8 @@ class RamTO(TrackedObject):
                 output.append(item.json())
             return output
 
-    def __init__(self, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args, original_call=call, **kwargs)
+    def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
+        super().__init__(*args, tracked_by=tracked_by, **kwargs)
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
@@ -198,7 +200,7 @@ class RamTO(TrackedObject):
                                                       format=_format))
 
     def _get_artifact_path(self, name):
-        return os.path.join(self.call.original_call.to_folder(), "ram_usage", name)
+        return os.path.join(self.tracked_by.original_call.to_folder(), "ram_usage", name)
 
 
 class Ram(InjectionLogger):
@@ -209,13 +211,14 @@ class Ram(InjectionLogger):
     name = "RAMLogger"
     uri = "https://www.padre-lab.eu/onto/ram-logger"
 
-    def tracking_object_schemata(self):
-        return [RamTO.RAMModel.schema()]
+    @classmethod
+    def output_schema_class(cls) -> Type[OutputModel]:
+        return cls._default_output_class(RamTO)
 
     _dependencies = {"psutil"}
 
     def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.json, _logger_call: LoggerCall, _args, _kwargs, **kwargs):
-        pre_ram_usage = RamTO(call=_logger_call)
+        pre_ram_usage = RamTO(tracked_by=_logger_call)
         ram_info, swap_info = _get_memory_usage()
         pre_ram_usage.add_arg("pre_memory_usage", ram_info, swap_info, _pypads_write_format)
 
@@ -225,7 +228,7 @@ class Ram(InjectionLogger):
                                         **_pypads_hook_params)
 
     def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.json, _logger_call, _pypads_result, **kwargs):
-        post_ram_usage = RamTO(call=_logger_call)
+        post_ram_usage = RamTO(tracked_by=_logger_call)
         ram_info, swap_info = _get_memory_usage()
         post_ram_usage.add_arg("post_memory_usage", ram_info, swap_info, _pypads_write_format)
 
@@ -261,10 +264,10 @@ class DiskTO(TrackedObject):
                 orm_mode = True
 
         input: List[ParamModel] = []
-        original_call: InjectionLoggerCallModel = ...
 
         class Config:
             orm_mode = True
+            arbitrary_types_allowed = True
 
         def to_string(_input):
             memory_usage = "Memory usage:"
@@ -284,8 +287,8 @@ class DiskTO(TrackedObject):
                 output.append(item.json())
             return output
 
-    def __init__(self, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args, original_call=call, **kwargs)
+    def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
+        super().__init__(*args, tracked_by=tracked_by, **kwargs)
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
@@ -328,7 +331,7 @@ class DiskTO(TrackedObject):
                                                       format=_format))
 
     def _get_artifact_path(self, name):
-        return os.path.join(self.call.original_call.to_folder(), "disk_usage", name)
+        return os.path.join(self.tracked_by.original_call.to_folder(), "disk_usage", name)
 
 
 class Disk(InjectionLogger):
@@ -339,8 +342,9 @@ class Disk(InjectionLogger):
     name = "DiskLogger"
     uri = "https://www.padre-lab.eu/onto/disk-logger"
 
-    def tracking_object_schemata(self):
-        return [DiskTO.DiskModel.schema()]
+    @classmethod
+    def output_schema_class(cls) -> Type[OutputModel]:
+        return cls._default_output_class(DiskTO)
 
     @classmethod
     def _needed_packages(cls):
@@ -351,7 +355,7 @@ class Disk(InjectionLogger):
         from pypads.app.pypads import get_current_pads
         pads: PyPads = get_current_pads()
         path = local_uri_to_path(pads.uri)
-        inputs = DiskTO(call=_logger_call)
+        inputs = DiskTO(tracked_by=_logger_call)
         inputs.add_arg("pre_disk_usage", _get_disk_usage(path), _pypads_write_format)
 
     def __call_wrapped__(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
@@ -364,7 +368,7 @@ class Disk(InjectionLogger):
         from pypads.app.pypads import get_current_pads
         pads: PyPads = get_current_pads()
         path = local_uri_to_path(pads.uri)
-        inputs = DiskTO(call=_logger_call)
+        inputs = DiskTO(tracked_by=_logger_call)
         inputs.add_arg("post_disk_usage", _get_disk_usage(path), _pypads_write_format)
 
 
