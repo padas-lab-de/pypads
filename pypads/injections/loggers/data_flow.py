@@ -4,7 +4,7 @@ from typing import List, Type
 from pydantic import BaseModel, HttpUrl
 
 from pypads.app.injections.base_logger import LoggerCall, TrackedObject
-from pypads.app.injections.injection import InjectionLoggerFunction
+from pypads.app.injections.injection import InjectionLogger
 from pypads.model.models import ArtifactMetaModel, TrackedObjectModel
 from pypads.utils.logging_util import WriteFormats
 
@@ -33,9 +33,6 @@ class InputTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.InputModel
 
-    def __init__(self, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args, original_call=call, **kwargs)
-
     def add_arg(self, name, value, format):
         self._add_param(name, value, format, 0)
 
@@ -55,7 +52,7 @@ class InputTO(TrackedObject):
         return os.path.join(self.call.original_call.to_folder(), "input", name)
 
 
-class InputILF(InjectionLoggerFunction):
+class InputILF(InjectionLogger):
     """
     Function logging the input parameters of the current pipeline object function call.
     """
@@ -76,8 +73,6 @@ class InputILF(InjectionLoggerFunction):
         :return:
         """
 
-        output = _logger_call.output
-
         inputs = InputTO(call=_logger_call)
         for i in range(len(_args)):
             arg = _args[i]
@@ -85,8 +80,7 @@ class InputILF(InjectionLoggerFunction):
 
         for (k, v) in _kwargs.items():
             inputs.add_kwarg(str(k), v, format=_pypads_write_format)
-
-        output.value = inputs
+        inputs.store()
 
 
 class OutputTO(TrackedObject):
@@ -122,7 +116,7 @@ class OutputTO(TrackedObject):
                                                       format=format))
 
 
-class OutputILF(InjectionLoggerFunction):
+class OutputILF(InjectionLogger):
     """
     Function logging the output of the current pipeline object function call.
     """

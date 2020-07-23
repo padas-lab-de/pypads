@@ -1,7 +1,7 @@
 from pypads.app.call import Call
 
 
-class LoggingEnv:
+class LoggerEnv:
 
     def __init__(self, parameter, experiment_id, run_id):
         self._parameter = parameter
@@ -27,7 +27,7 @@ class LoggingEnv:
         return self._pypads
 
 
-class InjectionLoggingEnv(LoggingEnv):
+class InjectionLoggerEnv(LoggerEnv):
 
     def __init__(self, mappings, hook, callback, call: Call, parameter, experiment_id, run_id):
         super().__init__(parameter, experiment_id, run_id)

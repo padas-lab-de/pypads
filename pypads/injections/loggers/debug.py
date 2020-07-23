@@ -1,9 +1,9 @@
 from pypads import logger
 
-from pypads.app.injections.injection import InjectionLoggerFunction
+from pypads.app.injections.injection import InjectionLogger
 
 
-class Log(InjectionLoggerFunction):
+class Log(InjectionLogger):
     """
     Function just logging the execution into debug.
     """
@@ -15,7 +15,7 @@ class Log(InjectionLoggerFunction):
         logger.debug("Exited " + str(_logger_call.original_call))
 
 
-class LogInit(InjectionLoggerFunction):
+class LogInit(InjectionLogger):
     """
     This function only writes an information of a constructor execution to the stdout.
     """

@@ -7,9 +7,9 @@ from typing import List, Iterable
 import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 
-from app.env import LoggingEnv
+from app.env import LoggerEnv
 from pypads import logger
-from pypads.app.injections.run_loggers import RunSetupFunction, RunTeardownFunction
+from pypads.app.injections.run_loggers import RunSetup, RunTeardown
 from pypads.app.misc.caches import Cache
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
 from pypads.app.misc.mixins import FunctionHolderMixin
@@ -147,7 +147,7 @@ class PyPadsApi(IApi):
         """
         out = mlflow.start_run(run_id=run_id, experiment_id=experiment_id, run_name=run_name, nested=nested)
         self.run_setups(
-            _pypads_env=_pypads_env or LoggingEnv(parameter=dict(), experiment_id=experiment_id, run_id=run_id))
+            _pypads_env=_pypads_env or LoggerEnv(parameter=dict(), experiment_id=experiment_id, run_id=run_id))
         return out
 
     # ---- logging ----
@@ -234,6 +234,15 @@ class PyPadsApi(IApi):
         """
         return self.pypads.backend.set_tag(value, TagMetaModel(name=key, description=description))
 
+    @cmd
+    def store_tracked_object(self, to):
+        return self.pypads.backend.store_tracked_object(tp=to)
+
+    @cmd
+    def store_logger_output(self, lo):
+        return self.pypads.backend.store_tracked_object(lo=lo)
+
+    @cmd
     def write_data_item(self, path, content_item, data_format=None, preserve_folder=True):
         """
         Function to log a tracking object content item on local disk. This artifact is transferred into the context of mlflow.
@@ -332,7 +341,7 @@ class PyPadsApi(IApi):
         return self.pypads.cache.get("pre_run_fns")
 
     @cmd
-    def register_setup(self, name, pre_fn: RunSetupFunction, silent=True):
+    def register_setup(self, name, pre_fn: RunSetup, silent=True):
         """
         Register a new pre_run function.
         :param name: Name of the registration
@@ -364,7 +373,7 @@ class PyPadsApi(IApi):
         :return:
         """
 
-        class TmpRunSetupFunction(RunSetupFunction):
+        class TmpRunSetupFunction(RunSetup):
             pass
 
         TmpRunSetupFunction.__doc__ = description
@@ -402,7 +411,7 @@ class PyPadsApi(IApi):
         return self.pypads.cache.run_get("post_run_fns")
 
     @cmd
-    def register_teardown(self, name, post_fn: RunTeardownFunction, silent=True):
+    def register_teardown(self, name, post_fn: RunTeardown, silent=True):
         """
         Register a new post run function.
         :param name: Name of the registration
@@ -435,8 +444,8 @@ class PyPadsApi(IApi):
         :return:
         """
         self.register_teardown(name,
-                               post_fn=RunTeardownFunction(fn=fn, message=error_message, nested=nested,
-                                                           intermediate=intermediate, order=order), silent=silent)
+                               post_fn=RunTeardown(fn=fn, message=error_message, nested=nested,
+                                                   intermediate=intermediate, order=order), silent=silent)
 
     @cmd
     def active_run(self):

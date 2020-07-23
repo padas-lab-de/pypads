@@ -1,4 +1,4 @@
-from abc import abstractmethod, ABCMeta, ABC
+from abc import abstractmethod, ABCMeta
 from typing import List, Union, Tuple, Set
 
 from pypads import logger
@@ -295,4 +295,4 @@ class BaseDefensiveCallableMixin(DefensiveCallableMixin):
         super().__init__(*args, **kwargs)
 
     def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
-        logger.warning(self._message.format(str(self.__name__), str(error)))
+        logger.warning(self._message.format("{}.{}".format(self.__class__.__name__, self.__name__), str(error)))

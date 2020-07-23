@@ -1,12 +1,12 @@
 import os
-
-from app.env import LoggingEnv
-from pydantic import HttpUrl, BaseModel
 from typing import List, Type
 
+from pydantic import HttpUrl, BaseModel
+
+from app.env import LoggerEnv
 from pypads import logger
 from pypads.app.injections.base_logger import LoggerCall, TrackedObject
-from pypads.app.injections.run_loggers import RunSetupFunction
+from pypads.app.injections.run_loggers import RunSetup
 from pypads.model.models import TrackedObjectModel, LibraryModel
 
 
@@ -28,7 +28,7 @@ class DependencyTO(TrackedObject):
         self.dependencies.append(LibraryModel(name=name, version=version))
 
 
-class DependencyRSF(RunSetupFunction):
+class DependencyRSF(RunSetup):
     """Store information about dependencies used in the experimental environment."""
 
     name = "Dependencies Run Setup Logger"
@@ -39,7 +39,7 @@ class DependencyRSF(RunSetupFunction):
 
     _dependencies = {"pip"}
 
-    def _call(self, *args, _pypads_env: LoggingEnv, **kwargs):
+    def _call(self, *args, _pypads_env: LoggerEnv, **kwargs):
         pads = _pypads_env.pypads
         logger.info("Tracking execution to run with id " + pads.api.active_run().info.run_id)
 
@@ -53,11 +53,11 @@ class DependencyRSF(RunSetupFunction):
         pads.api.log_mem_artifact("pip_freeze", "\n".join(freeze.freeze()))
 
 
-class RunLogger(RunSetupFunction):
+class LoguruRSF(RunSetup):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def _call(self, *args, _pypads_env: LoggingEnv, **kwargs):
+    def _call(self, *args, _pypads_env: LoggerEnv, **kwargs):
         pads = _pypads_env.pypads
 
         from pypads.app.api import PyPadsApi

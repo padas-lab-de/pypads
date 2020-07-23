@@ -1,9 +1,8 @@
 import os
-import time
 import uuid
 from typing import List, Optional, Type
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl, root_validator
 
 from pypads.utils.logging_util import WriteFormats
 from pypads.utils.util import get_experiment_id, get_run_id
@@ -41,17 +40,7 @@ class LibSelectorModel(BaseModel):
         orm_mode = True
 
 
-class ComponentModel(OntologyEntry):
-    """
-    Base object for components of code. These can be loggers, actuators etc.
-    """
-    uid: uuid.UUID = Field(default_factory=uuid.uuid4)  # Automatically created uuid for the object
-    created_at: float = Field(default_factory=time.time)  # Creation timestamp
-    defined_in: LibraryModel = ...  # In which package the object was defined
-    is_a: HttpUrl = ...  # A link to a ontology entry describing the concept of the reference object
-
-
-class RunObject(OntologyEntry):
+class RunObjectModel(OntologyEntry):
     """
     Base object for tracked objects that manage metadata. A MetadataEntity manages and id and a dict of metadata.
     The metadata should contain all necessary non-binary data to describe an entity.
@@ -59,6 +48,14 @@ class RunObject(OntologyEntry):
     experiment_id: Optional[str] = Field(default_factory=get_experiment_id)
     run_id: Optional[str] = Field(default_factory=get_run_id)
     uid: uuid.UUID = Field(default_factory=uuid.uuid4)
+    is_a: HttpUrl = ...
+    uri: HttpUrl = None
+
+    @root_validator
+    def set_default_uri(cls, values):
+        if values['uri'] is None:
+            values['uri'] = f"{values['is_a']}#{values['uid']}"
+        return values
 
     def store(self):
         """
@@ -72,7 +69,7 @@ class RunObject(OntologyEntry):
                                                 path=os.path.join(self.__class__.__name__, str(self.uid)))
 
 
-class LoggerModel(RunObject):
+class LoggerModel(RunObjectModel):
     """
     A reference object for a logger.
     """
@@ -141,7 +138,7 @@ class CallIdModel(CallAccessorModel):
         orm_mode = True
 
 
-class CallModel(RunObject):
+class CallModel(RunObjectModel):
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/Call"
     call_id: CallIdModel = ...  # Id of the call
     finished: bool = False
@@ -173,17 +170,20 @@ class TagMetaModel(BaseModel):
     description: str = ...
 
 
-class LoggerOutputModel(RunObject):
+class OutputModel(RunObjectModel):
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerOutput"
 
+    class Config:
+        orm_mode = True
 
-class LoggerCallModel(RunObject):
+
+class LoggerCallModel(RunObjectModel):
     """
     Holds meta data about a logger execution
     """
-    created_by: LoggerModel
+    created_by: str = ...  # path to json of LoggerModel
     execution_time: float = ...
-    output: Type[LoggerOutputModel] = ...  # Outputs of the logger
+    output: Type[OutputModel] = ...  # Outputs of the logger
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerCall"
 
     class Config:
@@ -194,7 +194,6 @@ class InjectionLoggerCallModel(LoggerCallModel):
     """
     Holds meta data about an injection logger execution
     """
-    created_by: InjectionLoggerModel
     pre_time: float = ...
     post_time: float = ...
     child_time: float = ...
@@ -205,7 +204,7 @@ class InjectionLoggerCallModel(LoggerCallModel):
         orm_mode = True
 
 
-class TrackedObjectModel(RunObject):
+class TrackedObjectModel(RunObjectModel):
     """
     Data of a tracking object.
     """

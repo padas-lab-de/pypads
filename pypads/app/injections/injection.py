@@ -4,9 +4,9 @@ from typing import Type
 
 from pydantic import BaseModel, HttpUrl
 
-from app.env import InjectionLoggingEnv
+from app.env import InjectionLoggerEnv
 from pypads import logger
-from pypads.app.injections.base_logger import LoggerCall, LoggerFunction, LoggingExecutor, OriginalExecutor
+from pypads.app.injections.base_logger import LoggerCall, Logger, LoggerExecutor, OriginalExecutor
 from pypads.app.misc.mixins import OrderMixin, NoCallAllowedError
 from pypads.model.models import InjectionLoggerCallModel, InjectionLoggerModel
 from pypads.utils.util import inheritors
@@ -18,26 +18,27 @@ class InjectionLoggerCall(LoggerCall):
     def get_model_cls(cls) -> Type[BaseModel]:
         return InjectionLoggerCallModel
 
-    def __init__(self, *args, logging_env: InjectionLoggingEnv, **kwargs):
+    def __init__(self, *args, logging_env: InjectionLoggerEnv, **kwargs):
         super().__init__(*args, call=logging_env.call, logging_env=logging_env, **kwargs)
 
 
-class InjectionLoggerFunction(LoggerFunction, OrderMixin, metaclass=ABCMeta):
+class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/injection-logger"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         if not hasattr(self, "_pre"):
-            self._pre = LoggingExecutor(fn=self.__pre__)
+            self._pre = LoggerExecutor(fn=self.__pre__)
         if not hasattr(self, "_post"):
-            self._post = LoggingExecutor(fn=self.__post__)
+            self._post = LoggerExecutor(fn=self.__post__)
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
         return InjectionLoggerModel
 
-    def __pre__(self, ctx, *args, _logger_call, _args, _kwargs, **kwargs):
+    def __pre__(self, ctx, *args,
+                _logger_call, _args, _kwargs, **kwargs):
         """
         The function to be called before executing the log anchor. the value returned will be passed on to the __post__
         function as **_pypads_pre_return**.
@@ -58,13 +59,14 @@ class InjectionLoggerFunction(LoggerFunction, OrderMixin, metaclass=ABCMeta):
         """
         pass
 
-    def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggingEnv, **kwargs):
+    def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, **kwargs):
         self.store_schema()
 
         _pypads_hook_params = _pypads_env.parameter
 
-        output = self.build_output()
-        logger_call = InjectionLoggerCall(logging_env=_pypads_env, output=output, logger_meta=self.model())
+        logger_call = InjectionLoggerCall(logging_env=_pypads_env, logger_meta=self.model())
+        output = self.build_output(call=logger_call, created_by=self.store_schema())
+        logger_call.out_holder = output
 
         try:
             # Trigger pre run functions
@@ -92,11 +94,10 @@ class InjectionLoggerFunction(LoggerFunction, OrderMixin, metaclass=ABCMeta):
                                                  **_pypads_hook_params)
             logger_call.post_time = post_time
         finally:
-            output.store()
             logger_call.store()
         return _return
 
-    def __call_wrapped__(self, ctx, *args, _pypads_env: InjectionLoggingEnv, _args, _kwargs, **_pypads_hook_params):
+    def __call_wrapped__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, _args, _kwargs, **_pypads_hook_params):
         """
         The real call of the wrapped function. Be carefull when you change this.
         Exceptions here will not be catched automatically and might break your workflow. The returned value will be passed on to __post__ function.
@@ -154,4 +155,4 @@ def logging_functions():
     Find all post run functions defined in our imported context.
     :return:
     """
-    return inheritors(InjectionLoggerFunction)
+    return inheritors(InjectionLogger)

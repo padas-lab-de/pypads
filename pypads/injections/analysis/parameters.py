@@ -1,9 +1,9 @@
 import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 
-from app.env import InjectionLoggingEnv
+from app.env import InjectionLoggerEnv
 from pypads import logger
-from pypads.app.injections.injection import InjectionLoggerFunction
+from pypads.app.injections.injection import InjectionLogger
 from pypads.utils.util import dict_merge
 
 
@@ -20,9 +20,9 @@ def persist_parameter(_pypads_env, key, value):
                        str(_pypads_env.call) + "." + key + ".txt", value)
 
 
-class Parameters(InjectionLoggerFunction):
+class Parameters(InjectionLogger):
 
-    def __post__(self, ctx, *args, _pypads_env: InjectionLoggingEnv, **kwargs):
+    def __post__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, **kwargs):
         """
         Function logging the parameters of the current pipeline object function call.
         :param ctx:

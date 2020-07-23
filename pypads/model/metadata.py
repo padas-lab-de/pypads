@@ -5,7 +5,7 @@ from typing import Type, List
 from pydantic import validate_model, BaseModel, ValidationError
 
 from pypads.app.misc.inheritance import SuperStop
-from pypads.model.models import RunObject
+from pypads.model.models import RunObjectModel
 from pypads.utils.util import has_direct_attr
 
 
@@ -60,6 +60,9 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
         for key in fields:
             if not has_direct_attr(self, key) and self.get_model_fields():
                 setattr(self, key, self.get_model_fields()[key].get_default())
+        if issubclass(self.get_model_cls(), RunObjectModel) and (
+                not hasattr(self, "uri") or getattr(self, "uri") is None):
+            setattr(self, "uri", "{}#{}".format(getattr(self, 'is_a'), getattr(self, 'uid')))
 
     def model(self):
         return self.get_model_cls().from_orm(self)
@@ -76,8 +79,8 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
             schema["description"] = cls.__doc__
         return schema
 
-    def json(self):
-        return self.get_model_cls().from_orm(self).json()
+    def json(self, *args, **kwargs):
+        return self.model().json(*args, **kwargs)
 
 
 class ModelHolder(ModelInterface, metaclass=ABCMeta):
@@ -85,7 +88,7 @@ class ModelHolder(ModelInterface, metaclass=ABCMeta):
     Used for objects storing their information directly into a validated base model
     """
 
-    def __init__(self, *args, model: RunObject = None, **kwargs):
+    def __init__(self, *args, model: RunObjectModel = None, **kwargs):
         super().__init__(*args, **kwargs)
         self._model = self.get_model_cls()(**kwargs) if model is None else model
 

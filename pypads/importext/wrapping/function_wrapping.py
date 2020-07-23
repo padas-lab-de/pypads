@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from functools import wraps
 from typing import Set
 
-from app.env import InjectionLoggingEnv
+from app.env import InjectionLoggerEnv
 from pypads import logger
 from pypads.app.call import FunctionReference, CallAccessor, Call
 from pypads.importext.mappings import MatchedMapping
@@ -274,13 +274,13 @@ class FunctionWrapper(BaseWrapper):
         # For every hook we defined on the given function in out mapping file execute it before running the code
         if not call.has_hook(hook):
             return self._get_env_setter(
-                _pypads_env=InjectionLoggingEnv(mappings, hook, callback, call, params, get_experiment_id(),
-                                                get_run_id()))
+                _pypads_env=InjectionLoggerEnv(mappings, hook, callback, call, params, get_experiment_id(),
+                                               get_run_id()))
         else:
             logger.debug(str(hook) + " is tracked multiple times on " + str(call) + ". Ignoring second hooking.")
             return None
 
-    def _get_env_setter(self, _pypads_env: InjectionLoggingEnv):
+    def _get_env_setter(self, _pypads_env: InjectionLoggerEnv):
         """
         This wrapper sets the context
         :return:
@@ -325,7 +325,7 @@ class FunctionWrapper(BaseWrapper):
             raise ValueError("Failed!")
 
     @staticmethod
-    def _wrapped_inner_function(_self, *args, _pypads_env: InjectionLoggingEnv, **kwargs):
+    def _wrapped_inner_function(_self, *args, _pypads_env: InjectionLoggerEnv, **kwargs):
         """
         Wrapped function logic. This executes all hooks and the function itself.
         :param _self: Reference to

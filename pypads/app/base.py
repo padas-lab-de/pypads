@@ -23,7 +23,7 @@ from pypads.importext.wrapping.wrapping import WrapManager
 from pypads.injections.analysis.call_tracker import CallTracker
 from pypads.injections.setup.git import IGit
 from pypads.injections.setup.hardware import ISystem, IRam, ICpu, IDisk, IPid, ISocketInfo, IMacAddress
-from pypads.injections.setup.misc_setup import DependencyRSF, RunLogger
+from pypads.injections.setup.misc_setup import DependencyRSF, LoguruRSF
 
 tracking_active = None
 
@@ -66,7 +66,7 @@ DEFAULT_CONFIG = {
     # is passed
 }
 
-DEFAULT_SETUP_FNS = {DependencyRSF(), RunLogger(), IGit(_pypads_timeout=3), ISystem(), IRam(), ICpu(), IDisk(), IPid(),
+DEFAULT_SETUP_FNS = {DependencyRSF(), LoguruRSF(), IGit(_pypads_timeout=3), ISystem(), IRam(), ICpu(), IDisk(), IPid(),
                      ISocketInfo(), IMacAddress()}
 
 # Tag name to save the config to in mlflow context.

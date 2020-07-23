@@ -4,8 +4,7 @@ from typing import Type
 
 from pydantic import BaseModel, HttpUrl
 
-from app.env import LoggingEnv
-from pypads.app.injections.base_logger import LoggerFunction, LoggingExecutor, LoggerCall
+from pypads.app.injections.base_logger import LoggerCall, SimpleLogger
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
 from pypads.injections.analysis.determinism import check_determinism
 from pypads.model.models import LoggerModel
@@ -14,50 +13,16 @@ from pypads.utils.util import inheritors
 validator_plugins = set()
 
 
-class Validator(LoggerFunction, metaclass=ABCMeta):
+class Validator(SimpleLogger, metaclass=ABCMeta):
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/validator"
+
+    def build_call_object(self, _pypads_env, **kwargs):
+        return LoggerCall(logging_env=_pypads_env,
+                          is_a="https://www.padre-lab.eu/onto/ValidatorLoggerCall", **kwargs)
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
         return LoggerModel
-
-    def __init__(self, *args, fn=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        if fn is None:
-            fn = self._call
-        if not hasattr(self, "_fn"):
-            self._fn = LoggingExecutor(fn=fn)
-
-    @property
-    def __name__(self):
-        if hasattr(self, "_fn") and self._fn is not self._call:
-            return self._fn.__name__
-        else:
-            return self.__class__.__name__
-
-    def _call(self, _pypads_env: LoggingEnv, *args, **kwargs):
-        """
-        Function where to add you custom code to execute before starting or ending the run.
-
-        :param pads: the current instance of PyPads.
-        """
-        pass
-
-    def __real_call__(self, *args, _pypads_env: LoggingEnv, **kwargs):
-        self.store_schema()
-
-        _pypads_params = _pypads_env.parameter
-
-        logger_call = LoggerCall(created_by=self.model(), is_a="https://www.padre-lab.eu/onto/ValidatorCall",
-                                 logging_env=_pypads_env)
-
-        _return, time = self._fn(*args, _pypads_env=_pypads_env, _logger_call=logger_call,
-                                 _pypads_params=_pypads_params,
-                                 **kwargs)
-
-        logger_call.execution_time = time
-        logger_call.store()
-        return _return
 
 
 class IValidators(Plugin):

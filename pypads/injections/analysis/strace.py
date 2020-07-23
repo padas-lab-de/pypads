@@ -3,18 +3,18 @@ import signal
 import subprocess
 from sys import platform
 
-from app.env import LoggingEnv
+from app.env import LoggerEnv
 from pypads import logger
-from pypads.app.injections.run_loggers import RunSetupFunction, RunTeardownFunction
+from pypads.app.injections.run_loggers import RunSetup, RunTeardown
 from pypads.utils.logging_util import get_temp_folder
 
 
-class STrace(RunSetupFunction):
+class STrace(RunSetup):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def _call(self, *args, _pypads_env: LoggingEnv, **kwargs):
+    def _call(self, *args, _pypads_env: LoggerEnv, **kwargs):
         pads = _pypads_env.pypads
 
         file = os.path.join(get_temp_folder(), str(os.getpid()) + "_trace.txt")
@@ -52,14 +52,14 @@ class STrace(RunSetupFunction):
         pads.add_atexit_fn(safety_hook)
 
 
-class STraceStop(RunTeardownFunction):
+class STraceStop(RunTeardown):
 
     def __init__(self, *args, _pypads_proc=None, _pypads_trace_file=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._proc = _pypads_proc
         self._trace_file = _pypads_trace_file
 
-    def _call(self, *args, _pypads_env: LoggingEnv, **kwargs):
+    def _call(self, *args, _pypads_env: LoggerEnv, **kwargs):
         pads = _pypads_env.pypads
         if self._proc and self._proc.poll() is None:
             os.killpg(os.getpgid(self._proc.pid), signal.SIGTERM)
