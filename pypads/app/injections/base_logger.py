@@ -84,6 +84,23 @@ class LoggerExecutor(DefensiveCallableMixin, FunctionHolderMixin, TimedCallableM
             return None, 0
 
 
+class LoggerCall(ProvenanceMixin):
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return LoggerCallModel
+
+    def __init__(self, *args, logging_env: LoggerEnv, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._logging_env = logging_env
+
+    def store(self):
+        from pypads.app.pypads import get_current_pads
+        from pypads.utils.logging_util import WriteFormats
+        get_current_pads().api.log_mem_artifact("{}".format(str(self.uid)), self.json(), WriteFormats.json.value,
+                                                path=self.created_by)
+
+
 class TrackedObject(ProvenanceMixin):
     is_a = "https://www.padre-lab.eu/onto/tracked_object"
 
@@ -112,40 +129,33 @@ class TrackedObject(ProvenanceMixin):
     def _base_path(self):
         return os.path.join(self.tracked_by.created_by, self.__class__.__name__)
 
-    def store(self, key="value", *json_path):
+    def store(self, output, key="tracked_object", *json_path):
         """
+        :param output:
         :param key: Name of the tracking object in the schema
         :param json_path: path in the output schema
         :return:
         """
-        self.tracked_by.output.add_tracked_object(self, key, *json_path)
+        output.add_tracked_object(self, key, *json_path)
 
 
 class OutputModelHolder(ModelObject, metaclass=ABCMeta):
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return OutputModel
 
     def add_tracked_object(self, to: TrackedObject, key, *json_path):
         curr = self
         for p in json_path:
             curr = getattr(curr, p)
-        from pypads.app.pypads import get_current_pads
-        setattr(curr, key, get_current_pads().api.store_tracked_object(to))
-
-
-class LoggerCall(ProvenanceMixin):
-
-    @classmethod
-    def get_model_cls(cls) -> Type[BaseModel]:
-        return LoggerCallModel
-
-    def __init__(self, *args, logging_env: LoggerEnv, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._logging_env = logging_env
+        # from pypads.app.pypads import get_current_pads
+        # setattr(curr, key, get_current_pads().api.store_tracked_object(to))
+        setattr(curr, key, to.json())
 
     def store(self):
         from pypads.app.pypads import get_current_pads
-        from pypads.utils.logging_util import WriteFormats
-        get_current_pads().api.log_mem_artifact("{}".format(str(self.uid)), self.json(), WriteFormats.json.value,
-                                                path=self.created_by)
+        return get_current_pads().api.store_logger_output(self)
 
 
 class EmptyOutput(OutputModel):
@@ -176,7 +186,6 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
         schema_class = cls.output_schema_class()
 
         class DynamicOutputModelHolder(OutputModelHolder):
-            is_a = "https://www.padre-lab.eu/onto/output_model"
 
             @classmethod
             def get_model_cls(cls) -> Type[BaseModel]:
@@ -195,10 +204,11 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
     @classmethod
     def _default_output_class(cls, clazz: Type[TrackedObject]) -> Type[OutputModel]:
         class OutputClass(OutputModel):
-            value: str = ...  # Path to tracking objects
+            tracked_object: clazz.get_model_cls() = ...  # Path to tracking objects
 
             class Config:
                 orm_mode = True
+
         return OutputClass
 
     @classmethod
@@ -244,11 +254,10 @@ class SimpleLogger(Logger):
         _pypads_params = _pypads_env.parameter
 
         logger_call = self.build_call_object(_pypads_env, created_by=self.store_schema())
-        output = self.build_output(tracked_by=logger_call)
-        logger_call.output = output
+        output = self.build_output()
 
         try:
-            _return, time = self._fn(*args, _pypads_env=_pypads_env, _logger_call=logger_call,
+            _return, time = self._fn(*args, _pypads_env=_pypads_env, _logger_call=logger_call, _logger_output=output,
                                      _pypads_params=_pypads_params,
                                      **{**self.static_parameters, **kwargs})
 
@@ -257,6 +266,7 @@ class SimpleLogger(Logger):
             logger_call.failed = str(e)
             raise e
         finally:
+            logger_call.output = output.store()
             logger_call.store()
         return _return
 

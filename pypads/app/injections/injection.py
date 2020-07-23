@@ -38,7 +38,7 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
         return InjectionLoggerModel
 
     def __pre__(self, ctx, *args,
-                _logger_call, _args, _kwargs, **kwargs):
+                _logger_call, _logger_output,_args, _kwargs, **kwargs):
         """
         The function to be called before executing the log anchor. the value returned will be passed on to the __post__
         function as **_pypads_pre_return**.
@@ -48,7 +48,7 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
         """
         pass
 
-    def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
+    def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _logger_output,_args, _kwargs, **kwargs):
         """
         The function to be called after executing the log anchor.
 
@@ -65,8 +65,7 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
         _pypads_hook_params = _pypads_env.parameter
 
         logger_call = InjectionLoggerCall(logging_env=_pypads_env, created_by=self.store_schema())
-        output = self.build_output(tracked_by=logger_call)
-        logger_call.output = output
+        output = self.build_output()
 
         try:
             # Trigger pre run functions
@@ -94,6 +93,7 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
             logger_call.failed = str(e)
             raise e
         finally:
+            logger_call.output = output.store()
             logger_call.store()
         return _return
 

@@ -5,7 +5,7 @@ from pydantic import BaseModel, HttpUrl
 
 from pypads.app.injections.base_logger import LoggerCall, TrackedObject
 from pypads.app.injections.injection import InjectionLogger
-from pypads.model.models import ArtifactMetaModel, TrackedObjectModel
+from pypads.model.models import ArtifactMetaModel, TrackedObjectModel, OutputModel
 from pypads.utils.logging_util import WriteFormats
 
 
@@ -61,11 +61,19 @@ class InputILF(InjectionLogger):
     name = "InputLogger"
     uri = "https://www.padre-lab.eu/onto/input-logger"
 
+    class InputILFOutput(OutputModel):
+        is_a: HttpUrl = "https://www.padre-lab.eu/onto/InputILF-Output"
+        FunctionInput: InputTO.get_model_cls() = ...
+
+        class Config:
+            orm_mode = True
+
     @classmethod
     def output_schema_class(cls):
-        return cls._default_output_class(InputTO)
+        return cls.InputILFOutput
 
-    def __pre__(self, ctx, *args, _pypads_write_format=None, _logger_call: LoggerCall, _args, _kwargs, **kwargs):
+    def __pre__(self, ctx, *args, _pypads_write_format=None, _logger_call: LoggerCall, _logger_output, _args, _kwargs,
+                **kwargs):
         """
         :param ctx:
         :param args:
@@ -81,7 +89,7 @@ class InputILF(InjectionLogger):
 
         for (k, v) in _kwargs.items():
             inputs.add_kwarg(str(k), v, format=_pypads_write_format)
-        inputs.store()
+        inputs.store(_logger_output,key="FunctionInput")
 
 
 class OutputTO(TrackedObject):
@@ -124,11 +132,19 @@ class OutputILF(InjectionLogger):
     name = "OutputLogger"
     uri = "https://www.padre-lab.eu/onto/output-logger"
 
+    class OutputILFOutput(OutputModel):
+        is_a: HttpUrl = "https://www.padre-lab.eu/onto/OutputILF-Output"
+        FunctionOutput: OutputTO.get_model_cls() = ...
+
+        class Config:
+            orm_mode = True
+
     @classmethod
     def output_schema_class(cls):
-        return cls._default_output_class(OutputTO)
+        return cls.OutputILFOutput
 
-    def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.pickle, _logger_call, _pypads_result, **kwargs):
+    def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.pickle, _logger_call, _pypads_result,
+                 _logger_output, **kwargs):
         """
         :param ctx:
         :param args:

@@ -170,13 +170,6 @@ class TagMetaModel(BaseModel):
     description: str = ...
 
 
-class OutputModel(RunObjectModel):
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerOutput"
-
-    class Config:
-        orm_mode = True
-
-
 class LoggerCallModel(RunObjectModel):
     """
     Holds meta data about a logger execution
@@ -184,7 +177,7 @@ class LoggerCallModel(RunObjectModel):
     failed: Optional[str] = None
     created_by: str = ...  # path to json of LoggerModel
     execution_time: Optional[float] = ...
-    output: Optional[OutputModel] = ...  # Outputs of the logger
+    output: Optional[str] = ... # path to json of the OutputModel of the logger
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerCall"
 
     class Config:
@@ -208,6 +201,13 @@ class InjectionLoggerCallModel(LoggerCallModel):
             if values['pre_time'] is not None and values['post_time'] is not None:
                 values['execution_time'] = values['pre_time'] + values['post_time']
         return values
+
+    class Config:
+        orm_mode = True
+
+
+class OutputModel(RunObjectModel):
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerOutput"
 
     class Config:
         orm_mode = True
