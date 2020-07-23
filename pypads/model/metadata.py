@@ -65,10 +65,7 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
             setattr(self, "uri", "{}#{}".format(getattr(self, 'is_a'), getattr(self, 'uid')))
 
     def model(self):
-        try:
-            return self.get_model_cls().from_orm(self)
-        except:
-            a = ""
+        return self.get_model_cls().from_orm(self)
 
     def validate(self):
         validate_model(self.get_model_cls(), self.model().__dict__)

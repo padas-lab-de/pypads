@@ -5,7 +5,7 @@ from pydantic import BaseModel, HttpUrl
 
 from pypads.app.injections.base_logger import LoggerCall, TrackedObject
 from pypads.app.injections.injection import InjectionLogger
-from pypads.model.models import InjectionLoggerCallModel, ArtifactMetaModel, TrackedObjectModel, OutputModel
+from pypads.model.models import ArtifactMetaModel, TrackedObjectModel, OutputModel
 from pypads.utils.logging_util import WriteFormats
 from pypads.utils.util import local_uri_to_path, sizeof_fmt
 
@@ -92,9 +92,7 @@ class CpuTO(TrackedObject):
 
 
 class Cpu(InjectionLogger):
-    """
-    This function only writes an information of a constructor execution to the stdout.
-    """
+    """This logger extracts the cpu information of your machine."""
     name = "CPULogger"
     uri = "https://www.padre-lab.eu/onto/cpu-logger"
 

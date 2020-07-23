@@ -74,13 +74,11 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
                                               _logger_output=output,
                                               _logger_call=logger_call,
                                               _args=args,
-                                              _kwargs=kwargs,
-                                              **_pypads_hook_params)
+                                              _kwargs=kwargs, **{**self.static_parameters, **_pypads_hook_params})
             logger_call.pre_time = pre_time
 
             # Trigger function itself
-            _return, time = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs,
-                                                  **_pypads_hook_params)
+            _return, time = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs)
             logger_call.child_time = time
 
             # Trigger post run functions
@@ -90,8 +88,7 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
                                                  _pypads_result=_return,
                                                  _logger_call=logger_call,
                                                  _args=args,
-                                                 _kwargs=kwargs,
-                                                 **_pypads_hook_params)
+                                                 _kwargs=kwargs, **{**self.static_parameters, **_pypads_hook_params})
             logger_call.post_time = post_time
         except Exception as e:
             logger_call.failed = str(e)
@@ -100,7 +97,7 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
             logger_call.store()
         return _return
 
-    def __call_wrapped__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, _args, _kwargs, **_pypads_hook_params):
+    def __call_wrapped__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, _args, _kwargs):
         """
         The real call of the wrapped function. Be carefull when you change this.
         Exceptions here will not be catched automatically and might break your workflow. The returned value will be passed on to __post__ function.

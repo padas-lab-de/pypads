@@ -195,21 +195,20 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
     @classmethod
     def _default_output_class(cls, clazz: Type[TrackedObject]) -> Type[OutputModel]:
         class OutputClass(OutputModel):
-            value: clazz.get_model_cls() = ...
+            value: str = ...  # Path to tracking objects
 
             class Config:
                 orm_mode = True
-                arbitrary_types_allowed = True
         return OutputClass
 
     @classmethod
     def store_schema(cls):
         if not cls._schema_path:
             from pypads.app.pypads import get_current_pads
-            schema_path = os.path.join(cls.__name__ + "_schema")
+            schema_path = os.path.join(cls.__name__)
             get_current_pads().api.log_mem_artifact(schema_path,
                                                     cls.schema(), write_format=WriteFormats.json)
-            get_current_pads().api.log_mem_artifact(os.path.join(cls.__name__ + "_output_schema"),
+            get_current_pads().api.log_mem_artifact(os.path.join(cls.__name__ + "_output"),
                                                     cls.output_schema(), write_format=WriteFormats.json)
             cls._schema_path = schema_path
         return cls._schema_path
@@ -251,7 +250,7 @@ class SimpleLogger(Logger):
         try:
             _return, time = self._fn(*args, _pypads_env=_pypads_env, _logger_call=logger_call,
                                      _pypads_params=_pypads_params,
-                                     **kwargs)
+                                     **{**self.static_parameters, **kwargs})
 
             logger_call.execution_time = time
         except Exception as e:

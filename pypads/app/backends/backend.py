@@ -154,7 +154,7 @@ class MLFlowBackend(BackendInterface):
         return MlflowClient(self.uri)
 
     def store_tracked_object(self, to: TrackedObject):
-        path = "TrackingObject/{}#{}".format(self.__class__.__name__, id(self))
+        path = "TrackingObject/{}#{}".format(to.__class__.__name__, id(self))
         try_write_artifact(path, to.json(), write_format=WriteFormats.json)
         return path
 

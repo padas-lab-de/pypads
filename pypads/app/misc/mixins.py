@@ -207,8 +207,9 @@ class ConfigurableCallableMixin(CallableMixin):
         self._kwargs = kwargs
         super().__init__(*args, **kwargs)
 
-    def __call__(self, *args, **kwargs):
-        super().__call__(*args, **{**self._kwargs, **kwargs})
+    @property
+    def static_parameters(self):
+        return self._kwargs
 
 
 class LibrarySpecificMixin(SuperStop):
