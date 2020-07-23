@@ -1,6 +1,6 @@
 import os
 import uuid
-from typing import List, Optional, Type
+from typing import List, Optional
 
 from pydantic import BaseModel, Field, HttpUrl, root_validator
 
@@ -181,9 +181,10 @@ class LoggerCallModel(RunObjectModel):
     """
     Holds meta data about a logger execution
     """
+    failed: Optional[str] = None
     created_by: str = ...  # path to json of LoggerModel
-    execution_time: float = ...
-    output: Type[OutputModel] = ...  # Outputs of the logger
+    execution_time: Optional[float] = ...
+    output: Optional[OutputModel] = ...  # Outputs of the logger
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerCall"
 
     class Config:
@@ -194,11 +195,19 @@ class InjectionLoggerCallModel(LoggerCallModel):
     """
     Holds meta data about an injection logger execution
     """
-    pre_time: float = ...
-    post_time: float = ...
-    child_time: float = ...
+    pre_time: Optional[float] = ...
+    post_time: Optional[float] = ...
+    child_time: Optional[float] = ...
     original_call: CallModel = ...  # Triggered by following call
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/InjectionLoggerCall"
+    execution_time: Optional[float] = None
+
+    @root_validator
+    def set_default_execution_time(cls, values):
+        if values['execution_time'] is None:
+            if values['pre_time'] is not None and values['post_time'] is not None:
+                values['execution_time'] = values['pre_time'] + values['post_time']
+        return values
 
     class Config:
         orm_mode = True

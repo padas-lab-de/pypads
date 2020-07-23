@@ -1,4 +1,5 @@
 import os
+import traceback
 from abc import abstractmethod, ABCMeta
 from typing import Type, Set
 
@@ -78,7 +79,8 @@ class LoggerExecutor(DefensiveCallableMixin, FunctionHolderMixin, TimedCallableM
                 mlflow.set_tag("pypads_failure", str(error))
             except Exception as e:
                 pass
-            logger.error("Tracking failed for " + str(_pypads_env) + " with: " + str(error))
+            logger.error(
+                f"Tracking failed for {str(_pypads_env)} with: {str(error)} \nTrace:\n{traceback.format_exc()}")
             return None, 0
 
 
@@ -135,29 +137,14 @@ class LoggerCall(ProvenanceMixin):
         return LoggerCallModel
 
     def __init__(self, *args, logging_env: LoggerEnv, **kwargs):
-        self._out_holder = None
         super().__init__(*args, **kwargs)
         self._logging_env = logging_env
-
-    @property
-    def output(self):
-        if self._out_holder is not None:
-            return self._out_holder.model()
-        return None
-
-    @property
-    def out_holder(self) -> OutputModelHolder:
-        return self._out_holder
-
-    @out_holder.setter
-    def out_holder(self, output_holder: OutputModelHolder):
-        self._out_holder = output_holder
 
     def store(self):
         from pypads.app.pypads import get_current_pads
         from pypads.utils.logging_util import WriteFormats
         get_current_pads().api.log_mem_artifact("{}".format(str(self.uid)), self.json(), WriteFormats.json.value,
-                                                path=self.created_by.name)
+                                                path=self.created_by)
 
 
 class EmptyOutput(OutputModel):
@@ -255,7 +242,7 @@ class SimpleLogger(Logger):
 
         logger_call = self.build_call_object(_pypads_env, created_by=self.store_schema())
         output = self.build_output(call=logger_call)
-        logger_call.out_holder = output
+        logger_call.output = output
 
         try:
             _return, time = self._fn(*args, _pypads_env=_pypads_env, _logger_call=logger_call,
@@ -263,6 +250,9 @@ class SimpleLogger(Logger):
                                      **kwargs)
 
             logger_call.execution_time = time
+        except Exception as e:
+            logger_call.failed = str(e)
+            raise e
         finally:
             logger_call.store()
         return _return

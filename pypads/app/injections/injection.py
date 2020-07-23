@@ -64,9 +64,10 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
 
         _pypads_hook_params = _pypads_env.parameter
 
-        logger_call = InjectionLoggerCall(logging_env=_pypads_env, logger_meta=self.model())
-        output = self.build_output(call=logger_call, created_by=self.store_schema())
-        logger_call.out_holder = output
+        logger_call = InjectionLoggerCall(logging_env=_pypads_env, created_by=self.store_schema(),
+                                          original_call=_pypads_env.call)
+        output = self.build_output(call=logger_call)
+        logger_call.output = output
 
         try:
             # Trigger pre run functions
@@ -93,6 +94,9 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
                                                  _kwargs=kwargs,
                                                  **_pypads_hook_params)
             logger_call.post_time = post_time
+        except Exception as e:
+            logger_call.failed = str(e)
+            raise e
         finally:
             logger_call.store()
         return _return

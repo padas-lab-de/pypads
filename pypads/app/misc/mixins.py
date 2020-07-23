@@ -1,3 +1,4 @@
+import traceback
 from abc import abstractmethod, ABCMeta
 from typing import List, Union, Tuple, Set
 
@@ -291,8 +292,9 @@ class BaseDefensiveCallableMixin(DefensiveCallableMixin):
 
     @abstractmethod
     def __init__(self, *args, error_message=None, **kwargs):
-        self._message = error_message if error_message else "Couldn't execute {}, because of exception: {}"
+        self._message = error_message if error_message else "Couldn't execute {}, because of exception: {} \nTrace:\n{}"
         super().__init__(*args, **kwargs)
 
     def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
-        logger.warning(self._message.format("{}.{}".format(self.__class__.__name__, self.__name__), str(error)))
+        logger.warning(self._message.format("{}.{}".format(self.__class__.__name__, self.__name__), str(error),
+                                            traceback.format_exc()))

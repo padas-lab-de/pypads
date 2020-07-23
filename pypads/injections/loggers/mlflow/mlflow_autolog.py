@@ -37,7 +37,6 @@ class MlflowAutologger(InjectionLogger):
     MlflowAutologger is the intergration of the mlflow autologging functionalities into PyPads tracking system.
 
     """
-
     def __init__(self, *args, order=-1, **kwargs):
         super().__init__(*args, order=order, **kwargs)
 
