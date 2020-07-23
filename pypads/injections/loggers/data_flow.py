@@ -30,6 +30,7 @@ class InputTO(TrackedObject):
 
         input: List[ParamModel] = []
 
+    @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.InputModel
 
@@ -49,7 +50,7 @@ class InputTO(TrackedObject):
         self._store_artifact(value, meta)
 
     def _get_artifact_path(self, name):
-        return os.path.join(self.call.original_call.to_folder(), "input", name)
+        return os.path.join(self.tracked_by.original_call.to_folder(), "input", name)
 
 
 class InputILF(InjectionLogger):
@@ -73,7 +74,7 @@ class InputILF(InjectionLogger):
         :return:
         """
 
-        inputs = InputTO(call=_logger_call)
+        inputs = InputTO(tracked_by=_logger_call)
         for i in range(len(_args)):
             arg = _args[i]
             inputs.add_arg(str(i), arg, format=_pypads_write_format)
@@ -106,13 +107,13 @@ class OutputTO(TrackedObject):
         return cls.OutputModel
 
     def __init__(self, value, format, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args, output="", content_format=format, original_call=call,
+        super().__init__(*args, output="", content_format=format, call=call,
                          **kwargs)
-        path = os.path.join(self._base_path(), self.call.original_call.to_folder(), "output")
+        path = os.path.join(self._base_path(), self.tracked_by.original_call.to_folder(), "output")
         self.output = path
         self._store_artifact(value, ArtifactMetaModel(path=path,
                                                       description="Output of function call {}".format(
-                                                          self.call.original_call),
+                                                          self.tracked_by.original_call),
                                                       format=format))
 
 

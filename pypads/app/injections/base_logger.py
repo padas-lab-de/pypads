@@ -91,8 +91,8 @@ class TrackedObject(ProvenanceMixin):
     def get_model_cls(cls) -> Type[BaseModel]:
         return TrackedObjectModel
 
-    def __init__(self, *args, call, **kwargs):
-        super().__init__(*args, tracked_by=call, **kwargs)
+    def __init__(self, *args, tracked_by, **kwargs):
+        super().__init__(*args, tracked_by=tracked_by, **kwargs)
 
     @staticmethod
     def _store_metric(val, meta: MetricMetaModel):
@@ -110,7 +110,7 @@ class TrackedObject(ProvenanceMixin):
         get_current_pads().api.log_mem_artifact(meta.path, val, write_format=meta.format)
 
     def _base_path(self):
-        return os.path.join(self.call.created_by.name, self.__class__.__name__)
+        return os.path.join(self.tracked_by.created_by, self.__class__.__name__)
 
     def store(self, key="value", *json_path):
         """
@@ -118,7 +118,7 @@ class TrackedObject(ProvenanceMixin):
         :param json_path: path in the output schema
         :return:
         """
-        self.tracked_by.output.add_tracked_object(self, key, json_path)
+        self.tracked_by.output.add_tracked_object(self, key, *json_path)
 
 
 class OutputModelHolder(ModelObject, metaclass=ABCMeta):
@@ -175,7 +175,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
     def build_output(cls, **kwargs):
         schema_class = cls.output_schema_class()
 
-        class DynamicOutputModelHolder(TrackedObject):
+        class DynamicOutputModelHolder(OutputModelHolder):
             is_a = "https://www.padre-lab.eu/onto/output_model"
 
             @classmethod
@@ -195,8 +195,11 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
     @classmethod
     def _default_output_class(cls, clazz: Type[TrackedObject]) -> Type[OutputModel]:
         class OutputClass(OutputModel):
-            value: clazz = ...
+            value: clazz.get_model_cls() = ...
 
+            class Config:
+                orm_mode = True
+                arbitrary_types_allowed = True
         return OutputClass
 
     @classmethod
@@ -242,7 +245,7 @@ class SimpleLogger(Logger):
         _pypads_params = _pypads_env.parameter
 
         logger_call = self.build_call_object(_pypads_env, created_by=self.store_schema())
-        output = self.build_output(call=logger_call)
+        output = self.build_output(tracked_by=logger_call)
         logger_call.output = output
 
         try:
