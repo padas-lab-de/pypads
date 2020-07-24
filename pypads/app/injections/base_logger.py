@@ -98,7 +98,7 @@ class LoggerCall(ProvenanceMixin):
         from pypads.app.pypads import get_current_pads
         from pypads.utils.logging_util import WriteFormats
         get_current_pads().api.log_mem_artifact("{}".format(str(self.uid)), self.json(), WriteFormats.json.value,
-                                                path=self.created_by+"_calls")
+                                                path=self.created_by + "Calls")
 
 
 class TrackedObject(ProvenanceMixin):
@@ -127,7 +127,11 @@ class TrackedObject(ProvenanceMixin):
         get_current_pads().api.log_mem_artifact(meta.path, val, write_format=meta.format)
 
     def _base_path(self):
-        return os.path.join(self.tracked_by.created_by, self.__class__.__name__)
+        return os.path.join(self.tracked_by.created_by, "TrackedObjects", self.__class__.__name__)
+
+    @abstractmethod
+    def _get_artifact_path(self, name):
+        return os.path.join(str(id(self)))
 
     def store(self, output, key="tracked_object", *json_path):
         """
@@ -205,19 +209,19 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
     @classmethod
     def store_schema(cls, path=None):
         if not cls._schema_path:
-            path = path or cls.__name__
+            path = path or ""
             from pypads.app.pypads import get_current_pads
-            schema_path = os.path.join(path,cls.__name__)
+            schema_path = os.path.join(path, cls.__name__ + "_schema")
             get_current_pads().api.log_mem_artifact(schema_path,
                                                     cls.schema(), write_format=WriteFormats.json)
-            get_current_pads().api.log_mem_artifact(os.path.join(path,cls.__name__ + "_output"),
+            get_current_pads().api.log_mem_artifact(os.path.join(path, cls.__name__ + "_output_schema"),
                                                     cls.output_schema(), write_format=WriteFormats.json)
-            cls._schema_path = schema_path
+            cls._schema_path = path
         return cls._schema_path
 
     @abstractmethod
-    def base_path(self):
-        pass
+    def _base_path(self):
+        return "Loggers/"
 
 
 class SimpleLogger(Logger):
@@ -245,11 +249,11 @@ class SimpleLogger(Logger):
         pass
 
     def __real_call__(self, *args, _pypads_env: LoggerEnv, **kwargs):
-        self.store_schema(self.base_path())
+        self.store_schema(self._base_path())
 
         _pypads_params = _pypads_env.parameter
 
-        logger_call = self.build_call_object(_pypads_env, created_by=self.store_schema(self.base_path()))
+        logger_call = self.build_call_object(_pypads_env, created_by=self.store_schema(self._base_path()))
         output = self.build_output()
 
         try:
@@ -262,7 +266,7 @@ class SimpleLogger(Logger):
             logger_call.failed = str(e)
             raise e
         finally:
-            logger_call.output = output.store(self.base_path())
+            logger_call.output = output.store(self._base_path())
             logger_call.store()
         return _return
 

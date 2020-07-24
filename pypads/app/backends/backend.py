@@ -6,7 +6,7 @@ import mlflow
 from mlflow.tracking import MlflowClient
 
 from pypads import logger
-from pypads.app.injections.base_logger import TrackedObject
+from pypads.app.injections.base_logger import TrackedObject, LoggerOutput
 from pypads.model.models import ArtifactMetaModel, MetricMetaModel, ParameterMetaModel, TagMetaModel
 from pypads.utils.logging_util import try_write_artifact, WriteFormats
 from pypads.utils.util import string_to_int
@@ -61,6 +61,10 @@ class BackendInterface:
 
     @abstractmethod
     def store_tracked_object(self, to):
+        raise NotImplementedError("")
+
+    @abstractmethod
+    def store_logger_output(self, lo):
         raise NotImplementedError("")
 
     @abstractmethod
@@ -154,8 +158,13 @@ class MLFlowBackend(BackendInterface):
         return MlflowClient(self.uri)
 
     def store_tracked_object(self, to: TrackedObject, path=""):
-        path +="{}#{}".format(to.__class__.__name__, id(to))
+        path += "{}#{}".format(to.__class__.__name__, id(to))
         try_write_artifact(path, to.json(), write_format=WriteFormats.json)
+        return path
+
+    def store_logger_output(self, lo: LoggerOutput, path=""):
+        path += "{}/{}".format("Output", id(lo))
+        try_write_artifact(path, lo.json(), write_format=WriteFormats.json)
         return path
 
     def log_artifact(self, artifact, meta: ArtifactMetaModel):

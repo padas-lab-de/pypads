@@ -6,7 +6,7 @@ from pypads.importext.versioning import LibSelector
 from pypads.injections.analysis.parameters import Parameters
 from pypads.injections.loggers.data_flow import OutputILF, InputILF
 from pypads.injections.loggers.debug import Log, LogInit
-from pypads.injections.loggers.hardware import Cpu, Ram, Disk
+from pypads.injections.loggers.hardware import CpuILF, RamILF, DiskILF
 from pypads.injections.loggers.metric import Metric
 from pypads.injections.loggers.mlflow.mlflow_autolog import MlflowAutologger
 from pypads.injections.loggers.pipeline_detection import PipelineTracker
@@ -16,10 +16,10 @@ from pypads.utils.logging_util import WriteFormats
 # Default event mappings. We allow to log parameters, output defor input
 DEFAULT_LOGGING_FNS = {
     "parameters": Parameters(),
-    "output": OutputILF(_pypads_write_format=WriteFormats.text.name),
-    "input": InputILF(_pypads_write_format=WriteFormats.text.name),
-    "hardware": [Cpu(_pypads_write_format=WriteFormats.text.name), Ram(_pypads_write_format=WriteFormats.json.name),
-                 Disk(_pypads_write_format=WriteFormats.json.name)],
+    "output": OutputILF(_pypads_write_format=WriteFormats.text),
+    "input": InputILF(_pypads_write_format=WriteFormats.text),
+    "hardware": [CpuILF(_pypads_write_format=WriteFormats.text), RamILF(_pypads_write_format=WriteFormats.text),
+                 DiskILF(_pypads_write_format=WriteFormats.text)],
     "metric": Metric(),
     "autolog": MlflowAutologger(),
     "pipeline": PipelineTracker(_pypads_pipeline_type="normal", _pypads_pipeline_args=False),

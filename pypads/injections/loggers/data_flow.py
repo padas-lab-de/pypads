@@ -28,29 +28,29 @@ class InputTO(TrackedObject):
                 orm_mode = True
                 arbitrary_types_allowed = True
 
-        input: List[ParamModel] = []
+        inputs: List[ParamModel] = []
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.InputModel
 
     def add_arg(self, name, value, format):
-        self._add_param(name, value, format, 0)
+        self._add_param(name, value, format, "argument")
 
     def add_kwarg(self, name, value, format):
-        self._add_param(name, value, format, "kwarg")
+        self._add_param(name, value, format, "keyword-argument")
 
     def _add_param(self, name, value, format, type):
         path = os.path.join(self._base_path(), self._get_artifact_path(name))
         meta = ArtifactMetaModel(path=path,
-                                 description="Input to function with index {} and type {}".format(len(self.input),
+                                 description="Input to function with index {} and type {}".format(len(self.inputs),
                                                                                                   type),
                                  format=format)
-        self.input.append(self.InputModel.ParamModel(content_format=format, name=name, value=meta, type=type))
+        self.inputs.append(self.InputModel.ParamModel(content_format=format, name=name, value=meta, type=type))
         self._store_artifact(value, meta)
 
     def _get_artifact_path(self, name):
-        return os.path.join(self.tracked_by.original_call.to_folder(), "input", name)
+        return os.path.join(str(id(self)), "input", name)
 
 
 class InputILF(InjectionLogger):
@@ -116,12 +116,15 @@ class OutputTO(TrackedObject):
 
     def __init__(self, value, format, *args, call: LoggerCall, **kwargs):
         super().__init__(*args, content_format=format, tracked_by=call, **kwargs)
-        path = os.path.join(self._base_path(), self.tracked_by.original_call.to_folder(), "output")
+        path = os.path.join(self._base_path(), self._get_artifact_path())
         self.output = path
         self._store_artifact(value, ArtifactMetaModel(path=path,
                                                       description="Output of function call {}".format(
                                                           self.tracked_by.original_call),
                                                       format=format))
+
+    def _get_artifact_path(self, name=""):
+        return os.path.join(str(id(self)), "output")
 
 
 class OutputILF(InjectionLogger):
