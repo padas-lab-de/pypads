@@ -239,8 +239,8 @@ class PyPadsApi(IApi):
         return self.pypads.backend.store_tracked_object(to=to)
 
     @cmd
-    def store_logger_output(self, lo):
-        return self.pypads.backend.store_tracked_object(to=lo)
+    def store_logger_output(self, lo, path=""):
+        return self.pypads.backend.store_tracked_object(to=lo, path=path)
 
     @cmd
     def write_data_item(self, path, content_item, data_format=None, preserve_folder=True):

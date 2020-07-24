@@ -37,6 +37,9 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
     def get_model_cls(cls) -> Type[BaseModel]:
         return InjectionLoggerModel
 
+    def base_path(self):
+        return "InjectionLoggers/{}/".format(self.__class__.__name__)
+
     def __pre__(self, ctx, *args,
                 _logger_call, _logger_output,_args, _kwargs, **kwargs):
         """
@@ -60,7 +63,7 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
         pass
 
     def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, **kwargs):
-        self.store_schema()
+        self.store_schema(self.base_path())
 
         _pypads_hook_params = _pypads_env.parameter
 
@@ -93,7 +96,7 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
             logger_call.failed = str(e)
             raise e
         finally:
-            logger_call.output = output.store()
+            logger_call.output = output.store(self.base_path())
             logger_call.store()
         return _return
 

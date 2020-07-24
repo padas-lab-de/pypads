@@ -15,7 +15,7 @@ from pypads.importext.versioning import LibSelector
 from pypads.injections.analysis.time_keeper import TimingDefined
 from pypads.model.metadata import ModelObject
 from pypads.model.models import MetricMetaModel, \
-    ParameterMetaModel, ArtifactMetaModel, TrackedObjectModel, LoggerCallModel, OutputModel
+    ParameterMetaModel, ArtifactMetaModel, TrackedObjectModel, LoggerCallModel, OutputModel, EmptyOutput
 from pypads.utils.logging_util import WriteFormats
 
 
@@ -98,7 +98,7 @@ class LoggerCall(ProvenanceMixin):
         from pypads.app.pypads import get_current_pads
         from pypads.utils.logging_util import WriteFormats
         get_current_pads().api.log_mem_artifact("{}".format(str(self.uid)), self.json(), WriteFormats.json.value,
-                                                path=self.created_by)
+                                                path=self.created_by+"_calls")
 
 
 class TrackedObject(ProvenanceMixin):
@@ -139,7 +139,7 @@ class TrackedObject(ProvenanceMixin):
         output.add_tracked_object(self, key, *json_path)
 
 
-class OutputModelHolder(ModelObject, metaclass=ABCMeta):
+class LoggerOutput(ProvenanceMixin):
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
@@ -149,20 +149,11 @@ class OutputModelHolder(ModelObject, metaclass=ABCMeta):
         curr = self
         for p in json_path:
             curr = getattr(curr, p)
-        # from pypads.app.pypads import get_current_pads
-        # setattr(curr, key, get_current_pads().api.store_tracked_object(to))
-        setattr(curr, key, to.json())
+        setattr(curr, key, to)
 
-    def store(self):
+    def store(self, path=""):
         from pypads.app.pypads import get_current_pads
-        return get_current_pads().api.store_logger_output(self)
-
-
-class EmptyOutput(OutputModel):
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/EmptyLoggerOutput"
-
-    class Config:
-        orm_mode = True
+        return get_current_pads().api.store_logger_output(self, path)
 
 
 class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMixin,
@@ -185,13 +176,13 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
     def build_output(cls, **kwargs):
         schema_class = cls.output_schema_class()
 
-        class DynamicOutputModelHolder(OutputModelHolder):
+        class OutputModelHolder(LoggerOutput):
 
             @classmethod
             def get_model_cls(cls) -> Type[BaseModel]:
                 return schema_class
 
-        return DynamicOutputModelHolder(**kwargs)
+        return OutputModelHolder(**kwargs)
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
@@ -203,25 +194,30 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
 
     @classmethod
     def _default_output_class(cls, clazz: Type[TrackedObject]) -> Type[OutputModel]:
-        class OutputClass(OutputModel):
+        class DefaultOutput(OutputModel):
             tracked_object: clazz.get_model_cls() = ...  # Path to tracking objects
 
             class Config:
                 orm_mode = True
 
-        return OutputClass
+        return DefaultOutput
 
     @classmethod
-    def store_schema(cls):
+    def store_schema(cls, path=None):
         if not cls._schema_path:
+            path = path or cls.__name__
             from pypads.app.pypads import get_current_pads
-            schema_path = os.path.join(cls.__name__)
+            schema_path = os.path.join(path,cls.__name__)
             get_current_pads().api.log_mem_artifact(schema_path,
                                                     cls.schema(), write_format=WriteFormats.json)
-            get_current_pads().api.log_mem_artifact(os.path.join(cls.__name__ + "_output"),
+            get_current_pads().api.log_mem_artifact(os.path.join(path,cls.__name__ + "_output"),
                                                     cls.output_schema(), write_format=WriteFormats.json)
             cls._schema_path = schema_path
         return cls._schema_path
+
+    @abstractmethod
+    def base_path(self):
+        pass
 
 
 class SimpleLogger(Logger):
@@ -235,7 +231,7 @@ class SimpleLogger(Logger):
 
     @property
     def __name__(self):
-        if self._fn.fn is not self._call:
+        if self._fn.fn != self._call:
             return self._fn.fn.__name__
         else:
             return self.__class__.__name__
@@ -249,11 +245,11 @@ class SimpleLogger(Logger):
         pass
 
     def __real_call__(self, *args, _pypads_env: LoggerEnv, **kwargs):
-        self.store_schema()
+        self.store_schema(self.base_path())
 
         _pypads_params = _pypads_env.parameter
 
-        logger_call = self.build_call_object(_pypads_env, created_by=self.store_schema())
+        logger_call = self.build_call_object(_pypads_env, created_by=self.store_schema(self.base_path()))
         output = self.build_output()
 
         try:
@@ -266,7 +262,7 @@ class SimpleLogger(Logger):
             logger_call.failed = str(e)
             raise e
         finally:
-            logger_call.output = output.store()
+            logger_call.output = output.store(self.base_path())
             logger_call.store()
         return _return
 

@@ -213,6 +213,13 @@ class OutputModel(RunObjectModel):
         orm_mode = True
 
 
+class EmptyOutput(OutputModel):
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/EmptyLoggerOutput"
+
+    class Config:
+        orm_mode = True
+
+
 class TrackedObjectModel(RunObjectModel):
     """
     Data of a tracking object.

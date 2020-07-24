@@ -22,6 +22,9 @@ class RunLogger(SimpleLogger, OrderMixin, metaclass=ABCMeta):
     def get_model_cls(cls) -> Type[BaseModel]:
         return RunLoggerModel
 
+    def base_path(self):
+        return "RunLoggers/"
+
 
 class RunSetup(RunLogger, metaclass=ABCMeta):
     """
@@ -36,6 +39,9 @@ class RunSetup(RunLogger, metaclass=ABCMeta):
         logger.debug("Called pre run function " + str(self))
         return super().__real_call__(*args, **kwargs)
 
+    def base_path(self):
+        return super().base_path()+"Setup/{}/".format(self.__name__)
+
 
 class RunTeardown(RunLogger, metaclass=ABCMeta):
     """
@@ -49,6 +55,9 @@ class RunTeardown(RunLogger, metaclass=ABCMeta):
     def __real_call__(self, *args, **kwargs):
         logger.debug("Called post run function " + str(self))
         return super().__real_call__(*args, **kwargs)
+
+    def base_path(self):
+        return super().base_path()+"Teardown/{}/".format(self.__name__)
 
 
 def run_setup_functions():
