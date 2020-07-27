@@ -129,7 +129,7 @@ class TrackedObject(ProvenanceMixin):
     @staticmethod
     def _store_tag(val, meta: TagMetaModel):
         from pypads.app.pypads import get_current_pads
-        get_current_pads().api.set_tag(meta.path, val)
+        get_current_pads().api.set_tag(meta.name, val)
 
     def _base_path(self):
         return os.path.join(self.tracked_by.created_by, "TrackedObjects", self.__class__.__name__)

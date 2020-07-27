@@ -76,7 +76,7 @@ class DependencyRSF(RunSetup):
         except ImportError:  # pip < 10.0
             # noinspection PyUnresolvedReferences,PyPackageRequirements
             from pip.operations import freeze
-        dependencies._add_dependency(freeze.freeze())
+        dependencies._add_dependency(list(freeze.freeze()))
         dependencies.store(_logger_output, "dependencies")
 
 
