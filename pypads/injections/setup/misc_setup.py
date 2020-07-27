@@ -7,25 +7,42 @@ from app.env import LoggerEnv
 from pypads import logger
 from pypads.app.injections.base_logger import LoggerCall, TrackedObject
 from pypads.app.injections.run_loggers import RunSetup
-from pypads.model.models import TrackedObjectModel, LibraryModel
+from pypads.model.models import TrackedObjectModel, LibraryModel, OutputModel, ArtifactMetaModel
+from pypads.utils.logging_util import WriteFormats
 
 
 class DependencyTO(TrackedObject):
     """
     Tracking object class for run env info, i.e dependencies.
     """
+
     class DependencyModel(TrackedObjectModel):
         uri: HttpUrl = "https://www.padre-lab.eu/onto/env/Dependencies"
-        dependencies: List[LibraryModel] = []
 
+        dependencies: List[LibraryModel] = []
+        content_format: WriteFormats = WriteFormats.text
+
+        class Config:
+            orm_mode = True
+
+    @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.DependencyModel
 
-    def __init__(self, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args, call=call, **kwargs)
+    def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
+        super().__init__(*args, tracked_by=tracked_by, **kwargs)
 
-    def _add_dependency(self, name, version):
-        self.dependencies.append(LibraryModel(name=name, version=version))
+    def _add_dependency(self, pip_freeze):
+        for item in pip_freeze:
+            name, version = item.split('==')
+            self.dependencies.append(LibraryModel(name=name, version=version))
+        path = os.path.join(self._base_path(), self._get_artifact_path("pip_freeze"))
+        self._store_artifact("\n".join(pip_freeze),
+                             ArtifactMetaModel(path=path, description="dependency list from pip freeze",
+                                               format=WriteFormats.text))
+
+    def _get_artifact_path(self, name):
+        return os.path.join(str(id(self)), "Env", name)
 
 
 class DependencyRSF(RunSetup):
@@ -39,10 +56,19 @@ class DependencyRSF(RunSetup):
 
     _dependencies = {"pip"}
 
-    def _call(self, *args, _pypads_env: LoggerEnv, **kwargs):
+    class DependencyRSFOutput(OutputModel):
+        uri: HttpUrl = "https://www.padre-lab.eu/onto/DependencyRSF-Output"
+
+        dependencies: DependencyTO.get_model_cls() = ...
+
+    @classmethod
+    def output_schema_class(cls) -> Type[OutputModel]:
+        return cls.DependencyRSFOutput
+
+    def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         pads = _pypads_env.pypads
         logger.info("Tracking execution to run with id " + pads.api.active_run().info.run_id)
-
+        dependencies = DependencyTO(tracked_by=_logger_call)
         # Execute pip freeze
         try:
             # noinspection PyProtectedMember,PyPackageRequirements
@@ -50,7 +76,8 @@ class DependencyRSF(RunSetup):
         except ImportError:  # pip < 10.0
             # noinspection PyUnresolvedReferences,PyPackageRequirements
             from pip.operations import freeze
-        pads.api.log_mem_artifact("pip_freeze", "\n".join(freeze.freeze()))
+        dependencies._add_dependency(freeze.freeze())
+        dependencies.store(_logger_output, "dependencies")
 
 
 class LoguruRSF(RunSetup):
