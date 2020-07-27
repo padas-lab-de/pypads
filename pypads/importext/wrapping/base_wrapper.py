@@ -18,11 +18,11 @@ def fullname(o):
     :param o: object
     :return:
     """
-    module = o.__class__.__module__
+    module = o.__module__
     if module is None or module == str.__class__.__module__:
         return o.__class__.__name__  # Don't report __builtin__
     else:
-        return module + '.' + o.__class__.__name__
+        return module + '.' + o.__name__
 
 
 class Context(ModelHolder):

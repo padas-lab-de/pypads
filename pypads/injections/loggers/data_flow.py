@@ -114,8 +114,8 @@ class OutputTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.OutputModel
 
-    def __init__(self, value, format, *args, call: LoggerCall, **kwargs):
-        super().__init__(*args, content_format=format, tracked_by=call, **kwargs)
+    def __init__(self, value, format, *args, tracked_by: LoggerCall, **kwargs):
+        super().__init__(*args, content_format=format, tracked_by=tracked_by, **kwargs)
         path = os.path.join(self._base_path(), self._get_artifact_path())
         self.output = path
         self._store_artifact(value, ArtifactMetaModel(path=path,
@@ -155,5 +155,5 @@ class OutputILF(InjectionLogger):
         :param kwargs:
         :return:
         """
-        output = OutputTO(_pypads_result, format=_pypads_write_format, call=_logger_call)
+        output = OutputTO(_pypads_result, format=_pypads_write_format, tracked_by=_logger_call)
         output.store(_logger_output, key="FunctionOutput")
