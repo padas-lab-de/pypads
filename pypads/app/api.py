@@ -535,6 +535,11 @@ class PyPadsApi(IApi):
         # self.pypads.backend.mlf.list_artifacts(run_id=run_id)
         pass
 
+    @cmd
+    def to_json(self, experiment_id):
+        # TODO Christofer compile an experiment to a single json file?
+        pass
+
 
 class ApiPluginManager(ExtendableMixin):
 
