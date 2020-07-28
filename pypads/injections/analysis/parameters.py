@@ -1,17 +1,12 @@
-import os
-
-import mlflow
-from mlflow.utils.autologging_utils import try_mlflow_log
-from pydantic import HttpUrl, BaseModel
 from typing import List, Type
 
-from pypads.utils.logging_util import WriteFormats
+from pydantic import HttpUrl, BaseModel
 
 from app.env import InjectionLoggerEnv
 from pypads import logger
 from pypads.app.injections.base_logger import TrackedObject, LoggerCall
 from pypads.app.injections.injection import InjectionLogger
-from pypads.model.models import TrackedObjectModel, ArtifactMetaModel, LibraryModel, ContextModel, OutputModel, \
+from pypads.model.models import TrackedObjectModel, ContextModel, OutputModel, \
     ParameterMetaModel
 from pypads.utils.util import dict_merge
 
@@ -29,14 +24,14 @@ class ParametersTO(TrackedObject):
 
     def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
         super().__init__(*args, tracked_by=tracked_by, **kwargs)
-        self.context = tracked_by._logging_env.call.call_id.context.reference
+        self.context = tracked_by._logging_env.call.call_id.context
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.HyperParameterModel
 
     def _persist_parameter(self, key, value, description=None, type=""):
-        name = self.context + "." + key
+        name = self.context.reference + "." + key
         description = description or "Hyperparameter {} of context {}".format(name, self.context)
         meta = ParameterMetaModel(name=name,
                                   description=description,
@@ -68,7 +63,7 @@ class ParametersILF(InjectionLogger):
 
     class ParametersILFOutput(OutputModel):
         is_a: HttpUrl = "https://www.padre-lab.eu/onto/ParametersILF-Output"
-        Hyperparameters: ParametersTO.get_model_cls() = ...
+        hyperparameters: ParametersTO.get_model_cls() = ...
 
         class Config:
             orm_mode = True
@@ -110,4 +105,4 @@ class ParametersILF(InjectionLogger):
         except Exception as e:
             logger.error("Couldn't extract parameters on " + str(_pypads_env) + " due to " + str(e))
         finally:
-            hyper_params.store(_logger_output, "Hyperparameters")
+            hyper_params.store(_logger_output, "hyperparameters")

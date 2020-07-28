@@ -155,7 +155,7 @@ class MLFlowBackend(BackendInterface):
 
     @property
     def mlf(self) -> MlflowClient:
-        return MlflowClient(self.uri)
+        return MlflowClient(self.uri).list_experiments()
 
     def store_tracked_object(self, to: TrackedObject, path=""):
         path += "{}#{}".format(to.__class__.__name__, id(to))

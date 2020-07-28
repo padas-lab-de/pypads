@@ -1,15 +1,13 @@
 import os
-from typing import Union, Type
+from typing import Union, Type, Optional
 
-import mlflow
-from mlflow.utils.autologging_utils import try_mlflow_log
 from pydantic import HttpUrl, BaseModel
 
 from pypads import logger
 from pypads.app.injections.base_logger import TrackedObject
 from pypads.app.injections.injection import InjectionLogger
 from pypads.model.models import TrackedObjectModel, ArtifactMetaModel, MetricMetaModel, OutputModel
-from pypads.utils.logging_util import try_write_artifact, WriteFormats
+from pypads.utils.logging_util import WriteFormats
 
 
 class MetricTO(TrackedObject):
@@ -31,7 +29,7 @@ class MetricTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.MetricModel
 
-    def store_metric(self, value, step):
+    def store_value(self, value, step):
         self.name = self.tracked_by.original_call.call_id.context.container.__name__ + "." + \
                     self.tracked_by.original_call.call_id.wrappee.__name__
 
@@ -39,6 +37,7 @@ class MetricTO(TrackedObject):
             self.value = MetricMetaModel(name=self.name, step=step,
                                          description="The metric returned by {}".format(self.name))
             self._store_metric(value, self.value)
+            return True
         else:
             logger.warning("Mlflow metrics have to be doubles. Could log the return value of type '" + str(
                 type(
@@ -47,6 +46,8 @@ class MetricTO(TrackedObject):
                 path = os.path.join(self._base_path(), self._get_artifact_path(self.name))
                 self.value = ArtifactMetaModel(path=path, description="", format=WriteFormats.text)
                 self._store_artifact(value, self.value)
+                return True
+        return False
 
 
 class MetricILF(InjectionLogger):
@@ -58,7 +59,7 @@ class MetricILF(InjectionLogger):
 
     class MetricILFOutput(OutputModel):
         is_a: HttpUrl = "https://www.padre-lab.eu/onto/MetricILF-Output"
-        Metric: MetricTO.get_model_cls() = ...
+        metric: Optional[MetricTO.MetricModel] = None
 
         class Config:
             orm_mode = True
@@ -82,23 +83,7 @@ class MetricILF(InjectionLogger):
         metric = MetricTO(tracked_by=_logger_call,
                           to_artifact=_pypads_artifact_fallback)
 
-        metric.store_metric(result,step=_logger_call.original_call.call_id.call_number)
+        storable = metric.store_value(result, step=_logger_call.original_call.call_id.call_number)
 
-        metric.store(_logger_output, key="Metric")
-
-        # if result is not None:
-        #     if isinstance(result, float):
-        #         try_mlflow_log(mlflow.log_metric,
-        #                        _logger_call.original_call.call_id.context.container.__name__ + "." + _logger_call.original_call.call_id.wrappee.__name__ + ".txt",
-        #                        result, step=_logger_call.original_call.call_id.call_number)
-        #     else:
-        #         logger.warning("Mlflow metrics have to be doubles. Could log the return value of type '" + str(
-        #             type(
-        #                 result)) + "' of '" + _logger_call.original_call.call_id.context.container.__name__ + "." + _logger_call.original_call.call_id.wrappee.__name__ + "' as artifact instead.")
-        #
-        #         # TODO search callstack for already logged functions and ignore?
-        #         if _pypads_artifact_fallback:
-        #             logger.info(
-        #                 "Logging result if '" + _logger_call.original_call.call_id.context.container.__name__ + "' as artifact.")
-        #             try_write_artifact(_logger_call.original_call.call_id.context.container.__name__, str(result),
-        #                                WriteFormats.text)
+        if storable:
+            metric.store(_logger_output, key="metric")
