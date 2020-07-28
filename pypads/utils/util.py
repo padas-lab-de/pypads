@@ -1,4 +1,5 @@
 import inspect
+import threading
 
 import mlflow
 import pkg_resources
@@ -201,3 +202,26 @@ def get_run_id():
     if mlflow.active_run():
         return mlflow.active_run().info.run_id
     return None
+
+
+class PeriodicThread(threading.Thread):
+    def __init__(self, *args, sleep=1.0, target=None, **kwargs):
+        self._stop_event = threading.Event()
+        self._sleep_period = sleep
+        super().__init__(*args, target=target, **kwargs)
+
+    def run(self):
+        try:
+            while not self._stop_event.isSet():
+                if self._target:
+                    self._target(*self._args, **self._kwargs)
+                self._stop_event.wait(self._sleep_period)
+        finally:
+            # Avoid a refcycle if the thread is running a function with
+            # an argument that has a member that points to the thread.
+            del self._target, self._args, self._kwargs
+
+    def join(self, timeout=None):
+        """ Stop the thread. """
+        self._stop_event.set()
+        threading.Thread.join(self, timeout)

@@ -96,6 +96,8 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
             logger_call.failed = str(e)
             raise e
         finally:
+            for fn in self.cleanup_fns(logger_call):
+                fn(self, logger_call)
             logger_call.output = output.store(self._base_path())
             logger_call.store()
         return _return

@@ -1,7 +1,7 @@
 import os
 import traceback
 from abc import abstractmethod, ABCMeta
-from typing import Type, Set
+from typing import Type, Set, List, Callable
 
 import mlflow
 from pydantic import HttpUrl, BaseModel
@@ -13,7 +13,6 @@ from pypads.app.misc.mixins import DependencyMixin, DefensiveCallableMixin, Time
     FunctionHolderMixin, ProvenanceMixin, BaseDefensiveCallableMixin
 from pypads.importext.versioning import LibSelector
 from pypads.injections.analysis.time_keeper import TimingDefined
-from pypads.model.metadata import ModelObject
 from pypads.model.models import MetricMetaModel, \
     ParameterMetaModel, ArtifactMetaModel, TrackedObjectModel, LoggerCallModel, OutputModel, EmptyOutput
 from pypads.utils.logging_util import WriteFormats
@@ -129,7 +128,6 @@ class TrackedObject(ProvenanceMixin):
     def _base_path(self):
         return os.path.join(self.tracked_by.created_by, "TrackedObjects", self.__class__.__name__)
 
-    @abstractmethod
     def _get_artifact_path(self, name):
         return os.path.join(str(id(self)))
 
@@ -153,6 +151,14 @@ class LoggerOutput(ProvenanceMixin):
         curr = self
         for p in json_path:
             curr = getattr(curr, p)
+        if hasattr(curr, key):
+            attr = getattr(curr, key)
+            if isinstance(attr, List):
+                attr.append(to)
+                to = attr
+            elif isinstance(attr, Set):
+                attr.add(to)
+                to = attr
         setattr(curr, key, to)
 
     def store(self, path=""):
@@ -175,6 +181,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._tracked_objects: Set[TrackedObject] = set()
+        self._cleanup_fns = {}
 
     @classmethod
     def build_output(cls, **kwargs):
@@ -223,6 +230,14 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
     def _base_path(self):
         return "Loggers/"
 
+    def cleanup_fns(self, call: LoggerCall) -> List[Callable]:
+        return self._cleanup_fns[call] if call in self._cleanup_fns.keys() else []
+
+    def register_cleanup_fn(self, call: LoggerCall, fn):
+        if call not in self._cleanup_fns:
+            self._cleanup_fns[call] = []
+        self._cleanup_fns[call].append(fn)
+
 
 class SimpleLogger(Logger):
 
@@ -266,6 +281,8 @@ class SimpleLogger(Logger):
             logger_call.failed = str(e)
             raise e
         finally:
+            for fn in self.cleanup_fns(logger_call):
+                fn(self, logger_call)
             logger_call.output = output.store(self._base_path())
             logger_call.store()
         return _return

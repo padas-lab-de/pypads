@@ -1,4 +1,5 @@
 import os
+import time
 import uuid
 from typing import List, Optional
 
@@ -48,6 +49,7 @@ class RunObjectModel(OntologyEntry):
     experiment_id: Optional[str] = Field(default_factory=get_experiment_id)
     run_id: Optional[str] = Field(default_factory=get_run_id)
     uid: uuid.UUID = Field(default_factory=uuid.uuid4)
+    created_at: float = Field(default_factory=time.time)
     is_a: HttpUrl = ...
     uri: HttpUrl = None
 

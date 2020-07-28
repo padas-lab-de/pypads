@@ -5,9 +5,9 @@ from pydantic import BaseModel, HttpUrl
 
 from pypads.app.injections.base_logger import LoggerCall, TrackedObject
 from pypads.app.injections.injection import InjectionLogger
-from pypads.model.models import ArtifactMetaModel, TrackedObjectModel, OutputModel
+from pypads.model.models import TrackedObjectModel, OutputModel
 from pypads.utils.logging_util import WriteFormats
-from pypads.utils.util import local_uri_to_path, sizeof_fmt
+from pypads.utils.util import local_uri_to_path, sizeof_fmt, PeriodicThread
 
 
 def _get_cpu_usage():
@@ -35,14 +35,15 @@ class CpuTO(TrackedObject):
 
         class CpuCoreModel(BaseModel):
             name: str = ...
-            usage: float = ...
+            usage: List[float] = ...
 
             class Config:
                 orm_mode = True
 
         content_format: WriteFormats = WriteFormats.text
         cpu_cores: List[CpuCoreModel] = []
-        total_usage: str = ...
+        total_usage: List[str] = []
+        period: float = ...
 
         class Config:
             orm_mode = True
@@ -55,31 +56,15 @@ class CpuTO(TrackedObject):
     def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
         super().__init__(*args, tracked_by=tracked_by, **kwargs)
 
-    def to_string(self):
-        cpu_usage = "CPU usage:"
-        for item in self.cpu_cores[:-1]:
-            cpu_usage += f"\n\t{item.name}"
-            cpu_usage += f"\n\t\tusage: {item.usage}%"
-        cpu_usage += f"\n\tTotal CPU Usage: {self.total_usage}%"
-        return cpu_usage
-
-    def add_cpu_usage(self, name, cores):
-        path = os.path.join(self._base_path(), self._get_artifact_path(name))
+    def add_cpu_usage(self):
+        cores = _get_cpu_usage()
         for idx, usage in enumerate(cores[:-1]):
-            self.cpu_cores.append(self.CPUModel.CpuCoreModel(name='Core:' + str(idx),
-                                                             usage=usage))
-        self.total_usage = cores[-1]
-
-        _format = self.content_format
-        if _format == WriteFormats.text:
-            _info = self.to_string()
-        elif _format == WriteFormats.json:
-            _info = self.json()
-        else:
-            _info = cores
-        self._store_artifact(_info, ArtifactMetaModel(path=path,
-                                                      description="CPU usage",
-                                                      format=_format))
+            if idx >= len(self.cpu_cores):
+                self.cpu_cores.append(self.CPUModel.CpuCoreModel(name='Core:' + str(idx), usage=[usage]))
+            else:
+                core = self.cpu_cores[idx]
+                core.append(usage)
+        self.total_usage.append(cores[-1])
 
     def _get_artifact_path(self, name):
         return os.path.join(str(id(self)), "cpu_usage", name)
@@ -93,8 +78,7 @@ class CpuILF(InjectionLogger):
     class CpuILFOutput(OutputModel):
         is_a: HttpUrl = "https://www.padre-lab.eu/onto/CpuILF-Output"
 
-        pre_cpu_usage: CpuTO.get_model_cls() = ...
-        post_cpu_usage: CpuTO.get_model_cls() = ...
+        cpu_usage: CpuTO.get_model_cls() = ...
 
         class Config:
             orm_mode = True
@@ -106,24 +90,23 @@ class CpuILF(InjectionLogger):
     _dependencies = {"psutil"}
 
     def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call: LoggerCall, _logger_output,
-                _args, _kwargs,
+                _pypads_period=1.0, _args, _kwargs,
                 **kwargs):
         cpu_usage = CpuTO(tracked_by=_logger_call, content_format=_pypads_write_format)
-        cpu_usage.add_cpu_usage("pre_cpu_usage", _get_cpu_usage())
+        cpu_usage.period = _pypads_period
 
-        cpu_usage.store(_logger_output, key="pre_cpu_usage")
+        def track_cpu_usage(to: CpuTO):
+            to.add_cpu_usage()
 
-    # def __call_wrapped__(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
-    #     # TODO track while executing instead of before and after
-    #     return super().__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=_args, _kwargs=_kwargs,
-    #                                     **_pypads_hook_params)
+        thread = PeriodicThread(target=track_cpu_usage, sleep=_pypads_period, args=(cpu_usage,))
+        thread.start()
 
-    def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call, _logger_output, _pypads_result,
-                 **kwargs):
-        cpu_usage = CpuTO(tracked_by=_logger_call, content_format=_pypads_write_format)
-        cpu_usage.add_cpu_usage("post_cpu_usage", _get_cpu_usage())
+        # stop thread store disk_usage object
+        def cleanup_thread(logger, _logger_call):
+            thread.join()
+            cpu_usage.store(_logger_output, key="cpu_usage")
 
-        cpu_usage.store(_logger_output, key="post_cpu_usage")
+        self.register_cleanup_fn(_logger_call, fn=cleanup_thread)
 
 
 class RamTO(TrackedObject):
@@ -135,14 +118,15 @@ class RamTO(TrackedObject):
         uri: HttpUrl = "https://www.padre-lab.eu/onto/RamData"
 
         class MemoryModel(BaseModel):
-            used: int = ...
-            free: int = ...
-            percentage: float = ...
+            used: List[int] = ...
+            free: List[int] = ...
+            percentage: List[float] = ...
             type: str = ...
 
         content_format: WriteFormats = WriteFormats.json
         virtual_memory: MemoryModel = None
         swap_memory: MemoryModel = None
+        period: float = ...
 
         class Config:
             orm_mode = True
@@ -164,39 +148,30 @@ class RamTO(TrackedObject):
             memory_usage += f"\n\t\tPercentage:{item.percentage}%"
         return memory_usage
 
-    def add_memory_usage(self, name, ram_info, swap_info):
+    def add_memory_usage(self):
+        ram_info, swap_info = _get_memory_usage()
 
         used = ram_info.get('used')
         free = ram_info.get('free')
         percent = ram_info.get('percent')
-        self.virtual_memory = self.RAMModel.MemoryModel(name='ram_usage',
-                                                        used=used, free=free, percentage=percent, type="RAM")
+        if self.virtual_memory is None:
+            self.virtual_memory = self.RAMModel.MemoryModel(name='ram_usage', used=[used], free=[free],
+                                                            percentage=[percent], type="RAM")
+        else:
+            self.virtual_memory.used.append(used)
+            self.virtual_memory.free.append(free)
+            self.virtual_memory.percentage.append(percent)
 
         used = swap_info.get('used')
         free = swap_info.get('free')
         percent = swap_info.get('percent')
-        self.swap_memory = self.RAMModel.MemoryModel(name='swap_usage',
-                                                     used=used, free=free, percentage=percent, type="Swap")
-
-        merged_dict = dict()
-        merged_dict['RAM'] = ram_info
-        merged_dict['swap'] = swap_info
-        self.persist_memory_info(name, merged_dict)
-
-    def persist_memory_info(self, name, memory_info):
-        # TODO try to extract parameter documentation?
-        path = os.path.join(self._base_path(), self._get_artifact_path(name))
-
-        if self.content_format == WriteFormats.text:
-            _info = self.to_string()
-        elif self.content_format == WriteFormats.json:
-            _info = self.json()
+        if self.swap_memory is None:
+            self.swap_memory = self.RAMModel.MemoryModel(name='swap_usage', used=[used], free=[free],
+                                                         percentage=[percent], type="Swap")
         else:
-            _info = memory_info
-
-        self._store_artifact(_info, ArtifactMetaModel(path=path,
-                                                      description="Memory Information",
-                                                      format=self.content_format))
+            self.swap_memory.used.append(used)
+            self.swap_memory.free.append(free)
+            self.swap_memory.percentage.append(percent)
 
     def _get_artifact_path(self, name):
         return os.path.join(str(id(self)), "memory_usage", name)
@@ -213,8 +188,7 @@ class RamILF(InjectionLogger):
     class RamILFOutput(OutputModel):
         is_a: HttpUrl = "https://www.padre-lab.eu/onto/RamILF-Output"
 
-        pre_memory_usage: RamTO.get_model_cls() = ...
-        post_memory_usage: RamTO.get_model_cls() = ...
+        memory_usage: RamTO.RAMModel = ...
 
         class Config:
             orm_mode = True
@@ -226,33 +200,28 @@ class RamILF(InjectionLogger):
     _dependencies = {"psutil"}
 
     def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.json, _logger_call: LoggerCall, _logger_output,
-                _args, _kwargs, **kwargs):
+                _pypads_period=1.0, _args, _kwargs, **kwargs):
         memory_usage = RamTO(tracked_by=_logger_call, content_format=_pypads_write_format)
 
-        ram_info, swap_info = _get_memory_usage()
-        memory_usage.add_memory_usage("pre_memory_usage", ram_info, swap_info)
+        def track_mem_usage(to: RamTO):
+            to.add_memory_usage()
 
-        memory_usage.store(_logger_output, key="pre_memory_usage")
+        memory_usage.period = _pypads_period
+        thread = PeriodicThread(target=track_mem_usage, args=(memory_usage,))
+        thread.start()
 
-    # def __call_wrapped__(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
-    #     # TODO track while executing instead of before and after
-    #     return super().__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=_args, _kwargs=_kwargs)
+        # stop thread store disk_usage object
+        def cleanup_thread(logger, _logger_call):
+            thread.join()
+            memory_usage.store(_logger_output, key="memory_usage")
 
-    def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.json, _logger_call, _logger_output, _pypads_result,
-                 **kwargs):
-        memory_usage = RamTO(tracked_by=_logger_call, content_format=_pypads_write_format)
-
-        ram_info, swap_info = _get_memory_usage()
-        memory_usage.add_memory_usage("post_memory_usage", ram_info, swap_info)
-
-        memory_usage.store(_logger_output, key="post_memory_usage")
+        self.register_cleanup_fn(_logger_call, fn=cleanup_thread)
 
 
 def _get_memory_usage():
     import psutil
     memory = psutil.virtual_memory()
     swap = psutil.swap_memory()
-
     return dict(memory._asdict()), dict(swap._asdict())
 
 
@@ -269,9 +238,9 @@ class DiskTO(TrackedObject):
             device: str = ...
             file_system: str = ...
             mount_point: str = ...
-            free: int = ...
-            used: int = ...
-            percentage: float = ...
+            free: List[int] = ...
+            used: List[int] = ...
+            percentage: List[float] = ...
 
             class Config:
                 orm_mode = True
@@ -279,67 +248,44 @@ class DiskTO(TrackedObject):
         content_format: WriteFormats = WriteFormats.text
         partitions: List[PartitionModel] = []
 
-        folder: str = ...
-        total_free_space: int = ...
-        total_used_space: int = ...
-        total_percentage: float = ...
+        period: float = ...
+        path: str = ...
 
         class Config:
             orm_mode = True
             arbitrary_types_allowed = True
 
-    def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
+    def __init__(self, *args, tracked_by: LoggerCall, path=None, **kwargs):
+        self.path = path
         super().__init__(*args, tracked_by=tracked_by, **kwargs)
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.DiskModel
 
-    def to_string(self):
-        memory_usage = "Memory usage:"
-        for item in self.partitions:
-            memory_usage += f"\n\tPartition Name: {item.name}"
-            memory_usage += f"\n\t\tDevice: {item.device}"
-            memory_usage += f"\n\t\tFile System: {item.file_system}"
-            memory_usage += f"\n\t\tMount Point: {item.mount_point}"
-            memory_usage += f"\n\t\tUsed: {sizeof_fmt(item.used)}"
-            memory_usage += f"\n\t\tFree: {sizeof_fmt(item.free)}"
-            memory_usage += f"\n\t\tPercentage: {item.percentage}%"
-        memory_usage += f"\n\tTotal Used Space: {self.total_used_space}%"
-        memory_usage += f"\n\tTotal Free Space: {self.total_free_space}%"
-        memory_usage += f"\n\tTotal Percentage: {self.total_percentage}%"
-        return memory_usage
-
-    def add_disk_usage(self, name, value):
-        # TODO try to extract parameter documentation?
-        path = os.path.join(self._base_path(), self._get_artifact_path(name))
-
-        self.total_free_space = value.get('free')
-        self.total_used_space = value.get('used')
-        self.total_percentage = value.get('percentage')
-
+    def init_disk_usage(self):
+        value = _get_disk_usage(self.path)
         for partition, info in value.get('partitions', dict()).items():
             _name = partition
             file_system = info.get('FileSystem')
             device = info.get('device')
             mount_point = info.get('MountPoint')
-            free = info.get('free')
-            used = info.get('used')
-            percent = info.get('percentage')
+            free = [info.get('free')]
+            used = [info.get('used')]
+            percent = [info.get('percentage')]
             self.partitions.append(self.DiskModel.PartitionModel(name=_name, file_system=file_system,
                                                                  device=device, mount_point=mount_point, free=free,
                                                                  used=used,
                                                                  percentage=percent))
-        _format = self.content_format
-        if _format == WriteFormats.text:
-            _info = self.to_string()
-        elif _format == WriteFormats.json:
-            _info = self.json()
-        else:
-            _info = value
-        self._store_artifact(_info, ArtifactMetaModel(path=path,
-                                                      description="Disk usage",
-                                                      format=_format))
+
+    def add_disk_usage(self):
+        value = _get_disk_usage(self.path)
+        for partition, info in value.get('partitions', dict()).items():
+            for pm in self.partitions:
+                if pm.name == partition:
+                    pm.free.append(info.get('free'))
+                    pm.used.append(info.get('used'))
+                    pm.percentage.append(info.get('percentage'))
 
     def _get_artifact_path(self, name):
         return os.path.join(str(id(self)), "disk_usage", name)
@@ -355,9 +301,7 @@ class DiskILF(InjectionLogger):
 
     class DiskILFOutput(OutputModel):
         is_a: HttpUrl = "https://www.padre-lab.eu/onto/DiskILF-Output"
-
-        pre_disk_usage: DiskTO.get_model_cls() = ...
-        post_disk_usage: DiskTO.get_model_cls() = ...
+        disk_usage: List[DiskTO.DiskModel] = []
 
         class Config:
             orm_mode = True
@@ -370,33 +314,31 @@ class DiskILF(InjectionLogger):
     def _needed_packages(cls):
         return ["psutil"]
 
-    def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call: LoggerCall, _logger_output, _args, _kwargs,
+    def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call: LoggerCall, _logger_output,
+                _pypads_disk_usage=None, _pypads_period=1.0, _args, _kwargs,
                 **kwargs):
         from pypads.app.base import PyPads
         from pypads.app.pypads import get_current_pads
         pads: PyPads = get_current_pads()
-        path = local_uri_to_path(pads.uri)
+        if _pypads_disk_usage is None:
+            _pypads_disk_usage = [local_uri_to_path(pads.uri)]
 
-        disk_usage = DiskTO(tracked_by=_logger_call, content_format=_pypads_write_format, folder=path)
-        disk_usage.add_disk_usage("pre_disk_usage", _get_disk_usage(path))
+        def track_disk_usage(to: DiskTO):
+            to.add_disk_usage()
 
-        disk_usage.store(_logger_output, key="pre_disk_usage")
+        for p in _pypads_disk_usage:
+            disk_usage_to = DiskTO(tracked_by=_logger_call, content_format=_pypads_write_format, path=p)
+            disk_usage_to.init_disk_usage()
+            disk_usage_to.period = _pypads_period
+            thread = PeriodicThread(target=track_disk_usage, sleep=_pypads_period, args=(disk_usage_to,))
+            thread.start()
 
-    # def __call_wrapped__(self, ctx, *args, _pypads_env, _args, _kwargs, **_pypads_hook_params):
-    #     # TODO track while executing instead of before and after
-    #     return super().__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=_args, _kwargs=_kwargs,
-    #                                     **_pypads_hook_params)
+            # stop thread store disk_usage object
+            def cleanup_thread(logger, _logger_call):
+                thread.join()
+                disk_usage_to.store(_logger_output, key="disk_usage")
 
-    def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call, _logger_output, _pypads_result, **kwargs):
-        from pypads.app.base import PyPads
-        from pypads.app.pypads import get_current_pads
-        pads: PyPads = get_current_pads()
-        path = local_uri_to_path(pads.uri)
-
-        disk_usage = DiskTO(tracked_by=_logger_call, content_format=_pypads_write_format, folder=path)
-        disk_usage.add_disk_usage("post_disk_usage", _get_disk_usage(path))
-
-        disk_usage.store(_logger_output, key="post_disk_usage")
+            self.register_cleanup_fn(_logger_call, fn=cleanup_thread)
 
 
 def _get_disk_usage(path):
