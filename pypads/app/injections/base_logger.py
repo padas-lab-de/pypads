@@ -134,7 +134,6 @@ class TrackedObject(ProvenanceMixin):
     def _base_path(self):
         return os.path.join(self.tracked_by.created_by, "TrackedObjects", self.__class__.__name__)
 
-    @abstractmethod
     def _get_artifact_path(self, name):
         return os.path.join(str(id(self)))
 

@@ -44,8 +44,6 @@ class ParametersTO(TrackedObject):
         self.hyperparameters.append(meta)
         self._store_param(value, meta)
 
-    def _get_artifact_path(self, name):
-        return super()._get_artifact_path(name)
 
 
 # def persist_parameter(_pypads_env, key, value):

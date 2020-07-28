@@ -35,9 +35,6 @@ class HardwareTO(TrackedObject):
 
         self._store_tag(value, meta)
 
-    def _get_artifact_path(self, name):
-        pass
-
 
 class ISystemRSF(RunSetup):
     _dependencies = {"psutil"}
