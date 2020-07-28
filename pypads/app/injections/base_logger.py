@@ -14,7 +14,7 @@ from pypads.app.misc.mixins import DependencyMixin, DefensiveCallableMixin, Time
 from pypads.importext.versioning import LibSelector
 from pypads.injections.analysis.time_keeper import TimingDefined
 from pypads.model.models import MetricMetaModel, \
-    ParameterMetaModel, ArtifactMetaModel, TrackedObjectModel, LoggerCallModel, OutputModel, EmptyOutput
+    ParameterMetaModel, ArtifactMetaModel, TrackedObjectModel, LoggerCallModel, OutputModel, EmptyOutput, TagMetaModel
 from pypads.utils.logging_util import WriteFormats
 
 
@@ -125,11 +125,16 @@ class TrackedObject(ProvenanceMixin):
         from pypads.app.pypads import get_current_pads
         get_current_pads().api.log_mem_artifact(meta.path, val, write_format=meta.format)
 
+    @staticmethod
+    def _store_tag(val, meta: TagMetaModel):
+        from pypads.app.pypads import get_current_pads
+        get_current_pads().api.set_tag(meta.name, val)
+
     def _base_path(self):
         return os.path.join(self.tracked_by.created_by, "TrackedObjects", self.__class__.__name__)
 
     def _get_artifact_path(self, name):
-        return os.path.join(str(id(self)))
+        return os.path.join(str(id(self)),name)
 
     def store(self, output, key="tracked_object", *json_path):
         """
@@ -255,7 +260,7 @@ class SimpleLogger(Logger):
         else:
             return self.__class__.__name__
 
-    def _call(self, _pypads_env: LoggerEnv, *args, **kwargs):
+    def _call(self, _pypads_env: LoggerEnv, _logger_call: LoggerCall, _logger_output,*args, **kwargs):
         """
         Function where to add you custom code to execute before starting or ending the run.
 

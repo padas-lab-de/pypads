@@ -35,16 +35,15 @@ class ParametersTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.HyperParameterModel
 
-    def _persist_parameter(self, key, value, type=""):
+    def _persist_parameter(self, key, value, description=None, type=""):
         name = self.context + "." + key
+        description = description or "Hyperparameter {} of context {}".format(name, self.context)
         meta = ParameterMetaModel(name=name,
-                                  description="Hyperparameter {} of context {}".format(name, self.context),
+                                  description=description,
                                   type=type)
         self.hyperparameters.append(meta)
         self._store_param(value, meta)
 
-    def _get_artifact_path(self, name):
-        return super()._get_artifact_path(name)
 
 
 # def persist_parameter(_pypads_env, key, value):
@@ -98,7 +97,9 @@ class ParametersILF(InjectionLogger):
                         key = parameter["name"]
                         if "path" in parameter and hasattr(ctx, parameter["path"]):
                             value = getattr(ctx, parameter["path"])
-                            hyper_params._persist_parameter(key, value, type)
+                            description = parameter.get('description', None)
+                            type = parameter.get('kind_of_value', "")
+                            hyper_params._persist_parameter(key, value, description, type)
                         else:
                             logger.warning("Couldn't access parameter " + key + " on " + str(ctx.__class__))
             else:
@@ -107,5 +108,6 @@ class ParametersILF(InjectionLogger):
                 for key, value in ctx.get_params().items():
                     hyper_params._persist_parameter(key, value)
         except Exception as e:
-            hyper_params.store(_logger_output, "Hyperparameters")
             logger.error("Couldn't extract parameters on " + str(_pypads_env) + " due to " + str(e))
+        finally:
+            hyper_params.store(_logger_output, "Hyperparameters")
