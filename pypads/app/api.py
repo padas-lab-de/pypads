@@ -5,6 +5,7 @@ from functools import wraps
 from typing import List, Iterable
 
 import mlflow
+from mlflow.entities import ViewType
 from mlflow.utils.autologging_utils import try_mlflow_log
 
 from app.env import LoggerEnv
@@ -489,7 +490,50 @@ class PyPadsApi(IApi):
             import shutil
             shutil.rmtree(folder)
         # !-- Clean tmp files in disk cache after run ---
+
     # !--- run management ----
+
+    @cmd
+    def list_experiments(self, view_type: ViewType = ViewType.ALL):
+        return self.pypads.backend.mlf.list_experiments(view_type)
+
+    @cmd
+    def list_run_infos(self, experiment_id, run_view_type: ViewType = ViewType.ALL):
+        return self.pypads.backend.mlf.list_run_infos(experiment_id=experiment_id, run_view_type=run_view_type)
+
+    @cmd
+    def list_metrics(self, run_id):
+        pass
+
+    @cmd
+    def list_parameters(self, run_id):
+        pass
+
+    @cmd
+    def list_tags(self, run_id):
+        pass
+
+    @cmd
+    def list_artifacts(self, run_id):
+        pass
+
+    @cmd
+    def show_report(self, experiment_id):
+        pass
+
+    @cmd
+    def list_logger_calls(self, run_id):
+        pass
+
+    @cmd
+    def show_call_stack(self, run_id):
+        pass
+
+    @cmd
+    def list_tracked_objects(self, run_id):
+        # TODO
+        # self.pypads.backend.mlf.list_artifacts(run_id=run_id)
+        pass
 
 
 class ApiPluginManager(ExtendableMixin):
