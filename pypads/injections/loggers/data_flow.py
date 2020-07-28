@@ -123,8 +123,8 @@ class OutputTO(TrackedObject):
                                                           self.tracked_by.original_call),
                                                       format=format))
 
-    def _get_artifact_path(self, name=""):
-        return os.path.join(str(id(self)), "output")
+    def _get_artifact_path(self, name="output"):
+        return super()._get_artifact_path(name)
 
 
 class OutputILF(InjectionLogger):

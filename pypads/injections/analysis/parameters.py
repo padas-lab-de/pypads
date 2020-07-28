@@ -108,5 +108,6 @@ class ParametersILF(InjectionLogger):
                 for key, value in ctx.get_params().items():
                     hyper_params._persist_parameter(key, value)
         except Exception as e:
-            hyper_params.store(_logger_output, "Hyperparameters")
             logger.error("Couldn't extract parameters on " + str(_pypads_env) + " due to " + str(e))
+        finally:
+            hyper_params.store(_logger_output, "Hyperparameters")

@@ -135,7 +135,7 @@ class TrackedObject(ProvenanceMixin):
         return os.path.join(self.tracked_by.created_by, "TrackedObjects", self.__class__.__name__)
 
     def _get_artifact_path(self, name):
-        return os.path.join(str(id(self)))
+        return os.path.join(str(id(self)),name)
 
     def store(self, output, key="tracked_object", *json_path):
         """
