@@ -93,6 +93,34 @@ def get_params(root_path):
     return params_dict
 
 
+def get_tags(root_path):
+    """
+    Finds all the tags for an experimental run
+    :param path:
+    :return:
+    """
+    tags_dict = dict()
+    tag_names = []
+    file_paths = []
+    # Find all subdirectories having the name param starting from the root path
+    paths = find_directory('tags', root_path)
+    for path in paths:
+        file_names = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+
+        # Add that to the file names
+        tag_names = tag_names + file_names
+        # Turn file names into absolute paths
+        file_paths = file_paths + [os.path.join(path, f) for f in file_names]
+
+    for idx, file_path in enumerate(file_paths):
+        with open(file_path, "r") as fp:
+            content = fp.readline()
+        content = content.strip()
+        tags_dict[tag_names[idx]] = content
+
+    return tags_dict
+
+
 def consolidate_run_output_files(root_path):
     """
     This function consolidates all the written JSON and text files for an experimental run
@@ -117,6 +145,9 @@ def consolidate_run_output_files(root_path):
 
     # Add the parameters of the experiment
     consolidated_dict['parameters'] = get_params(root_path=root_path)
+
+    # Add the tags of the experiment
+    consolidated_dict['tags'] = get_tags(root_path=root_path)
 
     # Write the result
     output_path = os.path.join(root_path, 'consolidated.json')

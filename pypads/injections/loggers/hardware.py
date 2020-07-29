@@ -63,7 +63,7 @@ class CpuTO(TrackedObject):
                 self.cpu_cores.append(self.CPUModel.CpuCoreModel(name='Core:' + str(idx), usage=[usage]))
             else:
                 core = self.cpu_cores[idx]
-                core.append(usage)
+                core.usage.append(usage)
         self.total_usage.append(cores[-1])
 
     def _get_artifact_path(self, name):
