@@ -492,6 +492,14 @@ class PyPadsApi(IApi):
         # !-- Clean tmp files in disk cache after run ---
 
     # !--- run management ----
+    @cmd
+    def get_run(self, run_id=None):
+        run_id = run_id or self.active_run().info.run_id
+        return self.pypads.backend.mlf.get_run(run_id=run_id)
+
+    @cmd
+    def _get_metric_history(self,run):
+        return {key:self.pypads.backend.mlf.get_metric_history(run.info.run_id, key) for key in run.data.metrics}
 
     @cmd
     def list_experiments(self, view_type: ViewType = ViewType.ALL):
@@ -502,16 +510,19 @@ class PyPadsApi(IApi):
         return self.pypads.backend.mlf.list_run_infos(experiment_id=experiment_id, run_view_type=run_view_type)
 
     @cmd
-    def list_metrics(self, run_id):
-        pass
+    def list_metrics(self, run_id=None):
+        run = self.get_run(run_id)
+        return self._get_metric_history(run)
 
     @cmd
-    def list_parameters(self, run_id):
-        pass
+    def list_parameters(self, run_id=None):
+        run = self.get_run(run_id)
+        return run.data.params
 
     @cmd
-    def list_tags(self, run_id):
-        pass
+    def list_tags(self, run_id=None):
+        run = self.get_run(run_id)
+        return run.data.tags
 
     @cmd
     def list_artifacts(self, run_id):
