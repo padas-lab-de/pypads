@@ -18,6 +18,7 @@ from pypads.bindings.anchors import get_anchor, Anchor
 from pypads.importext.mappings import Mapping, MatchedMapping, make_run_time_mapping_collection
 from pypads.importext.package_path import PackagePathMatcher, PackagePath
 from pypads.model.models import TagMetaModel
+from pypads.utils.files_util import get_artifacts
 from pypads.utils.logging_util import WriteFormats, try_write_artifact, try_read_artifact, get_temp_folder, \
     _to_artifact_meta_name, _to_metric_meta_name, _to_param_meta_name
 from pypads.utils.util import inheritors
@@ -163,7 +164,7 @@ class PyPadsApi(IApi):
         :return:
         """
         try_mlflow_log(mlflow.log_artifact, local_path)
-        self.pypads.backend.log_artifact(local_path, meta, write_format, preserve_folder=True)
+        self.pypads.backend.log_artifact(local_path, meta, preserve_folder=True)
         self.log_artifact_meta(os.path.basename(local_path), meta)
 
     @cmd
@@ -525,8 +526,10 @@ class PyPadsApi(IApi):
         return run.data.tags
 
     @cmd
-    def list_artifacts(self, run_id):
-        pass
+    def list_artifacts(self, run_id=None):
+        run = self.get_run(run_id)
+        path = run.info.artifact_uri
+        return get_artifacts(path, search="Output")
 
     @cmd
     def show_report(self, experiment_id):
@@ -534,7 +537,9 @@ class PyPadsApi(IApi):
 
     @cmd
     def list_logger_calls(self, run_id):
-        pass
+        run = self.get_run(run_id)
+        path = run.info.artifact_uri
+        return get_artifacts(path, search="Calls")
 
     @cmd
     def show_call_stack(self, run_id):

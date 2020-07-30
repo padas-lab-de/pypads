@@ -2,6 +2,8 @@ import os
 import json
 from glob import glob
 
+from pypads.utils.util import set_in_dict
+
 
 def find_directory(name, path):
     """
@@ -153,3 +155,29 @@ def consolidate_run_output_files(root_path):
     output_path = os.path.join(root_path, 'consolidated.json')
     with open(output_path, "w") as fp:
         fp.write(json.dumps(consolidated_dict))
+
+
+def get_artifacts(path, search=""):
+    """
+    Get all logged artifacts under path.
+    :param path:
+    :return:
+    """
+    #TODO
+    results = dict()
+    idx = len(path.split("/"))
+    for root, dirs, files in os.walk(path):
+        keys = root.split('/')[idx:]
+        if search!="":
+            if search == keys[-1]:
+                r = {f: "content" for f in files}
+                set_in_dict(results, [keys[0], ".".join(keys[1:])], r)
+            else:
+                continue
+        else:
+            r = dict.fromkeys(dirs, dict())
+            set_in_dict(results, keys, r)
+            if files != []:
+                r = {f: "content" for f in files}
+                set_in_dict(results, keys, r)
+    return results

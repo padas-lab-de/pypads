@@ -1,5 +1,7 @@
 import inspect
+import operator
 import threading
+from functools import reduce
 
 import mlflow
 import pkg_resources
@@ -176,6 +178,14 @@ def dict_merge_caches(*dicts):
                 else:
                     merged[key] = value
     return merged
+
+
+def get_from_dict(d: dict, key_list):
+    return reduce(operator.getitem, key_list, d)
+
+
+def set_in_dict(d: dict, key_list, value):
+    get_from_dict(d, key_list[:-1])[key_list[-1]] = value
 
 
 def has_direct_attr(obj, name):
