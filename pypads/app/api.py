@@ -558,7 +558,7 @@ class PyPadsApi(IApi):
 
     @cmd
     def to_json(self, experiment_id):
-        # TODO Christofer compile an experiment to a single json file?
+        # TODO Christofer combine an experiment to a single json file?
         pass
 
 
