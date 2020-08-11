@@ -474,6 +474,11 @@ class PyPadsApi(IApi):
         """
         run = self.active_run()
 
+        consolidated_dict = self.pypads.cache.get('consolidated_dict', None)
+        if consolidated_dict is not None:
+            # Dump data to disk
+            self.log_mem_artifact("consolidated_log", consolidated_dict, write_format=WriteFormats.json)
+
         chached_fns = self._get_teardown_cache()
         fn_list = [v for i, v in chached_fns.items()]
         fn_list.sort(key=lambda t: t.order)

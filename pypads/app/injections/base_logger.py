@@ -113,11 +113,34 @@ class TrackedObject(ProvenanceMixin):
     @staticmethod
     def _store_metric(val, meta: MetricMetaModel):
         from pypads.app.pypads import get_current_pads
-        get_current_pads().api.log_metric(meta.name, val, step=meta.step)
+        pads = get_current_pads()
+        consolidated_json = pads.cache.get('consolidated_dict', None)
+        if consolidated_json is not None:
+            metrics_dict = consolidated_json.get('metrics', {})
+            metrics_list = metrics_dict.get(meta.name, [])
+            metrics_list.append(val)
+            metrics_dict[meta.name] = metrics_list
+            consolidated_json['metrics'] = metrics_dict
+            pads.cache.add('consolidated_dict'. consolidated_json)
+        pads.api.log_metric(meta.name, val, step=meta.step)
 
     @staticmethod
     def _store_param(val, meta: ParameterMetaModel):
         from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+        consolidated_json = pads.cache.get('consolidated_dict', None)
+        if consolidated_json is not None:
+            # Set the parameter
+            estimator_name = meta.name[:meta.name.rfind('.')]
+            parameters = consolidated_json.get('parameters', {})
+            estimator_dict = parameters.get(estimator_name, {})
+            estimator_dict[meta.name.split(sep='.')[-1]] = val
+
+            # Store the dictionaries back into the cache
+            parameters[estimator_name] = estimator_dict
+            consolidated_json['parameters'] = parameters
+            pads.cache.add('consolidated_dict', consolidated_json)
+
         get_current_pads().api.log_param(meta.name, val)
 
     @staticmethod

@@ -87,7 +87,7 @@ class PyPads:
 
     def __init__(self, uri=None, folder=None, mappings: List[MappingCollection] = None, hooks=None,
                  events=None, setup_fns=None, config=None, pre_initialized_cache: PypadsCache = None,
-                 disable_plugins=None, autostart=None):
+                 disable_plugins=None, autostart=None, consolidate_outputs=True):
         # Set the singleton instance
 
         if disable_plugins is None:
@@ -164,6 +164,10 @@ class PyPads:
 
         # Store function registry into cache
         self._cache.add("events", events)
+
+        # Store a dictionary to consolidate all the output files
+        if consolidate_outputs is True:
+            self._cache.add("consolidated_dict", dict())
 
         # Initialize pre run functions before starting a run
         setup_fns = setup_fns or DEFAULT_SETUP_FNS
