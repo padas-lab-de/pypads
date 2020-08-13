@@ -576,8 +576,11 @@ class PyPadsApi(IApi):
 
     @cmd
     def to_json(self, experiment_id):
-        # TODO Christofer combine an experiment to a single json file?
-        pass
+        # Function to be called before ending the tracker
+        from pypads.utils.logging_util import get_run_folder
+        from pypads.utils.files_util import consolidate_run_output_files
+        path = get_run_folder()
+        consolidate_run_output_files(root_path=path)
 
 
 class ApiPluginManager(ExtendableMixin):
