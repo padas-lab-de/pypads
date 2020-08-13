@@ -1,7 +1,8 @@
-import os
 import json
+import os
 from glob import glob
 
+from pypads.utils.logging_util import try_read_artifact
 from pypads.utils.util import set_in_dict
 
 
@@ -164,13 +165,13 @@ def get_artifacts(path, search=""):
     :return:
     """
     #TODO
-    results = dict()
-    idx = len(path.split("/"))
+    results = {"artifacts": dict()}
+    idx = len(path.split("/")) - 1
     for root, dirs, files in os.walk(path):
         keys = root.split('/')[idx:]
         if search!="":
             if search == keys[-1]:
-                r = {f: "content" for f in files}
+                r = {f: try_read_artifact(os.path.join(root,f), folder_lookup=False) for f in files}
                 set_in_dict(results, [keys[0], ".".join(keys[1:])], r)
             else:
                 continue
@@ -178,6 +179,6 @@ def get_artifacts(path, search=""):
             r = dict.fromkeys(dirs, dict())
             set_in_dict(results, keys, r)
             if files != []:
-                r = {f: "content" for f in files}
+                r = {f: try_read_artifact(os.path.join(root,f), folder_lookup=False) for f in files}
                 set_in_dict(results, keys, r)
     return results

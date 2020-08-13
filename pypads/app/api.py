@@ -552,9 +552,9 @@ class PyPadsApi(IApi):
 
     @cmd
     def list_tracked_objects(self, run_id):
-        # TODO
-        # self.pypads.backend.mlf.list_artifacts(run_id=run_id)
-        pass
+        run = self.get_run(run_id)
+        path = run.info.artifact_uri
+        return get_artifacts(path, search="TrackedObjects")
 
     @cmd
     def to_json(self, experiment_id):

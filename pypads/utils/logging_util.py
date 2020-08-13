@@ -18,7 +18,7 @@ def add_to_store_object(source, obj, store=True):
     if not pads.cache.run_exists(id(source)):
         pads.cache.run_add(id(source), OrderedDict())
 
-    objects_store : OrderedDict = pads.cache.run_get(id(source))
+    objects_store: OrderedDict = pads.cache.run_get(id(source))
 
     if id(obj) not in objects_store:
         objects_store[id(obj)] = (obj, store)
@@ -58,6 +58,13 @@ class WriteFormats(Enum):
     json = 'json'
 
 
+class ReadFormats(Enum):
+    pickle = 'pickle'
+    txt = 'txt'
+    yaml = 'yml'
+    json = 'json'
+
+
 # extract all tags of runs by experiment id
 def all_tags(experiment_id):
     client = MlflowClient(mlflow.get_tracking_uri())
@@ -66,12 +73,64 @@ def all_tags(experiment_id):
         yield mlflow.get_run(i.run_id).data.tags
 
 
-def try_read_artifact(file_name):
+def try_read_artifact(file_name, folder_lookup=True):
+    """
+    Function to read an artifact from disk
+    :param file_name:
+    :return:
+    """
     # TODO make defensive
-    base_path = get_run_folder()
-    path = os.path.join(base_path, "artifacts", file_name)
-    with open(path, "r") as meta:
-        data = meta.readlines()
+    path = file_name
+    if folder_lookup:
+        base_path = get_run_folder()
+        path = os.path.join(base_path, "artifacts", file_name)
+
+    # Functions for the options to read
+    def read_text(p):
+        with open(p, "r") as fd:
+            return fd.read()
+
+    def read_pickle(p):
+        try:
+            with open(p, "rb") as fd:
+                return pickle.load(fd)
+        except Exception as e:
+            logger.warning("Couldn't read pickle file. " + str(e))
+
+    def read_yaml(p):
+        try:
+            with open(p, "r") as fd:
+                return yaml.full_load(fd)
+        except Exception as e:
+            logger.warning("Couldn't read artifact as yaml. Trying to read it as text instead. " + str(e))
+            return read_text(p)
+
+    def read_json(p):
+        try:
+            with open(p, "r") as fd:
+                return json.load(fd)
+        except Exception as e:
+            logger.warning("Couldn't read artifact as json. Trying to read it as text instead. " + str(e))
+            return read_text(p)
+
+    options = {
+        ReadFormats.pickle: read_pickle,
+        ReadFormats.txt: read_text,
+        ReadFormats.yaml: read_yaml,
+        ReadFormats.json: read_json
+    }
+
+    read_format = path.split('.')[-1]
+    if ReadFormats[read_format]:
+        read_format = ReadFormats[read_format]
+    else:
+        logger.warning("Configured read format " + read_format + " not supported! ")
+        return
+    try:
+        data = options[read_format](path)
+    except Exception as e:
+        logger.warning("Reading artifact failed for '" + path + "'. " + str(e))
+        data = "Cannot view content"
     return data
 
 
@@ -169,4 +228,3 @@ def _to_metric_meta_name(name):
 
 def _to_param_meta_name(name):
     return name + ".param"
-
