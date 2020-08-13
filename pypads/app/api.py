@@ -181,9 +181,26 @@ class PyPadsApi(IApi):
         :param preserve_folder: Preserve the folder structure
         :return:
         """
+        from pypads.app.pypads import get_current_pads
+        from pypads.utils.logging_util import WriteFormats, get_run_folder
+        import json
+
         if path:
             name = os.path.join(path, name)
         try_write_artifact(name, obj, write_format, preserve_folder)
+        if write_format == WriteFormats.json:
+            pads = get_current_pads()
+            consolidated_dict = pads.cache.get('consolidated_dict', None)
+            if consolidated_dict is not None:
+                path = os.path.join(get_run_folder(), 'artifact', name)
+                if isinstance(obj, str):
+                    data = json.loads(obj)
+                elif isinstance(obj, dict):
+                    data = obj
+                else:
+                    data = str(write_format)
+                consolidated_dict[path] = data
+                pads.cache.add('consolidated_dict', consolidated_dict)
         self.log_artifact_meta(name, meta)
 
     @cmd
@@ -477,7 +494,8 @@ class PyPadsApi(IApi):
         consolidated_dict = self.pypads.cache.get('consolidated_dict', None)
         if consolidated_dict is not None:
             # Dump data to disk
-            self.log_mem_artifact("consolidated_log", consolidated_dict, write_format=WriteFormats.json)
+            try_write_artifact("consolidated_log", consolidated_dict, write_format=WriteFormats.json)
+            # self.log_mem_artifact("consolidated_log", consolidated_dict, write_format=WriteFormats.json)
 
         chached_fns = self._get_teardown_cache()
         fn_list = [v for i, v in chached_fns.items()]

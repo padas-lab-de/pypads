@@ -121,7 +121,7 @@ class TrackedObject(ProvenanceMixin):
             metrics_list.append(val)
             metrics_dict[meta.name] = metrics_list
             consolidated_json['metrics'] = metrics_dict
-            pads.cache.add('consolidated_dict'. consolidated_json)
+            pads.cache.add('consolidated_dict', consolidated_json)
         pads.api.log_metric(meta.name, val, step=meta.step)
 
     @staticmethod
@@ -157,7 +157,7 @@ class TrackedObject(ProvenanceMixin):
             tags = consolidated_json.get('tags', dict())
             tags[meta.name] = val
             consolidated_json['tags'] = tags
-            pads.cache.add(consolidated_json)
+            pads.cache.add('consolidated_json', consolidated_json)
         pads.api.set_tag(meta.name, val)
 
     def _base_path(self):
