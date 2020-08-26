@@ -32,6 +32,7 @@ predicted = model.predict(dataset.data)
 logger.error("Score: " + str(f1_score(expected, predicted, average="macro")))
 
 
-tracker.api.list_artifacts()
+print(tracker.api.list_artifacts())
+print(tracker.api.list_logger_calls())
 
 tracker.api.end_run()

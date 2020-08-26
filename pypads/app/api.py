@@ -549,17 +549,20 @@ class PyPadsApi(IApi):
         return run.data.tags
 
     @cmd
-    def list_artifacts(self, run_id=None):
+    def list_artifacts(self, run_id=None, verbose=False):
         run = self.get_run(run_id)
         path = run.info.artifact_uri
-        return get_artifacts(path, search="Output")
+        search = "Output"
+        if verbose:
+            search = ""
+        return get_artifacts(path, search=search)
 
     @cmd
-    def show_report(self, experiment_id):
+    def show_report(self, experiment_id=None):
         pass
 
     @cmd
-    def list_logger_calls(self, run_id):
+    def list_logger_calls(self, run_id=None):
         run = self.get_run(run_id)
         path = run.info.artifact_uri
         return get_artifacts(path, search="Calls")

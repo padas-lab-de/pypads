@@ -1,7 +1,7 @@
 import sys
 
 from app.env import InjectionLoggerEnv
-from pypads.app.injections.base_logger import LoggingFunction
+from pypads.app.injections.injection import InjectionLogger
 from test.base_test import BaseTest, TEST_FOLDER
 
 
@@ -10,7 +10,7 @@ def experiment():
     return "I'm a return value."
 
 
-class First(LoggingFunction):
+class First(InjectionLogger):
     def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
         pass
 
@@ -21,7 +21,7 @@ class First(LoggingFunction):
         pads.cache.run_add(0, True)
 
 
-class Second(LoggingFunction):
+class Second(InjectionLogger):
     def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
         pass
 
@@ -34,7 +34,7 @@ class Second(LoggingFunction):
         pads.cache.run_add(1, True)
 
 
-class Third(LoggingFunction):
+class Third(InjectionLogger):
     def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
         pass
 
