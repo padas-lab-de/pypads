@@ -1,4 +1,10 @@
 import inspect
+import operator
+import threading
+from functools import reduce
+
+import mlflow
+import pkg_resources
 
 from pypads import logger
 from pypads.app.misc.caches import Cache
@@ -94,6 +100,18 @@ def inheritors(clazz):
     return subclasses
 
 
+def find_package_regex_versions(regex):
+    import pkgutil
+    import re
+    versions = {
+        name: find_package_version(name)
+        for finder, name, ispkg
+        in pkgutil.iter_modules()
+        if re.compile(regex).match(name)
+    }
+    return versions
+
+
 def is_package_available(name):
     """
     Check if given package is available.
@@ -106,6 +124,20 @@ def is_package_available(name):
     except Exception as e:
         spam_loader = importlib.find_loader(name)
     return spam_loader is not None
+
+
+def find_package_version(name: str):
+    try:
+        import sys
+        base_package = sys.modules[name]
+        if hasattr(base_package, "__version__"):
+            lib_version = getattr(base_package, "__version__")
+        else:
+            lib_version = pkg_resources.get_distribution(name).version
+        return lib_version
+    except Exception as e:
+        logger.debug("Couldn't get version of package {}".format(name))
+        return None
 
 
 def dict_merge_caches(*dicts):
@@ -146,3 +178,60 @@ def dict_merge_caches(*dicts):
                 else:
                     merged[key] = value
     return merged
+
+
+def get_from_dict(d: dict, key_list):
+    return reduce(operator.getitem, key_list, d)
+
+
+def set_in_dict(d: dict, key_list, value):
+    get_from_dict(d, key_list[:-1])[key_list[-1]] = value
+
+
+def has_direct_attr(obj, name):
+    """
+    Check if self has an attribute
+    :param obj: object to check
+    :param name: name of the attribute
+    :return:
+    """
+    try:
+        object.__getattribute__(obj, name)
+        return True
+    except AttributeError:
+        return False
+
+
+def get_experiment_id():
+    if mlflow.active_run():
+        return mlflow.active_run().info.experiment_id
+    return None
+
+
+def get_run_id():
+    if mlflow.active_run():
+        return mlflow.active_run().info.run_id
+    return None
+
+
+class PeriodicThread(threading.Thread):
+    def __init__(self, *args, sleep=1.0, target=None, **kwargs):
+        self._stop_event = threading.Event()
+        self._sleep_period = sleep
+        super().__init__(*args, target=target, **kwargs)
+
+    def run(self):
+        try:
+            while not self._stop_event.isSet():
+                if self._target:
+                    self._target(*self._args, **self._kwargs)
+                self._stop_event.wait(self._sleep_period)
+        finally:
+            # Avoid a refcycle if the thread is running a function with
+            # an argument that has a member that points to the thread.
+            del self._target, self._args, self._kwargs
+
+    def join(self, timeout=None):
+        """ Stop the thread. """
+        self._stop_event.set()
+        threading.Thread.join(self, timeout)

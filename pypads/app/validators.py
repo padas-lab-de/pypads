@@ -1,21 +1,31 @@
 from abc import ABCMeta
 from functools import wraps
+from typing import Type
 
-from pypads.app.injections.base_logger import FunctionHolder
+from pydantic import BaseModel, HttpUrl
+
+from pypads.app.injections.base_logger import LoggerCall, SimpleLogger
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
 from pypads.injections.analysis.determinism import check_determinism
+from pypads.model.models import LoggerModel
 from pypads.utils.util import inheritors
 
 validator_plugins = set()
 
 
-class Validator(FunctionHolder, metaclass=ABCMeta):
+class Validator(SimpleLogger, metaclass=ABCMeta):
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/validator"
 
-    def __init__(self, *args, fn, **kwargs):
-        super().__init__(*args, fn=fn, **kwargs)
+    def build_call_object(self, _pypads_env, **kwargs):
+        return LoggerCall(logging_env=_pypads_env,
+                          is_a="https://www.padre-lab.eu/onto/ValidatorLoggerCall", **kwargs)
 
-    def __call__(self, *args, **kwargs):
-        return self.__real_call__(*args, **kwargs)
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return LoggerModel
+
+    def _base_path(self):
+        return "Validators/{}/".format(self.__class__.__name__)
 
 
 class IValidators(Plugin):

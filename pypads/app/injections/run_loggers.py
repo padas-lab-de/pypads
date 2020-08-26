@@ -1,97 +1,76 @@
-from abc import abstractmethod, ABCMeta
+from abc import ABCMeta
+from typing import Type
 
-from pypads import logger
-from pypads.app.injections.base_logger import FunctionHolder
-from pypads.app.misc.mixins import DefensiveCallableMixin, IntermediateCallableMixin, TimedCallableMixin, \
-    DependencyMixin, OrderMixin, ConfigurableCallableMixin
+from pydantic.main import BaseModel
+from pydantic.networks import HttpUrl
+
 # Default init_run fns
+from pypads import logger
+from pypads.app.injections.base_logger import LoggerCall, SimpleLogger
+from pypads.app.misc.mixins import OrderMixin
+from pypads.model.models import RunLoggerModel
 from pypads.utils.util import inheritors
 
 
-class BaseDefensiveCallable(DefensiveCallableMixin):
-    """
-    Defensive callable ignoring errors but printing a warning to console.
-    """
-    __metaclass__ = ABCMeta
+class RunLogger(SimpleLogger, OrderMixin, metaclass=ABCMeta):
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/run-logger"
 
-    @abstractmethod
-    def __init__(self, *args, message=None, **kwargs):
-        self._message = message if message else "Couldn't execute {}, because of exception: {}"
-        super().__init__(*args, **kwargs)
+    def build_call_object(self, _pypads_env, **kwargs):
+        return LoggerCall(logging_env=_pypads_env, is_a="https://www.padre-lab.eu/onto/RunLoggerCall", **kwargs)
 
-    def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
-        logger.warning(self._message.format(str(self.__name__), str(error)))
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return RunLoggerModel
 
-
-class BaseRunLogger(BaseDefensiveCallable, IntermediateCallableMixin, FunctionHolder, TimedCallableMixin,
-                    DependencyMixin, OrderMixin, ConfigurableCallableMixin):
-    """
-    Base run logger. This function is to be called after or before a mlflow run.
-    """
-    __metaclass__ = ABCMeta
-
-    @abstractmethod
-    def __init__(self, *args, fn=None, **kwargs):
-        super().__init__(*args, fn=fn, **kwargs)
-        if self._fn is None:
-            self._fn = self._call
-
-    @property
-    def __name__(self):
-        if hasattr(self, "_fn") and self._fn is not self._call:
-            return self._fn.__name__
-        else:
-            return self.__class__.__name__
-
-    @abstractmethod
-    def _call(self, pads, *args, **kwargs):
-        """
-        Function where to add you custom code to execute before starting or ending the run.
-
-        :param pads: the current instance of PyPads.
-        """
-        return NotImplementedError()
+    def _base_path(self):
+        return "RunLoggers/"
 
 
-class PreRunFunction(BaseRunLogger, metaclass=ABCMeta):
+class RunSetup(RunLogger, metaclass=ABCMeta):
     """
     This class should be used to define new pre run functions
     """
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/runsetup-logger"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def __real_call__(self, *args, **kwargs):
-        from pypads.app.pypads import get_current_pads
         logger.debug("Called pre run function " + str(self))
-        return super().__real_call__(get_current_pads(), *args, **kwargs)
+        return super().__real_call__(*args, **kwargs)
+
+    def _base_path(self):
+        return super()._base_path() + "Setup/{}/".format(self.__name__)
 
 
-class PostRunFunction(BaseRunLogger, metaclass=ABCMeta):
+class RunTeardown(RunLogger, metaclass=ABCMeta):
     """
     This class should be used to define new post run functions
     """
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/runteardown-logger"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def __real_call__(self, *args, **kwargs):
-        from pypads.app.pypads import get_current_pads
         logger.debug("Called post run function " + str(self))
-        return super().__real_call__(get_current_pads(), *args, **kwargs)
+        return super().__real_call__(*args, **kwargs)
+
+    def _base_path(self):
+        return super()._base_path() + "Teardown/{}/".format(self.__name__)
 
 
-def pre_run_functions():
+def run_setup_functions():
     """
     Find all pre run functions defined in our imported context.
     :return:
     """
-    return inheritors(PreRunFunction)
+    return inheritors(RunSetup)
 
 
-def post_run_functions():
+def run_teardown_functions():
     """
     Find all post run functions defined in our imported context.
     :return:
     """
-    return inheritors(PostRunFunction)
+    return inheritors(RunTeardown)

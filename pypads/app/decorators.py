@@ -2,15 +2,15 @@ from abc import ABCMeta
 from functools import wraps
 from typing import List
 
-from pypads.app.injections.base_logger import FunctionHolder
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
+from pypads.app.misc.mixins import FunctionHolderMixin
 from pypads.importext.mappings import Mapping
 from pypads.utils.util import inheritors, get_class_that_defined_method
 
 decorator_plugins = set()
 
 
-class Decorator(FunctionHolder, metaclass=ABCMeta):
+class Decorator(FunctionHolderMixin, metaclass=ABCMeta):
 
     def __init__(self, *args, fn, **kwargs):
         super().__init__(*args, fn=fn, **kwargs)

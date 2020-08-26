@@ -92,13 +92,13 @@ class HookRegistry:
         configs = []
         for hook in hooks:
             configs = configs + [(hook, c) for c in list(self.get_configs_for_hook(hook))]
-        configs.sort(key=lambda e: -e[1].order())
+        configs.sort(key=lambda e: -e[1].order)
 
         fns = []
         for hook, c in configs:
             found_fns = [(f, c.parameters) for f in
                          self._pypads.function_registry.get_functions(c.event_name, hook.library)]
-            found_fns.sort(key=lambda e: -e[0].order())
+            found_fns.sort(key=lambda e: -e[0].order)
             fns = fns + found_fns
         return fns
 

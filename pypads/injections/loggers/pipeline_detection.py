@@ -4,8 +4,7 @@ import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 
 from pypads import logger
-from pypads.app.injections.base_logger import LoggingFunction
-from pypads.injections.analysis.call_tracker import LoggingEnv
+from pypads.app.injections.injection import InjectionLogger, InjectionLoggerCall
 from pypads.utils.logging_util import WriteFormats, get_temp_folder, try_write_artifact
 from pypads.utils.util import is_package_available
 
@@ -133,12 +132,13 @@ def _step_number(network, label):
     return str(network.number_of_edges()) + ": " + label
 
 
-class PipelineTracker(LoggingFunction):
+class PipelineTracker(InjectionLogger):
+    name = "PipeLineLogger"
+    uri = "https://www.padre-lab.eu/onto/pipeline-logger"
 
-    def _needed_packages(self):
-        return ["networkx"]
+    _dependencies = {"networkx"}
 
-    def __pre__(self, ctx, *args, _pypads_env: LoggingEnv, _pypads_pipeline_type="normal", _pypads_pipeline_args=False,
+    def __pre__(self, ctx, *args, _logger_call: InjectionLoggerCall, _pypads_pipeline_type="normal", _pypads_pipeline_args=False,
                 **kwargs):
 
         from pypads.app.pypads import get_current_pads
@@ -158,12 +158,12 @@ class PipelineTracker(LoggingFunction):
         if network is None:
             network = nx.MultiDiGraph()
 
-        node_id = _to_node_id(_pypads_env.call.call_id.wrappee, ctx)
-        label = _to_node_label(_pypads_env.call.call_id.wrappee, ctx)
+        node_id = _to_node_id(_logger_call.original_call.call_id.wrappee, ctx)
+        label = _to_node_label(_logger_call.original_call.call_id.wrappee, ctx)
         if not network.has_node(node_id):
             network.add_node(node_id, label=label)
 
-        label = _to_edge_label(_pypads_env.call.call_id.wrappee, _pypads_pipeline_args, args, kwargs)
+        label = _to_edge_label(_logger_call.original_call.call_id.wrappee, _pypads_pipeline_args, args, kwargs)
         # If the current stack holds only the call itself
         if pads.call_tracker.call_depth() == 1:
 
@@ -188,14 +188,14 @@ class PipelineTracker(LoggingFunction):
         pads.cache.add("pipeline", pipeline_cache)
         return node_id
 
-    def __post__(self, ctx, *args, _pypads_pipeline_args=False, _pypads_env: LoggingEnv, _pypads_pre_return, **kwargs):
+    def __post__(self, ctx, *args, _pypads_pipeline_args=False, _logger_call: InjectionLoggerCall, _pypads_pre_return, **kwargs):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
 
         pipeline_cache = pads.cache.get("pipeline")
         network = pipeline_cache.get("network")
         node_id = _pypads_pre_return
-        label = "return " + _to_edge_label(_pypads_env.call.call_id.wrappee, _pypads_pipeline_args, args, kwargs)
+        label = "return " + _to_edge_label(_logger_call.original_call.call_id.wrappee, _pypads_pipeline_args, args, kwargs)
         if pads.call_tracker.call_depth() == 1:
             network.add_edge(node_id, -1, plain_label=label, label=_step_number(network, label))
         elif pads.call_tracker.call_depth() > 1:
