@@ -2,12 +2,12 @@ from typing import Iterable, Union
 
 from pypads.bindings.event_types import EventType
 from pypads.bindings.hooks import Hook
-from pypads.importext.mappings import LibSelector
-from pypads.injections.analysis.parameters import Parameters
-from pypads.injections.loggers.data_flow import Output, Input
+from pypads.importext.versioning import LibSelector
+from pypads.injections.analysis.parameters import ParametersILF
+from pypads.injections.loggers.data_flow import OutputILF, InputILF
 from pypads.injections.loggers.debug import Log, LogInit
-from pypads.injections.loggers.hardware import Cpu, Ram, Disk
-from pypads.injections.loggers.metric import Metric
+from pypads.injections.loggers.hardware import CpuILF, RamILF, DiskILF
+from pypads.injections.loggers.metric import MetricILF
 from pypads.injections.loggers.mlflow.mlflow_autolog import MlflowAutologger
 from pypads.injections.loggers.pipeline_detection import PipelineTracker
 from pypads.utils.logging_util import WriteFormats
@@ -15,11 +15,12 @@ from pypads.utils.logging_util import WriteFormats
 # maps events to loggers
 # Default event mappings. We allow to log parameters, output defor input
 DEFAULT_LOGGING_FNS = {
-    "parameters": Parameters(),
-    "output": Output(_pypads_write_format=WriteFormats.text.name),
-    "input": Input(_pypads_write_format=WriteFormats.text.name),
-    "hardware": [Cpu(), Ram(), Disk()],
-    "metric": Metric(),
+    "parameters": ParametersILF(),
+    "output": OutputILF(_pypads_write_format=WriteFormats.text),
+    "input": InputILF(_pypads_write_format=WriteFormats.text),
+    "hardware": [CpuILF(_pypads_write_format=WriteFormats.text), RamILF(_pypads_write_format=WriteFormats.text),
+                 DiskILF(_pypads_write_format=WriteFormats.text)],
+    "metric": MetricILF(),
     "autolog": MlflowAutologger(),
     "pipeline": PipelineTracker(_pypads_pipeline_type="normal", _pypads_pipeline_args=False),
     "log": Log(),
@@ -106,25 +107,25 @@ class FunctionRegistry:
 
         fitting_fns = []
         for fn in fns:
-            fitting_fns = fitting_fns + [(lib.specificity, fn) for lib in fn.supported_libraries() if
+            fitting_fns = fitting_fns + [(lib.specificity, fn) for lib in fn.supported_libraries if
                                          lib.allows_any(lib_selector)]
 
         # Filter for specificity and identity
         identities = {}
         filtered_fns = set()
         for spec, fn in fitting_fns:
-            if fn.identity is None:
+            if fn.uid is None:
                 filtered_fns.add(fn)
-            elif fn.identity in identities:
+            elif fn.uid in identities:
                 # If we are more specific and have the same identity remove old fn
-                if identities[fn.identity][0] <= spec:
-                    if identities[fn.identity][0] < spec:
-                        if fn.identity in identities:
-                            filtered_fns.remove(identities[fn.identity][1])
+                if identities[fn.uid][0] <= spec:
+                    if identities[fn.uid][0] < spec:
+                        if fn.uid in identities:
+                            filtered_fns.remove(identities[fn.uid][1])
                     filtered_fns.add(fn)
-                    identities[fn.identity] = (spec, fn)
+                    identities[fn.uid] = (spec, fn)
             else:
                 # If not seen add it
                 filtered_fns.add(fn)
-                identities[fn.identity] = (spec, fn)
+                identities[fn.uid] = (spec, fn)
         return filtered_fns

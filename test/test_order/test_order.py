@@ -1,7 +1,7 @@
 import sys
 
-from pypads.app.injections.base_logger import LoggingFunction
-from pypads.injections.analysis.call_tracker import LoggingEnv
+from app.env import InjectionLoggerEnv
+from pypads.app.injections.injection import InjectionLogger
 from test.base_test import BaseTest, TEST_FOLDER
 
 
@@ -10,22 +10,22 @@ def experiment():
     return "I'm a return value."
 
 
-class First(LoggingFunction):
-    def __post__(self, ctx, *args, _pypads_env, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
+class First(InjectionLogger):
+    def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
         pass
 
-    def __pre__(ctx, *args, _pypads_env: LoggingEnv, **kwargs):
+    def __pre__(ctx, *args, _logger_call: InjectionLoggerEnv, **kwargs):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         print("first")
         pads.cache.run_add(0, True)
 
 
-class Second(LoggingFunction):
-    def __post__(self, ctx, *args, _pypads_env, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
+class Second(InjectionLogger):
+    def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
         pass
 
-    def __pre__(ctx, *args, _pypads_env: LoggingEnv, **kwargs):
+    def __pre__(ctx, *args, _logger_call: InjectionLoggerEnv, **kwargs):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         print("second")
@@ -34,11 +34,11 @@ class Second(LoggingFunction):
         pads.cache.run_add(1, True)
 
 
-class Third(LoggingFunction):
-    def __post__(self, ctx, *args, _pypads_env, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
+class Third(InjectionLogger):
+    def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
         pass
 
-    def __pre__(ctx, *args, _pypads_env: LoggingEnv, **kwargs):
+    def __pre__(ctx, *args, _logger_call: InjectionLoggerEnv, **kwargs):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         print("third")
