@@ -80,11 +80,50 @@ class DependencyRSF(RunSetup):
         dependencies.store(_logger_output, "dependencies")
 
 
+class LoguruTO(TrackedObject):
+    """
+    Tracking object class for run env info, i.e dependencies.
+    """
+
+    class LoguruModel(TrackedObjectModel):
+        uri: HttpUrl = "https://www.padre-lab.eu/onto/env/Logs"
+
+        meta: ArtifactMetaModel = ...
+
+        class Config:
+            orm_mode = True
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return cls.LoguruModel
+
+    def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
+        super().__init__(*args, tracked_by=tracked_by, **kwargs)
+        path = os.path.join(self._base_path(), self._get_artifact_path("logs.log"))
+        self.meta = ArtifactMetaModel(path=path, description="Logs of the current run", format=WriteFormats.text)
+
+
 class LoguruRSF(RunSetup):
+    """Store all logs of the current run into a file."""
+
+    name = "Loguru Run Setup Logger"
+    uri = "https://www.padre-lab.eu/onto/loguru-run-logger"
+
+    _dependencies = {"loguru"}
+
+    class LoguruRSFOutput(OutputModel):
+        uri: HttpUrl = "https://www.padre-lab.eu/onto/LoguruRSF-Output"
+
+        logs: LoguruTO.get_model_cls() = ...
+
+    @classmethod
+    def output_schema_class(cls) -> Type[OutputModel]:
+        return cls.LoguruRSFOutput
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def _call(self, *args, _pypads_env: LoggerEnv, **kwargs):
+    def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         pads = _pypads_env.pypads
 
         from pypads.app.api import PyPadsApi
@@ -92,6 +131,8 @@ class LoguruRSF(RunSetup):
 
         from pypads.utils.logging_util import get_temp_folder
         folder = get_temp_folder()
+
+        logs = LoguruTO(tracked_by=_logger_call)
 
         # TODO loguru has problems with multiprocessing / make rotation configurable etc
         from pypads.pads_loguru import logger_manager
@@ -108,6 +149,6 @@ class LoguruRSF(RunSetup):
             except Exception:
                 pass
             for file in glob.glob(os.path.join(folder, "run_*.log")):
-                pads.api.log_artifact(file)
-
+                pads.api.log_artifact(file, artifact_path=logs.meta.path)
+        logs.store(_logger_output, "logs")
         _api.register_teardown_fn("logger_" + str(lid), remove_logger)

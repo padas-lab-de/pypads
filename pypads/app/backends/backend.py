@@ -1,13 +1,15 @@
 import os
 import sys
 from abc import abstractmethod
+from typing import Union
 
 import mlflow
 from mlflow.tracking import MlflowClient
+from mlflow.utils.autologging_utils import try_mlflow_log
 
 from pypads import logger
 from pypads.app.injections.base_logger import TrackedObject, LoggerOutput
-from pypads.model.models import ArtifactMetaModel, MetricMetaModel, ParameterMetaModel, TagMetaModel
+from pypads.model.models import ArtifactMetaModel, MetricMetaModel, ParameterMetaModel, TagMetaModel, MetadataModel
 from pypads.utils.logging_util import try_write_artifact, WriteFormats
 from pypads.utils.util import string_to_int
 
@@ -72,7 +74,11 @@ class BackendInterface:
         raise NotImplementedError("")
 
     @abstractmethod
-    def log_artifact(self, artifact, meta: ArtifactMetaModel):
+    def log_artifact(self, local_path, meta: ArtifactMetaModel, artifact_path=None):
+        raise NotImplementedError("")
+
+    @abstractmethod
+    def log_mem_artifact(self, artifact, meta: ArtifactMetaModel):
         raise NotImplementedError("")
 
     @abstractmethod
@@ -167,11 +173,17 @@ class MLFlowBackend(BackendInterface):
         try_write_artifact(path, lo.json(), write_format=WriteFormats.json)
         return path
 
-    def log_artifact(self, artifact, meta: ArtifactMetaModel):
-        try_write_artifact(meta.path, artifact, write_format=meta.format)
+    def log_artifact(self, local_path, meta: ArtifactMetaModel, artifact_path=None):
+        if artifact_path is None:
+            if meta:
+                artifact_path = meta.path
+        try_mlflow_log(mlflow.log_artifact, local_path, artifact_path)
+
+    def log_mem_artifact(self, artifact, meta: Union[MetadataModel, ArtifactMetaModel], preserve_folder=True):
+        try_write_artifact(meta.path, artifact, write_format=meta.format, preserve_folder=preserve_folder)
 
     def log_metric(self, metric, meta: MetricMetaModel):
-        mlflow.log_metric(meta.name, metric)
+        mlflow.log_metric(meta.name, metric, meta.step)
 
     def log_parameter(self, parameter, meta: ParameterMetaModel):
         mlflow.log_param(meta.name, parameter)

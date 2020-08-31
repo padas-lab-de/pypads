@@ -122,7 +122,7 @@ class TrackedObject(ProvenanceMixin):
             metrics_dict[meta.name] = metrics_list
             consolidated_json['metrics'] = metrics_dict
             pads.cache.add('consolidated_dict', consolidated_json)
-        pads.api.log_metric(meta.name, val, step=meta.step)
+        pads.api.log_metric(meta.name, val, meta=meta)
 
     @staticmethod
     def _store_param(val, meta: ParameterMetaModel):
@@ -141,12 +141,12 @@ class TrackedObject(ProvenanceMixin):
             consolidated_json['parameters'] = parameters
             pads.cache.add('consolidated_dict', consolidated_json)
 
-        get_current_pads().api.log_param(meta.name, val)
+        get_current_pads().api.log_param(meta.name, val, meta=meta)
 
     @staticmethod
     def _store_artifact(val, meta: ArtifactMetaModel):
         from pypads.app.pypads import get_current_pads
-        get_current_pads().api.log_mem_artifact(meta.path, val, write_format=meta.format)
+        get_current_pads().api.log_mem_artifact(meta.path, val, meta=meta, write_format=meta.format)
 
     @staticmethod
     def _store_tag(val, meta: TagMetaModel):

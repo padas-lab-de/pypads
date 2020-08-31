@@ -4,7 +4,7 @@ import os
 import unittest
 from os.path import expanduser
 
-from pypads.app.injections.run_loggers import RunSetup
+from pypads.app.injections.injection import InjectionLogger
 from pypads.app.pypads import logger
 
 if "loguru" in str(logger):
@@ -67,7 +67,7 @@ class BaseTest(unittest.TestCase):
             set_current_pads(None)
 
 
-class RanLogger(RunSetup):
+class RanLogger(InjectionLogger):
     """ Adds id of self to cache. """
 
     def __init__(self, *args, **kwargs):

@@ -6,7 +6,6 @@ from typing import List, Iterable
 
 import mlflow
 from mlflow.entities import ViewType
-from mlflow.utils.autologging_utils import try_mlflow_log
 
 from app.env import LoggerEnv
 from pypads import logger
@@ -17,7 +16,7 @@ from pypads.app.misc.mixins import FunctionHolderMixin
 from pypads.bindings.anchors import get_anchor, Anchor
 from pypads.importext.mappings import Mapping, MatchedMapping, make_run_time_mapping_collection
 from pypads.importext.package_path import PackagePathMatcher, PackagePath
-from pypads.model.models import TagMetaModel
+from pypads.model.models import TagMetaModel, ParameterMetaModel, MetricMetaModel, MetadataModel, ArtifactMetaModel
 from pypads.utils.files_util import get_artifacts
 from pypads.utils.logging_util import WriteFormats, try_write_artifact, try_read_artifact, get_temp_folder, \
     _to_artifact_meta_name, _to_metric_meta_name, _to_param_meta_name
@@ -154,17 +153,17 @@ class PyPadsApi(IApi):
 
     # ---- logging ----
     @cmd
-    def log_artifact(self, local_path, meta=None):
+    def log_artifact(self, local_path, meta=None, artifact_path=None):
         """
         Function to log an artifact on local disk. This artifact is transferred into the context of mlflow.
         The context might be a local repository, sftp etc.
+        :param artifact_path: Path where to store the artifact
         :param local_path: Path of the artifact to log
         :param meta: Meta information you want to store about the artifact. This is an extension by pypads creating a
         json containing some meta information.
         :return:
         """
-        try_mlflow_log(mlflow.log_artifact, local_path)
-        self.pypads.backend.log_artifact(local_path, meta, preserve_folder=True)
+        self.pypads.backend.log_artifact(local_path, meta=meta, artifact_path=artifact_path)
         self.log_artifact_meta(os.path.basename(local_path), meta)
 
     @cmd
@@ -187,7 +186,9 @@ class PyPadsApi(IApi):
 
         if path:
             name = os.path.join(path, name)
-        try_write_artifact(name, obj, write_format, preserve_folder)
+        if meta is None:
+            meta = ArtifactMetaModel(path=name, description='Artifact meta information', format=write_format)
+        self.pypads.backend.log_mem_artifact(obj, meta=meta, preserve_folder=preserve_folder)
         if write_format == WriteFormats.json:
             pads = get_current_pads()
             consolidated_dict = pads.cache.get('consolidated_dict', None)
@@ -208,7 +209,7 @@ class PyPadsApi(IApi):
         self._write_meta(_to_artifact_meta_name(name), meta)
 
     @cmd
-    def log_metric(self, key, value, step=None, meta=None):
+    def log_metric(self, key, value, step=None, meta: MetricMetaModel = None):
         """
         Log a metric to mlflow.
         :param key: Metric key
@@ -218,15 +219,17 @@ class PyPadsApi(IApi):
         json containing some meta information.
         :return:
         """
-        mlflow.log_metric(key, value, step)
-        self.log_metric_meta(key, meta)
+        if not meta:
+            meta = MetricMetaModel(name=key, step=step, description="Metric meta information")
+        self.pypads.backend.log_metric(value, meta=meta)
+        self.log_metric_meta(meta.name, meta)
 
     @cmd
     def log_metric_meta(self, key, meta=None):
         self._write_meta(_to_metric_meta_name(key), meta)
 
     @cmd
-    def log_param(self, key, value, meta=None):
+    def log_param(self, key, value, meta: ParameterMetaModel = None):
         """
         Log a parameter of the execution.
         :param key: Parameter key
@@ -235,8 +238,10 @@ class PyPadsApi(IApi):
         json containing some meta information.
         :return:
         """
-        mlflow.log_param(key, value)
-        self.log_param_meta(key, meta)
+        if not meta:
+            meta = ParameterMetaModel(name=key, type=str(type(value)), description="Parameter meta information")
+        self.pypads.backend.log_parameter(value, meta=meta)
+        self.log_param_meta(meta.name, meta)
 
     @cmd
     def log_param_meta(self, key, meta=None):
@@ -282,7 +287,9 @@ class PyPadsApi(IApi):
         :return:
         """
         if meta:
-            self.pypads.backend.log_artifact(name + ".meta", meta, write_format, preserve_folder=True)
+            self.pypads.backend.log_mem_artifact(meta.json(), MetadataModel(path=name + ".meta",
+                                                                 description="Meta information of artifact '{}'".format(
+                                                                     name), format=write_format))
 
     def _read_meta(self, name):
         """
@@ -502,7 +509,8 @@ class PyPadsApi(IApi):
         fn_list.sort(key=lambda t: t.order)
         for fn in fn_list:
             try:
-                fn(self, _pypads_env=None)
+                fn(self.pypads, _pypads_env=LoggerEnv(parameter=dict(), experiment_id=run.info.experiment_id,
+                                               run_id=run.info.run_id))
             except (KeyboardInterrupt, Exception) as e:
                 logger.warning("Failed running post run function " + fn.__name__ + " because of exception: " + str(e))
 
@@ -522,8 +530,8 @@ class PyPadsApi(IApi):
         return self.pypads.backend.mlf.get_run(run_id=run_id)
 
     @cmd
-    def _get_metric_history(self,run):
-        return {key:self.pypads.backend.mlf.get_metric_history(run.info.run_id, key) for key in run.data.metrics}
+    def _get_metric_history(self, run):
+        return {key: self.pypads.backend.mlf.get_metric_history(run.info.run_id, key) for key in run.data.metrics}
 
     @cmd
     def list_experiments(self, view_type: ViewType = ViewType.ALL):
