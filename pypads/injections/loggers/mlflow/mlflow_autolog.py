@@ -1,7 +1,7 @@
 import sys
 
 import gorilla
-from mlflow.utils import experimental
+from mlflow.utils.annotations import experimental
 
 from app.env import InjectionLoggerEnv
 from pypads.app.injections.injection import InjectionLogger
