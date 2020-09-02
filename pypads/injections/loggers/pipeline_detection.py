@@ -2,9 +2,14 @@ import os
 
 import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
+from pydantic import BaseModel
+from pydantic.networks import HttpUrl
+from typing import Type
 
 from pypads import logger
-from pypads.app.injections.injection import InjectionLogger, InjectionLoggerCall
+from pypads.app.injections.base_logger import TrackedObject, LoggerCall
+from pypads.app.injections.injection import InjectionLogger, InjectionLoggerCall, MultiInjectionLogger
+from pypads.model.models import TrackedObjectModel
 from pypads.utils.logging_util import WriteFormats, get_temp_folder, try_write_artifact
 from pypads.utils.util import is_package_available
 
@@ -132,7 +137,29 @@ def _step_number(network, label):
     return str(network.number_of_edges()) + ": " + label
 
 
-class PipelineTracker(InjectionLogger):
+class PipelineTO(TrackedObject):
+    """
+       Tracking object class for execution workflow/ computational graph.
+    """
+
+    class PipelineModel(TrackedObjectModel):
+        uri: HttpUrl = "https://www.padre-lab.eu/onto/Pipeline"
+
+
+
+        class Config:
+            orm_mode = True
+            arbitrary_types_allowed = True
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return cls.PipelineModel
+
+    def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
+        super().__init__(*args, tracked_by=tracked_by, **kwargs)
+
+
+class PipelineTracker(MultiInjectionLogger):
     name = "PipeLineLogger"
     uri = "https://www.padre-lab.eu/onto/pipeline-logger"
 

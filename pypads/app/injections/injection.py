@@ -6,9 +6,10 @@ from pydantic import BaseModel, HttpUrl
 
 from app.env import InjectionLoggerEnv
 from pypads import logger
+from pypads.app.call import Call
 from pypads.app.injections.base_logger import LoggerCall, Logger, LoggerExecutor, OriginalExecutor
 from pypads.app.misc.mixins import OrderMixin, NoCallAllowedError
-from pypads.model.models import InjectionLoggerCallModel, InjectionLoggerModel
+from pypads.model.models import InjectionLoggerCallModel, InjectionLoggerModel, MultiInjectionLoggerCallModel
 from pypads.utils.util import inheritors
 
 
@@ -41,7 +42,7 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
         return "InjectionLoggers/{}/".format(self.__class__.__name__)
 
     def __pre__(self, ctx, *args,
-                _logger_call, _logger_output,_args, _kwargs, **kwargs):
+                _logger_call, _logger_output, _args, _kwargs, **kwargs):
         """
         The function to be called before executing the log anchor. the value returned will be passed on to the __post__
         function as **_pypads_pre_return**.
@@ -51,7 +52,8 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
         """
         pass
 
-    def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _logger_output,_args, _kwargs, **kwargs):
+    def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _logger_output, _args, _kwargs,
+                 **kwargs):
         """
         The function to be called after executing the log anchor.
 
@@ -156,9 +158,121 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
                     _pypads_env.call.call_id.context) + ". Can't recover from " + str(error))
 
 
+class MultiInjectionLoggerCall(LoggerCall):
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return MultiInjectionLoggerCallModel
+
+    def __init__(self, *args, logging_env: InjectionLoggerEnv, **kwargs):
+        super().__init__(*args, original_call=logging_env.call, logging_env=logging_env, **kwargs)
+        self.call_stack = [logging_env.call]
+
+    def add_call(self, call: Call):
+        self.call_stack.append(call)
+
+
+class MultiInjectionLogger(InjectionLogger):
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/multi-injection-logger"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.store_schema(self._base_path())
+        # TODO teardown fn for output storage
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return MultiInjectionLoggerCallModel
+
+    def _base_path(self):
+        return "InjectionLoggers/{}/".format(self.__class__.__name__)
+
+    def _get_call(self, logging_env: InjectionLoggerEnv):
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+        if pads.cache.run_exists(id(self)):
+            logger_call = pads.cache.run_get(id(self)).get('call')
+            logger_call.add_call(logging_env.call)
+            return logger_call
+        else:
+            return MultiInjectionLoggerCall(logging_env=logging_env, created_by=self.store_schema())
+
+    def _get_output(self, ):
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+        if pads.cache.run_exists(id(self)):
+            logger_output = pads.cache.run_get(id(self)).get('output')
+            return logger_output
+        else:
+            return self.build_output()
+
+    def __pre__(self, ctx, *args,
+                _logger_call, _logger_output, _args, _kwargs, **kwargs):
+        """
+        The function to be called before executing the log anchor. the value returned will be passed on to the __post__
+        function as **_pypads_pre_return**.
+
+
+        :return: _pypads_pre_return
+        """
+        pass
+
+    def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _logger_output, _args, _kwargs,
+                 **kwargs):
+        """
+        The function to be called after executing the log anchor.
+
+        :param _pypads_pre_return: the value returned by __pre__.
+        :param _pypads_result: the value returned by __call_wrapped__.
+
+        :return: the wrapped function return value
+        """
+        pass
+
+    def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, **kwargs):
+        _pypads_hook_params = _pypads_env.parameter
+
+        logger_call = self._get_call(_pypads_env)
+        output = self._get_output()
+
+        try:
+            # Trigger pre run functions
+            _pre_result, pre_time = self._pre(ctx, _pypads_env=_pypads_env,
+                                              _logger_output=output,
+                                              _logger_call=logger_call,
+                                              _args=args,
+                                              _kwargs=kwargs, **{**self.static_parameters, **_pypads_hook_params})
+            logger_call.pre_time += pre_time
+
+            # Trigger function itself
+            _return, time = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs)
+            logger_call.child_time += time
+
+            # Trigger post run functions
+            _post_result, post_time = self._post(ctx, _pypads_env=_pypads_env,
+                                                 _logger_output=output,
+                                                 _pypads_pre_return=_pre_result,
+                                                 _pypads_result=_return,
+                                                 _logger_call=logger_call,
+                                                 _args=args,
+                                                 _kwargs=kwargs, **{**self.static_parameters, **_pypads_hook_params})
+            logger_call.post_time += post_time
+        except Exception as e:
+            logger_call.failed = str(e)
+            output.set_failure_state(e)
+            raise e
+        finally:
+            for fn in self.cleanup_fns(logger_call):
+                fn(self, logger_call)
+            from pypads.app.pypads import get_current_pads
+            pads = get_current_pads()
+            pads.cache.run_add(id(self), {'call': logger_call, 'output': output})
+        return _return
+
+
 def logging_functions():
     """
-    Find all post run functions defined in our imported context.
+    Find all injection functions defined in our imported context.
     :return:
     """
-    return inheritors(InjectionLogger)
+    return inheritors(InjectionLogger) + inheritors(MultiInjectionLogger)
