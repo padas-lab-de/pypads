@@ -3,6 +3,7 @@ import pathlib
 
 from pypads.app.injections.injection import InjectionLogger
 from pypads.importext.versioning import LibSelector
+from pypads.injections.loggers.debug import Log
 from pypads.utils.util import dict_merge
 from test.base_test import TEST_FOLDER, BaseTest
 
@@ -35,7 +36,7 @@ def keras_simple_sequential_experiment():
         print('%s => %d (expected %d)' % (X[i].tolist(), predictions[i], y[i]))
 
 
-# https://keras.io/getting-started/sequential-model-guide/
+# https://keras.io/getting-stasrted/sequential-model-guide/
 def keras_mlp_for_multi_class_softmax_classification():
     import keras
     from keras.models import Sequential
@@ -71,6 +72,10 @@ def keras_mlp_for_multi_class_softmax_classification():
     print(score)
 
 
+global callback
+callback = "empty"
+
+
 # noinspection PyMethodMayBeStatic
 class PypadsKerasTest(BaseTest):
 
@@ -83,8 +88,6 @@ class PypadsKerasTest(BaseTest):
 
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, uid="predictions", **kwargs)
-
-            supported_libraries = {LibSelector(name="keras", constraint="2.3.1", specificity=0)}
 
             def __pre__(self, ctx, *args, _logger_call, _args, _kwargs, **kwargs):
                 # Fallback logging function
@@ -100,7 +103,8 @@ class PypadsKerasTest(BaseTest):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, uid="predictions", **kwargs)
 
-            supported_libraries = {LibSelector(name="keras", constraint="2.3.1", specificity=1)}
+            supported_libraries = {LibSelector(name="keras", constraint="*", specificity=1),
+                                   LibSelector(name="tensorflow", constraint="*", specificity=1)}
 
             def __pre__(self, ctx, *args, _logger_call, _args, _kwargs, **kwargs):
                 # Fallback logging function
@@ -116,7 +120,8 @@ class PypadsKerasTest(BaseTest):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, uid="predictions", **kwargs)
 
-            supported_libraries = {LibSelector(name="keras", constraint="2.3.1", specificity=0)}
+            supported_libraries = {LibSelector(name="keras", constraint="2.3.1", specificity=2),
+                                   LibSelector(name="tensorflow", constraint="2.3.0rc0", specificity=2)}
 
             def __pre__(self, ctx, *args, _logger_call, _args, _kwargs, **kwargs):
                 global callback
@@ -127,7 +132,7 @@ class PypadsKerasTest(BaseTest):
                 pass
 
         keras_events = {
-            "predictions": [Predictions(), KerasPredictions(), Keras231Predictions()]
+            "predictions": [Log(), Predictions(), KerasPredictions(), Keras231Predictions()]
         }
         keras_hooks = {
             "predictions": {"on": ["pypads_predict"]}

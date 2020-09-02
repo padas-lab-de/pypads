@@ -103,5 +103,6 @@ class ParametersILF(InjectionLogger):
                     hyper_params._persist_parameter(key, value)
         except Exception as e:
             logger.error("Couldn't extract parameters on " + str(_pypads_env) + " due to " + str(e))
+            # TODO what to with keras etc? Or define multiple loggers.
         finally:
             hyper_params.store(_logger_output, "hyperparameters")

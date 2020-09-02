@@ -50,6 +50,7 @@ class Mapping:
         :param ctx: Context on which we search an matching object
         :return:
         """
+
         def mapping_applicable_filter(name):
             if hasattr(ctx.container, name):
                 try:
@@ -456,6 +457,9 @@ class MatchedMapping:
 
     def __hash__(self):
         return self._mapping.__hash__()
+
+    def __str__(self):
+        return "{}.{}".format(str(self._package_path), str(self._mapping))
 
     def __eq__(self, other):
         return self.mapping == other.mapping and self.package_path == other.package_path
