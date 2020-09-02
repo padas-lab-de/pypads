@@ -1,0 +1,21 @@
+metadata:
+  author: "Thomas Weißgerber"
+  version: "0.1.0"
+  library:
+    name: "tensorflow"
+    version: "2.3.0rc0"
+
+mappings:
+  :tensorflow.python.keras:
+    :metrics.Metric.__call__:
+      hooks: ["pypads_metric"]
+      data:
+        concepts: ["keras classification metrics"]
+
+    :engine.training.Model:
+      :__init__:
+        hooks: ["pypads_init"]
+      :{re:(fit|fit_generator)$}:
+        hooks: ["pypads_fit"]
+      :predict_classes:
+        hooks: ["pypads_predict"]

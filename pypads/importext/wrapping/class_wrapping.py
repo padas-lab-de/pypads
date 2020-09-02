@@ -39,18 +39,19 @@ class ClassWrapper(BaseWrapper):
                 self._pypads.wrap_manager.module_wrapper.add_punched_module_name(clazz.__module__)
 
             attrs = {}
+            clazz_context = Context(clazz, ".".join([context.reference, clazz.__name__]))
             for matched_mapping in matched_mappings:
                 # Try to wrap every attr of the class
                 for name in list(filter(
                         matched_mapping.mapping.applicable_filter(
-                            Context(clazz, ".".join([context.reference, clazz.__name__]))),
+                            clazz_context),
                         dir(clazz))):
                     if name not in attrs:
                         attrs[name] = set()
                     attrs[name].add(matched_mapping)
 
             for name, mm in attrs.items():
-                self._pypads.wrap_manager.wrap(getattr(clazz, name), clazz, mm)
+                self._pypads.wrap_manager.wrap(getattr(clazz, name), clazz_context, mm)
 
             # Override class on module
             context.overwrite(clazz.__name__, clazz)

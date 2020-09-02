@@ -67,16 +67,24 @@ class FunctionWrapper(BaseWrapper):
                 fn) + "'. Class punching might be lost in newly spawned processes.")
         else:
             # Add the module to the list of modules which where changed
-            if hasattr(defining_class.container, "__module__"):
-                self._pypads.wrap_manager.module_wrapper.add_punched_module_name(defining_class.container.__module__)
+            if isinstance(defining_class, Context):
+                if hasattr(defining_class.container, "__module__"):
+                    self._pypads.wrap_manager.module_wrapper.add_punched_module_name(
+                        defining_class.container.__module__)
 
-            # Get real fn from defining class
-            fn = None
-            try:
-                fn = getattr(defining_class.container, fn_name)
-            except Exception as e:
-                context.real_context(fn.__name__)
-                logger.warning("Defining class doesn't define our function. Extraction failed: " + str(e))
+                # Get real fn from defining class
+                fn = None
+                try:
+                    fn = getattr(defining_class.container, fn_name)
+                except Exception as e:
+                    context.real_context(fn.__name__)
+                    logger.warning("Defining class doesn't define our function. Extraction failed: " + str(e))
+            else:
+                # skip broken context references
+                logger.warning("Mapping an object which couldn't be contextualized."
+                               " Context class: {} Mapping: {}".format(defining_class,
+                                                                       ", ".join([str(m) for m in mappings])))
+                return fn
 
         # skip wrong extractions
         if not fn or not callable(fn):
