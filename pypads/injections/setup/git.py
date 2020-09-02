@@ -56,7 +56,7 @@ class IGitRSF(RunSetup):
 
     class IGitRSFOutput(OutputModel):
         is_a: HttpUrl = "https://www.padre-lab.eu/onto/IGitRSF-Output"
-        git_info: GitTO.get_model_cls() = ...
+        git_info: GitTO.get_model_cls() = None
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
@@ -74,22 +74,18 @@ class IGitRSF(RunSetup):
             git_info = GitTO(tracked_by=_logger_call, source=source_name or repo.working_dir, version=repo.head.commit.hexsha)
             # Disable pager for returns
             repo.git.set_persistent_git_options(no_pager=True)
-            git_info.add_tag("pypads.git.description", repo.description, description="Repository description")
-            git_info.add_tag("pypads.git.describe", repo.git.describe("--all"), description="")
-            from git import GitCommandError
-            # try:
-            #     pads.api.set_tag("pypads.git.shortlog", repo.git.shortlog(kill_after_timeout=_pypads_timeout))
-            # except GitCommandError as e:
-            #     warning("Ignored the execution and tracking of 'git shortlog'. " + str(e))
             try:
+                git_info.add_tag("pypads.git.description", repo.description, description="Repository description")
+                git_info.add_tag("pypads.git.describe", repo.git.describe("--all"), description="")
                 git_info.store_git_log("pypads.git.log", repo.git.log(kill_after_timeout=_pypads_timeout))
-            except GitCommandError as e:
-                pass
-            remotes = repo.remotes
-            remote_out = "No remotes existing"
-            if len(remotes) > 0:
-                remote_out = ""
-                for remote in remotes:
-                    remote_out += remote.name + ": " + remote.url + "\n"
-            git_info.add_tag("pypads.git.remotes", remote_out, description="Remotes of the repositories")
-            git_info.store(_logger_output,"git_info")
+                remotes = repo.remotes
+                remote_out = "No remotes existing"
+                if len(remotes) > 0:
+                    remote_out = ""
+                    for remote in remotes:
+                        remote_out += remote.name + ": " + remote.url + "\n"
+                git_info.add_tag("pypads.git.remotes", remote_out, description="Remotes of the repositories")
+            except Exception as e:
+                _logger_output.set_failure_state(e)
+            finally:
+                git_info.store(_logger_output,"git_info")

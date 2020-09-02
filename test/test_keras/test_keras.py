@@ -1,7 +1,7 @@
 import os
 import pathlib
 
-from pypads.app.injections.base_logger import LoggingFunction
+from pypads.app.injections.injection import InjectionLogger
 from pypads.importext.versioning import LibSelector
 from pypads.utils.util import dict_merge
 from test.base_test import TEST_FOLDER, BaseTest
@@ -79,7 +79,7 @@ class PypadsKerasTest(BaseTest):
 
         # custom logging
 
-        class Predictions(LoggingFunction):
+        class Predictions(InjectionLogger):
 
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, uid="predictions", **kwargs)
@@ -95,7 +95,7 @@ class PypadsKerasTest(BaseTest):
                          **kwargs):
                 pass
 
-        class KerasPredictions(LoggingFunction):
+        class KerasPredictions(InjectionLogger):
 
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, uid="predictions", **kwargs)
@@ -111,7 +111,7 @@ class PypadsKerasTest(BaseTest):
                          **kwargs):
                 pass
 
-        class Keras231Predictions(LoggingFunction):
+        class Keras231Predictions(InjectionLogger):
 
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, uid="predictions", **kwargs)

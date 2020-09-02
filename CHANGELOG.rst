@@ -2,6 +2,23 @@ Changelog
 =========
 
 
+0.3.0 (2020-08-31)
+------------------
+
+New
+~~~
+- Added a new TrackingObjectModel class. [Thomas Weißgerber]
+- Added logger schemata. [Thomas Weißgerber]
+
+Changes
+~~~~~~~
+- Fix: parametersILF fix and MetricILF rework. [Mehdi Ben Amor]
+
+Other
+~~~~~
+- Bump version: 0.2.3 → 0.3.0. [Mehdi Ben Amor]
+
+
 0.2.3 (2020-06-23)
 ------------------
 - Bump version: 0.2.2 → 0.2.3. [mehdi]

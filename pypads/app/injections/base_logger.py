@@ -122,7 +122,7 @@ class TrackedObject(ProvenanceMixin):
             metrics_dict[meta.name] = metrics_list
             consolidated_json['metrics'] = metrics_dict
             pads.cache.add('consolidated_dict', consolidated_json)
-        pads.api.log_metric(meta.name, val, step=meta.step)
+        pads.api.log_metric(meta.name, val, meta=meta)
 
     @staticmethod
     def _store_param(val, meta: ParameterMetaModel):
@@ -141,12 +141,12 @@ class TrackedObject(ProvenanceMixin):
             consolidated_json['parameters'] = parameters
             pads.cache.add('consolidated_dict', consolidated_json)
 
-        get_current_pads().api.log_param(meta.name, val)
+        get_current_pads().api.log_param(meta.name, val, meta=meta)
 
     @staticmethod
     def _store_artifact(val, meta: ArtifactMetaModel):
         from pypads.app.pypads import get_current_pads
-        get_current_pads().api.log_mem_artifact(meta.path, val, write_format=meta.format)
+        get_current_pads().api.log_mem_artifact(meta.path, val, meta=meta, write_format=meta.format)
 
     @staticmethod
     def _store_tag(val, meta: TagMetaModel):
@@ -199,6 +199,9 @@ class LoggerOutput(ProvenanceMixin):
     def store(self, path=""):
         from pypads.app.pypads import get_current_pads
         return get_current_pads().api.store_logger_output(self, path)
+
+    def set_failure_state(self, e: Exception):
+        self.failed = "Logger Output might be inaccurate/corrupt due to exception in execution: '{}'".format(str(e))
 
 
 class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMixin,
@@ -314,6 +317,7 @@ class SimpleLogger(Logger):
             logger_call.execution_time = time
         except Exception as e:
             logger_call.failed = str(e)
+            output.set_failure_state(e)
             raise e
         finally:
             for fn in self.cleanup_fns(logger_call):

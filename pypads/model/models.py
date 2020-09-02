@@ -93,6 +93,7 @@ class RunLoggerModel(LoggerModel):
     """
     name: str = "GenericRunLogger"
     uri: HttpUrl = "https://www.padre-lab.eu/onto/generic-run-logger"
+
     class Config:
         orm_mode = True
 
@@ -149,6 +150,12 @@ class CallModel(RunObjectModel):
         orm_mode = True
 
 
+class MetadataModel(BaseModel):
+    path: str = ...
+    description: str = ...
+    format: WriteFormats = ...
+
+
 class MetricMetaModel(BaseModel):
     name: str = ...
     description: str = ...
@@ -179,7 +186,7 @@ class LoggerCallModel(RunObjectModel):
     failed: Optional[str] = None
     created_by: str = ...  # path to json of LoggerModel
     execution_time: Optional[float] = ...
-    output: Optional[str] = ... # path to json of the OutputModel of the logger
+    output: Optional[str] = ...  # path to json of the OutputModel of the logger
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerCall"
 
     class Config:
@@ -210,6 +217,8 @@ class InjectionLoggerCallModel(LoggerCallModel):
 
 class OutputModel(RunObjectModel):
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerOutput"
+
+    failed: Optional[str] = None
 
     class Config:
         orm_mode = True

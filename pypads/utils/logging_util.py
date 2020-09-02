@@ -61,7 +61,7 @@ class WriteFormats(Enum):
 class ReadFormats(Enum):
     pickle = 'pickle'
     txt = 'txt'
-    yaml = 'yml'
+    yaml = 'yaml'
     json = 'json'
 
 
@@ -166,7 +166,7 @@ def try_write_artifact(file_name, obj, write_format, preserve_folder=True):
 
     def write_yaml(p, o):
         try:
-            with open(p + ".yml", "w+") as fd:
+            with open(p + ".yaml", "w+") as fd:
                 if isinstance(o, str):
                     fd.write(o)
                     # TODO check if valid json?

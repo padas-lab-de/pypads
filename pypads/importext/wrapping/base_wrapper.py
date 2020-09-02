@@ -2,6 +2,7 @@ import inspect
 from _py_abc import ABCMeta
 from abc import abstractmethod
 from copy import copy
+from types import ModuleType
 from typing import Set, Type
 
 from pydantic import BaseModel
@@ -18,6 +19,8 @@ def fullname(o):
     :param o: object
     :return:
     """
+    if isinstance(o, ModuleType):
+        return o.__name__
     module = o.__module__
     if module is None or module == str.__class__.__module__:
         return o.__class__.__name__  # Don't report __builtin__
@@ -35,10 +38,10 @@ class Context(ModelHolder):
         return ContextModel
 
     def __init__(self, context, reference=None, *args, **kwargs):
-        reference = reference if reference is not None else fullname(context)
-        super().__init__(*args, reference=reference, **kwargs)
         if context is None:
             raise ValueError("A context has to be passed for a object to be wrapped.")
+        reference = reference if reference is not None else fullname(context)
+        super().__init__(*args, reference=reference, **kwargs)
         self._c = context
 
     def overwrite(self, key, obj):
