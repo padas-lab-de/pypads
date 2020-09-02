@@ -200,6 +200,9 @@ class LoggerOutput(ProvenanceMixin):
         from pypads.app.pypads import get_current_pads
         return get_current_pads().api.store_logger_output(self, path)
 
+    def set_failure_state(self, e: Exception):
+        self.failed = "Logger Output might be inaccurate/corrupt due to exception in execution: '{}'".format(str(e))
+
 
 class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMixin,
              LibrarySpecificMixin, ProvenanceMixin, ConfigurableCallableMixin, metaclass=ABCMeta):
@@ -314,6 +317,7 @@ class SimpleLogger(Logger):
             logger_call.execution_time = time
         except Exception as e:
             logger_call.failed = str(e)
+            output.set_failure_state(e)
             raise e
         finally:
             for fn in self.cleanup_fns(logger_call):

@@ -218,6 +218,8 @@ class InjectionLoggerCallModel(LoggerCallModel):
 class OutputModel(RunObjectModel):
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerOutput"
 
+    failed: Optional[str] = None
+
     class Config:
         orm_mode = True
 
