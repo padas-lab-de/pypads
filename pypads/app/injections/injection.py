@@ -94,6 +94,7 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
             logger_call.post_time = post_time
         except Exception as e:
             logger_call.failed = str(e)
+            output.set_failure_state(e)
             raise e
         finally:
             for fn in self.cleanup_fns(logger_call):

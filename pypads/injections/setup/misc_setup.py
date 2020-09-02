@@ -59,7 +59,7 @@ class DependencyRSF(RunSetup):
     class DependencyRSFOutput(OutputModel):
         uri: HttpUrl = "https://www.padre-lab.eu/onto/DependencyRSF-Output"
 
-        dependencies: DependencyTO.get_model_cls() = ...
+        dependencies: DependencyTO.get_model_cls() = None
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
@@ -69,15 +69,19 @@ class DependencyRSF(RunSetup):
         pads = _pypads_env.pypads
         logger.info("Tracking execution to run with id " + pads.api.active_run().info.run_id)
         dependencies = DependencyTO(tracked_by=_logger_call)
-        # Execute pip freeze
         try:
-            # noinspection PyProtectedMember,PyPackageRequirements
-            from pip._internal.operations import freeze
-        except ImportError:  # pip < 10.0
-            # noinspection PyUnresolvedReferences,PyPackageRequirements
-            from pip.operations import freeze
-        dependencies._add_dependency(list(freeze.freeze()))
-        dependencies.store(_logger_output, "dependencies")
+            # Execute pip freeze
+            try:
+                # noinspection PyProtectedMember,PyPackageRequirements
+                from pip._internal.operations import freeze
+            except ImportError:  # pip < 10.0
+                # noinspection PyUnresolvedReferences,PyPackageRequirements
+                from pip.operations import freeze
+            dependencies._add_dependency(list(freeze.freeze()))
+        except Exception as e:
+            _logger_output.set_failure_state(e)
+        finally:
+            dependencies.store(_logger_output, "dependencies")
 
 
 class LoguruTO(TrackedObject):
@@ -150,5 +154,6 @@ class LoguruRSF(RunSetup):
                 pass
             for file in glob.glob(os.path.join(folder, "run_*.log")):
                 pads.api.log_artifact(file, artifact_path=logs.meta.path)
+
         logs.store(_logger_output, "logs")
         _api.register_teardown_fn("logger_" + str(lid), remove_logger)

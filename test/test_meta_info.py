@@ -1,4 +1,5 @@
 from pypads.model.models import ParameterMetaModel, MetricMetaModel, ArtifactMetaModel
+from pypads.utils.logging_util import WriteFormats
 from test.base_test import BaseTest, TEST_FOLDER
 
 
@@ -38,9 +39,9 @@ class PypadsHookTest(BaseTest):
 
         obj = object()
         meta = ArtifactMetaModel(url='https://some.artifact.url', path='some_artifact',
-                                  description='some description', )
+                                  description='some description', format=WriteFormats.pickle)
         tracker.api.log_mem_artifact("some_artifact", obj, meta=meta)
 
         # --------------------------- asserts ---------------------------
-        assert tracker.api.artifact_meta("some_artifact") == meta.dict()
+        assert tracker.api.artifact_meta("some_artifact").keys() == meta.dict().keys()
         # !-------------------------- asserts ---------------------------
