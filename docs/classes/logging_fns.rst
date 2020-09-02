@@ -9,24 +9,24 @@ LoggingFunction base class
 To develop custom loggers, we need to write a class that inherits from the base class **LoggingFunction**. Then, those custom loggers can be
 mapped to events of the user choice in the parameter **mapping** of the :ref:`PyPads class <base_class>`.
 
-.. autoclass:: pypads.functions.loggers.base_logger.LoggingFunction
+.. autoclass:: pypads.app.injections.injection.InjectionLogger
     :special-members: __pre__, __post__, __call_wrapped__
     :private-members: _needed_packages
 
-Pre and Post run loggers
-========================
+Setup and Teardown run loggers
+==============================
 
-Another type of logging functions supported by Pypads is the pre/post run loggers which are executed before and after the run execution
+Another type of logging functions supported by Pypads is the Setup/Teardown run loggers which are executed before and after the run execution
 respectively.
 
-* Pre Run loggers
+* Run Setup loggers
 
-.. autoclass:: pypads.app.injections.run_loggers.PreRunFunction
+.. autoclass:: pypads.app.injections.run_loggers.RunSetup
     :private-members: _call
 
 * Post Run loggers
 
-.. autoclass:: pypads.app.injections.run_loggers.PostRunFunction
+.. autoclass:: pypads.app.injections.run_loggers.RunTeardown
     :private-members: _call
 
 
