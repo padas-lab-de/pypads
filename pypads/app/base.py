@@ -11,7 +11,7 @@ import mlflow
 from pypads import logger
 from pypads.app.actuators import ActuatorPluginManager
 from pypads.app.api import ApiPluginManager
-from pypads.app.backend import MLFlowBackend
+from pypads.app.backends.backend import MLFlowBackend
 from pypads.app.decorators import DecoratorPluginManager
 from pypads.app.misc.caches import PypadsCache
 from pypads.app.validators import ValidatorPluginManager, validators
@@ -21,9 +21,10 @@ from pypads.importext.mappings import MappingRegistry, MappingCollection
 from pypads.importext.pypads_import import extend_import_module, duck_punch_loader
 from pypads.importext.wrapping.wrapping import WrapManager
 from pypads.injections.analysis.call_tracker import CallTracker
-from pypads.injections.setup.git import IGit
-from pypads.injections.setup.hardware import ISystem, IRam, ICpu, IDisk, IPid, ISocketInfo, IMacAddress
-from pypads.injections.setup.misc_setup import RunInfo, RunLogger
+from pypads.injections.setup.git import IGitRSF
+from pypads.injections.setup.hardware import ISystemRSF, IRamRSF, ICpuRSF, IDiskRSF, IPidRSF, ISocketInfoRSF, \
+    IMacAddressRSF
+from pypads.injections.setup.misc_setup import DependencyRSF, LoguruRSF
 
 tracking_active = None
 
@@ -66,8 +67,8 @@ DEFAULT_CONFIG = {
     # is passed
 }
 
-DEFAULT_SETUP_FNS = {RunInfo(), RunLogger(), IGit(_pypads_timeout=3), ISystem(), IRam(), ICpu(), IDisk(), IPid(),
-                     ISocketInfo(), IMacAddress()}
+DEFAULT_SETUP_FNS = {DependencyRSF(), LoguruRSF(), IGitRSF(_pypads_timeout=3), ISystemRSF(), IRamRSF(), ICpuRSF(),
+                     IDiskRSF(), IPidRSF(), ISocketInfoRSF(), IMacAddressRSF()}
 
 # Tag name to save the config to in mlflow context.
 CONFIG_NAME = "pypads.config"
@@ -86,7 +87,7 @@ class PyPads:
 
     def __init__(self, uri=None, folder=None, mappings: List[MappingCollection] = None, hooks=None,
                  events=None, setup_fns=None, config=None, pre_initialized_cache: PypadsCache = None,
-                 disable_plugins=None, autostart=None):
+                 disable_plugins=None, autostart=None, consolidate_outputs=True):
         # Set the singleton instance
 
         if disable_plugins is None:
@@ -134,10 +135,6 @@ class PyPads:
 
         self._backend = MLFlowBackend(self.uri, self)
 
-        # Create tracking object factory
-        from pypads.app.tracking.base import TrackingObjectFactory
-        self._tracking_object_factory = TrackingObjectFactory(self)
-
         # Store config into cache
         self.config = {**DEFAULT_CONFIG, **config} if config else DEFAULT_CONFIG
 
@@ -167,6 +164,10 @@ class PyPads:
 
         # Store function registry into cache
         self._cache.add("events", events)
+
+        # Store a dictionary to consolidate all the output files
+        if consolidate_outputs is True:
+            self._cache.add("consolidated_dict", dict())
 
         # Initialize pre run functions before starting a run
         setup_fns = setup_fns or DEFAULT_SETUP_FNS
@@ -198,7 +199,7 @@ class PyPads:
         Return a list of available LoggingFunctions for mappings in the current installation of PyPads.
         :return: Logging function classes
         """
-        from pypads.app.injections.base_logger import logging_functions
+        from pypads.app.injections.injection import logging_functions
         return logging_functions()
 
     @staticmethod
@@ -207,8 +208,8 @@ class PyPads:
         Return a list of available setup function in the current installation of PyPads.
         :return: Setup function classes
         """
-        from pypads.app.injections.run_loggers import pre_run_functions
-        return pre_run_functions()
+        from pypads.app.injections.run_loggers import run_setup_functions
+        return run_setup_functions()
 
     @staticmethod
     def available_teardown_functions():
@@ -216,8 +217,8 @@ class PyPads:
         Return a list of available setup function in the current installation of PyPads.
         :return: Teardown function classes
         """
-        from pypads.app.injections.run_loggers import post_run_functions
-        return post_run_functions()
+        from pypads.app.injections.run_loggers import run_teardown_functions
+        return run_teardown_functions()
 
     @staticmethod
     def available_anchors():
@@ -273,7 +274,7 @@ class PyPads:
         return api()
 
     @property
-    def cache(self):
+    def cache(self) -> PypadsCache:
         """
         Return the cache of pypads. This holds generic cache data and run cache data.
         :return:
@@ -330,7 +331,8 @@ class PyPads:
             def set_config(*args, **kwargs):
                 mlflow.set_tag(CONFIG_NAME, value)
 
-            self.api.register_setup_fn("config_persist", set_config, nested=False, intermediate=False)
+            self.api.register_setup_fn("config_persist", "Function persisting the current pypads configuration.",
+                                       set_config, nested=False, intermediate=False)
         self._cache.add("config", value)
 
     @property
@@ -438,14 +440,6 @@ class PyPads:
         return self._managed_git_factory
 
     @property
-    def tracking_object_factory(self):
-        """
-        Return tracked object manager of PyPads. This is used to create and manage tracked object.
-        :return: TrackingOjbectFactory
-        """
-        return self._tracking_object_factory
-
-    @property
     def backend(self):
         """
         Return the backend of PyPads. This is currently hardcoded to mlflow.
@@ -505,8 +499,8 @@ class PyPads:
         """
         if affected_modules is None:
             # Modules are affected if they are mapped by a library or are already punched
-            affected_modules = self.wrap_manager.module_wrapper.punched_module_names | set(
-                [l.name for l in self.mapping_registry.get_libraries()])
+            affected_modules = self.wrap_manager.module_wrapper.punched_module_names | \
+                               {l.name for l in self.mapping_registry.get_libraries()}
 
         global tracking_active
         if not tracking_active:

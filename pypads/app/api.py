@@ -5,16 +5,19 @@ from functools import wraps
 from typing import List, Iterable
 
 import mlflow
-from mlflow.utils.autologging_utils import try_mlflow_log
+from mlflow.entities import ViewType
 
+from app.env import LoggerEnv
 from pypads import logger
-from pypads.app.injections.base_logger import FunctionHolder
-from pypads.app.injections.run_loggers import PreRunFunction, PostRunFunction
+from pypads.app.injections.run_loggers import RunSetup, RunTeardown
 from pypads.app.misc.caches import Cache
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
+from pypads.app.misc.mixins import FunctionHolderMixin
 from pypads.bindings.anchors import get_anchor, Anchor
 from pypads.importext.mappings import Mapping, MatchedMapping, make_run_time_mapping_collection
 from pypads.importext.package_path import PackagePathMatcher, PackagePath
+from pypads.model.models import TagMetaModel, ParameterMetaModel, MetricMetaModel, MetadataModel, ArtifactMetaModel
+from pypads.utils.files_util import get_artifacts
 from pypads.utils.logging_util import WriteFormats, try_write_artifact, try_read_artifact, get_temp_folder, \
     _to_artifact_meta_name, _to_metric_meta_name, _to_param_meta_name
 from pypads.utils.util import inheritors
@@ -22,7 +25,7 @@ from pypads.utils.util import inheritors
 api_plugins = set()
 
 
-class Cmd(FunctionHolder, metaclass=ABCMeta):
+class Cmd(FunctionHolderMixin, metaclass=ABCMeta):
 
     def __init__(self, *args, fn, **kwargs):
         super().__init__(*args, fn=fn, **kwargs)
@@ -144,22 +147,24 @@ class PyPadsApi(IApi):
         :return: The newly spawned run
         """
         out = mlflow.start_run(run_id=run_id, experiment_id=experiment_id, run_name=run_name, nested=nested)
-        self.run_setups(_pypads_env)
+        self.run_setups(
+            _pypads_env=_pypads_env or LoggerEnv(parameter=dict(), experiment_id=experiment_id, run_id=run_id))
         return out
 
     # ---- logging ----
     @cmd
-    def log_artifact(self, local_path, meta=None):
+    def log_artifact(self, local_path, meta=None, artifact_path=None):
         """
         Function to log an artifact on local disk. This artifact is transferred into the context of mlflow.
         The context might be a local repository, sftp etc.
+        :param artifact_path: Path where to store the artifact
         :param local_path: Path of the artifact to log
         :param meta: Meta information you want to store about the artifact. This is an extension by pypads creating a
         json containing some meta information.
         :return:
         """
-        try_mlflow_log(mlflow.log_artifact, local_path)
-        self._write_meta(_to_artifact_meta_name(os.path.basename(local_path)), meta)
+        self.pypads.backend.log_artifact(local_path, meta=meta, artifact_path=artifact_path)
+        self.log_artifact_meta(os.path.basename(local_path), meta)
 
     @cmd
     def log_mem_artifact(self, name, obj, write_format=WriteFormats.text.name, path=None, meta=None,
@@ -175,15 +180,36 @@ class PyPadsApi(IApi):
         :param preserve_folder: Preserve the folder structure
         :return:
         """
-        meta_name = _to_artifact_meta_name(name)
+        from pypads.app.pypads import get_current_pads
+        from pypads.utils.logging_util import WriteFormats, get_run_folder
+        import json
+
         if path:
             name = os.path.join(path, name)
-            meta_name = "metadata"
-        try_write_artifact(name, obj, write_format, preserve_folder)
-        self._write_meta(meta_name, meta)
+        if meta is None:
+            meta = ArtifactMetaModel(path=name, description='Artifact meta information', format=write_format)
+        self.pypads.backend.log_mem_artifact(obj, meta=meta, preserve_folder=preserve_folder)
+        if write_format == WriteFormats.json:
+            pads = get_current_pads()
+            consolidated_dict = pads.cache.get('consolidated_dict', None)
+            if consolidated_dict is not None:
+                path = os.path.join(get_run_folder(), 'artifact', name)
+                if isinstance(obj, str):
+                    data = json.loads(obj)
+                elif isinstance(obj, dict):
+                    data = obj
+                else:
+                    data = str(write_format)
+                consolidated_dict[path] = data
+                pads.cache.add('consolidated_dict', consolidated_dict)
+        self.log_artifact_meta(name, meta)
 
     @cmd
-    def log_metric(self, key, value, step=None, meta=None):
+    def log_artifact_meta(self, name, meta=None):
+        self._write_meta(_to_artifact_meta_name(name), meta)
+
+    @cmd
+    def log_metric(self, key, value, step=None, meta: MetricMetaModel = None):
         """
         Log a metric to mlflow.
         :param key: Metric key
@@ -193,11 +219,17 @@ class PyPadsApi(IApi):
         json containing some meta information.
         :return:
         """
-        mlflow.log_metric(key, value, step)
+        if not meta:
+            meta = MetricMetaModel(name=key, step=step, description="Metric meta information")
+        self.pypads.backend.log_metric(value, meta=meta)
+        self.log_metric_meta(meta.name, meta)
+
+    @cmd
+    def log_metric_meta(self, key, meta=None):
         self._write_meta(_to_metric_meta_name(key), meta)
 
     @cmd
-    def log_param(self, key, value, meta=None):
+    def log_param(self, key, value, meta: ParameterMetaModel = None):
         """
         Log a parameter of the execution.
         :param key: Parameter key
@@ -206,18 +238,46 @@ class PyPadsApi(IApi):
         json containing some meta information.
         :return:
         """
-        mlflow.log_param(key, value)
+        if not meta:
+            meta = ParameterMetaModel(name=key, type=str(type(value)), description="Parameter meta information")
+        self.pypads.backend.log_parameter(value, meta=meta)
+        self.log_param_meta(meta.name, meta)
+
+    @cmd
+    def log_param_meta(self, key, meta=None):
         self._write_meta(_to_param_meta_name(key), meta)
 
     @cmd
-    def set_tag(self, key, value):
+    def set_tag(self, key, value, description="No description given."):
         """
         Set a tag for your current run.
+        :param description: Description what this tag indicates
         :param key: Tag key
         :param value: Tag value
         :return:
         """
-        return mlflow.set_tag(key, value)
+        return self.pypads.backend.set_tag(value, TagMetaModel(name=key, description=description))
+
+    @cmd
+    def store_tracked_object(self, to):
+        return self.pypads.backend.store_tracked_object(to=to)
+
+    @cmd
+    def store_logger_output(self, lo, path=""):
+        return self.pypads.backend.store_logger_output(lo=lo, path=path)
+
+    @cmd
+    def write_data_item(self, path, content_item, data_format=None, preserve_folder=True):
+        """
+        Function to log a tracking object content item on local disk. This artifact is transferred into the context of mlflow.
+        The context might be a local repository, sftp etc.
+        :param path: path to where to store the content item of a tracking object.
+        :param content_item: the content item of a tracking object.
+        :param content_format: write format for the object content
+        :param preserve_folder:  Preserve the folder structure
+        :return:
+        """
+        try_write_artifact(path, content_item, write_format=data_format, preserve_folder=preserve_folder)
 
     def _write_meta(self, name, meta, write_format=WriteFormats.yaml):
         """
@@ -227,7 +287,9 @@ class PyPadsApi(IApi):
         :return:
         """
         if meta:
-            try_write_artifact(name + ".meta", meta, write_format, preserve_folder=True)
+            self.pypads.backend.log_mem_artifact(meta.json(), MetadataModel(path=name + ".meta",
+                                                                 description="Meta information of artifact '{}'".format(
+                                                                     name), format=write_format))
 
     def _read_meta(self, name):
         """
@@ -236,7 +298,11 @@ class PyPadsApi(IApi):
         :return:
         """
         # TODO format / json / etc?
-        return try_read_artifact(name + ".meta.txt")
+        return try_read_artifact(name + ".meta.yaml")
+
+    @cmd
+    def artifact(self, name):
+        return try_read_artifact(name)
 
     @cmd
     def metric_meta(self, name):
@@ -301,7 +367,7 @@ class PyPadsApi(IApi):
         return self.pypads.cache.get("pre_run_fns")
 
     @cmd
-    def register_setup(self, name, pre_fn: PreRunFunction, silent=True):
+    def register_setup(self, name, pre_fn: RunSetup, silent=True):
         """
         Register a new pre_run function.
         :param name: Name of the registration
@@ -318,9 +384,10 @@ class PyPadsApi(IApi):
             cache.add(name, pre_fn)
 
     @cmd
-    def register_setup_fn(self, name, fn, nested=True, intermediate=True, order=0, silent=True):
+    def register_setup_fn(self, name, description, fn, nested=True, intermediate=True, order=0, silent=True):
         """
         Register a new pre_run_function by building it from given parameters.
+        :param description: A description of the setup function.
         :param name: Name of the registration
         :param fn: Function to register
         :param nested: Parameter if this function should be called on nested runs.
@@ -331,7 +398,13 @@ class PyPadsApi(IApi):
         :param silent:
         :return:
         """
-        self.register_setup(name, PreRunFunction(fn=fn, nested=nested, intermediate=intermediate, order=order),
+
+        class TmpRunSetupFunction(RunSetup):
+            pass
+
+        TmpRunSetupFunction.__doc__ = description
+
+        self.register_setup(name, TmpRunSetupFunction(fn=fn, nested=nested, intermediate=intermediate, order=order),
                             silent=silent)
 
     @cmd
@@ -340,14 +413,14 @@ class PyPadsApi(IApi):
         fns = []
         for k, v in cache.items():
             fns.append(v)
-        fns.sort(key=lambda f: f.order())
+        fns.sort(key=lambda f: f.order)
         for fn in fns:
             if callable(fn):
                 fn(self, _pypads_env=_pypads_env)
 
     def _get_teardown_cache(self):
         """
-        Register a new post run function.
+        Get the teardown function registry from cache
         :return:
         """
         # General post run cache
@@ -364,7 +437,7 @@ class PyPadsApi(IApi):
         return self.pypads.cache.run_get("post_run_fns")
 
     @cmd
-    def register_teardown(self, name, post_fn: PostRunFunction, silent=True):
+    def register_teardown(self, name, post_fn: RunTeardown, silent=True):
         """
         Register a new post run function.
         :param name: Name of the registration
@@ -397,8 +470,8 @@ class PyPadsApi(IApi):
         :return:
         """
         self.register_teardown(name,
-                               post_fn=PostRunFunction(fn=fn, message=error_message, nested=nested,
-                                                       intermediate=intermediate, order=order), silent=silent)
+                               post_fn=RunTeardown(fn=fn, message=error_message, nested=nested,
+                                                   intermediate=intermediate, order=order), silent=silent)
 
     @cmd
     def active_run(self):
@@ -425,12 +498,19 @@ class PyPadsApi(IApi):
         """
         run = self.active_run()
 
+        consolidated_dict = self.pypads.cache.get('consolidated_dict', None)
+        if consolidated_dict is not None:
+            # Dump data to disk
+            try_write_artifact("consolidated_log", consolidated_dict, write_format=WriteFormats.json)
+            # self.log_mem_artifact("consolidated_log", consolidated_dict, write_format=WriteFormats.json)
+
         chached_fns = self._get_teardown_cache()
         fn_list = [v for i, v in chached_fns.items()]
-        fn_list.sort(key=lambda t: t.order())
+        fn_list.sort(key=lambda t: t.order)
         for fn in fn_list:
             try:
-                fn(self, _pypads_env=None)
+                fn(self.pypads, _pypads_env=LoggerEnv(parameter=dict(), experiment_id=run.info.experiment_id,
+                                               run_id=run.info.run_id))
             except (KeyboardInterrupt, Exception) as e:
                 logger.warning("Failed running post run function " + fn.__name__ + " because of exception: " + str(e))
 
@@ -442,7 +522,76 @@ class PyPadsApi(IApi):
             import shutil
             shutil.rmtree(folder)
         # !-- Clean tmp files in disk cache after run ---
+
     # !--- run management ----
+    @cmd
+    def get_run(self, run_id=None):
+        run_id = run_id or self.active_run().info.run_id
+        return self.pypads.backend.mlf.get_run(run_id=run_id)
+
+    @cmd
+    def _get_metric_history(self, run):
+        return {key: self.pypads.backend.mlf.get_metric_history(run.info.run_id, key) for key in run.data.metrics}
+
+    @cmd
+    def list_experiments(self, view_type: ViewType = ViewType.ALL):
+        return self.pypads.backend.mlf.list_experiments(view_type)
+
+    @cmd
+    def list_run_infos(self, experiment_id, run_view_type: ViewType = ViewType.ALL):
+        return self.pypads.backend.mlf.list_run_infos(experiment_id=experiment_id, run_view_type=run_view_type)
+
+    @cmd
+    def list_metrics(self, run_id=None):
+        run = self.get_run(run_id)
+        return self._get_metric_history(run)
+
+    @cmd
+    def list_parameters(self, run_id=None):
+        run = self.get_run(run_id)
+        return run.data.params
+
+    @cmd
+    def list_tags(self, run_id=None):
+        run = self.get_run(run_id)
+        return run.data.tags
+
+    @cmd
+    def list_artifacts(self, run_id=None, verbose=False):
+        run = self.get_run(run_id)
+        path = run.info.artifact_uri
+        search = "Output"
+        if verbose:
+            search = ""
+        return get_artifacts(path, search=search)
+
+    @cmd
+    def show_report(self, experiment_id=None):
+        pass
+
+    @cmd
+    def list_logger_calls(self, run_id=None):
+        run = self.get_run(run_id)
+        path = run.info.artifact_uri
+        return get_artifacts(path, search="Calls")
+
+    @cmd
+    def show_call_stack(self, run_id):
+        pass
+
+    @cmd
+    def list_tracked_objects(self, run_id):
+        run = self.get_run(run_id)
+        path = run.info.artifact_uri
+        return get_artifacts(path, search="TrackedObjects")
+
+    @cmd
+    def to_json(self, experiment_id):
+        # Function to be called before ending the tracker
+        from pypads.utils.logging_util import get_run_folder
+        from pypads.utils.files_util import consolidate_run_output_files
+        path = get_run_folder()
+        consolidate_run_output_files(root_path=path)
 
 
 class ApiPluginManager(ExtendableMixin):

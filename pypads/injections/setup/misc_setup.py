@@ -1,21 +1,74 @@
 import os
+from typing import List, Type
 
+from pydantic import HttpUrl, BaseModel
+
+from app.env import LoggerEnv
 from pypads import logger
-from pypads.app.injections.run_loggers import PreRunFunction
+from pypads.app.injections.base_logger import LoggerCall, TrackedObject
+from pypads.app.injections.run_loggers import RunSetup
+from pypads.model.models import TrackedObjectModel, LibraryModel, OutputModel, ArtifactMetaModel
+from pypads.utils.logging_util import WriteFormats
 
 
-class RunInfo(PreRunFunction):
+class DependencyTO(TrackedObject):
+    """
+    Tracking object class for run env info, i.e dependencies.
+    """
+
+    class DependencyModel(TrackedObjectModel):
+        uri: HttpUrl = "https://www.padre-lab.eu/onto/env/Dependencies"
+
+        dependencies: List[LibraryModel] = []
+        content_format: WriteFormats = WriteFormats.text
+
+        class Config:
+            orm_mode = True
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return cls.DependencyModel
+
+    def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
+        super().__init__(*args, tracked_by=tracked_by, **kwargs)
+
+    def _add_dependency(self, pip_freeze):
+        for item in pip_freeze:
+            name, version = item.split('==')
+            self.dependencies.append(LibraryModel(name=name, version=version))
+        path = os.path.join(self._base_path(), self._get_artifact_path("pip_freeze"))
+        self._store_artifact("\n".join(pip_freeze),
+                             ArtifactMetaModel(path=path, description="dependency list from pip freeze",
+                                               format=WriteFormats.text))
+
+    def _get_artifact_path(self, name):
+        return os.path.join(str(id(self)), "Env", name)
+
+
+class DependencyRSF(RunSetup):
+    """Store information about dependencies used in the experimental environment."""
+
+    name = "Dependencies Run Setup Logger"
+    uri = "https://www.padre-lab.eu/onto/dependency-run-logger"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    @staticmethod
-    def _needed_packages():
-        return ["pip"]
+    _dependencies = {"pip"}
 
-    def _call(self, pads, *args, **kwargs):
+    class DependencyRSFOutput(OutputModel):
+        uri: HttpUrl = "https://www.padre-lab.eu/onto/DependencyRSF-Output"
+
+        dependencies: DependencyTO.get_model_cls() = ...
+
+    @classmethod
+    def output_schema_class(cls) -> Type[OutputModel]:
+        return cls.DependencyRSFOutput
+
+    def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
+        pads = _pypads_env.pypads
         logger.info("Tracking execution to run with id " + pads.api.active_run().info.run_id)
-
+        dependencies = DependencyTO(tracked_by=_logger_call)
         # Execute pip freeze
         try:
             # noinspection PyProtectedMember,PyPackageRequirements
@@ -23,19 +76,63 @@ class RunInfo(PreRunFunction):
         except ImportError:  # pip < 10.0
             # noinspection PyUnresolvedReferences,PyPackageRequirements
             from pip.operations import freeze
-        pads.api.log_mem_artifact("pip_freeze", "\n".join(freeze.freeze()))
+        dependencies._add_dependency(list(freeze.freeze()))
+        dependencies.store(_logger_output, "dependencies")
 
 
-class RunLogger(PreRunFunction):
+class LoguruTO(TrackedObject):
+    """
+    Tracking object class for run env info, i.e dependencies.
+    """
+
+    class LoguruModel(TrackedObjectModel):
+        uri: HttpUrl = "https://www.padre-lab.eu/onto/env/Logs"
+
+        meta: ArtifactMetaModel = ...
+
+        class Config:
+            orm_mode = True
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return cls.LoguruModel
+
+    def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
+        super().__init__(*args, tracked_by=tracked_by, **kwargs)
+        path = os.path.join(self._base_path(), self._get_artifact_path("logs.log"))
+        self.meta = ArtifactMetaModel(path=path, description="Logs of the current run", format=WriteFormats.text)
+
+
+class LoguruRSF(RunSetup):
+    """Store all logs of the current run into a file."""
+
+    name = "Loguru Run Setup Logger"
+    uri = "https://www.padre-lab.eu/onto/loguru-run-logger"
+
+    _dependencies = {"loguru"}
+
+    class LoguruRSFOutput(OutputModel):
+        uri: HttpUrl = "https://www.padre-lab.eu/onto/LoguruRSF-Output"
+
+        logs: LoguruTO.get_model_cls() = ...
+
+    @classmethod
+    def output_schema_class(cls) -> Type[OutputModel]:
+        return cls.LoguruRSFOutput
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def _call(self, pads, *args, **kwargs):
+    def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
+        pads = _pypads_env.pypads
+
         from pypads.app.api import PyPadsApi
         _api: PyPadsApi = pads.api
 
         from pypads.utils.logging_util import get_temp_folder
         folder = get_temp_folder()
+
+        logs = LoguruTO(tracked_by=_logger_call)
 
         # TODO loguru has problems with multiprocessing / make rotation configurable etc
         from pypads.pads_loguru import logger_manager
@@ -52,6 +149,6 @@ class RunLogger(PreRunFunction):
             except Exception:
                 pass
             for file in glob.glob(os.path.join(folder, "run_*.log")):
-                pads.api.log_artifact(file)
-
+                pads.api.log_artifact(file, artifact_path=logs.meta.path)
+        logs.store(_logger_output, "logs")
         _api.register_teardown_fn("logger_" + str(lid), remove_logger)

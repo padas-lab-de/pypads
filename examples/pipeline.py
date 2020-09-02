@@ -6,10 +6,10 @@ An example of using PyPads to track a multiprocess GridSearch for PCA and Logist
 pipeline for digits classification.
 """
 import os
+
 from pypads.app.base import PyPads
 
 path = os.path.expanduser('~')
-
 tracker = PyPads(uri="git:/{}/.pypads/results".format(path), autostart=True)
 
 import numpy as np

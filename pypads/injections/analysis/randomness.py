@@ -1,8 +1,9 @@
 import random
 from logging import warning
-
+from padrepads.util import _is_package_available
 
 # Logging
+
 def log_random_seed(key):
     from pypads.app.base import PyPads
     from pypads.app.pypads import get_current_pads

@@ -176,7 +176,7 @@ Logging functions are the generic functions performing tracking tasks bound to h
     Function logging the input parameters of the current pipeline object function call.
     """
 
-    def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.pickle, _pypads_env: LoggingEnv, **kwargs):
+    def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.pickle, _pypads_env: InjectionLoggingEnv, **kwargs):
         """
         :param ctx:
         :param args:
@@ -341,7 +341,7 @@ Once the hooks are defined, they are then linked to the events we want them to t
 
 .. code-block:: python
 
-    events = {
+    hook_mappings = {
                 "Metrics" : {"on": ["pypads_metrics"]}
              }
 

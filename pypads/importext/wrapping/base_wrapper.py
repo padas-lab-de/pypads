@@ -2,28 +2,47 @@ import inspect
 from _py_abc import ABCMeta
 from abc import abstractmethod
 from copy import copy
-from typing import Set
+from types import ModuleType
+from typing import Set, Type
+
+from pydantic import BaseModel
 
 from pypads import logger
 from pypads.importext.mappings import MatchedMapping
+from pypads.model.metadata import ModelHolder
+from pypads.model.models import ContextModel
 
 
 def fullname(o):
-    module = o.__class__.__module__
+    """
+    Build the full name for a given object
+    :param o: object
+    :return:
+    """
+    if isinstance(o, ModuleType):
+        return o.__name__
+    module = o.__module__
     if module is None or module == str.__class__.__module__:
         return o.__class__.__name__  # Don't report __builtin__
     else:
-        return module + '.' + o.__class__.__name__
+        return module + '.' + o.__name__
 
 
-class Context:
-    __metaclass__ = ABCMeta
+class Context(ModelHolder):
+    """
+    Context of the wrapping. In general this is a class or module
+    """
 
-    def __init__(self, context, reference=None):
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return ContextModel
+
+    def __init__(self, context, reference=None, *args, **kwargs):
         if context is None:
             raise ValueError("A context has to be passed for a object to be wrapped.")
+        reference = reference if reference is not None else fullname(context)
+        super().__init__(*args, reference=reference, **kwargs)
         self._c = context
-        self._reference = reference if reference is not None else fullname(context)
 
     def overwrite(self, key, obj):
         setattr(self._c, key, obj)
@@ -144,10 +163,6 @@ class Context:
     @property
     def container(self):
         return self._c
-
-    @property
-    def reference(self):
-        return self._reference
 
     def get_dict(self):
         return self._c.__dict__

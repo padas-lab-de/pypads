@@ -1,9 +1,12 @@
-import uuid
-from _py_abc import ABCMeta
-from abc import abstractmethod
-from typing import List
+import traceback
+from abc import abstractmethod, ABCMeta
+from typing import List, Union, Tuple, Set
 
-from pypads.utils.util import is_package_available, dict_merge
+from pypads import logger
+from pypads.app.misc.inheritance import SuperStop
+from pypads.importext.versioning import LibSelector, VersionNotFoundException
+from pypads.model.metadata import ModelObject
+from pypads.model.models import LibraryModel
 
 DEFAULT_ORDER = 1
 
@@ -26,21 +29,6 @@ class MissingDependencyError(NoCallAllowedError):
         super().__init__(*args, **kwargs)
 
 
-class SuperStop:
-    """
-    This class resolves the issue TypeError: object.__init__() takes exactly one argument by being the last class
-    in a mro and ommitting all arguments. This should be always last in the mro()!
-    """
-
-    def __init__(self, *args, **kwargs):
-        mro = self.__class__.mro()
-        if SuperStop in mro:
-            if len(mro) - 2 != mro.index(SuperStop):
-                raise ValueError("SuperStop ommitting arguments in " + str(self.__class__)
-                                 + " super() callstack: " + str(mro))
-        super().__init__()
-
-
 class OrderMixin(SuperStop):
     """
     Object defining an order attribute to denote its priority.
@@ -52,18 +40,19 @@ class OrderMixin(SuperStop):
         self._order = order
         super().__init__(*args, **kwargs)
 
+    @property
     def order(self):
         return self._order
 
     @staticmethod
     def sort(collection, reverse=False):  # type: (List[OrderMixin]) -> List[OrderMixin]
         copy = collection.copy()
-        copy.sort(key=lambda e: e.order(), reverse=reverse)
+        copy.sort(key=lambda e: e.order, reverse=reverse)
         return copy
 
     @staticmethod
     def sort_mutable(collection, reverse=False):  # type: (List[OrderMixin]) -> None
-        collection.sort(key=lambda e: e.order(), reverse=reverse)
+        collection.sort(key=lambda e: e.order, reverse=reverse)
 
 
 class CallableMixin(SuperStop):
@@ -94,28 +83,41 @@ class DependencyMixin(CallableMixin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    """
+    Overwrite this to provide your package names.
+    :return: List of needed packages by the logger.
+    """
+    _dependencies: Set[Union[LibSelector, str, Tuple[str, str]]] = set()
+
+    @property
+    def dependencies(self):
+        return self._to_lib_selectors(self._dependencies)
+
     @staticmethod
-    @abstractmethod
-    def _needed_packages():
-        """
-        Overwrite this to provide your package names.
-        :return: List of needed packages by the logger.
-        """
-        return []
+    def _to_lib_selectors(dependencies: Set[Union[LibSelector, str, Tuple[str, str]]]) -> Set[LibSelector]:
+        selectors = set()
+        for d in dependencies:
+            selectors.add(LibSelector(name=d[0], constraint=d[1]) if isinstance(d, tuple) else LibSelector(
+                name=d) if not isinstance(d, LibSelector) else d)
+        return selectors
 
     def _check_dependencies(self):
         """
         Raise error if dependencies are missing.
-
         """
         missing = []
-        packages = self._needed_packages()
-        if packages is not None:
-            for package in packages:
-                if not is_package_available(package):
-                    missing.append(package)
+        selectors = self.dependencies
+        if selectors is not None:
+            for selector in selectors:
+                try:
+                    if not selector.is_installed():
+                        missing.append(selector)
+                except VersionNotFoundException as e:
+                    # TODO couldn't get version allow execution for now
+                    pass
         if len(missing) > 0:
-            raise MissingDependencyError("Can't log " + str(self) + ". Missing dependencies: " + ", ".join(missing))
+            raise MissingDependencyError(
+                "Can't log " + str(self) + ". Missing dependencies: " + ", ".join([str(d) for d in missing]))
 
     def __call__(self, *args, **kwargs):
         self._check_dependencies()
@@ -143,11 +145,11 @@ class IntermediateCallableMixin(CallableMixin):
         raise NoCallAllowedError("Call wasn't allowed by intermediate / nested settings of the current run.")
 
     @property
-    def nested(self):
+    def allow_nested(self):
         return self._nested
 
     @property
-    def intermediate(self):
+    def allow_intermediate(self):
         return self._intermediate
 
 
@@ -185,6 +187,8 @@ class DefensiveCallableMixin(CallableMixin):
             return self._handle_error(*args, ctx=ctx, _pypads_env=_pypads_env, error=Exception("KeyboardInterrupt"),
                                       **kwargs)
         except Exception as e:
+            import traceback
+            logger.debug(traceback.format_exc())
             return self._handle_error(*args, ctx=ctx, _pypads_env=_pypads_env, error=e, **kwargs)
 
     @abstractmethod
@@ -203,93 +207,95 @@ class ConfigurableCallableMixin(CallableMixin):
         self._kwargs = kwargs
         super().__init__(*args, **kwargs)
 
-    def __call__(self, *args, **kwargs):
-        super().__call__(*args, **{**self._kwargs, **kwargs})
+    @property
+    def static_parameters(self):
+        return self._kwargs
 
 
-class ValidateableMixin(SuperStop):
+class LibrarySpecificMixin(SuperStop):
+    """
+    A class only being applicable for a certain library.
+    """
     __metaclass__ = ABCMeta
-    """ This class implements basic logic for validating a validateble object"""
 
-    # noinspection PyBroadException
-    def __init__(self, *args, metadata, schema=None, **kwargs):
+    supported_libraries: Set[LibSelector] = set()
+
+    def allows_any(self, lib_selector: LibSelector):
+        libraries = self.supported_libraries
+        return len(libraries) == 0 or any([s.allows_any(lib_selector) for s in libraries])
+
+    def allows(self, version):
+        libraries = self.supported_libraries
+        return len(libraries) == 0 or any([s.allows(version) for s in libraries])
+
+    def is_applicable(self, lib_selector: LibSelector, only_name=True):
+        if self.allows_any(lib_selector):
+            return True
+        if only_name:
+            for s in self.supported_libraries:
+                if s.name == lib_selector.name:
+                    return True
+        return False
+
+
+class FunctionHolderMixin(CallableMixin):
+    """
+    Holds the given function in a timed callable.
+    """
+
+    def __init__(self, *args, fn, **kwargs):
         super().__init__(*args, **kwargs)
-        self._schema = schema
-        self.validate(metadata=metadata, ** kwargs)
-
-    @abstractmethod
-    def validate(self, metadata, **kwargs):
-        raise NotImplementedError()
-
-
-class MetadataMixin(ValidateableMixin):
-    """
-    Base object for tracked objects that manage metadata. A MetadataEntity manages and id and a dict of metadata.
-    The metadata should contain all necessary non-binary data to describe an entity.
-    """
-    # Metadata attributes
-    METADATA = 'metadata'
-    CREATED_AT = 'created_at'
-    EXPERIMENT_ID = 'experiment_id'
-    RUN_ID = 'run_id'
-
-    @abstractmethod
-    def __init__(self, *args, metadata: dict, pads=None, **kwargs):
-        if pads is None:
-            from pypads.app.pypads import get_current_pads
-            pads = get_current_pads()
-        self.pads = pads
-        run = self.pads.api.active_run()
-        import time
-        self._metadata = {
-            **{"id": uuid.uuid4().__str__(), self.CREATED_AT: time.time(), self.EXPERIMENT_ID: run.info.experiment_id,
-               self.RUN_ID: run.info.run_id}, **metadata}
-
-        super().__init__(*args, **{self.METADATA: metadata, **kwargs})
+        self._fn = fn
 
     @property
-    def id(self):
-        """
-        returns the unique id of the data set. Data sets will be managed on the basis of this id
-        :return: string
-        """
-        return self.metadata["id"]
+    def fn(self):
+        return self._fn
 
-    @id.setter
-    def id(self, _id):
+    def __real_call__(self, *args, **kwargs):
+        return self._fn(*args, **kwargs)
+
+
+class ProvenanceMixin(ModelObject, metaclass=ABCMeta):
+    """
+    Class extracting its library reference automatically if possible.
+    """
+
+    def __init__(self, *args, lib_model: LibraryModel = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if lib_model is None:
+            setattr(self, "defined_in", self._get_library_descriptor())
+        else:
+            setattr(self, "defined_in", lib_model)
+
+        if not hasattr(self, "uri") or getattr(self, "uri") is None:
+            setattr(self, "uri", "{}#{}".format(getattr(self, "is_a"), self.uid))
+
+    def _get_library_descriptor(self) -> LibraryModel:
         """
-        used for updating the id after the undlerying generic has assigned one
-        :param _id: id, ideally an url
+        Try to extract the defining package of this class.
         :return:
         """
-        self.metadata["id"] = _id
+        # TODO extract reference to self package
+        try:
+            name = self.__module__.split(".")[0]
+            from pypads.utils.util import find_package_version
+            version = find_package_version(name)
+            return LibraryModel(name=name, version=version, extracted=True)
+        except Exception:
+            return LibraryModel(name="__unkown__", version="0.0", extracted=True)
 
-    @property
-    def name(self):
-        """
-        returns the name of this object, which is expected in field "name" of the metadata. If this field does not
-        exist, the id is returned
-        :return:
-        """
-        if self.metadata and "name" in self.metadata:
-            return self.metadata["name"]
-        else:
-            return str(self.id)
 
-    @name.setter
-    def name(self, name):
-        self.metadata["name"] = name
+class BaseDefensiveCallableMixin(DefensiveCallableMixin):
+    """
+    Defensive callable ignoring errors but printing a warning to console.
+    """
+    __metaclass__ = ABCMeta
 
-    @property
-    def created_at(self):
-        if self.CREATED_AT in self.metadata:
-            return self.metadata[self.CREATED_AT]
-        else:
-            return None
+    @abstractmethod
+    def __init__(self, *args, error_message=None, **kwargs):
+        self._message = error_message if error_message else "Couldn't execute {}, because of exception: {} \nTrace:\n{}"
+        super().__init__(*args, **kwargs)
 
-    @property
-    def metadata(self):
-        return self._metadata
-
-    def merge_metadata(self, metadata: dict):
-        self._metadata = dict_merge(self.metadata, metadata)
+    def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
+        logger.warning(self._message.format("{}.{}".format(self.__class__.__name__, self.__name__), str(error),
+                                            traceback.format_exc()))

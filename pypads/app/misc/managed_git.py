@@ -17,9 +17,7 @@ class ManagedGitFactory(DefensiveCallableMixin, DependencyMixin):
     def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
         logger.warning("Couldn't initialized git repository because of exception: {0}".format(error))
 
-    @staticmethod
-    def _needed_packages():
-        return ["git"]
+    _dependencies = {"git"}
 
     def __real_call__(self, path, *args, **kwargs):
         return ManagedGit(path, pads=self.pads)
