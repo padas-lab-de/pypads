@@ -221,7 +221,7 @@ class MultiInjectionLoggerCallModel(InjectionLoggerCallModel):
     pre_time: Optional[float] = 0.0
     post_time: Optional[float] = 0.0
     child_time: Optional[float] = 0.0
-    is_a = HttpUrl = "https://www.padre-lab.eu/onto/MultiInjectionLoggerCall"
+    is_a : HttpUrl = "https://www.padre-lab.eu/onto/MultiInjectionLoggerCall"
 
     class Config:
         orm_mode = True

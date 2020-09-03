@@ -177,7 +177,6 @@ class MultiInjectionLogger(InjectionLogger):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.store_schema(self._base_path())
         # TODO teardown fn for output storage
 
     @classmethod
@@ -195,6 +194,7 @@ class MultiInjectionLogger(InjectionLogger):
             logger_call.add_call(logging_env.call)
             return logger_call
         else:
+            self.store_schema(self._base_path())
             return MultiInjectionLoggerCall(logging_env=logging_env, created_by=self.store_schema())
 
     def _get_output(self, ):
@@ -243,7 +243,7 @@ class MultiInjectionLogger(InjectionLogger):
                 fn(self, logger_call)
             from pypads.app.pypads import get_current_pads
             pads = get_current_pads()
-            pads.cache.run_add(id(self), {'call': logger_call, 'output': output})
+            pads.cache.run_add(id(self), {'call': logger_call, 'output': output, 'base_path':self._base_path()})
         return _return
 
 
