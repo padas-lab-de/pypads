@@ -206,29 +206,6 @@ class MultiInjectionLogger(InjectionLogger):
         else:
             return self.build_output()
 
-    def __pre__(self, ctx, *args,
-                _logger_call, _logger_output, _args, _kwargs, **kwargs):
-        """
-        The function to be called before executing the log anchor. the value returned will be passed on to the __post__
-        function as **_pypads_pre_return**.
-
-
-        :return: _pypads_pre_return
-        """
-        pass
-
-    def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _logger_output, _args, _kwargs,
-                 **kwargs):
-        """
-        The function to be called after executing the log anchor.
-
-        :param _pypads_pre_return: the value returned by __pre__.
-        :param _pypads_result: the value returned by __call_wrapped__.
-
-        :return: the wrapped function return value
-        """
-        pass
-
     def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, **kwargs):
         _pypads_hook_params = _pypads_env.parameter
 

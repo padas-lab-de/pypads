@@ -9,7 +9,7 @@ from typing import Type
 from pypads import logger
 from pypads.app.injections.base_logger import TrackedObject, LoggerCall
 from pypads.app.injections.injection import InjectionLogger, InjectionLoggerCall, MultiInjectionLogger
-from pypads.model.models import TrackedObjectModel
+from pypads.model.models import TrackedObjectModel, OutputModel
 from pypads.utils.logging_util import WriteFormats, get_temp_folder, try_write_artifact
 from pypads.utils.util import is_package_available
 
@@ -123,7 +123,8 @@ def _to_node_label(wrappee, ref):
         try:
             return str(wrappee)
         except Exception as e:
-            logger.warning("Couldn't get representation of the wrappee. Fallback to id " + str(id(wrappee)) + ". " + str(e))
+            logger.warning(
+                "Couldn't get representation of the wrappee. Fallback to id " + str(id(wrappee)) + ". " + str(e))
             return str(id(wrappee))
 
 
@@ -145,7 +146,10 @@ class PipelineTO(TrackedObject):
     class PipelineModel(TrackedObjectModel):
         uri: HttpUrl = "https://www.padre-lab.eu/onto/Pipeline"
 
-
+        import networkx as nx
+        network: nx.MultiDiGraph = None
+        pipeline_type: str = ...
+        last_pipeline_tracking: int = ...
 
         class Config:
             orm_mode = True
@@ -159,13 +163,22 @@ class PipelineTO(TrackedObject):
         super().__init__(*args, tracked_by=tracked_by, **kwargs)
 
 
-class PipelineTracker(MultiInjectionLogger):
+class PipelineTrackerILF(MultiInjectionLogger):
     name = "PipeLineLogger"
     uri = "https://www.padre-lab.eu/onto/pipeline-logger"
 
     _dependencies = {"networkx"}
 
-    def __pre__(self, ctx, *args, _logger_call: InjectionLoggerCall, _pypads_pipeline_type="normal", _pypads_pipeline_args=False,
+    class PipelineOutput(OutputModel):
+        is_a: HttpUrl = "https://www.padre-lab.eu/onto/PipelineILF-Output"
+
+        pipeline: PipelineTO.get_model_cls() = ...
+
+        class Config:
+            orm_mode = True
+
+    def __pre__(self, ctx, *args, _logger_call: InjectionLoggerCall, _pypads_pipeline_type="normal",
+                _pypads_pipeline_args=False,
                 **kwargs):
 
         from pypads.app.pypads import get_current_pads
@@ -215,14 +228,16 @@ class PipelineTracker(MultiInjectionLogger):
         pads.cache.add("pipeline", pipeline_cache)
         return node_id
 
-    def __post__(self, ctx, *args, _pypads_pipeline_args=False, _logger_call: InjectionLoggerCall, _pypads_pre_return, **kwargs):
+    def __post__(self, ctx, *args, _pypads_pipeline_args=False, _logger_call: InjectionLoggerCall, _pypads_pre_return,
+                 **kwargs):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
 
         pipeline_cache = pads.cache.get("pipeline")
         network = pipeline_cache.get("network")
         node_id = _pypads_pre_return
-        label = "return " + _to_edge_label(_logger_call.original_call.call_id.wrappee, _pypads_pipeline_args, args, kwargs)
+        label = "return " + _to_edge_label(_logger_call.original_call.call_id.wrappee, _pypads_pipeline_args, args,
+                                           kwargs)
         if pads.call_tracker.call_depth() == 1:
             network.add_edge(node_id, -1, plain_label=label, label=_step_number(network, label))
         elif pads.call_tracker.call_depth() > 1:
