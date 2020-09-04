@@ -2,6 +2,21 @@ Changelog
 =========
 
 
+0.3.1 (2020-09-04)
+------------------
+
+Fix
+~~~
+- Chg: broken import in the new mlflow release. [Mehdi Ben Amor]
+- Class reference fix. [Mehdi Ben Amor]
+- Fixed multiple executions of the same hooks / anchors when defined by
+  multiple matching mappings. [Thomas Weißgerber]
+
+Other
+~~~~~
+- Bump version: 0.3.0 → 0.3.1. [Mehdi Ben Amor]
+
+
 0.3.0 (2020-08-31)
 ------------------
 
