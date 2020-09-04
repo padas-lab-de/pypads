@@ -8,8 +8,8 @@ from typing import Type
 
 from pypads import logger
 from pypads.app.injections.base_logger import TrackedObject, LoggerCall
-from pypads.app.injections.injection import InjectionLogger, InjectionLoggerCall, MultiInjectionLogger
-from pypads.model.models import TrackedObjectModel, OutputModel
+from pypads.app.injections.injection import  InjectionLoggerCall, MultiInjectionLogger
+from pypads.model.models import TrackedObjectModel, OutputModel, ArtifactMetaModel
 from pypads.utils.logging_util import WriteFormats, get_temp_folder, try_write_artifact
 from pypads.utils.util import is_package_available
 
@@ -23,20 +23,22 @@ from pypads.utils.util import is_package_available
 # --- Clean nodes after run ---
 def pipeline_clean_up(pads, *args, **kwargs):
     # curr_call = pads.call_tracker.current_call()
-    pipeline_tracker = pads.cache.run_get(pads.cache.run_get("pipeline_tracker"), {})
+    pipeline_tracker = pads.cache.run_get(pads.cache.run_get("pipeline_tracker"))
     call = pipeline_tracker.get("call")
     output = pipeline_tracker.get("output")
     pipeline = output.pipeline
 
-    network = pipeline.network
+    from networkx import MultiDiGraph
+    network = MultiDiGraph(pipeline._get_network())
     _pipeline_type = pipeline.pipeline_type
     # global network
     if network is not None and len(network.nodes) > 0:
         from networkx import DiGraph
         from networkx.drawing.nx_agraph import to_agraph
         path = os.path.join(pipeline._base_path(), pipeline._get_artifact_path("pypads_pipeline"))
-        try_write_artifact(path, network, WriteFormats.pickle)
-
+        # try_write_artifact(path, network, WriteFormats.pickle)
+        pipeline._store_artifact(network,
+                                 ArtifactMetaModel(path=path, description="networkx graph", format=WriteFormats.pickle))
         if is_package_available("networkx"):
             base_folder = get_temp_folder()
             folder = base_folder + "pipeline_graph.png"
@@ -152,7 +154,7 @@ class PipelineTO(TrackedObject):
     class PipelineModel(TrackedObjectModel):
         uri: HttpUrl = "https://www.padre-lab.eu/onto/Pipeline"
 
-        network: dict = None
+        network: dict = ...
         pipeline_type: str = ...
         last_tracked: int = ...
 
@@ -165,26 +167,19 @@ class PipelineTO(TrackedObject):
         return cls.PipelineModel
 
     def __init__(self, *args, tracked_by: LoggerCall, network=None, pipeline_type="", last_tracked=None, **kwargs):
-        self.network = network
-        self.pipeline_type = pipeline_type
-        self.last_tracked = last_tracked
-        super().__init__(*args, tracked_by=tracked_by, **kwargs)
+        super().__init__(*args, tracked_by=tracked_by, network=network, pipeline_type=pipeline_type,
+                         last_tracked=last_tracked, **kwargs)
 
-
-    @property
-    def network(self):
+    def _get_network(self):
         return self.network
 
-    @network.setter
-    def network(self, network: dict):
+    def _set_network(self, network: dict):
         self.network = network
 
-    @property
-    def last_tracked(self):
+    def _get_last_tracked(self):
         return self.last_tracked
 
-    @last_tracked.setter
-    def last_tracked(self, last_tracked):
+    def _set_last_tracked(self, last_tracked):
         self.last_tracked = last_tracked
 
     def _get_artifact_path(self, name=""):
@@ -229,8 +224,7 @@ class PipelineTrackerILF(MultiInjectionLogger):
         # _pipeline_type = pipeline_cache.get("pipeline_type")
 
         if _logger_output.pipeline is None:
-            pipeline = PipelineTO(tracked_by=_logger_call, network=None, last_tracked=None,
-                                  pipeline_type=_pypads_pipeline_type)
+            pipeline = PipelineTO(tracked_by=_logger_call, pipeline_type=_pypads_pipeline_type)
         else:
             pipeline = _logger_output.pipeline
 
@@ -257,7 +251,7 @@ class PipelineTrackerILF(MultiInjectionLogger):
             if len(network.nodes) == 1:
                 network.add_node(-1, label="entry")
                 last_tracked = -1
-                pipeline.last_tracked(last_tracked)
+                pipeline._set_last_tracked(last_tracked)
             network.add_edge(last_tracked, node_id, plain_label=label, label=_step_number(network, label))
 
         # If the tracked function was called from another tracked function
@@ -270,8 +264,8 @@ class PipelineTrackerILF(MultiInjectionLogger):
             # Add an edge from the tracked function to the current function call
             network.add_edge(containing_node_id, node_id, plain_label=label, label=_step_number(network, label))
 
-        pipeline.network(nx.to_dict_of_dicts(network))
-        _logger_output.store(pipeline, "pipeline")
+        pipeline._set_network(nx.to_dict_of_dicts(network))
+        pipeline.store(_logger_output, "pipeline")
         return node_id
 
     def __post__(self, ctx, *args, _pypads_pipeline_args=False, _logger_call: InjectionLoggerCall, _logger_output,
@@ -282,7 +276,7 @@ class PipelineTrackerILF(MultiInjectionLogger):
 
         import networkx as nx
         pipeline = _logger_output.pipeline
-        network = nx.MultiDiGraph(pipeline.network)
+        network = nx.MultiDiGraph(pipeline._get_network())
 
         node_id = _pypads_pre_return
         label = "return " + _to_edge_label(_logger_call.original_call.call_id.wrappee, _pypads_pipeline_args, args,
@@ -295,5 +289,5 @@ class PipelineTrackerILF(MultiInjectionLogger):
                 containing_node_label = _to_node_label(pads.call_tracker.call_stack[-2].call_id.wrappee, ctx)
                 network.add_node(containing_node_id, label=containing_node_label)
             network.add_edge(node_id, containing_node_id, plain_label=label, label=_step_number(network, label))
-        pipeline.network(nx.to_dict_of_dicts(network))
+        pipeline._set_network(nx.to_dict_of_dicts(network))
         pipeline.store(_logger_output, "pipeline")
