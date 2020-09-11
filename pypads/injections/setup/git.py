@@ -3,7 +3,7 @@ import os
 from pydantic import HttpUrl, BaseModel
 from typing import List, Type
 
-from app.env import LoggerEnv
+from pypads.app.env import LoggerEnv
 from pypads.app.injections.base_logger import TrackedObject
 from pypads.app.injections.run_loggers import RunSetup
 from pypads.app.misc.managed_git import ManagedGit

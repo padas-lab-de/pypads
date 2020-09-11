@@ -4,7 +4,7 @@ from typing import Type
 
 from pydantic import BaseModel, HttpUrl
 
-from app.env import InjectionLoggerEnv
+from pypads.app.env import InjectionLoggerEnv
 from pypads import logger
 from pypads.app.call import Call
 from pypads.app.injections.base_logger import LoggerCall, Logger, LoggerExecutor, OriginalExecutor
