@@ -19,7 +19,7 @@ default_mapping_file_paths.extend(glob.glob(
 
 
 class Mapping:
-    """
+    """default_mapping_file_paths
     Mapping for an algorithm defined by a pypads mapping file
     """
 
@@ -302,7 +302,8 @@ class SerializedMapping(MappingCollection):
                                                                                     values=schema.values))}
             elif schema.matcher.matchers is not None:
                 self.add_mapping(
-                    Mapping(schema.matcher, self, schema.anchors, schema.values))
+                    Mapping(schema.matcher, self, schema.anchors,
+                            {**schema.values, "type": "www.padre-lab.eu/Injection"}))
         return mappings
 
 

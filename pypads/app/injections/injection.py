@@ -70,7 +70,7 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
         _pypads_hook_params = _pypads_env.parameter
 
         logger_call = InjectionLoggerCall(logging_env=_pypads_env, created_by=self.store_schema())
-        output = self.build_output()
+        output = self.build_output(_pypads_env)
 
         try:
             # Trigger pre run functions
@@ -173,6 +173,9 @@ class MultiInjectionLoggerCall(LoggerCall):
 
 
 class MultiInjectionLogger(InjectionLogger):
+    """
+    This logger gets called on function calls. It is expected to run multiple times for each experiment.
+    """
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/multi-injection-logger"
 
     def __init__(self, *args, **kwargs):
@@ -197,14 +200,15 @@ class MultiInjectionLogger(InjectionLogger):
             self.store_schema(self._base_path())
             return MultiInjectionLoggerCall(logging_env=logging_env, created_by=self.store_schema())
 
-    def _get_output(self, ):
+    def _get_output(self, _pypads_env):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         if pads.cache.run_exists(id(self)):
             logger_output = pads.cache.run_get(id(self)).get('output')
+            logger_output.add_call_env(_pypads_env)
             return logger_output
         else:
-            return self.build_output()
+            return self.build_output(_pypads_env)
 
     @staticmethod
     @abstractmethod
@@ -215,7 +219,7 @@ class MultiInjectionLogger(InjectionLogger):
         _pypads_hook_params = _pypads_env.parameter
 
         logger_call = self._get_call(_pypads_env)
-        output = self._get_output()
+        output = self._get_output(_pypads_env)
 
         try:
             # Trigger pre run functions

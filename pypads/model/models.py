@@ -14,6 +14,10 @@ class OntologyEntry(BaseModel):
     Object representing an (potential) entry in a knowledge base
     """
     uri: HttpUrl = ...
+    context: dict = Field(alias='@context', default={
+        "uri": "@id",
+        "is_a": "@type"
+    })
 
 
 class LibraryModel(BaseModel):
@@ -66,7 +70,8 @@ class RunObjectModel(OntologyEntry):
         """
         from pypads.app.pypads import get_current_pads
         from pypads.utils.logging_util import WriteFormats
-        get_current_pads().api.log_mem_artifact("{}#{}".format(self.__class__.__name__, self.uid), self.json(),
+        get_current_pads().api.log_mem_artifact("{}#{}".format(self.__class__.__name__, self.uid),
+                                                self.json(by_alias=True),
                                                 WriteFormats.json.value,
                                                 path=os.path.join(self.__class__.__name__, str(self.uid)))
 
@@ -221,7 +226,7 @@ class MultiInjectionLoggerCallModel(InjectionLoggerCallModel):
     pre_time: Optional[float] = 0.0
     post_time: Optional[float] = 0.0
     child_time: Optional[float] = 0.0
-    is_a : HttpUrl = "https://www.padre-lab.eu/onto/MultiInjectionLoggerCall"
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/MultiInjectionLoggerCall"
 
     class Config:
         orm_mode = True
@@ -229,6 +234,7 @@ class MultiInjectionLoggerCallModel(InjectionLoggerCallModel):
 
 class OutputModel(RunObjectModel):
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerOutput"
+    additional_data: Optional[dict] = {}
 
     failed: Optional[str] = None
 

@@ -31,7 +31,7 @@ class MissingDependencyError(NoCallAllowedError):
 
 class OrderMixin(SuperStop):
     """
-    Object defining an order attribute to denote its priority.
+    Object defining an order attribute to denote its priority. Smallest to largest!
     """
     __metaclass__ = ABCMeta
 
@@ -253,6 +253,9 @@ class FunctionHolderMixin(CallableMixin):
 
     def __real_call__(self, *args, **kwargs):
         return self._fn(*args, **kwargs)
+
+    def __str__(self):
+        return self._fn.__name__
 
 
 class ProvenanceMixin(ModelObject, metaclass=ABCMeta):

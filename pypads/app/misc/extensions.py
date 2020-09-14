@@ -1,9 +1,13 @@
-class Plugin:
+from pypads.app.misc.mixins import OrderMixin
+
+
+class Plugin(OrderMixin):
     """
     A plugin holding instances of a given type of extension elements.
     """
 
-    def __init__(self, type):
+    def __init__(self, type, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._type = type
 
     @property
@@ -35,7 +39,7 @@ class ExtendableMixin:
     Abstract class for plugin managers.
     """
 
-    def __init__(self, plugin_list=None):
+    def __init__(self, plugin_list=None, *args, **kwargs):
         """
         Abstract class for plugin managers.
         :param instances: Initial plugins which should be added.
@@ -45,6 +49,7 @@ class ExtendableMixin:
         #         instances = [instances]
         #     self._instances = instances
         # else:
+        super().__init__(*args, **kwargs)
         self._instances = plugin_list
 
     def __getattr__(self, item):
@@ -52,7 +57,9 @@ class ExtendableMixin:
         if item is "__get_instance":
             return self.__get_instance
 
-        for i in self._instances:
+        instances = list(self._instances)
+        instances.sort(key=lambda instance: instance.order)
+        for i in instances:
             if hasattr(i, item):
                 return getattr(i, item)
 
