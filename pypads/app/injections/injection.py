@@ -1,5 +1,5 @@
 import traceback
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from typing import Type
 
 from pydantic import BaseModel, HttpUrl
@@ -210,6 +210,11 @@ class MultiInjectionLogger(InjectionLogger):
         else:
             return self.build_output(_pypads_env)
 
+    @staticmethod
+    @abstractmethod
+    def store(pads, *args, **kwargs):
+        pass
+
     def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, **kwargs):
         _pypads_hook_params = _pypads_env.parameter
 
@@ -247,7 +252,8 @@ class MultiInjectionLogger(InjectionLogger):
                 fn(self, logger_call)
             from pypads.app.pypads import get_current_pads
             pads = get_current_pads()
-            pads.cache.run_add(id(self), {'call': logger_call, 'output': output, 'base_path':self._base_path()})
+            pads.cache.run_add(id(self), {'call': logger_call, 'output': output, 'base_path': self._base_path()})
+            pads.api.register_teardown_fn('{}_clean_up'.format(self.__class__.__name__), self.store)
         return _return
 
 

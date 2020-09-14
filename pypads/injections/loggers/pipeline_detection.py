@@ -8,111 +8,13 @@ from typing import Type
 
 from pypads import logger
 from pypads.app.injections.base_logger import TrackedObject, LoggerCall
-from pypads.app.injections.injection import  InjectionLoggerCall, MultiInjectionLogger
+from pypads.app.injections.injection import InjectionLoggerCall, MultiInjectionLogger
 from pypads.model.models import TrackedObjectModel, OutputModel, ArtifactMetaModel
-from pypads.utils.logging_util import WriteFormats, get_temp_folder, try_write_artifact
+from pypads.utils.logging_util import WriteFormats, get_temp_folder
 from pypads.utils.util import is_package_available
 
 
-# last_pipeline_tracking = None
-#
-# _pipeline_type = None
-# network = None
-
-
-# --- Clean nodes after run ---
-def pipeline_clean_up(pads, *args, **kwargs):
-    # curr_call = pads.call_tracker.current_call()
-    pipeline_tracker = pads.cache.run_get(pads.cache.run_get("pipeline_tracker"))
-    call = pipeline_tracker.get("call")
-    output = pipeline_tracker.get("output")
-    pipeline = output.pipeline
-
-    from networkx import MultiDiGraph
-    network = MultiDiGraph(pipeline._get_network())
-    _pipeline_type = pipeline.pipeline_type
-    # global network
-    if network is not None and len(network.nodes) > 0:
-        from networkx import DiGraph
-        from networkx.drawing.nx_agraph import to_agraph
-        path = os.path.join(pipeline._base_path(), pipeline._get_artifact_path("pypads_pipeline"))
-        # try_write_artifact(path, network, WriteFormats.pickle)
-        pipeline._store_artifact(network,
-                                 ArtifactMetaModel(path=path, description="networkx graph", format=WriteFormats.pickle))
-        if is_package_available("networkx"):
-            base_folder = get_temp_folder()
-            folder = base_folder + "pipeline_graph.png"
-            if not os.path.exists(base_folder):
-                os.mkdir(base_folder)
-            if is_package_available("agraph") and is_package_available("graphviz"):
-                try:
-                    if _pipeline_type == "simple":
-                        agraph = to_agraph(DiGraph(network))
-                    elif _pipeline_type == "grouped":
-                        copy = network.copy()
-                        edge_groups = {}
-                        for edge in copy.edges:
-                            plain = copy.get_edge_data(*edge)['plain_label']
-                            if plain not in edge_groups:
-                                edge_groups[plain] = []
-                            edge_groups[plain].append(edge)
-
-                        for group, edges in edge_groups.items():
-                            label = ""
-                            suffix = ""
-                            base_edge = None
-                            for edge in edges:
-                                splits = copy.get_edge_data(*edge)['label'].split(":")
-                                if label == "":
-                                    label = splits[0]
-                                    suffix = splits[1]
-                                    base_edge = edge
-                                else:
-                                    label = label + ", " + splits[0]
-                                copy.remove_edge(*edge)
-                            label = label + ":" + suffix
-                            copy.add_edge(*base_edge, label=label)
-                        agraph = to_agraph(copy)
-                    elif _pipeline_type == "grouped_no_count":
-                        copy = network.copy()
-                        edge_groups = {}
-                        for edge in copy.edges:
-                            plain = copy.get_edge_data(*edge)['plain_label']
-                            if plain not in edge_groups:
-                                edge_groups[plain] = edge
-
-                        copy.remove_edges_from(network.edges())
-                        for group, edge in edge_groups.items():
-                            copy.add_edge(*edge, label=group)
-                        agraph = to_agraph(copy)
-                    else:
-                        agraph = to_agraph(network)
-                    agraph.layout('dot')
-                    agraph.draw(folder)
-                except ValueError as e:
-                    logger.warning("Failed plotting pipeline: " + str(e))
-            elif is_package_available("matplotlib"):
-                import matplotlib.pyplot as plt
-                import networkx as nx
-                pos = nx.spring_layout(network)
-                nx.draw(network, pos)
-                nx.draw_networkx_labels(network, pos=pos)
-                nx.draw_networkx_edge_labels(network, pos)
-                plt.savefig(folder)
-            if os.path.exists(folder):
-                path = os.path.join(pipeline._base_path(), pipeline._get_artifact_path())
-                try_mlflow_log(mlflow.log_artifact, folder, artifact_path=path)
-
-    call.output = output.store(pipeline_tracker.get("base_path"))
-    call.store()
-    # # global last_pipeline_tracking
-    # # last_pipeline_tracking = None
-    # pads.cache.pop(curr_call)
-
-
-# !--- Clean nodes after run ---
-
-
+# utilities
 def _to_node_id(wrappee, ref):
     if ref is not None:
         return id(ref)
@@ -182,11 +84,17 @@ class PipelineTO(TrackedObject):
     def _set_last_tracked(self, last_tracked):
         self.last_tracked = last_tracked
 
-    def _get_artifact_path(self, name=""):
-        return os.path.join(str(id(self)), "pipeline", name)
+    def _get_artifact_path(self, name=None):
+        if name is not None:
+            return os.path.join(str(id(self)), "pipeline", name)
+        else:
+            return os.path.join(str(id(self)), "pipeline",)
 
 
 class PipelineTrackerILF(MultiInjectionLogger):
+    """
+    Injection logger that tracks multiple calls.
+    """
     name = "PipeLineLogger"
     uri = "https://www.padre-lab.eu/onto/pipeline-logger"
 
@@ -207,21 +115,98 @@ class PipelineTrackerILF(MultiInjectionLogger):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    @staticmethod
+    def store(pads, *args, **kwargs):
+        pipeline_tracker = pads.cache.run_get(pads.cache.run_get("pipeline_tracker"))
+        call = pipeline_tracker.get("call")
+        output = pipeline_tracker.get("output")
+        pipeline = output.pipeline
+
+        from networkx import MultiDiGraph
+        network = MultiDiGraph(pipeline._get_network())
+        _pipeline_type = pipeline.pipeline_type
+        # global network
+        if network is not None and len(network.nodes) > 0:
+            from networkx import DiGraph
+            from networkx.drawing.nx_agraph import to_agraph
+            path = os.path.join(pipeline._base_path(), pipeline._get_artifact_path("pypads_pipeline"))
+            # try_write_artifact(path, network, WriteFormats.pickle)
+            pipeline._store_artifact(network,
+                                     ArtifactMetaModel(path=path, description="networkx graph",
+                                                       format=WriteFormats.pickle))
+            if is_package_available("networkx"):
+                base_folder = get_temp_folder()
+                folder = base_folder + "pipeline_graph.png"
+                if not os.path.exists(base_folder):
+                    os.mkdir(base_folder)
+                if is_package_available("agraph") and is_package_available("graphviz"):
+                    try:
+                        if _pipeline_type == "simple":
+                            agraph = to_agraph(DiGraph(network))
+                        elif _pipeline_type == "grouped":
+                            copy = network.copy()
+                            edge_groups = {}
+                            for edge in copy.edges:
+                                plain = copy.get_edge_data(*edge)['plain_label']
+                                if plain not in edge_groups:
+                                    edge_groups[plain] = []
+                                edge_groups[plain].append(edge)
+
+                            for group, edges in edge_groups.items():
+                                label = ""
+                                suffix = ""
+                                base_edge = None
+                                for edge in edges:
+                                    splits = copy.get_edge_data(*edge)['label'].split(":")
+                                    if label == "":
+                                        label = splits[0]
+                                        suffix = splits[1]
+                                        base_edge = edge
+                                    else:
+                                        label = label + ", " + splits[0]
+                                    copy.remove_edge(*edge)
+                                label = label + ":" + suffix
+                                copy.add_edge(*base_edge, label=label)
+                            agraph = to_agraph(copy)
+                        elif _pipeline_type == "grouped_no_count":
+                            copy = network.copy()
+                            edge_groups = {}
+                            for edge in copy.edges:
+                                plain = copy.get_edge_data(*edge)['plain_label']
+                                if plain not in edge_groups:
+                                    edge_groups[plain] = edge
+
+                            copy.remove_edges_from(network.edges())
+                            for group, edge in edge_groups.items():
+                                copy.add_edge(*edge, label=group)
+                            agraph = to_agraph(copy)
+                        else:
+                            agraph = to_agraph(network)
+                        agraph.layout('dot')
+                        agraph.draw(folder)
+                    except ValueError as e:
+                        logger.warning("Failed plotting pipeline: " + str(e))
+                elif is_package_available("matplotlib"):
+                    import matplotlib.pyplot as plt
+                    import networkx as nx
+                    pos = nx.spring_layout(network)
+                    nx.draw(network, pos)
+                    nx.draw_networkx_labels(network, pos=pos)
+                    nx.draw_networkx_edge_labels(network, pos)
+                    plt.savefig(folder)
+                if os.path.exists(folder):
+                    path = os.path.join(pipeline._base_path(), pipeline._get_artifact_path())
+                    try_mlflow_log(mlflow.log_artifact, folder, artifact_path=path)
+
+        call.output = output.store(pipeline_tracker.get("base_path"))
+        call.store()
+
     def __pre__(self, ctx, *args, _logger_call: InjectionLoggerCall, _pypads_pipeline_type="normal",
                 _pypads_pipeline_args=False, _logger_output,
                 **kwargs):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
-        pads.api.register_teardown_fn("pipeline_clean_up", pipeline_clean_up)
         pads.cache.run_add("pipeline_tracker", id(self))
-        # if pads.cache.exists("pipeline"):
-        #     pipeline_cache = pads.cache.get("pipeline")
-        # else:
-        #     pipeline_cache = {"network": None, "last_pipeline_tracking": None, "pipeline_type": _pypads_pipeline_type}
-        #
-        # network = pipeline_cache.get("network")
-        # last_pipeline_tracking = pipeline_cache.get("last_pipeline_tracking")
-        # _pipeline_type = pipeline_cache.get("pipeline_type")
 
         if _logger_output.pipeline is None:
             pipeline = PipelineTO(tracked_by=_logger_call, pipeline_type=_pypads_pipeline_type)
