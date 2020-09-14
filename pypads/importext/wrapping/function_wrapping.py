@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from functools import wraps
 from typing import Set
 
-from app.env import InjectionLoggerEnv
+from pypads.app.env import InjectionLoggerEnv
 from pypads import logger
 from pypads.app.call import FunctionReference, CallAccessor, Call
 from pypads.importext.mappings import MatchedMapping

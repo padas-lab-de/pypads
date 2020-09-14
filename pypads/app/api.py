@@ -7,7 +7,7 @@ from typing import List, Iterable
 import mlflow
 from mlflow.entities import ViewType
 
-from app.env import LoggerEnv
+from pypads.app.env import LoggerEnv
 from pypads import logger
 from pypads.app.injections.run_loggers import RunSetup, RunTeardown
 from pypads.app.misc.caches import Cache

@@ -3,7 +3,7 @@ import signal
 import subprocess
 from sys import platform
 
-from app.env import LoggerEnv
+from pypads.app.env import LoggerEnv
 from pypads import logger
 from pypads.app.injections.run_loggers import RunSetup, RunTeardown
 from pypads.importext import pypads_import

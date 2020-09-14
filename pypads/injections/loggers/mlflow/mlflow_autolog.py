@@ -3,7 +3,7 @@ import sys
 import gorilla
 from mlflow.utils.annotations import experimental
 
-from app.env import InjectionLoggerEnv
+from pypads.app.env import InjectionLoggerEnv
 from pypads.app.injections.injection import InjectionLogger
 from pypads.utils.util import is_package_available
 
