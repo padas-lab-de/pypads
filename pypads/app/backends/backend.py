@@ -165,12 +165,13 @@ class MLFlowBackend(BackendInterface):
 
     def store_tracked_object(self, to: TrackedObject, path=""):
         path += "{}#{}".format(to.__class__.__name__, id(to))
-        try_write_artifact(path, to.json(), write_format=WriteFormats.json)
+        # TODO by_alias?
+        try_write_artifact(path, to.json(by_alias=True), write_format=WriteFormats.json)
         return path
 
     def store_logger_output(self, lo: LoggerOutput, path=""):
         path += "{}/{}".format("Output", id(lo))
-        try_write_artifact(path, lo.json(), write_format=WriteFormats.json)
+        try_write_artifact(path, lo.json(by_alias=True), write_format=WriteFormats.json)
         return path
 
     def log_artifact(self, local_path, meta: ArtifactMetaModel, artifact_path=None):

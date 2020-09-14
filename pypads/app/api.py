@@ -292,9 +292,10 @@ class PyPadsApi(IApi):
         :return:
         """
         if meta:
-            self.pypads.backend.log_mem_artifact(meta.json(), MetadataModel(path=name + ".meta",
-                                                                            description="Meta information of artifact '{}'".format(
-                                                                                name), format=write_format))
+            self.pypads.backend.log_mem_artifact(meta.json(by_alias=True), MetadataModel(path=name + ".meta",
+                                                                                         description="Meta information of artifact '{}'".format(
+                                                                                             name),
+                                                                                         format=write_format))
 
     def _read_meta(self, name):
         """

@@ -25,7 +25,7 @@ class ModelInterface(SuperStop):
         raise NotImplementedError("A function how to access the schema of the class has to be defined.")
 
     @abstractmethod
-    def json(self):
+    def json(self, *args, **kwargs):
         raise NotImplementedError("A function how to convert a class to its json representation has to be defined.")
 
     @abstractmethod
@@ -113,8 +113,8 @@ class ModelHolder(ModelInterface, metaclass=ABCMeta):
     def schema(self):
         return self._model.schema()
 
-    def json(self):
-        return self._model.json()
+    def json(self, *args, **kwargs):
+        return self._model.json(*args, **kwargs)
 
 
 class ModelErrorHandler:

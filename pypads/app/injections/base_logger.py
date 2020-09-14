@@ -16,6 +16,7 @@ from pypads.injections.analysis.time_keeper import TimingDefined
 from pypads.model.models import MetricMetaModel, \
     ParameterMetaModel, ArtifactMetaModel, TrackedObjectModel, LoggerCallModel, OutputModel, EmptyOutput, TagMetaModel
 from pypads.utils.logging_util import WriteFormats
+from pypads.utils.util import dict_merge
 
 
 class PassThroughException(Exception):
@@ -96,8 +97,8 @@ class LoggerCall(ProvenanceMixin):
     def store(self):
         from pypads.app.pypads import get_current_pads
         from pypads.utils.logging_util import WriteFormats
-        get_current_pads().api.log_mem_artifact("{}".format(str(self.uid)), self.json(), WriteFormats.json.value,
-                                                path=self.created_by + "Calls")
+        get_current_pads().api.log_mem_artifact("{}".format(str(self.uid)), self.json(by_alias=True),
+                                                WriteFormats.json.value, path=self.created_by + "Calls")
 
 
 class TrackedObject(ProvenanceMixin):
@@ -220,6 +221,7 @@ class LoggerOutput(ProvenanceMixin):
         setattr(curr, key, to)
 
     def store(self, path=""):
+        self.additional_data = dict_merge(*[e.data for e in self._envs])
         from pypads.app.pypads import get_current_pads
         return get_current_pads().api.store_logger_output(self, path)
 
