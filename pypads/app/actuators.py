@@ -29,8 +29,8 @@ class Actuator(SimpleLogger, metaclass=ABCMeta):
 
 class IActuators(Plugin):
 
-    def __init__(self):
-        super().__init__(type=Actuator)
+    def __init__(self, *args, **kwargs):
+        super().__init__(type=Actuator, *args, **kwargs)
         actuator_plugins.add(self)
 
     def _get_meta(self):

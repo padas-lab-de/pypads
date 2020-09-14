@@ -20,15 +20,16 @@ from pypads.model.models import TagMetaModel, ParameterMetaModel, MetricMetaMode
 from pypads.utils.files_util import get_artifacts
 from pypads.utils.logging_util import WriteFormats, try_write_artifact, try_read_artifact, get_temp_folder, \
     _to_artifact_meta_name, _to_metric_meta_name, _to_param_meta_name
-from pypads.utils.util import inheritors
 
 api_plugins = set()
+cmds = set()
 
 
 class Cmd(FunctionHolderMixin, metaclass=ABCMeta):
 
     def __init__(self, *args, fn, **kwargs):
         super().__init__(*args, fn=fn, **kwargs)
+        cmds.add(self)
 
     def __call__(self, *args, **kwargs):
         return self.__real_call__(*args, **kwargs)
@@ -36,8 +37,8 @@ class Cmd(FunctionHolderMixin, metaclass=ABCMeta):
 
 class IApi(Plugin):
 
-    def __init__(self):
-        super().__init__(type=Cmd)
+    def __init__(self, *args, **kwargs):
+        super().__init__(type=Cmd, *args, **kwargs)
         api_plugins.add(self)
 
     def _get_meta(self):
@@ -55,10 +56,12 @@ def cmd(f):
     :return:
     """
 
+    api_cmd = Cmd(fn=f)
+
     @wraps(f)
     def wrapper(self, *args, **kwargs):
         # self is an instance of the class
-        return Cmd(fn=f)(self, *args, **kwargs)
+        return api_cmd(self, *args, **kwargs)
 
     return wrapper
 
@@ -78,9 +81,10 @@ class PyPadsApi(IApi):
 
     # noinspection PyMethodMayBeStatic
     @cmd
-    def track(self, fn, ctx=None, anchors: List = None, mapping: Mapping = None):
+    def track(self, fn, ctx=None, anchors: List = None, mapping: Mapping = None, meta={}):
         """
         Method to inject logging capabilities into a function
+        :param meta: Additional meta data to be provided to the tracking. This should be used to map to rdf.
         :param fn: Function to extend
         :param ctx: Ctx which defined the function
         :param anchors: Anchors to trigger on function call
@@ -127,7 +131,7 @@ class PyPadsApi(IApi):
 
             # For all events we want to hook to
             mapping = Mapping(PackagePathMatcher(ctx_path + "." + fn.__name__), make_run_time_mapping_collection(lib),
-                              _anchors, {"concept": fn.__name__})
+                              _anchors, {**meta, **{"type": "www.padre-lab.eu/CustomTrack", "concept": fn.__name__}})
 
         # Wrap the function of given context and return it
         return self.pypads.wrap_manager.wrap(fn, ctx=ctx, matched_mappings={MatchedMapping(mapping, PackagePath(
@@ -148,7 +152,8 @@ class PyPadsApi(IApi):
         """
         out = mlflow.start_run(run_id=run_id, experiment_id=experiment_id, run_name=run_name, nested=nested)
         self.run_setups(
-            _pypads_env=_pypads_env or LoggerEnv(parameter=dict(), experiment_id=experiment_id, run_id=run_id))
+            _pypads_env=_pypads_env or LoggerEnv(parameter=dict(), experiment_id=experiment_id, run_id=run_id,
+                                                 data={"type": "www.padre-lab.eu/SetupFn"}))
         return out
 
     # ---- logging ----
@@ -288,8 +293,8 @@ class PyPadsApi(IApi):
         """
         if meta:
             self.pypads.backend.log_mem_artifact(meta.json(), MetadataModel(path=name + ".meta",
-                                                                 description="Meta information of artifact '{}'".format(
-                                                                     name), format=write_format))
+                                                                            description="Meta information of artifact '{}'".format(
+                                                                                name), format=write_format))
 
     def _read_meta(self, name):
         """
@@ -510,7 +515,8 @@ class PyPadsApi(IApi):
         for fn in fn_list:
             try:
                 fn(self.pypads, _pypads_env=LoggerEnv(parameter=dict(), experiment_id=run.info.experiment_id,
-                                               run_id=run.info.run_id))
+                                                      run_id=run.info.run_id),
+                   data={"type": "www.padre-lab.eu/TearDownFn"})
             except (KeyboardInterrupt, Exception) as e:
                 logger.warning("Failed running post run function " + fn.__name__ + " because of exception: " + str(e))
 
@@ -593,6 +599,13 @@ class PyPadsApi(IApi):
         path = get_run_folder()
         consolidate_run_output_files(root_path=path)
 
+    @cmd
+    def help(self):
+        help_text = ""
+        for cmd in api():
+            help_text.join(cmd.__str__() + ": " + cmd.__doc__ + "\n\n")
+        return help_text
+
 
 class ApiPluginManager(ExtendableMixin):
 
@@ -608,4 +621,6 @@ def api():
     Returns classes of
     :return:
     """
-    return inheritors(Cmd)
+    command_list = list(cmds)
+    command_list.sort(key=lambda a: str(a))
+    return command_list

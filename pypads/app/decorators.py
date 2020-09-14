@@ -21,8 +21,8 @@ class Decorator(FunctionHolderMixin, metaclass=ABCMeta):
 
 class IDecorators(Plugin):
 
-    def __init__(self):
-        super().__init__(type=Decorator)
+    def __init__(self, *args, **kwargs):
+        super().__init__(type=Decorator, *args, **kwargs)
         decorator_plugins.add(self)
 
     def _get_meta(self):

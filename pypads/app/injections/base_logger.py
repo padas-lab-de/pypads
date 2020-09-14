@@ -178,11 +178,34 @@ class TrackedObject(ProvenanceMixin):
 
 class LoggerOutput(ProvenanceMixin):
 
+    def __init__(self, _pypads_env, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._envs = [_pypads_env]
+
+    def add_call_env(self, _pypads_env: LoggerEnv):
+        self._envs.append(_pypads_env)
+
+    @property
+    def envs(self):
+        """
+        Stored environments used to produce the output.
+        :return:
+        """
+        return self._envs
+
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
         return OutputModel
 
     def add_tracked_object(self, to: TrackedObject, key, *json_path):
+        """
+        Add a new tracked object to the logger output. Given json_path is the path to the tracked object
+        in the result schema.
+        :param to: Tracked object
+        :param key: key to place the tracked object at
+        :param json_path: path to the tracked object holding dict
+        :return:
+        """
         curr = self
         for p in json_path:
             curr = getattr(curr, p)
@@ -222,7 +245,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
         self._cleanup_fns = {}
 
     @classmethod
-    def build_output(cls, **kwargs):
+    def build_output(cls, _pypads_env, **kwargs):
         schema_class = cls.output_schema_class()
 
         class OutputModelHolder(LoggerOutput):
@@ -231,7 +254,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
             def get_model_cls(cls) -> Type[BaseModel]:
                 return schema_class
 
-        return OutputModelHolder(**kwargs)
+        return OutputModelHolder(_pypads_env, **kwargs)
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
@@ -302,12 +325,19 @@ class SimpleLogger(Logger):
         pass
 
     def __real_call__(self, *args, _pypads_env: LoggerEnv, **kwargs):
+        """
+        Function implementing the shared call structure.
+        :param args:
+        :param _pypads_env:
+        :param kwargs:
+        :return:
+        """
         self.store_schema(self._base_path())
 
         _pypads_params = _pypads_env.parameter
 
         logger_call = self.build_call_object(_pypads_env, created_by=self.store_schema(self._base_path()))
-        output = self.build_output()
+        output = self.build_output(_pypads_env)
 
         try:
             _return, time = self._fn(*args, _pypads_env=_pypads_env, _logger_call=logger_call, _logger_output=output,

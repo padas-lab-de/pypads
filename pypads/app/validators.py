@@ -8,13 +8,17 @@ from pypads.app.injections.base_logger import LoggerCall, SimpleLogger
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
 from pypads.injections.analysis.determinism import check_determinism
 from pypads.model.models import LoggerModel
-from pypads.utils.util import inheritors
 
 validator_plugins = set()
+validator_set = set()
 
 
 class Validator(SimpleLogger, metaclass=ABCMeta):
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/validator"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        validator_set.add(self)
 
     def build_call_object(self, _pypads_env, **kwargs):
         return LoggerCall(logging_env=_pypads_env,
@@ -30,8 +34,8 @@ class Validator(SimpleLogger, metaclass=ABCMeta):
 
 class IValidators(Plugin):
 
-    def __init__(self):
-        super().__init__(type=Validator)
+    def __init__(self, *args, **kwargs):
+        super().__init__(type=Validator, *args, **kwargs)
         validator_plugins.add(self)
 
     def _get_meta(self):
@@ -85,4 +89,6 @@ def validators():
     Returns classes of
     :return:
     """
-    return inheritors(Validator)
+    command_list = list(validator_set)
+    command_list.sort(key=lambda a: str(a))
+    return command_list
