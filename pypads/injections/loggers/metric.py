@@ -58,6 +58,8 @@ class MetricILF(InjectionLogger):
     uri = "https://www.padre-lab.eu/onto/metric-logger"
 
     class MetricILFOutput(OutputModel):
+        # Add additional context information to
+        # TODO context: dict = {**{"test": "testVal"}, **OntologyEntry.__field_defaults__["context"]}
         is_a: HttpUrl = "https://www.padre-lab.eu/onto/MetricILF-Output"
         metric: Optional[MetricTO.MetricModel] = None
 
