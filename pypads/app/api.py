@@ -17,7 +17,7 @@ from pypads.bindings.anchors import get_anchor, Anchor
 from pypads.importext.mappings import Mapping, MatchedMapping, make_run_time_mapping_collection
 from pypads.importext.package_path import PackagePathMatcher, PackagePath
 from pypads.model.models import TagMetaModel, ParameterMetaModel, MetricMetaModel, MetadataModel, ArtifactMetaModel
-from pypads.utils.files_util import get_artifacts
+from pypads.utils.files_util import get_artifacts, get_paths
 from pypads.utils.logging_util import WriteFormats, try_write_artifact, try_read_artifact, get_temp_folder, \
     _to_artifact_meta_name, _to_metric_meta_name, _to_param_meta_name
 
@@ -572,6 +572,12 @@ class PyPadsApi(IApi):
         if verbose:
             search = ""
         return get_artifacts(path, search=search)
+
+    @cmd
+    def search_artifacts(self, run_id=None, search: str = None):
+        run = self.get_run(run_id)
+        path = run.info.artifact_uri
+        return get_paths(path, search=search)
 
     @cmd
     def show_report(self, experiment_id=None):
