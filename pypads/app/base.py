@@ -4,17 +4,18 @@ import importlib
 import os
 import pkgutil
 from os.path import expanduser
-from typing import List
+from typing import List, Union
 
 import mlflow
 
 from pypads import logger
-from pypads.app.actuators import ActuatorPluginManager
-from pypads.app.api import ApiPluginManager
+from pypads.app.actuators import ActuatorPluginManager, PyPadsActuators
+from pypads.app.api import ApiPluginManager, PyPadsApi
 from pypads.app.backends.backend import MLFlowBackend
-from pypads.app.decorators import DecoratorPluginManager
+from pypads.app.backends.repository import SchemaRepository
+from pypads.app.decorators import DecoratorPluginManager, PyPadsDecorators
 from pypads.app.misc.caches import PypadsCache
-from pypads.app.validators import ValidatorPluginManager, validators
+from pypads.app.validators import ValidatorPluginManager, validators, PyPadsValidators
 from pypads.bindings.events import FunctionRegistry
 from pypads.bindings.hooks import HookRegistry
 from pypads.importext.mappings import MappingRegistry, MappingCollection
@@ -187,6 +188,8 @@ class PyPads:
 
         self.add_atexit_fn(cleanup)
 
+        self._schema_repository = SchemaRepository()
+
         if autostart:
             if isinstance(autostart, str):
                 self.start_track(autostart)
@@ -272,6 +275,10 @@ class PyPads:
         """
         from pypads.app.api import api
         return api()
+
+    @property
+    def schema_repository(self) -> SchemaRepository:
+        return self._schema_repository
 
     @property
     def cache(self) -> PypadsCache:
@@ -384,7 +391,7 @@ class PyPads:
         return self._cache.get("events")
 
     @property
-    def api(self):
+    def api(self) -> Union[ApiPluginManager, PyPadsApi]:  # type PyPadsApi
         """
         Access the api of pypads.
         :return: PyPadsAPI
@@ -392,7 +399,7 @@ class PyPads:
         return self._api
 
     @property
-    def decorators(self):
+    def decorators(self) -> Union[DecoratorPluginManager, PyPadsDecorators]:
         """
         Access the decorators of pypads.
         :return: PyPadsDecorators
@@ -400,7 +407,7 @@ class PyPads:
         return self._decorators
 
     @property
-    def validators(self):
+    def validators(self) -> Union[ValidatorPluginManager, PyPadsValidators]:
         """
         Access the validators of pypads.
         :return: PyPadsValidators
@@ -408,7 +415,7 @@ class PyPads:
         return self._validators
 
     @property
-    def actuators(self):
+    def actuators(self) -> Union[ActuatorPluginManager, PyPadsActuators]:
         """
         Access the actuators of pypads.
         :return: PyPadsActuators

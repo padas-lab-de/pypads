@@ -16,7 +16,39 @@ class OntologyEntry(BaseModel):
     uri: HttpUrl = ...
     context: dict = Field(alias='@context', default={
         "uri": "@id",
-        "is_a": "@type"
+        "is_a": "@type",
+        "experiment_id": {
+            "@id": "https://www.padre-lab.eu/onto/contained_in",
+            "@type": "https://www.padre-lab.eu/onto/Experiment"
+        },
+        "run_id": {
+            "@id": "https://www.padre-lab.eu/onto/contained_in",
+            "@type": "https://www.padre-lab.eu/onto/Run"
+        },
+        "created_at": {
+            "@id": "https://www.padre-lab.eu/onto/created_at",
+            "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+        },
+        "name": {
+            "@id": "https://www.padre-lab.eu/onto/label",
+            "@type": "http://www.w3.org/2001/XMLSchema#string"
+        },
+        "context": {
+            "@id": "https://www.padre-lab.eu/onto/relates_to",
+            "@type": "https://www.padre-lab.eu/onto/Context"
+        },
+        "reference": {
+            "@id": "https://www.padre-lab.eu/onto/represents",
+            "@type": "http://www.w3.org/2001/XMLSchema#string"
+        },
+        "tracked_by": {
+            "@id": "https://www.padre-lab.eu/onto/tracked_by",
+            "@type": "https://www.padre-lab.eu/onto/LoggerCall"
+        },
+        "failed": {
+            "@id": "https://www.padre-lab.eu/onto/failure",
+            "@type": "http://www.w3.org/2001/XMLSchema#boolean"
+        }
     })
 
 
@@ -43,6 +75,15 @@ class LibSelectorModel(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class ExperimentModel(OntologyEntry):  # TODO
+    name: str = ...
+
+
+class RunModel(OntologyEntry):  # TODO
+    id: str = ...
+    name: str = ...
 
 
 class RunObjectModel(OntologyEntry):
@@ -82,7 +123,7 @@ class LoggerModel(RunObjectModel):
     """
     name: str = "GenericTrackingFunction"
     uid: uuid.UUID = Field(default_factory=uuid.uuid4)
-    uri: HttpUrl = "https://www.padre-lab.eu/onto/generic-tracking-function"
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/logger"
     dependencies: List[LibSelectorModel] = {}
     supported_libraries: List[LibSelectorModel] = ...
     allow_nested: bool = True
@@ -97,7 +138,7 @@ class RunLoggerModel(LoggerModel):
     Tracking function being executed on run teardown or setup
     """
     name: str = "GenericRunLogger"
-    uri: HttpUrl = "https://www.padre-lab.eu/onto/generic-run-logger"
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/run-logger"
 
     class Config:
         orm_mode = True
@@ -108,7 +149,7 @@ class InjectionLoggerModel(LoggerModel):
     Tracking function being exectured on injection hook execution
     """
     name: str = "GenericInjectionLogger"
-    uri: HttpUrl = "https://www.padre-lab.eu/onto/generic-injection-logger"
+    is_a: HttpUrl = "https://www.padre-lab.eu/onto/injection-logger"
 
     class Config:
         orm_mode = True
@@ -116,6 +157,7 @@ class InjectionLoggerModel(LoggerModel):
 
 class ContextModel(BaseModel):
     reference: str = ...  # Path to the context e.g.: sklearn.tree.tree.DecisionTree
+    is_a: str = "https://www.padre-lab.eu/onto/Context"
 
     class Config:
         orm_mode = True

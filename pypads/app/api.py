@@ -7,8 +7,8 @@ from typing import List, Iterable
 import mlflow
 from mlflow.entities import ViewType
 
-from pypads.app.env import LoggerEnv
 from pypads import logger
+from pypads.app.env import LoggerEnv
 from pypads.app.injections.run_loggers import RunSetup, RunTeardown
 from pypads.app.misc.caches import Cache
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
@@ -131,7 +131,8 @@ class PyPadsApi(IApi):
 
             # For all events we want to hook to
             mapping = Mapping(PackagePathMatcher(ctx_path + "." + fn.__name__), make_run_time_mapping_collection(lib),
-                              _anchors, {**meta, **{"type": "www.padre-lab.eu/CustomTrack", "concept": fn.__name__}})
+                              _anchors,
+                              {**meta, **{"type": "https://www.padre-lab.eu/onto/CustomTrack", "concept": fn.__name__}})
 
         # Wrap the function of given context and return it
         return self.pypads.wrap_manager.wrap(fn, ctx=ctx, matched_mappings={MatchedMapping(mapping, PackagePath(
@@ -153,7 +154,7 @@ class PyPadsApi(IApi):
         out = mlflow.start_run(run_id=run_id, experiment_id=experiment_id, run_name=run_name, nested=nested)
         self.run_setups(
             _pypads_env=_pypads_env or LoggerEnv(parameter=dict(), experiment_id=experiment_id, run_id=run_id,
-                                                 data={"type": "www.padre-lab.eu/SetupFn"}))
+                                                 data={"type": "https://www.padre-lab.eu/onto/SetupFn"}))
         return out
 
     # ---- logging ----
@@ -517,7 +518,7 @@ class PyPadsApi(IApi):
             try:
                 fn(self.pypads, _pypads_env=LoggerEnv(parameter=dict(), experiment_id=run.info.experiment_id,
                                                       run_id=run.info.run_id),
-                   data={"type": "www.padre-lab.eu/TearDownFn"})
+                   data={"type": "https://www.padre-lab.eu/onto/TearDownFn"})
             except (KeyboardInterrupt, Exception) as e:
                 logger.warning("Failed running post run function " + fn.__name__ + " because of exception: " + str(e))
 
