@@ -158,27 +158,48 @@ def consolidate_run_output_files(root_path):
         fp.write(json.dumps(consolidated_dict))
 
 
-def get_artifacts(path, search=""):
+def get_paths(base_path, search: str = None):
     """
-    Get all logged artifacts under path.
-    :param path:
+    Get all logged artifacts under base path filtered by search term if given.
+    :param path: base path for the lookup
+    :param search: search term to filter with
+    :return:
+    """
+    # TODO add a search filter.
+    import re
+    paths = []
+    for root, dirs, files in os.walk(base_path):
+        if search is not None:
+            matcher = re.compile(search)
+            for f in files:
+                if matcher.search((os.path.join(root, f))):
+                    paths.append((os.path.join(root, f)))
+        else:
+            for f in files:
+                paths.append(os.path.join(root, f))
+    return paths
+
+
+def get_artifacts(base_path, search: str = None):
+    """
+    Get all logged artifacts under base path filtered by search term if given.
+    :param path: base path for the lookup
+    :param search: search term to filter with
     :return:
     """
     #TODO
     results = {"artifacts": dict()}
-    idx = len(path.split("/")) - 1
-    for root, dirs, files in os.walk(path):
+    idx = len(base_path.split("/")) - 1
+    for root, dirs, files in os.walk(base_path):
         keys = root.split('/')[idx:]
         if search!="":
             if search == keys[-1]:
                 r = {f: try_read_artifact(os.path.join(root,f), folder_lookup=False) for f in files}
                 set_in_dict(results, [keys[0], ".".join(keys[1:])], r)
-            else:
-                continue
         else:
             r = dict.fromkeys(dirs, dict())
             set_in_dict(results, keys, r)
             if files != []:
-                r = {f: try_read_artifact(os.path.join(root,f), folder_lookup=False) for f in files}
+                r = {f: try_read_artifact(os.path.join(root, f), folder_lookup=False) for f in files}
                 set_in_dict(results, keys, r)
     return results
