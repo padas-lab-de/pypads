@@ -1,6 +1,3 @@
-from pypads.app.pypads import get_current_pads
-
-
 class Repository:
 
     def __init__(self, *args, name, **kwargs):
@@ -11,15 +8,71 @@ class Repository:
         :param kwargs:
         """
         # get the repo or create new where datasets are stored
-        self.name = name
+        self._name = name
+        from pypads.app.pypads import get_current_pads
         self.pads = get_current_pads()
         repo = self.pads.mlf.get_experiment_by_name(name)
 
         if repo is None:
             repo = self.pads.mlf.get_experiment(self.pads.mlf.create_experiment(name))
-        self.repo = repo
+        self._repo = repo
 
-    def log_mem_artifact(self, *args, run_id=None, **kwargs):
+    def get_object(self, run_id=None, uid=None):
+        """
+        Gets a persistent object to store to.
+        :param uid: Optional uid of object. This allows only for one run storing the object with uid.
+        :param run_id: Optional run_id of object. This is the id of the run in which the object should be stored.
+        :return:
+        """
+        return RepositoryObject(self, run_id, uid)
+
+    def context(self, run_id=None):
+        """
+        Activates the repository context by setting an intermediate run.
+        :param run_id: Id of the run to log into. If none is given a new one is created
+        :return:
+        """
+
+        if run_id:
+            return self.pads.api.intermediate_run(experiment_id=self.id, run_id=run_id)
+        else:
+            return self.pads.api.intermediate_run(experiment_id=self.id)
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def repo(self):
+        return self._repo
+
+    @property
+    def id(self):
+        return self._repo.experiment_id
+
+
+class RepositoryObject:
+
+    def __init__(self, repository, run_id, uid):
+        self.repository = repository
+        from pypads.app.pypads import get_current_pads
+        self.pads = get_current_pads()
+
+        self.run_id = run_id
+        if uid:
+            runs = self.pads.mlf.search_runs(experiment_ids=self.repository.id,
+                                             filter_string="tags.`pypads_unique_uid` = \"" + uid + "\"")
+            if len(runs) > 0:
+                self.run_id = runs.pop().info.run_id
+
+        if self.run_id is None:
+            self.run_id = self.pads.mlf.create_run(experiment_id=self.repository.id).info.run_id
+
+        if uid:
+            self.set_tag("pypads_unique_uid", uid,
+                         "Unique id of the object. This might be a hash for a dataset or similar.")
+
+    def log_mem_artifact(self, *args, **kwargs):
         """
         Activates the repository context and stores an artifact from memory into it.
         :param args:
@@ -27,10 +80,10 @@ class Repository:
         :param kwargs:
         :return:
         """
-        with self.repository_context(run_id=run_id) as ctx:
+        with self.repository.context(self.run_id) as ctx:
             self.pads.api.log_mem_artifact(*args, **kwargs)
 
-    def log_artifact(self, *args, run_id=None, **kwargs):
+    def log_artifact(self, *args, **kwargs):
         """
         Activates the repository context and stores an artifact into it.
         :param args:
@@ -38,10 +91,10 @@ class Repository:
         :param kwargs:
         :return:
         """
-        with self.repository_context(run_id=run_id) as ctx:
+        with self.repository.context(self.run_id) as ctx:
             self.pads.api.log_artifact(*args, **kwargs)
 
-    def log_param(self, *args, run_id=None, **kwargs):
+    def log_param(self, *args, **kwargs):
         """
         Activates the repository context and stores an parameter into it.
         :param args:
@@ -49,10 +102,10 @@ class Repository:
         :param kwargs:
         :return:
         """
-        with self.repository_context(run_id=run_id) as ctx:
+        with self.repository.context(self.run_id) as ctx:
             self.pads.api.log_param(*args, **kwargs)
 
-    def log_metric(self, *args, run_id=None, **kwargs):
+    def log_metric(self, *args, **kwargs):
         """
         Activates the repository context and stores an metric into it.
         :param args:
@@ -60,10 +113,10 @@ class Repository:
         :param kwargs:
         :return:
         """
-        with self.repository_context(run_id=run_id) as ctx:
+        with self.repository.context(self.run_id) as ctx:
             self.pads.api.log_metric(*args, **kwargs)
 
-    def set_tag(self, *args, run_id=None, **kwargs):
+    def set_tag(self, *args, **kwargs):
         """
         Activates the repository context and stores an tag into it.
         :param args:
@@ -71,17 +124,16 @@ class Repository:
         :param kwargs:
         :return:
         """
-        with self.repository_context(run_id=run_id) as ctx:
+        with self.repository.context(self.run_id) as ctx:
             self.pads.api.set_tag(*args, **kwargs)
 
-    def repository_context(self, run_id=None):
+
+class SchemaRepository(Repository):
+
+    def __init__(self, *args, **kwargs):
         """
-        Activates the repository context by setting an intermediate run.
-        :param run_id: Id of the run to log into. If none is given a new one is created
-        :return:
+        Repository holding all the relevant schema information
+        :param args:
+        :param kwargs:
         """
-        # TODO what happens if already exists?
-        if run_id:
-            return self.pads.api.intermediate_run(experiment_id=self.name, run_id=run_id)
-        else:
-            return self.pads.api.intermediate_run(experiment_id=self.name)
+        super().__init__(*args, name="pypads_schemata", **kwargs)

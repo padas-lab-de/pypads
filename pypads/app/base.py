@@ -12,6 +12,7 @@ from pypads import logger
 from pypads.app.actuators import ActuatorPluginManager, PyPadsActuators
 from pypads.app.api import ApiPluginManager, PyPadsApi
 from pypads.app.backends.backend import MLFlowBackend
+from pypads.app.backends.repository import SchemaRepository
 from pypads.app.decorators import DecoratorPluginManager, PyPadsDecorators
 from pypads.app.misc.caches import PypadsCache
 from pypads.app.validators import ValidatorPluginManager, validators, PyPadsValidators
@@ -187,6 +188,8 @@ class PyPads:
 
         self.add_atexit_fn(cleanup)
 
+        self._schema_repository = SchemaRepository()
+
         if autostart:
             if isinstance(autostart, str):
                 self.start_track(autostart)
@@ -272,6 +275,10 @@ class PyPads:
         """
         from pypads.app.api import api
         return api()
+
+    @property
+    def schema_repository(self) -> SchemaRepository:
+        return self._schema_repository
 
     @property
     def cache(self) -> PypadsCache:
