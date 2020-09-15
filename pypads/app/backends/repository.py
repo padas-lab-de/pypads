@@ -2,7 +2,7 @@ class Repository:
 
     def __init__(self, *args, name, **kwargs):
         """
-            This class abuses mlflow experiments as arbitrary stores.
+        This class abuses mlflow experiments as arbitrary stores.
         :param args:
         :param name: Name of the repository experiment.
         :param kwargs:
@@ -54,6 +54,13 @@ class Repository:
 class RepositoryObject:
 
     def __init__(self, repository, run_id, uid):
+        """
+        This is a representation of an object in the repository. It is stored as a run into mlflow. It can be identified
+        by either a run_id or by a uid.
+        :param repository:
+        :param run_id:
+        :param uid:
+        """
         self.repository = repository
         from pypads.app.pypads import get_current_pads
         self.pads = get_current_pads()
