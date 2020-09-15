@@ -531,6 +531,7 @@ class PyPadsApi(IApi):
         # !-- Clean tmp files in disk cache after run ---
 
     # !--- run management ----
+    # --- results management ---
     @cmd
     def get_run(self, run_id=None):
         run_id = run_id or self.active_run().info.run_id
@@ -573,10 +574,19 @@ class PyPadsApi(IApi):
         return get_artifacts(path, search=search)
 
     @cmd
-    def search_artifacts(self, run_id=None, search: str = None):
-        run = self.get_run(run_id)
-        path = run.info.artifact_uri
-        return get_paths(path, search=search)
+    def search_artifacts(self, experiment_id=None, run_id=None, search: str = None):
+        if experiment_id is not None:
+            paths = dict()
+            runs = self.list_run_infos(experiment_id=experiment_id)
+            for run in runs:
+                run = self.get_run(run.info.run_id)
+                paths[run.info.run_id] = get_paths(run.info.artifact_uri, search=search)
+            return paths
+
+        else:
+            run = self.get_run(run_id)
+            path = run.info.artifact_uri
+            return get_paths(path, search=search)
 
     @cmd
     def show_report(self, experiment_id=None):
@@ -598,6 +608,7 @@ class PyPadsApi(IApi):
         path = run.info.artifact_uri
         return get_artifacts(path, search="TrackedObjects")
 
+    # !-- results management ---
     @cmd
     def to_json(self, experiment_id):
         # Function to be called before ending the tracker

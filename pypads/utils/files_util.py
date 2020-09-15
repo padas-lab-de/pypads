@@ -187,7 +187,6 @@ def get_artifacts(base_path, search: str = None):
     :param search: search term to filter with
     :return:
     """
-    #TODO
     results = {"artifacts": dict()}
     idx = len(base_path.split("/")) - 1
     for root, dirs, files in os.walk(base_path):
