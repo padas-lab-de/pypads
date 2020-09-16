@@ -1,10 +1,12 @@
+from typing import List, Type
+
 from pydantic.main import BaseModel
 from pydantic.networks import HttpUrl
-from typing import List, Type
 
 from pypads.app.env import LoggerEnv
 from pypads.app.injections.base_logger import TrackedObject, LoggerCall
 from pypads.app.injections.run_loggers import RunSetup
+from pypads.arguments import ontology_uri
 from pypads.model.models import TagMetaModel, TrackedObjectModel, OutputModel
 from pypads.utils.util import sizeof_fmt, local_uri_to_path
 
@@ -15,7 +17,7 @@ class HardwareTO(TrackedObject):
     """
 
     class HardwareModel(TrackedObjectModel):
-        uri: HttpUrl = "https://www.padre-lab.eu/onto/env/hardware-information"
+        uri: HttpUrl = f"{ontology_uri}env/hardware-information"
         name: str = "Hardware Info"
         report: List[TagMetaModel] = []
 
@@ -40,10 +42,10 @@ class ISystemRSF(RunSetup):
     _dependencies = {"psutil"}
 
     name = "System Run Setup Logger"
-    uri = "https://www.padre-lab.eu/onto/system-run-logger"
+    uri = f"{ontology_uri}system-run-logger"
 
     class ISystemRSFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/ISystemRSF-Output"
+        is_a: HttpUrl = f"{ontology_uri}ISystemRSF-Output"
         system_info: HardwareTO.get_model_cls() = ...
 
     @classmethod
@@ -54,7 +56,7 @@ class ISystemRSF(RunSetup):
         import platform
         uname = platform.uname()
         system_info = HardwareTO(name="System Info", tracked_by=_logger_call,
-                                 uri="https://www.padre-lab.eu/onto/env/system-information")
+                                 uri=f"{ontology_uri}env/system-information")
 
         system_info.add_tag("pypads.system", uname.system, description="Operating system")
         system_info.add_tag("pypads.system.node", uname.node, description="Operating system node")
@@ -68,10 +70,10 @@ class ISystemRSF(RunSetup):
 class ICpuRSF(RunSetup):
     _dependencies = {"psutil"}
     name = "CPU Run Setup Logger"
-    uri = "https://www.padre-lab.eu/onto/cpu-run-logger"
+    uri = f"{ontology_uri}cpu-run-logger"
 
     class ICpuRSFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/ICpuRSF-Output"
+        is_a: HttpUrl = f"{ontology_uri}ICpuRSF-Output"
         cpu_info: HardwareTO.get_model_cls() = ...
 
     @classmethod
@@ -81,7 +83,7 @@ class ICpuRSF(RunSetup):
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         import psutil
         cpu_info = HardwareTO(name="Cpu Info", tracked_by=_logger_call,
-                              uri="https://www.padre-lab.eu/onto/env/cpu-information")
+                              uri=f"{ontology_uri}env/cpu-information")
         cpu_info.add_tag("pypads.system.cpu.physical_cores", psutil.cpu_count(logical=False),
                          description="Number of physical cores")
         cpu_info.add_tag("pypads.system.cpu.total_cores", psutil.cpu_count(logical=True),
@@ -97,10 +99,10 @@ class ICpuRSF(RunSetup):
 class IRamRSF(RunSetup):
     _dependencies = {"psutil"}
     name = "Ram Run Setup Logger"
-    uri = "https://www.padre-lab.eu/onto/Ram-run-logger"
+    uri = f"{ontology_uri}Ram-run-logger"
 
     class IRamRSFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/IRamRSF-Output"
+        is_a: HttpUrl = f"{ontology_uri}IRamRSF-Output"
         memory_info: HardwareTO.get_model_cls() = ...
 
     @classmethod
@@ -109,7 +111,7 @@ class IRamRSF(RunSetup):
 
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         memory_info = HardwareTO(name="Memory Info", tracked_by=_logger_call,
-                                 uri="https://www.padre-lab.eu/onto/env/memory-information")
+                                 uri=f"{ontology_uri}env/memory-information")
         import psutil
         memory = psutil.virtual_memory()
         memory_info.add_tag("pypads.system.memory.total", sizeof_fmt(memory.total),
@@ -122,10 +124,10 @@ class IRamRSF(RunSetup):
 class IDiskRSF(RunSetup):
     _dependencies = {"psutil"}
     name = "Disk Run Setup Logger"
-    uri = "https://www.padre-lab.eu/onto/disk-run-logger"
+    uri = f"{ontology_uri}disk-run-logger"
 
     class IDiskRSFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/IDiskRSF-Output"
+        is_a: HttpUrl = f"{ontology_uri}IDiskRSF-Output"
         disk_info: HardwareTO.get_model_cls() = ...
 
     @classmethod
@@ -134,7 +136,7 @@ class IDiskRSF(RunSetup):
 
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         disk_info = HardwareTO(name="Disk Info", tracked_by=_logger_call,
-                               uri="https://www.padre-lab.eu/onto/env/disk-information")
+                               uri=f"{ontology_uri}env/disk-information")
         import psutil
         # see https://www.thepythoncode.com/article/get-hardware-system-information-python
         pads = _logger_call._logging_env.pypads
@@ -147,10 +149,10 @@ class IDiskRSF(RunSetup):
 class IPidRSF(RunSetup):
     _dependencies = {"psutil"}
     name = "Process Run Setup Logger"
-    uri = "https://www.padre-lab.eu/onto/process-run-logger"
+    uri = f"{ontology_uri}process-run-logger"
 
     class IPidRSFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/IPidRSF-Output"
+        is_a: HttpUrl = f"{ontology_uri}IPidRSF-Output"
         process_info: HardwareTO.get_model_cls() = ...
 
     @classmethod
@@ -159,7 +161,7 @@ class IPidRSF(RunSetup):
 
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         process_info = HardwareTO(name="Process Info", tracked_by=_logger_call,
-                                  uri="https://www.padre-lab.eu/onto/env/process-information")
+                                  uri=f"{ontology_uri}env/process-information")
         import psutil
         import os
         pid = os.getpid()
@@ -176,19 +178,19 @@ class IPidRSF(RunSetup):
 
 class ISocketInfoRSF(RunSetup):
     name = "Socket Run Setup Logger"
-    uri = "https://www.padre-lab.eu/onto/socket-run-logger"
+    uri = f"{ontology_uri}socket-run-logger"
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
         return cls.ISocketInfoRSFOutput
 
     class ISocketInfoRSFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/ISocketInfoRSF-Output"
+        is_a: HttpUrl = f"{ontology_uri}ISocketInfoRSF-Output"
         socket_info: HardwareTO.get_model_cls() = ...
 
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         socket_info = HardwareTO(name="Socket Info", tracked_by=_logger_call,
-                                 uri="https://www.padre-lab.eu/onto/env/socker-information")
+                                 uri=f"{ontology_uri}env/socker-information")
         import socket
         socket_info.add_tag("pypads.system.hostname", socket.gethostname(), description="Hostname of open socket")
         socket_info.add_tag("pypads.system.ip-address", socket.gethostbyname(socket.gethostname()),
@@ -198,10 +200,10 @@ class ISocketInfoRSF(RunSetup):
 
 class IMacAddressRSF(RunSetup):
     name = "MacAddress Run Setup Logger"
-    uri = "https://www.padre-lab.eu/onto/macaddress-run-logger"
+    uri = f"{ontology_uri}macaddress-run-logger"
 
     class IMacAddressRSFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/IMacAddressRSF-Output"
+        is_a: HttpUrl = f"{ontology_uri}IMacAddressRSF-Output"
         mac_address: HardwareTO.get_model_cls() = ...
 
     @classmethod
@@ -210,7 +212,7 @@ class IMacAddressRSF(RunSetup):
 
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         mac_address = HardwareTO(name="Mac Address", tracked_by=_logger_call,
-                                 uri="https://www.padre-lab.eu/onto/env/mac-address-information")
+                                 uri=f"{ontology_uri}env/mac-address-information")
         import re, uuid
         mac_address.add_tag("pypads.system.macaddress", ':'.join(re.findall('..', '%012x' % uuid.getnode())),
                             description="Mac Address")

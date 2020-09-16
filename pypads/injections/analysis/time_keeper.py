@@ -2,7 +2,7 @@ import time
 from collections import OrderedDict
 
 from pypads import logger
-from pypads.utils.logging_util import WriteFormats
+from pypads.utils.logging_util import FileFormats
 
 
 class TimingDefined(Exception):
@@ -48,8 +48,8 @@ def print_timings(pads, *args, **kwargs):
         for i in range(1, v[0]):
             tabs += "\t"
         out += tabs + str(k) + ": " + str(v[1]) + "\n"
-    pads.api.log_mem_artifact("timings", out, write_format=WriteFormats.text.text)
-    pads.api.log_mem_artifact("loggers", get_logger_times(), write_format=WriteFormats.text.text)
+    pads.api.log_mem_artifact("timings", out, write_format=FileFormats.text)
+    pads.api.log_mem_artifact("loggers", get_logger_times(), write_format=FileFormats.text)
 
 
 def add_run_time(log_function, name, time):

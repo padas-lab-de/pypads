@@ -176,7 +176,7 @@ Logging functions are the generic functions performing tracking tasks bound to h
     Function logging the input parameters of the current pipeline object function call.
     """
 
-    def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.pickle, _pypads_env: InjectionLoggingEnv, **kwargs):
+    def __pre__(self, ctx, *args, _pypads_write_format=FileFormats.pickle, _pypads_env: InjectionLoggingEnv, **kwargs):
         """
         :param ctx:
         :param args:
@@ -204,8 +204,8 @@ Configuring logging functions can be achieved by providing mappings to the const
     from pypads.app.base import PyPads
     event_function_mapping = {
         "parameters": Parameters(),
-        "output": Output(_pypads_write_format=WriteFormats.text.name),
-        "input": Input(_pypads_write_format=WriteFormats.text.name)
+        "output": Output(_pypads_write_format=FileFormats.text.name),
+        "input": Input(_pypads_write_format=FileFormats.text.name)
     }
     tracker = PyPads(events=event_function_mapping, autostart=True)
 
@@ -217,7 +217,7 @@ Additionally a hook to event mapping can be defined.
     hook_event_mapping = {
         "parameters": {"on": ["pypads_fit"]},
         "output": {"on": ["pypads_fit", "pypads_predict"]},
-        "input": {"on": ["pypads_fit"], "with": {"_pypads_write_format": WriteFormats.text.name}},
+        "input": {"on": ["pypads_fit"], "with": {"_pypads_write_format": FileFormats.text.name}},
     }
     tracker = PyPads(hooks=hook_event_mapping, autostart=True)
 

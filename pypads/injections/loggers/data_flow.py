@@ -5,8 +5,9 @@ from pydantic import BaseModel, HttpUrl
 
 from pypads.app.injections.base_logger import LoggerCall, TrackedObject
 from pypads.app.injections.injection import InjectionLogger
+from pypads.arguments import ontology_uri
 from pypads.model.models import ArtifactMetaModel, TrackedObjectModel, OutputModel
-from pypads.utils.logging_util import WriteFormats
+from pypads.utils.logging_util import FileFormats
 
 
 # TODO Literal for python 3.7 / 3.8?
@@ -16,10 +17,10 @@ class InputTO(TrackedObject):
     """
 
     class InputModel(TrackedObjectModel):
-        uri: HttpUrl = "https://www.padre-lab.eu/onto/FunctionInput"
+        uri: HttpUrl = f"{ontology_uri}FunctionInput"
 
         class ParamModel(BaseModel):
-            content_format: WriteFormats = WriteFormats.pickle
+            content_format: FileFormats = FileFormats.pickle
             name: str = ...
             value: ArtifactMetaModel = ...  # path to the artifact containing the param
             type: str = ...
@@ -59,10 +60,10 @@ class InputILF(InjectionLogger):
     """
 
     name = "InputLogger"
-    uri = "https://www.padre-lab.eu/onto/input-logger"
+    uri = f"{ontology_uri}input-logger"
 
     class InputILFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/InputILF-Output"
+        is_a: HttpUrl = f"{ontology_uri}InputILF-Output"
         FunctionInput: InputTO.get_model_cls() = ...
 
         class Config:
@@ -101,9 +102,9 @@ class OutputTO(TrackedObject):
         return "inputs"
 
     class OutputModel(TrackedObjectModel):
-        uri: HttpUrl = "https://www.padre-lab.eu/onto/FunctionOutput"
+        uri: HttpUrl = f"{ontology_uri}FunctionOutput"
 
-        content_format: WriteFormats = WriteFormats.pickle
+        content_format: FileFormats = FileFormats.pickle
         output: str = ...  # Path to the output holding file
 
         class Config:
@@ -133,10 +134,10 @@ class OutputILF(InjectionLogger):
     """
 
     name = "OutputLogger"
-    uri = "https://www.padre-lab.eu/onto/output-logger"
+    uri = f"{ontology_uri}output-logger"
 
     class OutputILFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/OutputILF-Output"
+        is_a: HttpUrl = f"{ontology_uri}OutputILF-Output"
         FunctionOutput: OutputTO.get_model_cls() = ...
 
         class Config:
@@ -146,7 +147,7 @@ class OutputILF(InjectionLogger):
     def output_schema_class(cls):
         return cls.OutputILFOutput
 
-    def __post__(self, ctx, *args, _pypads_write_format=WriteFormats.pickle, _logger_call, _pypads_result,
+    def __post__(self, ctx, *args, _pypads_write_format=FileFormats.pickle, _logger_call, _pypads_result,
                  _logger_output, **kwargs):
         """
         :param ctx:

@@ -6,8 +6,9 @@ from pydantic import HttpUrl, BaseModel
 from pypads import logger
 from pypads.app.injections.base_logger import TrackedObject
 from pypads.app.injections.injection import InjectionLogger
+from pypads.arguments import ontology_uri
 from pypads.model.models import TrackedObjectModel, ArtifactMetaModel, MetricMetaModel, OutputModel
-from pypads.utils.logging_util import WriteFormats
+from pypads.utils.logging_util import FileFormats
 
 
 class MetricTO(TrackedObject):
@@ -16,7 +17,7 @@ class MetricTO(TrackedObject):
     """
 
     class MetricModel(TrackedObjectModel):
-        uri: HttpUrl = "https://www.padre-lab.eu/onto/Metric"
+        uri: HttpUrl = f"{ontology_uri}Metric"
 
         name: str = ...  # Metric name
         to_artifact: bool = False
@@ -44,7 +45,7 @@ class MetricTO(TrackedObject):
                     value)) + "' of '" + self.name + "' as artifact instead.")
             if self.to_artifact:
                 path = os.path.join(self._base_path(), self._get_artifact_path(self.name))
-                self.value = ArtifactMetaModel(path=path, description="", format=WriteFormats.text)
+                self.value = ArtifactMetaModel(path=path, description="", format=FileFormats.text)
                 self._store_artifact(value, self.value)
                 return True
         return False
@@ -55,12 +56,12 @@ class MetricILF(InjectionLogger):
     Function logging the wrapped metric function
     """
     name = "Metric Injection Logger"
-    uri = "https://www.padre-lab.eu/onto/metric-logger"
+    uri = f"{ontology_uri}metric-logger"
 
     class MetricILFOutput(OutputModel):
         # Add additional context information to
         # TODO context: dict = {**{"test": "testVal"}, **OntologyEntry.__field_defaults__["context"]}
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/MetricILF-Output"
+        is_a: HttpUrl = f"{ontology_uri}MetricILF-Output"
         metric: Optional[MetricTO.MetricModel] = None
 
         class Config:

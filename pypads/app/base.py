@@ -11,7 +11,7 @@ import mlflow
 from pypads import logger
 from pypads.app.actuators import ActuatorPluginManager, PyPadsActuators
 from pypads.app.api import ApiPluginManager, PyPadsApi
-from pypads.app.backends.backend import MLFlowBackend
+from pypads.app.backends.mlflow import MLFlowBackendFactory
 from pypads.app.backends.repository import SchemaRepository
 from pypads.app.decorators import DecoratorPluginManager, PyPadsDecorators
 from pypads.app.misc.caches import PypadsCache
@@ -88,7 +88,7 @@ class PyPads:
 
     def __init__(self, uri=None, folder=None, mappings: List[MappingCollection] = None, hooks=None,
                  events=None, setup_fns=None, config=None, pre_initialized_cache: PypadsCache = None,
-                 disable_plugins=None, autostart=None, consolidate_outputs=True):
+                 disable_plugins=None, autostart=None):
         # Set the singleton instance
 
         if disable_plugins is None:
@@ -134,7 +134,7 @@ class PyPads:
         from pypads.app.misc.managed_git import ManagedGitFactory
         self._managed_git_factory = ManagedGitFactory(self)
 
-        self._backend = MLFlowBackend(self.uri, self)
+        self._backend = MLFlowBackendFactory.make(self.uri)
 
         # Store config into cache
         self.config = {**DEFAULT_CONFIG, **config} if config else DEFAULT_CONFIG
@@ -165,10 +165,6 @@ class PyPads:
 
         # Store function registry into cache
         self._cache.add("events", events)
-
-        # Store a dictionary to consolidate all the output files
-        if consolidate_outputs is True:
-            self._cache.add("consolidated_dict", dict())
 
         # Initialize pre run functions before starting a run
         setup_fns = setup_fns or DEFAULT_SETUP_FNS
@@ -313,7 +309,7 @@ class PyPads:
         if self._cache.exists("config"):
             return self._cache.get("config")
         if self.api.active_run() is not None:
-            tags = self.mlf.get_run(mlflow.active_run().info.run_id).data.tags
+            tags = self.api.get_run(mlflow.active_run().info.run_id).data.tags
             if CONFIG_NAME not in tags:
                 raise Exception("Config for pypads is not defined.")
             try:
@@ -610,8 +606,8 @@ class PyPads:
             if not disable_run_init:
                 self.api.run_setups()
 
-        experiment = self.backend.mlf.get_experiment_by_name(
-            experiment_name) if experiment_name else self.backend.mlf.get_experiment(run.info.experiment_id)
+        experiment = self.backend.get_experiment_by_name(
+            experiment_name) if experiment_name else self.backend.get_experiment(run.info.experiment_id)
 
         # override active run if used
         if experiment_name and run.info.experiment_id is not experiment.experiment_id:

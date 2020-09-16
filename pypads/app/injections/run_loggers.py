@@ -8,15 +8,16 @@ from pydantic.networks import HttpUrl
 from pypads import logger
 from pypads.app.injections.base_logger import LoggerCall, SimpleLogger
 from pypads.app.misc.mixins import OrderMixin
+from pypads.arguments import ontology_uri
 from pypads.model.models import RunLoggerModel
 from pypads.utils.util import inheritors
 
 
 class RunLogger(SimpleLogger, OrderMixin, metaclass=ABCMeta):
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/run-logger"
+    is_a: HttpUrl = f"{ontology_uri}run-logger"
 
     def build_call_object(self, _pypads_env, **kwargs):
-        return LoggerCall(logging_env=_pypads_env, is_a="https://www.padre-lab.eu/onto/RunLoggerCall", **kwargs)
+        return LoggerCall(logging_env=_pypads_env, is_a=f"{ontology_uri}RunLoggerCall", **kwargs)
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
@@ -30,7 +31,7 @@ class RunSetup(RunLogger, metaclass=ABCMeta):
     """
     This class should be used to define new pre run functions
     """
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/runsetup-logger"
+    is_a: HttpUrl = f"{ontology_uri}runsetup-logger"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -47,7 +48,7 @@ class RunTeardown(RunLogger, metaclass=ABCMeta):
     """
     This class should be used to define new post run functions
     """
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/runteardown-logger"
+    is_a: HttpUrl = f"{ontology_uri}runteardown-logger"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
