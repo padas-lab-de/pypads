@@ -6,6 +6,7 @@ from pydantic import HttpUrl, BaseModel
 
 from pypads.app.injections.base_logger import LoggerCall, SimpleLogger
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
+from pypads.arguments import ontology_uri
 from pypads.model.models import LoggerModel
 from pypads.utils.util import inheritors
 
@@ -13,11 +14,11 @@ actuator_plugins = set()
 
 
 class Actuator(SimpleLogger, metaclass=ABCMeta):
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/actuator"
+    is_a: HttpUrl = f"{ontology_uri}actuator"
 
     def build_call_object(self, _pypads_env, **kwargs):
         return LoggerCall(logging_env=_pypads_env,
-                          is_a="https://www.padre-lab.eu/onto/ActuatorLoggerCall", **kwargs)
+                          is_a=f"{ontology_uri}ActuatorLoggerCall", **kwargs)
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:

@@ -3,12 +3,13 @@ from typing import List, Type
 
 from pydantic import HttpUrl, BaseModel
 
-from pypads.app.env import LoggerEnv
 from pypads import logger
+from pypads.app.env import LoggerEnv
 from pypads.app.injections.base_logger import LoggerCall, TrackedObject
 from pypads.app.injections.run_loggers import RunSetup
+from pypads.arguments import ontology_uri
 from pypads.model.models import TrackedObjectModel, LibraryModel, OutputModel, ArtifactMetaModel
-from pypads.utils.logging_util import WriteFormats
+from pypads.utils.logging_util import FileFormats
 
 
 class DependencyTO(TrackedObject):
@@ -17,10 +18,10 @@ class DependencyTO(TrackedObject):
     """
 
     class DependencyModel(TrackedObjectModel):
-        uri: HttpUrl = "https://www.padre-lab.eu/onto/env/Dependencies"
+        uri: HttpUrl = f"{ontology_uri}env/Dependencies"
 
         dependencies: List[LibraryModel] = []
-        content_format: WriteFormats = WriteFormats.text
+        content_format: FileFormats = FileFormats.text
 
         class Config:
             orm_mode = True
@@ -39,7 +40,7 @@ class DependencyTO(TrackedObject):
         path = os.path.join(self._base_path(), self._get_artifact_path("pip_freeze"))
         self._store_artifact("\n".join(pip_freeze),
                              ArtifactMetaModel(path=path, description="dependency list from pip freeze",
-                                               format=WriteFormats.text))
+                                               format=FileFormats.text))
 
     def _get_artifact_path(self, name):
         return os.path.join(str(id(self)), "Env", name)
@@ -49,7 +50,7 @@ class DependencyRSF(RunSetup):
     """Store information about dependencies used in the experimental environment."""
 
     name = "Dependencies Run Setup Logger"
-    uri = "https://www.padre-lab.eu/onto/dependency-run-logger"
+    uri = f"{ontology_uri}dependency-run-logger"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -57,7 +58,7 @@ class DependencyRSF(RunSetup):
     _dependencies = {"pip"}
 
     class DependencyRSFOutput(OutputModel):
-        uri: HttpUrl = "https://www.padre-lab.eu/onto/DependencyRSF-Output"
+        uri: HttpUrl = f"{ontology_uri}DependencyRSF-Output"
 
         dependencies: DependencyTO.get_model_cls() = None
 
@@ -90,7 +91,7 @@ class LoguruTO(TrackedObject):
     """
 
     class LoguruModel(TrackedObjectModel):
-        uri: HttpUrl = "https://www.padre-lab.eu/onto/env/Logs"
+        uri: HttpUrl = f"{ontology_uri}env/Logs"
 
         meta: ArtifactMetaModel = ...
 
@@ -104,19 +105,19 @@ class LoguruTO(TrackedObject):
     def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
         super().__init__(*args, tracked_by=tracked_by, **kwargs)
         path = os.path.join(self._base_path(), self._get_artifact_path("logs.log"))
-        self.meta = ArtifactMetaModel(path=path, description="Logs of the current run", format=WriteFormats.text)
+        self.meta = ArtifactMetaModel(path=path, description="Logs of the current run", format=FileFormats.text)
 
 
 class LoguruRSF(RunSetup):
     """Store all logs of the current run into a file."""
 
     name = "Loguru Run Setup Logger"
-    uri = "https://www.padre-lab.eu/onto/loguru-run-logger"
+    uri = f"{ontology_uri}loguru-run-logger"
 
     _dependencies = {"loguru"}
 
     class LoguruRSFOutput(OutputModel):
-        uri: HttpUrl = "https://www.padre-lab.eu/onto/LoguruRSF-Output"
+        uri: HttpUrl = f"{ontology_uri}LoguruRSF-Output"
 
         logs: LoguruTO.get_model_cls() = ...
 

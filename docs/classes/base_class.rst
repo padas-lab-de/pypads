@@ -82,7 +82,7 @@ The hook mapping, maps hooks (anchors) to the events (event types).
         "parameters": {"on": ["pypads_fit"]},
         "hardware": {"on": ["pypads_fit"]},
         "output": {"on": ["pypads_fit", "pypads_predict"]},
-        "input": {"on": ["pypads_fit"], "with": {"_pypads_write_format": WriteFormats.text.name}},
+        "input": {"on": ["pypads_fit"], "with": {"_pypads_write_format": FileFormats.text.name}},
         "metric": {"on": ["pypads_metric"]},
         "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"]},
         "log": {"on": ["pypads_log"]}
@@ -98,8 +98,8 @@ Defines which logging functions should be run for events.
 
     DEFAULT_LOGGING_FNS = {
         "parameters": Parameters(),
-        "output": Output(_pypads_write_format=WriteFormats.text.name),
-        "input": Input(_pypads_write_format=WriteFormats.text.name),
+        "output": Output(_pypads_write_format=FileFormats.text.name),
+        "input": Input(_pypads_write_format=FileFormats.text.name),
         "hardware": [Cpu(), Ram(), Disk()],
         "metric": Metric(),
         "autolog": MlflowAutologger(),

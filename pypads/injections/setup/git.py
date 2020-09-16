@@ -1,19 +1,20 @@
 import os
+from typing import List, Type
 
 from pydantic import HttpUrl, BaseModel
-from typing import List, Type
 
 from pypads.app.env import LoggerEnv
 from pypads.app.injections.base_logger import TrackedObject
 from pypads.app.injections.run_loggers import RunSetup
 from pypads.app.misc.managed_git import ManagedGit
+from pypads.arguments import ontology_uri
 from pypads.model.models import TrackedObjectModel, TagMetaModel, ArtifactMetaModel, OutputModel
-from pypads.utils.logging_util import WriteFormats
+from pypads.utils.logging_util import FileFormats
 
 
 class GitTO(TrackedObject):
     class GitModel(TrackedObjectModel):
-        uri: HttpUrl = "https://www.padre-lab.eu/onto/SourceCode-Management"
+        uri: HttpUrl = f"{ontology_uri}SourceCode-Management"
 
         source: str = ...
         version: str = ...
@@ -36,7 +37,7 @@ class GitTO(TrackedObject):
 
         self._store_tag(value, meta)
 
-    def store_git_log(self, name, value, format=WriteFormats.text):
+    def store_git_log(self, name, value, format=FileFormats.text):
         path = os.path.join(self._base_path(), self._get_artifact_path(name))
         self.git_log = ArtifactMetaModel(path=path, description="Commit logs for the git repository", format=format)
 
@@ -51,11 +52,11 @@ class IGitRSF(RunSetup):
     Function tracking the source code via git.
     """
     name = "Git Run Setup Logger"
-    uri: HttpUrl = "https://www.padre-lab.eu/onto/git-run-logger"
+    uri: HttpUrl = f"{ontology_uri}git-run-logger"
     _dependencies = {"git"}
 
     class IGitRSFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/IGitRSF-Output"
+        is_a: HttpUrl = f"{ontology_uri}IGitRSF-Output"
         git_info: GitTO.get_model_cls() = None
 
     @classmethod

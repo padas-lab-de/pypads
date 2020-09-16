@@ -186,6 +186,9 @@ class DefensiveCallableMixin(CallableMixin):
         except KeyboardInterrupt:
             return self._handle_error(*args, ctx=ctx, _pypads_env=_pypads_env, error=Exception("KeyboardInterrupt"),
                                       **kwargs)
+        except NoCallAllowedError:
+            # Ignore for now
+            pass
         except Exception as e:
             import traceback
             logger.debug(traceback.format_exc())

@@ -5,8 +5,9 @@ from pydantic import BaseModel, HttpUrl
 
 from pypads.app.injections.base_logger import LoggerCall, TrackedObject
 from pypads.app.injections.injection import InjectionLogger
+from pypads.arguments import ontology_uri
 from pypads.model.models import TrackedObjectModel, OutputModel
-from pypads.utils.logging_util import WriteFormats
+from pypads.utils.logging_util import FileFormats
 from pypads.utils.util import local_uri_to_path, sizeof_fmt, PeriodicThread
 
 
@@ -31,7 +32,7 @@ class CpuTO(TrackedObject):
     """
 
     class CPUModel(TrackedObjectModel):
-        uri: HttpUrl = "https://www.padre-lab.eu/onto/CpuData"
+        uri: HttpUrl = f"{ontology_uri}CpuData"
 
         class CpuCoreModel(BaseModel):
             name: str = ...
@@ -40,7 +41,7 @@ class CpuTO(TrackedObject):
             class Config:
                 orm_mode = True
 
-        content_format: WriteFormats = WriteFormats.text
+        content_format: FileFormats = FileFormats.text
         cpu_cores: List[CpuCoreModel] = []
         total_usage: List[str] = []
         period: float = ...
@@ -73,10 +74,10 @@ class CpuTO(TrackedObject):
 class CpuILF(InjectionLogger):
     """This logger extracts the cpu information of your machine."""
     name = "CPULogger"
-    uri = "https://www.padre-lab.eu/onto/cpu-logger"
+    uri = f"{ontology_uri}cpu-logger"
 
     class CpuILFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/CpuILF-Output"
+        is_a: HttpUrl = f"{ontology_uri}CpuILF-Output"
 
         cpu_usage: CpuTO.get_model_cls() = ...
 
@@ -89,7 +90,7 @@ class CpuILF(InjectionLogger):
 
     _dependencies = {"psutil"}
 
-    def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call: LoggerCall, _logger_output,
+    def __pre__(self, ctx, *args, _pypads_write_format=FileFormats.text, _logger_call: LoggerCall, _logger_output,
                 _pypads_period=1.0, _args, _kwargs,
                 **kwargs):
         cpu_usage = CpuTO(tracked_by=_logger_call, content_format=_pypads_write_format)
@@ -115,7 +116,7 @@ class RamTO(TrackedObject):
     """
 
     class RAMModel(TrackedObjectModel):
-        uri: HttpUrl = "https://www.padre-lab.eu/onto/RamData"
+        uri: HttpUrl = f"{ontology_uri}RamData"
 
         class MemoryModel(BaseModel):
             used: List[int] = ...
@@ -123,7 +124,7 @@ class RamTO(TrackedObject):
             percentage: List[float] = ...
             type: str = ...
 
-        content_format: WriteFormats = WriteFormats.json
+        content_format: FileFormats = FileFormats.json
         virtual_memory: MemoryModel = None
         swap_memory: MemoryModel = None
         period: float = ...
@@ -183,10 +184,10 @@ class RamILF(InjectionLogger):
     """
 
     name = "RAMLogger"
-    uri = "https://www.padre-lab.eu/onto/ram-logger"
+    uri = f"{ontology_uri}ram-logger"
 
     class RamILFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/RamILF-Output"
+        is_a: HttpUrl = f"{ontology_uri}RamILF-Output"
 
         memory_usage: RamTO.RAMModel = ...
 
@@ -199,7 +200,7 @@ class RamILF(InjectionLogger):
 
     _dependencies = {"psutil"}
 
-    def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.json, _logger_call: LoggerCall, _logger_output,
+    def __pre__(self, ctx, *args, _pypads_write_format=FileFormats.json, _logger_call: LoggerCall, _logger_output,
                 _pypads_period=1.0, _args, _kwargs, **kwargs):
         memory_usage = RamTO(tracked_by=_logger_call, content_format=_pypads_write_format)
 
@@ -231,7 +232,7 @@ class DiskTO(TrackedObject):
     """
 
     class DiskModel(TrackedObjectModel):
-        uri: HttpUrl = "https://www.padre-lab.eu/onto/DiskData"
+        uri: HttpUrl = f"{ontology_uri}DiskData"
 
         class PartitionModel(BaseModel):
             name: str = ...
@@ -245,7 +246,7 @@ class DiskTO(TrackedObject):
             class Config:
                 orm_mode = True
 
-        content_format: WriteFormats = WriteFormats.text
+        content_format: FileFormats = FileFormats.text
         partitions: List[PartitionModel] = []
 
         period: float = ...
@@ -297,10 +298,10 @@ class DiskILF(InjectionLogger):
     """
 
     name = "DiskLogger"
-    uri = "https://www.padre-lab.eu/onto/disk-logger"
+    uri = f"{ontology_uri}disk-logger"
 
     class DiskILFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/DiskILF-Output"
+        is_a: HttpUrl = f"{ontology_uri}DiskILF-Output"
         disk_usage: List[DiskTO.DiskModel] = []
 
         class Config:
@@ -314,7 +315,7 @@ class DiskILF(InjectionLogger):
     def _needed_packages(cls):
         return ["psutil"]
 
-    def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.text, _logger_call: LoggerCall, _logger_output,
+    def __pre__(self, ctx, *args, _pypads_write_format=FileFormats.text, _logger_call: LoggerCall, _logger_output,
                 _pypads_disk_usage=None, _pypads_period=1.0, _args, _kwargs,
                 **kwargs):
         from pypads.app.base import PyPads

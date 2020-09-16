@@ -1,16 +1,17 @@
 import os
+from typing import Type
 
 import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 from pydantic import BaseModel
 from pydantic.networks import HttpUrl
-from typing import Type
 
 from pypads import logger
 from pypads.app.injections.base_logger import TrackedObject, LoggerCall
 from pypads.app.injections.injection import InjectionLoggerCall, MultiInjectionLogger
+from pypads.arguments import ontology_uri
 from pypads.model.models import TrackedObjectModel, OutputModel, ArtifactMetaModel
-from pypads.utils.logging_util import WriteFormats, get_temp_folder
+from pypads.utils.logging_util import FileFormats, get_temp_folder
 from pypads.utils.util import is_package_available
 
 
@@ -54,7 +55,7 @@ class PipelineTO(TrackedObject):
     """
 
     class PipelineModel(TrackedObjectModel):
-        uri: HttpUrl = "https://www.padre-lab.eu/onto/Pipeline"
+        uri: HttpUrl = f"{ontology_uri}Pipeline"
 
         network: dict = ...
         pipeline_type: str = ...
@@ -88,7 +89,7 @@ class PipelineTO(TrackedObject):
         if name is not None:
             return os.path.join(str(id(self)), "pipeline", name)
         else:
-            return os.path.join(str(id(self)), "pipeline",)
+            return os.path.join(str(id(self)), "pipeline", )
 
 
 class PipelineTrackerILF(MultiInjectionLogger):
@@ -96,12 +97,12 @@ class PipelineTrackerILF(MultiInjectionLogger):
     Injection logger that tracks multiple calls.
     """
     name = "PipeLineLogger"
-    uri = "https://www.padre-lab.eu/onto/pipeline-logger"
+    uri = f"{ontology_uri}pipeline-logger"
 
     _dependencies = {"networkx"}
 
     class PipelineTrackerILFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/PipelineILF-Output"
+        is_a: HttpUrl = f"{ontology_uri}PipelineILF-Output"
 
         pipeline: PipelineTO.get_model_cls() = None
 
@@ -130,10 +131,9 @@ class PipelineTrackerILF(MultiInjectionLogger):
             from networkx import DiGraph
             from networkx.drawing.nx_agraph import to_agraph
             path = os.path.join(pipeline._base_path(), pipeline._get_artifact_path("pypads_pipeline"))
-            # try_write_artifact(path, network, WriteFormats.pickle)
             pipeline._store_artifact(network,
                                      ArtifactMetaModel(path=path, description="networkx graph",
-                                                       format=WriteFormats.pickle))
+                                                       format=FileFormats.pickle))
             if is_package_available("networkx"):
                 base_folder = get_temp_folder()
                 folder = base_folder + "pipeline_graph.png"

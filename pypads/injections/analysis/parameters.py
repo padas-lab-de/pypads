@@ -2,10 +2,11 @@ from typing import List, Type
 
 from pydantic import HttpUrl, BaseModel
 
-from pypads.app.env import InjectionLoggerEnv
 from pypads import logger
+from pypads.app.env import InjectionLoggerEnv
 from pypads.app.injections.base_logger import TrackedObject, LoggerCall
 from pypads.app.injections.injection import InjectionLogger
+from pypads.arguments import ontology_uri
 from pypads.model.models import TrackedObjectModel, ContextModel, OutputModel, \
     ParameterMetaModel
 from pypads.utils.util import dict_merge
@@ -17,7 +18,7 @@ class ParametersTO(TrackedObject):
     """
 
     class HyperParameterModel(TrackedObjectModel):
-        uri: HttpUrl = "https://www.padre-lab.eu/onto/ModelHyperparameter"
+        uri: HttpUrl = f"{ontology_uri}ModelHyperparameter"
 
         context: ContextModel = ...
         hyperparameters: List[ParameterMetaModel] = []
@@ -58,10 +59,10 @@ class ParametersILF(InjectionLogger):
     Function logging the hyperparameters of the current pipeline object.
     """
     name = "ParametersLogger"
-    uri = "https://www.padre-lab.eu/onto/hyperparameters-logger"
+    uri = f"{ontology_uri}hyperparameters-logger"
 
     class ParametersILFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/ParametersILF-Output"
+        is_a: HttpUrl = f"{ontology_uri}ParametersILF-Output"
         hyperparameters: ParametersTO.get_model_cls() = ...
 
         class Config:

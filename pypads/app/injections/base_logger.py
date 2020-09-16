@@ -11,11 +11,12 @@ from pypads.app.env import LoggerEnv
 from pypads.app.misc.mixins import DependencyMixin, DefensiveCallableMixin, TimedCallableMixin, \
     IntermediateCallableMixin, NoCallAllowedError, ConfigurableCallableMixin, LibrarySpecificMixin, \
     FunctionHolderMixin, ProvenanceMixin, BaseDefensiveCallableMixin
+from pypads.arguments import ontology_uri
 from pypads.importext.versioning import LibSelector
 from pypads.injections.analysis.time_keeper import TimingDefined
 from pypads.model.models import MetricMetaModel, \
     ParameterMetaModel, ArtifactMetaModel, TrackedObjectModel, LoggerCallModel, OutputModel, EmptyOutput, TagMetaModel
-from pypads.utils.logging_util import WriteFormats
+from pypads.utils.logging_util import FileFormats
 from pypads.utils.util import dict_merge, persistent_hash
 
 
@@ -96,13 +97,13 @@ class LoggerCall(ProvenanceMixin):
 
     def store(self):
         from pypads.app.pypads import get_current_pads
-        from pypads.utils.logging_util import WriteFormats
+        from pypads.utils.logging_util import FileFormats
         get_current_pads().api.log_mem_artifact("{}".format(str(self.uid)), self.json(by_alias=True),
-                                                WriteFormats.json.value, path=self.created_by + "Calls")
+                                                FileFormats.json.value, path=self.created_by + "Calls")
 
 
 class TrackedObject(ProvenanceMixin):
-    is_a = "https://www.padre-lab.eu/onto/tracked_object"
+    is_a = f"{ontology_uri}tracked_object"
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
@@ -235,7 +236,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
     Generic tracking function used for storing information to a backend.
     """
 
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/tracking-function"
+    is_a: HttpUrl = f"{ontology_uri}tracking-function"
 
     # Default allow all libraries
     supported_libraries = {LibSelector(name=".*", constraint="*")}
@@ -281,7 +282,6 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
         if not cls._schema_path:
             path = path or ""
             from pypads.app.pypads import get_current_pads
-            schema_path = os.path.join(path, cls.__name__ + "_schema")
             pads = get_current_pads()
 
             schema_repo = pads.schema_repository
@@ -290,14 +290,18 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
             schema_hash = persistent_hash(str(schema))
             if not schema_repo.has_object(uid=schema_hash):
                 schema_entity = schema_repo.get_object(uid=schema_hash)
-                schema_entity.log_mem_artifact(schema_path, schema, write_format=WriteFormats.json)
+                schema_path = os.path.join(path, cls.get_model_cls().__name__ + "_schema")
+                schema_entity.log_mem_artifact(schema_path, schema, write_format=FileFormats.json)
+                schema_entity.set_tag("pypads.schema_name", schema["title"], "Name for the schema stored here.")
 
             schema = cls.output_schema()
             schema_hash = persistent_hash(str(schema))
             if not schema_repo.has_object(uid=schema_hash):
                 schema_entity = schema_repo.get_object(uid=schema_hash)
-                schema_entity.log_mem_artifact(os.path.join(path, cls.__name__ + "_output_schema"),
-                                               schema, write_format=WriteFormats.json)
+                schema_path = os.path.join(path, cls.__name__ + "_output_schema")
+                schema_entity.log_mem_artifact(schema_path, schema, write_format=FileFormats.json)
+                schema_entity.set_tag("pypads.schema_name", schema["title"], "Name for the schema stored here.")
+
             cls._schema_path = path
         return cls._schema_path
 

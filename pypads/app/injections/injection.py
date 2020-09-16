@@ -4,11 +4,12 @@ from typing import Type
 
 from pydantic import BaseModel, HttpUrl
 
-from pypads.app.env import InjectionLoggerEnv
 from pypads import logger
 from pypads.app.call import Call
+from pypads.app.env import InjectionLoggerEnv
 from pypads.app.injections.base_logger import LoggerCall, Logger, LoggerExecutor, OriginalExecutor
 from pypads.app.misc.mixins import OrderMixin, NoCallAllowedError
+from pypads.arguments import ontology_uri
 from pypads.model.models import InjectionLoggerCallModel, InjectionLoggerModel, MultiInjectionLoggerCallModel
 from pypads.utils.util import inheritors
 
@@ -24,7 +25,7 @@ class InjectionLoggerCall(LoggerCall):
 
 
 class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/injection-logger"
+    is_a: HttpUrl = f"{ontology_uri}injection-logger"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -176,7 +177,7 @@ class MultiInjectionLogger(InjectionLogger):
     """
     This logger gets called on function calls. It is expected to run multiple times for each experiment.
     """
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/multi-injection-logger"
+    is_a: HttpUrl = f"{ontology_uri}multi-injection-logger"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

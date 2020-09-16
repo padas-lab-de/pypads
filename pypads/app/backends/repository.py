@@ -1,3 +1,8 @@
+import os
+
+repository_experiments = []
+
+
 class Repository:
 
     def __init__(self, *args, name, **kwargs):
@@ -11,15 +16,18 @@ class Repository:
         self._name = name
         from pypads.app.pypads import get_current_pads
         self.pads = get_current_pads()
-        repo = self.pads.mlf.get_experiment_by_name(name)
+        repo = self.pads.backend.get_experiment_by_name(name)
 
         if repo is None:
-            repo = self.pads.mlf.get_experiment(self.pads.mlf.create_experiment(name))
+            repo = self.pads.backend.get_experiment(self.pads.backend.create_experiment(name))
         self._repo = repo
+
+        repository_experiments.append(repo.experiment_id)
 
     def get_object(self, run_id=None, uid=None, name=None):
         """
         Gets a persistent object to store to.
+        :param name: Set a name for the object.
         :param uid: Optional uid of object. This allows only for one run storing the object with uid.
         :param run_id: Optional run_id of object. This is the id of the run in which the object should be stored.
         :return:
@@ -27,8 +35,8 @@ class Repository:
         return RepositoryObject(self, run_id, uid, name)
 
     def has_object(self, uid=None):
-        return len(self.pads.mlf.search_runs(experiment_ids=self.id,
-                                             filter_string="tags.`pypads_unique_uid` = \"" + str(uid) + "\""))
+        return len(self.pads.backend.search_runs(experiment_ids=self.id,
+                                                 filter_string="tags.`pypads_unique_uid` = \"" + str(uid) + "\""))
 
     def context(self, run_id=None, run_name=None):
         """
@@ -76,13 +84,13 @@ class RepositoryObject:
 
         self.run_id = run_id
         if uid:
-            runs = self.pads.mlf.search_runs(experiment_ids=self.repository.id,
-                                             filter_string="tags.`pypads_unique_uid` = \"" + str(uid) + "\"")
+            runs = self.pads.backend.search_runs(experiment_ids=self.repository.id,
+                                                 filter_string="tags.`pypads_unique_uid` = \"" + str(uid) + "\"")
             if len(runs) > 0:
                 self.run_id = runs.pop().info.run_id
 
         if self.run_id is None:
-            self.run_id = self.pads.mlf.create_run(experiment_id=self.repository.id).info.run_id
+            self.run_id = self.pads.backend.create_run(experiment_id=self.repository.id).info.run_id
 
         if uid:
             self.set_tag("pypads_unique_uid", uid,
@@ -97,7 +105,7 @@ class RepositoryObject:
         :return:
         """
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
-            self.pads.api.log_mem_artifact(*args, **kwargs)
+            return self.pads.api.log_mem_artifact(*args, **kwargs)
 
     def log_artifact(self, *args, **kwargs):
         """
@@ -108,7 +116,7 @@ class RepositoryObject:
         :return:
         """
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
-            self.pads.api.log_artifact(*args, **kwargs)
+            return self.pads.api.log_artifact(*args, **kwargs)
 
     def log_param(self, *args, **kwargs):
         """
@@ -142,6 +150,12 @@ class RepositoryObject:
         """
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
             self.pads.api.set_tag(*args, **kwargs)
+
+    def get_rel_base_path(self):
+        return os.path.join(self.repository.id, self.run_id)
+
+    def get_artifact_path(self, path):
+        return os.path.join(self.get_rel_base_path(), "artifacts", path)
 
 
 class SchemaRepository(Repository):

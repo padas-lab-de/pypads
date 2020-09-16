@@ -1,12 +1,69 @@
 import os
 import time
 import uuid
-from typing import List, Optional
+from dataclasses import dataclass
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field, HttpUrl, root_validator
 
-from pypads.utils.logging_util import WriteFormats
-from pypads.utils.util import get_experiment_id, get_run_id
+from pypads.arguments import ontology_uri
+from pypads.utils.logging_util import FileFormats
+from pypads.utils.util import get_experiment_id, get_run_id, persistent_hash
+
+DEFAULT_CONTEXT = {
+    "uri": "@id",
+    "is_a": "@type",
+    "experiment_id": {
+        "@id": f"{ontology_uri}contained_in",
+        "@type": f"{ontology_uri}Experiment"
+    },
+    "run_id": {
+        "@id": f"{ontology_uri}contained_in",
+        "@type": f"{ontology_uri}Run"
+    },
+    "created_at": {
+        "@id": f"{ontology_uri}created_at",
+        "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    },
+    "name": {
+        "@id": f"{ontology_uri}label",
+        "@type": "http://www.w3.org/2001/XMLSchema#string"
+    },
+    "context": {
+        "@id": f"{ontology_uri}relates_to",
+        "@type": f"{ontology_uri}Context"
+    },
+    "reference": {
+        "@id": f"{ontology_uri}represents",
+        "@type": "http://www.w3.org/2001/XMLSchema#string"
+    },
+    "tracked_by": {
+        "@id": f"{ontology_uri}tracked_by",
+        "@type": f"{ontology_uri}LoggerCall"
+    },
+    "failed": {
+        "@id": f"{ontology_uri}failure",
+        "@type": "http://www.w3.org/2001/XMLSchema#boolean"
+    }
+}
+default_ctx_path = None
+
+
+def get_default_ctx_path():
+    """
+    Function to persist the default context and get it's location.
+    :return:
+    """
+    from pypads.app.pypads import get_current_pads
+    pads = get_current_pads()
+
+    global default_ctx_path
+    if not default_ctx_path:
+        obj = pads.schema_repository.get_object(uid=persistent_hash(str(DEFAULT_CONTEXT)))
+        default_ctx_path = obj.get_artifact_path(obj.log_mem_artifact("pypads_context_default", DEFAULT_CONTEXT,
+                                                                      write_format=FileFormats.json))
+        obj.set_tag("pypads.schema_name", "pypads_context_default")
+    return os.path.join(pads.uri, default_ctx_path + ".json")
 
 
 class OntologyEntry(BaseModel):
@@ -14,42 +71,18 @@ class OntologyEntry(BaseModel):
     Object representing an (potential) entry in a knowledge base
     """
     uri: HttpUrl = ...
-    context: dict = Field(alias='@context', default={
-        "uri": "@id",
-        "is_a": "@type",
-        "experiment_id": {
-            "@id": "https://www.padre-lab.eu/onto/contained_in",
-            "@type": "https://www.padre-lab.eu/onto/Experiment"
-        },
-        "run_id": {
-            "@id": "https://www.padre-lab.eu/onto/contained_in",
-            "@type": "https://www.padre-lab.eu/onto/Run"
-        },
-        "created_at": {
-            "@id": "https://www.padre-lab.eu/onto/created_at",
-            "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
-        },
-        "name": {
-            "@id": "https://www.padre-lab.eu/onto/label",
-            "@type": "http://www.w3.org/2001/XMLSchema#string"
-        },
-        "context": {
-            "@id": "https://www.padre-lab.eu/onto/relates_to",
-            "@type": "https://www.padre-lab.eu/onto/Context"
-        },
-        "reference": {
-            "@id": "https://www.padre-lab.eu/onto/represents",
-            "@type": "http://www.w3.org/2001/XMLSchema#string"
-        },
-        "tracked_by": {
-            "@id": "https://www.padre-lab.eu/onto/tracked_by",
-            "@type": "https://www.padre-lab.eu/onto/LoggerCall"
-        },
-        "failed": {
-            "@id": "https://www.padre-lab.eu/onto/failure",
-            "@type": "http://www.w3.org/2001/XMLSchema#boolean"
-        }
-    })
+    context: Union[List[str], str] = Field(alias='@context', default=None)
+
+    @root_validator
+    def set_default_context(cls, values):
+        if values['context'] is None:
+            values['context'] = get_default_ctx_path()
+        else:
+            if isinstance(values['context'], List):
+                values['context'].append(get_default_ctx_path())
+            else:
+                values['context'] = [get_default_ctx_path(), values['context']]
+        return values
 
 
 class LibraryModel(BaseModel):
@@ -110,10 +143,9 @@ class RunObjectModel(OntologyEntry):
         :return:
         """
         from pypads.app.pypads import get_current_pads
-        from pypads.utils.logging_util import WriteFormats
         get_current_pads().api.log_mem_artifact("{}#{}".format(self.__class__.__name__, self.uid),
                                                 self.json(by_alias=True),
-                                                WriteFormats.json.value,
+                                                write_format=FileFormats.json,
                                                 path=os.path.join(self.__class__.__name__, str(self.uid)))
 
 
@@ -123,7 +155,7 @@ class LoggerModel(RunObjectModel):
     """
     name: str = "GenericTrackingFunction"
     uid: uuid.UUID = Field(default_factory=uuid.uuid4)
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/logger"
+    is_a: HttpUrl = f"{ontology_uri}logger"
     dependencies: List[LibSelectorModel] = {}
     supported_libraries: List[LibSelectorModel] = ...
     allow_nested: bool = True
@@ -138,7 +170,7 @@ class RunLoggerModel(LoggerModel):
     Tracking function being executed on run teardown or setup
     """
     name: str = "GenericRunLogger"
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/run-logger"
+    is_a: HttpUrl = f"{ontology_uri}run-logger"
 
     class Config:
         orm_mode = True
@@ -149,7 +181,7 @@ class InjectionLoggerModel(LoggerModel):
     Tracking function being exectured on injection hook execution
     """
     name: str = "GenericInjectionLogger"
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/injection-logger"
+    is_a: HttpUrl = f"{ontology_uri}injection-logger"
 
     class Config:
         orm_mode = True
@@ -157,7 +189,7 @@ class InjectionLoggerModel(LoggerModel):
 
 class ContextModel(BaseModel):
     reference: str = ...  # Path to the context e.g.: sklearn.tree.tree.DecisionTree
-    is_a: str = "https://www.padre-lab.eu/onto/Context"
+    is_a: str = f"{ontology_uri}Context"
 
     class Config:
         orm_mode = True
@@ -189,7 +221,7 @@ class CallIdModel(CallAccessorModel):
 
 
 class CallModel(RunObjectModel):
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/Call"
+    is_a: HttpUrl = f"{ontology_uri}Call"
     call_id: CallIdModel = ...  # Id of the call
     finished: bool = False
 
@@ -200,7 +232,7 @@ class CallModel(RunObjectModel):
 class MetadataModel(BaseModel):
     path: str = ...
     description: str = ...
-    format: WriteFormats = ...
+    format: FileFormats = ...
 
 
 class MetricMetaModel(BaseModel):
@@ -218,7 +250,19 @@ class ParameterMetaModel(BaseModel):
 class ArtifactMetaModel(BaseModel):
     path: str = ...
     description: str = ...
-    format: WriteFormats = ...
+    format: FileFormats = ...
+
+
+@dataclass  # No validation
+class FileInfo:
+    is_dir: bool = ...
+    path: str = ...
+    file_size: int = ...
+
+
+class ArtifactInfo(BaseModel):
+    meta: ArtifactMetaModel = ...
+    file_size: int = ...
 
 
 class TagMetaModel(BaseModel):
@@ -234,7 +278,7 @@ class LoggerCallModel(RunObjectModel):
     created_by: str = ...  # path to json of LoggerModel
     execution_time: Optional[float] = ...
     output: Optional[str] = ...  # path to json of the OutputModel of the logger
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerCall"
+    is_a: HttpUrl = f"{ontology_uri}LoggerCall"
 
     class Config:
         orm_mode = True
@@ -248,7 +292,7 @@ class InjectionLoggerCallModel(LoggerCallModel):
     post_time: Optional[float] = ...
     child_time: Optional[float] = ...
     original_call: CallModel = ...  # Triggered by following call
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/InjectionLoggerCall"
+    is_a: HttpUrl = f"{ontology_uri}InjectionLoggerCall"
     execution_time: Optional[float] = None
 
     @root_validator
@@ -268,14 +312,14 @@ class MultiInjectionLoggerCallModel(InjectionLoggerCallModel):
     pre_time: Optional[float] = 0.0
     post_time: Optional[float] = 0.0
     child_time: Optional[float] = 0.0
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/MultiInjectionLoggerCall"
+    is_a: HttpUrl = f"{ontology_uri}MultiInjectionLoggerCall"
 
     class Config:
         orm_mode = True
 
 
 class OutputModel(RunObjectModel):
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerOutput"
+    is_a: HttpUrl = f"{ontology_uri}LoggerOutput"
     additional_data: Optional[dict] = {}
 
     failed: Optional[str] = None
@@ -285,7 +329,7 @@ class OutputModel(RunObjectModel):
 
 
 class EmptyOutput(OutputModel):
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/EmptyLoggerOutput"
+    is_a: HttpUrl = f"{ontology_uri}EmptyLoggerOutput"
 
     class Config:
         orm_mode = True

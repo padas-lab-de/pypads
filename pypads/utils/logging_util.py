@@ -1,29 +1,11 @@
 import json
 import os
 import pickle
-from collections import OrderedDict
 from enum import Enum
 
-import mlflow
 import yaml
-from mlflow.tracking import MlflowClient
-from mlflow.utils.autologging_utils import try_mlflow_log
 
 from pypads import logger
-
-
-def add_to_store_object(source, obj, store=True):
-    from pypads.app.pypads import get_current_pads
-    pads = get_current_pads()
-    if not pads.cache.run_exists(id(source)):
-        pads.cache.run_add(id(source), OrderedDict())
-
-    objects_store: OrderedDict = pads.cache.run_get(id(source))
-
-    if id(obj) not in objects_store:
-        objects_store[id(obj)] = (obj, store)
-    else:
-        logger.warning("Object already added to the store")
 
 
 def get_temp_folder(run=None):
@@ -39,183 +21,161 @@ def get_temp_folder(run=None):
     return os.path.join(pads.folder, "tmp", run.info.experiment_id, run.info.run_id) + os.path.sep
 
 
-def get_run_folder():
-    """
-    Get the folder holding the run information.
-    :return:
-    """
-    run = mlflow.active_run()
-    if run is None:
-        raise ValueError("No active run is defined.")
-    # TODO use artifact download if needed or load artifact.
-    return os.path.join(mlflow.get_tracking_uri(), run.info.experiment_id, run.info.run_id)
+def get_by_value_in_enum(value):
+    for k, v in FileFormats.__members__.items():
+        if v.value == value:
+            return v
+    return None
 
 
-class WriteFormats(Enum):
+class FileFormats(Enum):
     pickle = 'pickle'
-    text = 'text'
+    text = 'txt'
     yaml = 'yaml'
     json = 'json'
 
 
-class ReadFormats(Enum):
-    pickle = 'pickle'
-    txt = 'txt'
-    yaml = 'yaml'
-    json = 'json'
+def write_text(p, o):
+    with open(p + ".txt", "w+") as fd:
+        fd.write(str(o))
+        return fd.name
 
 
-# extract all tags of runs by experiment id
-def all_tags(experiment_id):
-    client = MlflowClient(mlflow.get_tracking_uri())
-    ds_infos = client.list_run_infos(experiment_id)
-    for i in ds_infos:
-        yield mlflow.get_run(i.run_id).data.tags
-
-
-def try_read_artifact(file_name, folder_lookup=True):
-    """
-    Function to read an artifact from disk
-    :param file_name:
-    :return:
-    """
-    # TODO make defensive
-    path = file_name
-    if folder_lookup:
-        base_path = get_run_folder()
-        path = os.path.join(base_path, "artifacts", file_name)
-
-    # Functions for the options to read
-    def read_text(p):
-        with open(p, "r") as fd:
-            return fd.read()
-
-    def read_pickle(p):
-        try:
-            with open(p, "rb") as fd:
-                return pickle.load(fd)
-        except Exception as e:
-            logger.warning("Couldn't read pickle file. " + str(e))
-
-    def read_yaml(p):
-        try:
-            with open(p, "r") as fd:
-                return yaml.full_load(fd)
-        except Exception as e:
-            logger.warning("Couldn't read artifact as yaml. Trying to read it as text instead. " + str(e))
-            return read_text(p)
-
-    def read_json(p):
-        try:
-            with open(p, "r") as fd:
-                return json.load(fd)
-        except Exception as e:
-            logger.warning("Couldn't read artifact as json. Trying to read it as text instead. " + str(e))
-            return read_text(p)
-
-    options = {
-        ReadFormats.pickle: read_pickle,
-        ReadFormats.txt: read_text,
-        ReadFormats.yaml: read_yaml,
-        ReadFormats.json: read_json
-    }
-
-    read_format = path.split('.')[-1]
-    if ReadFormats[read_format]:
-        read_format = ReadFormats[read_format]
-    else:
-        logger.warning("Configured read format " + read_format + " not supported! ")
-        return
+def write_pickle(p, o):
     try:
-        data = options[read_format](path)
+        with open(p + ".pickle", "wb+") as fd:
+            pickle.dump(o, fd)
+            return fd.name
     except Exception as e:
-        logger.warning("Reading artifact failed for '" + path + "'. " + str(e))
-        data = "Cannot view content"
-    return data
+        logger.warning("Couldn't pickle output. Trying to save toString instead. " + str(e))
+        return write_text(p, o)
 
 
-def try_write_artifact(file_name, obj, write_format, preserve_folder=True):
+def write_yaml(p, o):
+    try:
+        with open(p + ".yaml", "w+") as fd:
+            if isinstance(o, str):
+                fd.write(o)
+                # TODO check if valid yaml?
+            else:
+                yaml.dump(o, fd)
+            return fd.name
+    except Exception as e:
+        logger.warning("Couldn't write meta as yaml. Trying to save it as json instead. " + str(e))
+        return write_json(p, o)
+
+
+def write_json(p, o):
+    try:
+        with open(p + ".json", "w+") as fd:
+            if isinstance(o, str):
+                fd.write(o)
+                # TODO check if valid json?
+            else:
+                json.dump(o, fd)
+            return fd.name
+    except Exception as e:
+        logger.warning("Couldn't write meta as json. Trying to save it as text instead. " + str(e))
+        return write_text(p, o)
+
+
+def read_text(p):
+    with open(p, "r") as fd:
+        return fd.read()
+
+
+def read_pickle(p):
+    try:
+        with open(p, "rb") as fd:
+            return pickle.load(fd)
+    except Exception as e:
+        logger.warning("Couldn't read pickle file. " + str(e))
+
+
+def read_yaml(p):
+    try:
+        with open(p, "r") as fd:
+            return yaml.full_load(fd)
+    except Exception as e:
+        logger.warning("Couldn't read artifact as yaml. Trying to read it as text instead. " + str(e))
+        return read_text(p)
+
+
+def read_json(p):
+    try:
+        with open(p, "r") as fd:
+            return json.load(fd)
+    except Exception as e:
+        logger.warning("Couldn't read artifact as json. Trying to read it as text instead. " + str(e))
+        return read_text(p)
+
+
+writers = {
+    FileFormats.pickle: write_pickle,
+    FileFormats.text: write_text,
+    FileFormats.yaml: write_yaml,
+    FileFormats.json: write_json
+}
+
+readers = {
+    FileFormats.pickle: read_pickle,
+    FileFormats.text: read_text,
+    FileFormats.yaml: read_yaml,
+    FileFormats.json: read_json
+}
+
+
+def store_tmp_artifact(file_name, obj, write_format: FileFormats):
     """
-    Function to write an artifact to disk.
-    :param preserve_folder:
-    :param write_format:
-    :param file_name:
-    :param obj:
-    :return:
+    Temporarily stores artifact to disk to enable upload etc.
+    :param file_name: Name for the file
+    :param obj: Object in memory to store to disk
+    :param write_format: Format to store the object in
+    :return: Path to the temporarily stored artifact
     """
+    from pypads.app.pypads import get_current_pads
+    pads = get_current_pads()
+
+    def tmp_cleanup(*args, **kwargs):
+        import shutil
+        from pypads.app.pypads import get_current_pads
+        if get_current_pads():
+            if os.path.isdir(get_temp_folder()):
+                shutil.rmtree(get_temp_folder())
+
+    pads.api.register_teardown_fn("tmp_cleanup", tmp_cleanup, nested=True, intermediate=True)
+
     base_path = get_temp_folder()
     path = os.path.join(base_path, file_name)
 
+    # Create dir in temporary_folder
     if not os.path.exists(os.path.dirname(path)):
         os.makedirs(os.path.dirname(path))
 
-    # Functions for the options to write to
-    def write_text(p, o):
-        with open(p + ".txt", "w+") as fd:
-            fd.write(str(o))
-            return fd.name
-
-    def write_pickle(p, o):
-        try:
-            with open(p + ".pickle", "wb+") as fd:
-                pickle.dump(o, fd)
-                return fd.name
-        except Exception as e:
-            logger.warning("Couldn't pickle output. Trying to save toString instead. " + str(e))
-            return write_text(p, o)
-
-    def write_yaml(p, o):
-        try:
-            with open(p + ".yaml", "w+") as fd:
-                if isinstance(o, str):
-                    fd.write(o)
-                    # TODO check if valid json?
-                else:
-                    yaml.dump(o, fd)
-                return fd.name
-        except Exception as e:
-            logger.warning("Couldn't write meta as yaml. Trying to save it as json instead. " + str(e))
-            return write_json(p, o)
-
-    def write_json(p, o):
-        try:
-            with open(p + ".json", "w+") as fd:
-                if isinstance(o, str):
-                    fd.write(o)
-                    # TODO check if valid json?
-                else:
-                    json.dump(o, fd)
-                return fd.name
-        except Exception as e:
-            logger.warning("Couldn't write meta as json. Trying to save it as text instead. " + str(e))
-            return write_text(p, o)
-
-    # Options to write to
-    options = {
-        WriteFormats.pickle: write_pickle,
-        WriteFormats.text: write_text,
-        WriteFormats.yaml: write_yaml,
-        WriteFormats.json: write_json
-    }
-
     # Write to disk
     if isinstance(write_format, str):
-        if WriteFormats[write_format]:
-            write_format = WriteFormats[write_format]
+        if FileFormats[write_format]:
+            write_format = FileFormats[write_format]
         else:
             logger.warning("Configured write format " + write_format + " not supported! ")
             return
 
-    path = options[write_format](path, obj)
-    if preserve_folder:
-        in_folder = os.path.join(base_path, file_name.split(os.sep)[0])
-        # Log artifact to mlflow
-        if os.path.isdir(in_folder):
-            try_mlflow_log(mlflow.log_artifact, in_folder)
-        else:
-            try_mlflow_log(mlflow.log_artifact, path)
-    else:
-        try_mlflow_log(mlflow.log_artifact, path)
+    return writers[write_format](path, obj)
+
+
+def read_artifact(path, read_format: FileFormats = None):
+    if read_format is None:
+        file_extension = path.split('.')[-1]
+        read_format = get_by_value_in_enum(file_extension)
+        if not read_format:
+            logger.warning("Configured read format " + read_format + " not supported! ")
+            return
+    try:
+        data = readers[read_format](path)
+    except Exception as e:
+        logger.warning("Reading artifact failed for '" + path + "'. " + str(e))
+        data = "Cannot view content"
+    return data
 
 
 def _to_artifact_meta_name(name):
