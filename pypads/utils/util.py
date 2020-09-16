@@ -1,7 +1,10 @@
+import functools
+import hashlib
 import inspect
 import operator
 import threading
 from functools import reduce
+from typing import Tuple
 
 import mlflow
 import pkg_resources
@@ -45,6 +48,22 @@ def dict_merge(*dicts):
                 else:
                     merged[key] = value
     return merged
+
+
+def persistent_hash(to_hash, algorithm=hashlib.md5):
+    """
+    Produces a hash which is independant of the current runtime (No salt) unlike __hash__()
+    :param to_hash:
+    :param algorithm:
+    :return:
+    """
+
+    def add_str(a, b):
+        return operator.add(str(persistent_hash(str(a), algorithm)), str(persistent_hash(str(b), algorithm)))
+
+    if isinstance(to_hash, Tuple):
+        to_hash = functools.reduce(add_str, to_hash)
+    return int(algorithm(to_hash.encode("utf-8")).hexdigest(), 16)
 
 
 def sizeof_fmt(num, suffix='B'):

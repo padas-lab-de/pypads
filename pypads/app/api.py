@@ -139,11 +139,12 @@ class PyPadsApi(IApi):
             ctx_path + "." + fn.__name__))})
 
     @cmd
-    def start_run(self, run_id=None, experiment_id=None, run_name=None, nested=False, _pypads_env=None):
+    def start_run(self, run_id=None, experiment_id=None, run_name=None, nested=False, _pypads_env=None, setups=True):
         """
         Method to start a new mlflow run. And run its setup functions.
         Every run is supposed to be an own execution. This may make sense if a single file defines multiple executions
         you want to track. (Entry to hyperparameter searches?)
+        :param setups: Flag to indicate setup functions should be run
         :param run_id: The id the run should get. This will be chosen automatically if None.
         :param experiment_id: The id the parent experiment has.
         :param run_name: A name for the run. This will also be chosen automatically if None.
@@ -152,9 +153,10 @@ class PyPadsApi(IApi):
         :return: The newly spawned run
         """
         out = mlflow.start_run(run_id=run_id, experiment_id=experiment_id, run_name=run_name, nested=nested)
-        self.run_setups(
-            _pypads_env=_pypads_env or LoggerEnv(parameter=dict(), experiment_id=experiment_id, run_id=run_id,
-                                                 data={"type": "https://www.padre-lab.eu/onto/SetupFn"}))
+        if setups:
+            self.run_setups(
+                _pypads_env=_pypads_env or LoggerEnv(parameter=dict(), experiment_id=experiment_id, run_id=run_id,
+                                                     data={"type": "https://www.padre-lab.eu/onto/SetupFn"}))
         return out
 
     # ---- logging ----
@@ -343,16 +345,41 @@ class PyPadsApi(IApi):
     # ---- run management ----
     @contextmanager
     @cmd
-    def intermediate_run(self, **kwargs):
+    def intermediate_run(self, setups=True, nested=True, **kwargs):
         """
         Spawn an intermediate nested run.
         This run closes automatically after the "with" block and restarts the parent run.
+        :param setups: Flag to indicate setup functions should be run. TODO teardowns?
+        :param nested: Start run as nested run.
         :param kwargs: Other kwargs to pass to start_run()
         :return:
         """
         enclosing_run = mlflow.active_run()
         try:
-            run = self.pypads.api.start_run(**kwargs, nested=True)
+            run = self.pypads.api.start_run(**kwargs, setups=setups, nested=nested)
+            self.pypads.cache.run_add("enclosing_run", enclosing_run)
+            yield run
+        finally:
+            if not mlflow.active_run() is enclosing_run:
+                self.pypads.api.end_run()
+                self.pypads.cache.run_clear()
+                self.pypads.cache.run_delete()
+            else:
+                mlflow.start_run(run_id=enclosing_run.info.run_id)
+
+    @contextmanager
+    @cmd
+    def silent_intermediate_run(self, nested=True, **kwargs):
+        """
+        Spawn an intermediate nested run.
+        This run closes automatically after the "with" block and restarts the parent run.
+        :param nested: Start run as nested run.
+        :param kwargs: Other kwargs to pass to start_run()
+        :return:
+        """
+        enclosing_run = mlflow.active_run()
+        try:
+            run = self.pypads.api.start_run(**kwargs, nested=nested)
             self.pypads.cache.run_add("enclosing_run", enclosing_run)
             yield run
         finally:
@@ -374,26 +401,28 @@ class PyPadsApi(IApi):
         return self.pypads.cache.get("pre_run_fns")
 
     @cmd
-    def register_setup(self, name, pre_fn: RunSetup, silent=True):
+    def register_setup(self, name, pre_fn: RunSetup, silent_duplicate=True):
         """
         Register a new pre_run function.
         :param name: Name of the registration
         :param pre_fn: Function to register
-        :param silent: Ignore log output if pre_run was already registered.
+        :param silent_duplicate: Ignore log output if post_run was already registered.
         This makes sense if a logger running multiple times wants to register a single setup function.
         :return:
         """
         cache = self._get_setup_cache()
         if cache.exists(name):
-            if not silent:
+            if not silent_duplicate:
                 logger.debug("Pre run fn with name '" + name + "' already exists. Skipped.")
         else:
             cache.add(name, pre_fn)
 
     @cmd
-    def register_setup_fn(self, name, description, fn, nested=True, intermediate=True, order=0, silent=True):
+    def register_setup_fn(self, name, description, fn, error_message=None, nested=True, intermediate=True, order=0,
+                          silent_duplicate=True, silent=False):
         """
         Register a new pre_run_function by building it from given parameters.
+        :param error_message: Error message to log on failure.
         :param description: A description of the setup function.
         :param name: Name of the registration
         :param fn: Function to register
@@ -402,7 +431,8 @@ class PyPadsApi(IApi):
         An intermediate run is a nested run managed specifically by pypads.
         :param order: Value defining the execution order for pre run function.
         The lower the value the sooner a function gets executed.
-        :param silent:
+        :param silent_duplicate: Ignore log output if post_run was already registered.
+        :param silent: Flag to disable storing of Output, Calls and Schemata
         :return:
         """
 
@@ -411,8 +441,11 @@ class PyPadsApi(IApi):
 
         TmpRunSetupFunction.__doc__ = description
 
-        self.register_setup(name, TmpRunSetupFunction(fn=fn, nested=nested, intermediate=intermediate, order=order),
-                            silent=silent)
+        self.register_setup(name,
+                            TmpRunSetupFunction(fn=fn, message=error_message, nested=nested, intermediate=intermediate,
+                                                _pypads_silent=silent,
+                                                order=order),
+                            silent_duplicate=silent_duplicate)
 
     @cmd
     def run_setups(self, _pypads_env=None):
@@ -444,25 +477,25 @@ class PyPadsApi(IApi):
         return self.pypads.cache.run_get("post_run_fns")
 
     @cmd
-    def register_teardown(self, name, post_fn: RunTeardown, silent=True):
+    def register_teardown(self, name, post_fn: RunTeardown, silent_duplicate=True):
         """
         Register a new post run function.
         :param name: Name of the registration
         :param post_fn: Function to register
-        :param silent: Ignore log output if post_run was already registered.
+        :param silent_duplicate: Ignore log output if post_run was already registered.
         This makes sense if a logger running multiple times wants to register a single cleanup function.
         :return:
         """
         cache = self._get_teardown_cache()
         if cache.exists(name):
-            if not silent:
+            if not silent_duplicate:
                 logger.debug("Post run fn with name '" + name + "' already exists. Skipped.")
         else:
             cache.add(name, post_fn)
 
     @cmd
     def register_teardown_fn(self, name, fn, error_message=None, nested=True, intermediate=True, order=0,
-                             silent=True):
+                             silent_duplicate=True, silent=True):
         """
         Register a new post_run_function by building it from given parameters.
         :param name: Name of the registration
@@ -473,12 +506,14 @@ class PyPadsApi(IApi):
         An intermediate run is a nested run managed specifically by pypads.
         :param order: Value defining the execution order for post run function.
         The lower the value the sooner a function gets executed.
-        :param silent:
+        :param silent_duplicate: Ignore log output if post_run was already registered.
+        :param silent: Flag to disable storing of Output, Calls and Schemata
         :return:
         """
         self.register_teardown(name,
-                               post_fn=RunTeardown(fn=fn, message=error_message, nested=nested,
-                                                   intermediate=intermediate, order=order), silent=silent)
+                               post_fn=RunTeardown(fn=fn, message=error_message, _pypads_silent=silent, nested=nested,
+                                                   intermediate=intermediate, order=order),
+                               silent_duplicate=silent_duplicate)
 
     @cmd
     def active_run(self):

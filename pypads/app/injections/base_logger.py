@@ -6,8 +6,8 @@ from typing import Type, Set, List, Callable
 import mlflow
 from pydantic import HttpUrl, BaseModel
 
-from pypads.app.env import LoggerEnv
 from pypads import logger
+from pypads.app.env import LoggerEnv
 from pypads.app.misc.mixins import DependencyMixin, DefensiveCallableMixin, TimedCallableMixin, \
     IntermediateCallableMixin, NoCallAllowedError, ConfigurableCallableMixin, LibrarySpecificMixin, \
     FunctionHolderMixin, ProvenanceMixin, BaseDefensiveCallableMixin
@@ -16,7 +16,7 @@ from pypads.injections.analysis.time_keeper import TimingDefined
 from pypads.model.models import MetricMetaModel, \
     ParameterMetaModel, ArtifactMetaModel, TrackedObjectModel, LoggerCallModel, OutputModel, EmptyOutput, TagMetaModel
 from pypads.utils.logging_util import WriteFormats
-from pypads.utils.util import dict_merge
+from pypads.utils.util import dict_merge, persistent_hash
 
 
 class PassThroughException(Exception):
@@ -165,7 +165,7 @@ class TrackedObject(ProvenanceMixin):
         return os.path.join(self.tracked_by.created_by, "TrackedObjects", self.__class__.__name__)
 
     def _get_artifact_path(self, name):
-        return os.path.join(str(id(self)),name)
+        return os.path.join(str(id(self)), name)
 
     def store(self, output, key="tracked_object", *json_path):
         """
@@ -282,10 +282,22 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
             path = path or ""
             from pypads.app.pypads import get_current_pads
             schema_path = os.path.join(path, cls.__name__ + "_schema")
-            get_current_pads().api.log_mem_artifact(schema_path,
-                                                    cls.schema(), write_format=WriteFormats.json)
-            get_current_pads().api.log_mem_artifact(os.path.join(path, cls.__name__ + "_output_schema"),
-                                                    cls.output_schema(), write_format=WriteFormats.json)
+            pads = get_current_pads()
+
+            schema_repo = pads.schema_repository
+
+            schema = cls.schema()
+            schema_hash = persistent_hash(str(schema))
+            if not schema_repo.has_object(uid=schema_hash):
+                schema_entity = schema_repo.get_object(uid=schema_hash)
+                schema_entity.log_mem_artifact(schema_path, schema, write_format=WriteFormats.json)
+
+            schema = cls.output_schema()
+            schema_hash = persistent_hash(str(schema))
+            if not schema_repo.has_object(uid=schema_hash):
+                schema_entity = schema_repo.get_object(uid=schema_hash)
+                schema_entity.log_mem_artifact(os.path.join(path, cls.__name__ + "_output_schema"),
+                                               schema, write_format=WriteFormats.json)
             cls._schema_path = path
         return cls._schema_path
 
@@ -318,7 +330,7 @@ class SimpleLogger(Logger):
         else:
             return self.__class__.__name__
 
-    def _call(self, _pypads_env: LoggerEnv, _logger_call: LoggerCall, _logger_output,*args, **kwargs):
+    def _call(self, _pypads_env: LoggerEnv, _logger_call: LoggerCall, _logger_output, *args, **kwargs):
         """
         Function where to add you custom code to execute before starting or ending the run.
 
@@ -331,20 +343,24 @@ class SimpleLogger(Logger):
         Function implementing the shared call structure.
         :param args:
         :param _pypads_env:
+        :param _pypads_silent: Flag to indicate logs should not be stored.
         :param kwargs:
         :return:
         """
         self.store_schema(self._base_path())
 
+        # parameters passed by the env
         _pypads_params = _pypads_env.parameter
 
         logger_call = self.build_call_object(_pypads_env, created_by=self.store_schema(self._base_path()))
         output = self.build_output(_pypads_env)
 
+        kwargs_ = {**self.static_parameters, **kwargs}
+
         try:
             _return, time = self._fn(*args, _pypads_env=_pypads_env, _logger_call=logger_call, _logger_output=output,
                                      _pypads_params=_pypads_params,
-                                     **{**self.static_parameters, **kwargs})
+                                     **kwargs_)
 
             logger_call.execution_time = time
         except Exception as e:
@@ -354,8 +370,9 @@ class SimpleLogger(Logger):
         finally:
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
-            logger_call.output = output.store(self._base_path())
-            logger_call.store()
+            if "_pypads_silent" not in kwargs_ or not kwargs_["_pypads_silent"]:
+                logger_call.output = output.store(self._base_path())
+                logger_call.store()
         return _return
 
     @abstractmethod
