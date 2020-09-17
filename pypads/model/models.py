@@ -1,4 +1,5 @@
 import os
+import uuid
 from typing import List, Union
 
 from pydantic import BaseModel, Field, HttpUrl, root_validator
@@ -61,7 +62,7 @@ def get_default_ctx_path():
                                                                           write_format=FileFormats.json))
             obj.set_tag("pypads.schema_name", "pypads_context_default")
         return os.path.join(pads.uri, default_ctx_path + ".json")
-    except ImportError:
+    except Exception:
         # Return context itself instead
         return DEFAULT_CONTEXT
 
@@ -73,8 +74,8 @@ class OntologyEntry(BaseModel):
     uri: HttpUrl = ...
     context: Union[List[str], str] = Field(alias='@context', default=None)
 
-    @staticmethod
-    def _add_context(values):
+    @root_validator
+    def add_context(cls, values):
         if values['context'] is None:
             values['context'] = get_default_ctx_path()
         else:
@@ -84,12 +85,22 @@ class OntologyEntry(BaseModel):
                 values['context'] = [get_default_ctx_path(), values['context']]
         return values
 
-    def json(self, **kwargs):
-        json = super().json(**kwargs)
-        return self._add_context(json)
+
+class IdBasedEntry(BaseModel):
+    uid: uuid.UUID = Field(default_factory=uuid.uuid4)  #
+    clazz: str = None
+
+    @root_validator
+    def set_default(cls, values):
+        if values['clazz'] is None:
+            values['clazz'] = str(cls)
+        return values
 
 
-class TypedOntologyEntry(OntologyEntry):
+class IdBasedOntologyEntry(OntologyEntry, IdBasedEntry):
+    """
+    An ontology entry getting its uri build via is_a and id combination.
+    """
     is_a: HttpUrl = ...
     uri: HttpUrl = None
 

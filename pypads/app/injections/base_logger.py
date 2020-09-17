@@ -95,11 +95,17 @@ class LoggerCall(ProvenanceMixin):
         super().__init__(*args, **kwargs)
         self._logging_env = logging_env
 
+    def path(self):
+        return os.path.join(self.created_by, "Calls")
+
+    def full_path(self):
+        return os.path.join(self.full_path(), f"{str(self.uid)}")
+
     def store(self):
         from pypads.app.pypads import get_current_pads
         from pypads.utils.logging_util import FileFormats
         get_current_pads().api.log_mem_artifact("{}".format(str(self.uid)), self.json(by_alias=True),
-                                                FileFormats.json.value, path=self.created_by + "Calls")
+                                                FileFormats.json.value, path=self.path())
 
 
 class TrackedObject(ProvenanceMixin):
@@ -371,15 +377,16 @@ class SimpleLogger(Logger):
         :param kwargs:
         :return:
         """
-        self.store_schema(self._base_path())
+        kwargs_ = {**self.static_parameters, **kwargs}
+        schema_path = "unavailable"
+        if "_pypads_silent" not in kwargs_ or not kwargs_["_pypads_silent"]:
+            schema_path = self.store_schema(self._base_path())
 
         # parameters passed by the env
         _pypads_params = _pypads_env.parameter
 
-        logger_call = self.build_call_object(_pypads_env, created_by=self.store_schema(self._base_path()))
+        logger_call = self.build_call_object(_pypads_env, created_by=schema_path)
         output = self.build_output(_pypads_env)
-
-        kwargs_ = {**self.static_parameters, **kwargs}
 
         try:
             _return, time = self._fn(*args, _pypads_env=_pypads_env, _logger_call=logger_call, _logger_output=output,

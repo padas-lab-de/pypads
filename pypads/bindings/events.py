@@ -114,7 +114,7 @@ class FunctionRegistry:
         identities = {}
         filtered_fns = set()
         for spec, fn in fitting_fns:
-            if fn.uid is None:
+            if not hasattr(fn, "uid") or fn.uid is None:
                 filtered_fns.add(fn)
             elif fn.uid in identities:
                 # If we are more specific and have the same identity remove old fn

@@ -147,8 +147,6 @@ class PyPads:
         # Store function registry into cache
         self._cache.add("events", events)
 
-        self._schema_repository = SchemaRepository()
-
         # Init mapping registry
         self._mapping_registry = MappingRegistry.from_params(self, mappings)
 
@@ -171,6 +169,8 @@ class PyPads:
         setup_fns = setup_fns or DEFAULT_SETUP_FNS
         for fn in setup_fns:
             self.api.register_setup(fn.__class__.__name__ + "_" + str(id(fn)), fn)
+
+        self._schema_repository = SchemaRepository()
 
         # Activate tracking by punching the import lib
         if autostart:
