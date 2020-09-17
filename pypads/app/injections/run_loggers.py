@@ -7,7 +7,7 @@ from pydantic.networks import HttpUrl
 # Default init_run fns
 from pypads import logger
 from pypads.app.injections.base_logger import LoggerCall, SimpleLogger
-from pypads.app.misc.mixins import OrderMixin
+from pypads.app.misc.mixins import OrderMixin, FunctionHolderMixin, BaseDefensiveCallableMixin
 from pypads.arguments import ontology_uri
 from pypads.model.logger_model import RunLoggerModel
 from pypads.utils.util import inheritors
@@ -59,6 +59,15 @@ class RunTeardown(RunLogger, metaclass=ABCMeta):
 
     def _base_path(self):
         return super()._base_path() + "Teardown/{}/".format(self.__name__)
+
+
+class CleanUpFunction(FunctionHolderMixin, BaseDefensiveCallableMixin, OrderMixin):
+    """
+    This function doesn't represent an own logger and is used to cleanup the job of another logger.
+    """
+
+    def __init__(self, *args, error_message="Some clean up function failed.", **kwargs):
+        super().__init__(*args, error_message=error_message, **kwargs)
 
 
 def run_setup_functions():

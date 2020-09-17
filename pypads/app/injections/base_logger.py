@@ -10,12 +10,14 @@ from pypads import logger
 from pypads.app.env import LoggerEnv
 from pypads.app.misc.mixins import DependencyMixin, DefensiveCallableMixin, TimedCallableMixin, \
     IntermediateCallableMixin, NoCallAllowedError, ConfigurableCallableMixin, LibrarySpecificMixin, \
-    FunctionHolderMixin, ProvenanceMixin, BaseDefensiveCallableMixin
+    FunctionHolderMixin, BaseDefensiveCallableMixin
 from pypads.arguments import ontology_uri
 from pypads.importext.versioning import LibSelector
 from pypads.injections.analysis.time_keeper import TimingDefined
 from pypads.model.logger_call import LoggerCallModel
+from pypads.model.logger_model import LoggerModel
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
+from pypads.model.mixins import ProvenanceMixin, PathAwareMixin
 from pypads.utils.logging_util import FileFormats
 from pypads.utils.util import dict_merge, persistent_hash
 
@@ -85,30 +87,29 @@ class LoggerExecutor(DefensiveCallableMixin, FunctionHolderMixin, TimedCallableM
             return None, 0
 
 
-class LoggerCall(ProvenanceMixin):
+class LoggerCall(ProvenanceMixin, PathAwareMixin):
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
         return LoggerCallModel
 
-    def __init__(self, *args, logging_env: LoggerEnv, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args, logging_env: LoggerEnv, created_by, output=None, **kwargs):
+        self._created_by = created_by
+        self.created_by = created_by.get_repository_path()
+        if output and not isinstance(output, str):
+            output = output.get_relative_path()
+        super().__init__(*args, parent_path=os.path.splitext(self.created_by)[0], output=output,
+                         **kwargs)
         self._logging_env = logging_env
-
-    def path(self):
-        return os.path.join(self.created_by, "Calls")
-
-    def full_path(self):
-        return os.path.join(self.full_path(), f"{str(self.uid)}")
 
     def store(self):
         from pypads.app.pypads import get_current_pads
         from pypads.utils.logging_util import FileFormats
-        get_current_pads().api.log_mem_artifact("{}".format(str(self.uid)), self.json(by_alias=True),
-                                                FileFormats.json.value, path=self.path())
+        get_current_pads().api.log_mem_artifact(self.get_relative_path(), self.json(by_alias=True),
+                                                FileFormats.json.value)
 
 
-class TrackedObject(ProvenanceMixin):
+class TrackedObject(ProvenanceMixin, PathAwareMixin):
     """
     A collection of tracked information
     """
@@ -119,49 +120,30 @@ class TrackedObject(ProvenanceMixin):
         return TrackedObjectModel
 
     def __init__(self, *args, tracked_by, **kwargs):
-        super().__init__(*args, tracked_by=tracked_by, **kwargs)
+        self._tracked_by = tracked_by
+        self.tracked_by = tracked_by.get_relative_path()
+        super().__init__(*args, parent_path=os.path.splitext(self.tracked_by)[0],
+                         **kwargs)
 
     @staticmethod
     def store_metric(key, value, description="", step=None, meta: dict = None):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
-        # consolidated_json = pads.cache.get('consolidated_dict', None)
-        # if consolidated_json is not None:
-        #     metrics_dict = consolidated_json.get('metrics', {})
-        #     metrics_list = metrics_dict.get(meta.name, [])
-        #     metrics_list.append(val)
-        #     metrics_dict[meta.name] = metrics_list
-        #     consolidated_json['metrics'] = metrics_dict
-        #     pads.cache.add('consolidated_dict', consolidated_json)
-        pads.api.log_metric(key, value, description=description, step=step, meta=meta)
+        return pads.api.log_metric(key, value, description=description, step=step, meta=meta)
 
     @staticmethod
     def store_param(key, value, description="", meta: dict = None):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
-        # consolidated_json = pads.cache.get('consolidated_dict', None)
-        # if consolidated_json is not None:
-        #     # Set the parameter
-        #     estimator_name = meta.name[:meta.name.rfind('.')]
-        #     parameters = consolidated_json.get('parameters', {})
-        #     estimator_dict = parameters.get(estimator_name, {})
-        #     estimator_dict[meta.name.split(sep='.')[-1]] = val
-        #
-        #     # Store the dictionaries back into the cache
-        #     parameters[estimator_name] = estimator_dict
-        #     consolidated_json['parameters'] = parameters
-        #     pads.cache.add('consolidated_dict', consolidated_json)
-
-        pads.api.log_param(key, value, description=description, meta=meta)
+        return pads.api.log_param(key, value, description=description, meta=meta)
 
     @staticmethod
     def store_artifact(name, obj, write_format=FileFormats.text, description="", path=None, meta: dict = None):
         from pypads.app.pypads import get_current_pads
-        get_current_pads().api.log_mem_artifact(name, obj, write_format=write_format, description=description,
-                                                path=path, meta=meta)
+        return get_current_pads().api.log_mem_artifact(name, obj, write_format=write_format, description=description,
+                                                       meta=meta)
 
-    @staticmethod
-    def store_tag(key, value, value_format="string", description="", meta: dict = None):
+    def store_tag(self, key, value, value_format="string", description="", meta: dict = None):
         """
         Set a tag for your current run.
         :param meta: Meta information you want to store about the parameter. This is an extension by pypads creating a
@@ -174,19 +156,10 @@ class TrackedObject(ProvenanceMixin):
         """
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
-        # consolidated_json = pads.cache.get('consolidated_dict', None)
-        # if consolidated_json is not None:
-        #     tags = consolidated_json.get('tags', dict())
-        #     tags[meta.name] = val
-        #     consolidated_json['tags'] = tags
-        #     pads.cache.add('consolidated_json', consolidated_json)
-        pads.api.set_tag(key, value, value_format=value_format, description=description, meta=meta)
+        return pads.api.set_tag(key, value, value_format=value_format, description=description, meta=meta)
 
-    def _base_path(self):
-        return os.path.join(self.tracked_by.created_by, "TrackedObjects", self.__class__.__name__)
-
-    def _get_artifact_path(self, name):
-        return os.path.join(str(id(self)), name)
+    def get_artifact_path(self, name):
+        return os.path.join(self.get_dir(), self.get_file_name(), name)
 
     def store(self, output, key="tracked_object", *json_path):
         """
@@ -195,10 +168,10 @@ class TrackedObject(ProvenanceMixin):
         :param json_path: path in the output schema
         :return:
         """
-        output.add_tracked_object(self, key, *json_path)
+        return output.add_tracked_object(self, key, *json_path)
 
 
-class LoggerOutput(ProvenanceMixin):
+class LoggerOutput(ProvenanceMixin, PathAwareMixin):
 
     def __init__(self, _pypads_env, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -240,22 +213,26 @@ class LoggerOutput(ProvenanceMixin):
                 attr.add(to)
                 to = attr
         setattr(curr, key, to)
+        return to.get_relative_path()
 
     def store(self, path=""):
         self.additional_data = dict_merge(*[e.data for e in self._envs])
         from pypads.app.pypads import get_current_pads
-        return get_current_pads().api.store_logger_output(self, path)
+        return get_current_pads().api.log_mem_artifact(os.path.join(path, self.get_relative_path()),
+                                                       self.json(by_alias=True),
+                                                       write_format=FileFormats.json)
 
     def set_failure_state(self, e: Exception):
         self.failed = "Logger Output might be inaccurate/corrupt due to exception in execution: '{}'".format(str(e))
 
 
 class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMixin,
-             LibrarySpecificMixin, ProvenanceMixin, ConfigurableCallableMixin, metaclass=ABCMeta):
+             LibrarySpecificMixin, ProvenanceMixin, PathAwareMixin, ConfigurableCallableMixin, metaclass=ABCMeta):
     """
     Generic tracking function used for storing information to a backend.
     """
 
+    _pypads_stored = None
     is_a: HttpUrl = f"{ontology_uri}tracking-function"
 
     # Default allow all libraries
@@ -266,6 +243,10 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
         super().__init__(*args, **kwargs)
         self._tracked_objects: Set[TrackedObject] = set()
         self._cleanup_fns = {}
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return LoggerModel
 
     @classmethod
     def build_output(cls, _pypads_env, **kwargs):
@@ -308,7 +289,6 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
             path = path or ""
             from pypads.app.pypads import get_current_pads
             pads = get_current_pads()
-
             schema_repo = pads.schema_repository
 
             schema = cls.schema()
@@ -327,9 +307,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
                     schema_path = os.path.join(path, cls.__name__ + "_output_schema")
                     schema_entity.log_mem_artifact(schema_path, schema, write_format=FileFormats.json)
                     schema_entity.set_tag("pypads.schema_name", schema["title"], "Name for the schema stored here.")
-
             cls._schema_path = path
-        return cls._schema_path
 
     @abstractmethod
     def _base_path(self):
@@ -342,6 +320,30 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
         if call not in self._cleanup_fns:
             self._cleanup_fns[call] = []
         self._cleanup_fns[call].append(fn)
+
+    def store(self, path=""):
+        self.store_schema(path=os.path.join(path, self.get_relative_path()))
+
+        if not self.__class__._pypads_stored:
+            from pypads.app.pypads import get_current_pads
+            pads = get_current_pads()
+            logger_repo = pads.logger_repository
+            # TODO get hash uid for logger
+            if not logger_repo.has_object(uid=self._persistent_hash()):
+                l = logger_repo.get_object(uid=self._persistent_hash())
+                self.__class__._pypads_stored = l.log_mem_artifact(os.path.join(path, self.get_relative_path()),
+                                                                   self.json(by_alias=True),
+                                                                   write_format=FileFormats.json)
+            else:
+                l = logger_repo.get_object(uid=self._persistent_hash())
+                self.__class__._pypads_stored = l.get_artifact_path(os.path.join(path, self.get_relative_path()))
+        return self.__class__._pypads_stored
+
+    def get_repository_path(self):
+        return self.__class__._pypads_stored
+
+    def _persistent_hash(self):
+        return persistent_hash("TODO")
 
 
 class SimpleLogger(Logger):
@@ -373,19 +375,16 @@ class SimpleLogger(Logger):
         Function implementing the shared call structure.
         :param args:
         :param _pypads_env:
-        :param _pypads_silent: Flag to indicate logs should not be stored.
         :param kwargs:
         :return:
         """
         kwargs_ = {**self.static_parameters, **kwargs}
-        schema_path = "unavailable"
-        if "_pypads_silent" not in kwargs_ or not kwargs_["_pypads_silent"]:
-            schema_path = self.store_schema(self._base_path())
+        self.store()
 
         # parameters passed by the env
         _pypads_params = _pypads_env.parameter
 
-        logger_call = self.build_call_object(_pypads_env, created_by=schema_path)
+        logger_call = self.build_call_object(_pypads_env, created_by=self)
         output = self.build_output(_pypads_env)
 
         try:
@@ -402,10 +401,9 @@ class SimpleLogger(Logger):
         finally:
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
-            if "_pypads_silent" not in kwargs_ or not kwargs_["_pypads_silent"]:
-                if output:
-                    logger_call.output = output.store(self._base_path())
-                logger_call.store()
+            if output:
+                logger_call.output = output.store(self._base_path())
+            logger_call.store()
         return _return
 
     @abstractmethod

@@ -9,7 +9,6 @@ from pypads.app.injections.run_loggers import RunSetup
 from pypads.app.misc.managed_git import ManagedGit
 from pypads.arguments import ontology_uri
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
-from pypads.model.storage import ArtifactMetaModel
 from pypads.utils.logging_util import FileFormats
 
 
@@ -19,7 +18,7 @@ class GitTO(TrackedObject):
 
         source: str = ...
         version: str = ...
-        git_log: str = ... #reference to the log file
+        git_log: str = ...  # reference to the log file
 
         class Config:
             orm_mode = True
@@ -35,11 +34,10 @@ class GitTO(TrackedObject):
         self.store_tag(*args, **kwargs)
 
     def store_git_log(self, name, value, format=FileFormats.text):
-        path = os.path.join(self._base_path(), self._get_artifact_path(name))
-        self.git_log = path
-        self.store_artifact(path, value, description="Commit logs for the git repository", write_format=format)
+        self.git_log = self.store_artifact(self.get_artifact_path(name), value,
+                                           description="Commit logs for the git repository", write_format=format)
 
-    def _get_artifact_path(self, name):
+    def get_artifact_path(self, name):
         return os.path.join(str(id(self)), name)
 
 
@@ -68,7 +66,8 @@ class IGitRSF(RunSetup):
         managed_git: ManagedGit = pads.managed_git_factory(source_name)
         if managed_git:
             repo = managed_git.repo
-            git_info = GitTO(tracked_by=_logger_call, source=source_name or repo.working_dir, version=repo.head.commit.hexsha)
+            git_info = GitTO(tracked_by=_logger_call, source=source_name or repo.working_dir,
+                             version=repo.head.commit.hexsha)
             # Disable pager for returns
             repo.git.set_persistent_git_options(no_pager=True)
             try:
@@ -85,4 +84,4 @@ class IGitRSF(RunSetup):
             except Exception as e:
                 _logger_output.set_failure_state(e)
             finally:
-                git_info.store(_logger_output,"git_info")
+                git_info.store(_logger_output, "git_info")

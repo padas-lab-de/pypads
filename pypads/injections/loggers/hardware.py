@@ -66,7 +66,7 @@ class CpuTO(TrackedObject):
                 core.usage.append(usage)
         self.total_usage.append(cores[-1])
 
-    def _get_artifact_path(self, name):
+    def get_artifact_path(self, name):
         return os.path.join(str(id(self)), "cpu_usage", name)
 
 
@@ -172,7 +172,7 @@ class RamTO(TrackedObject):
             self.swap_memory.free.append(free)
             self.swap_memory.percentage.append(percent)
 
-    def _get_artifact_path(self, name):
+    def get_artifact_path(self, name):
         return os.path.join(str(id(self)), "memory_usage", name)
 
 
@@ -285,7 +285,7 @@ class DiskTO(TrackedObject):
                     pm.used.append(info.get('used'))
                     pm.percentage.append(info.get('percentage'))
 
-    def _get_artifact_path(self, name):
+    def get_artifact_path(self, name):
         return os.path.join(str(id(self)), "disk_usage", name)
 
 

@@ -67,11 +67,11 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
         pass
 
     def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, **kwargs):
-        self.store_schema(self._base_path())
-
         _pypads_hook_params = _pypads_env.parameter
 
-        logger_call = InjectionLoggerCall(logging_env=_pypads_env, created_by=self.store_schema())
+        self.store()
+
+        logger_call = InjectionLoggerCall(logging_env=_pypads_env, created_by=self)
         output = self.build_output(_pypads_env)
 
         try:
@@ -203,8 +203,8 @@ class MultiInjectionLogger(InjectionLogger):
             logger_call.add_call(logging_env.call)
             return logger_call
         else:
-            self.store_schema(self._base_path())
-            return MultiInjectionLoggerCall(logging_env=logging_env, created_by=self.store_schema())
+            self.store()
+            return MultiInjectionLoggerCall(logging_env=logging_env, created_by=self)
 
     def _get_output(self, _pypads_env):
         from pypads.app.pypads import get_current_pads
@@ -218,7 +218,7 @@ class MultiInjectionLogger(InjectionLogger):
 
     @staticmethod
     @abstractmethod
-    def store(pads, *args, **kwargs):
+    def finalize_output(pads, *args, **kwargs):
         pass
 
     def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, **kwargs):
@@ -261,7 +261,7 @@ class MultiInjectionLogger(InjectionLogger):
             from pypads.app.pypads import get_current_pads
             pads = get_current_pads()
             pads.cache.run_add(id(self), {'call': logger_call, 'output': output, 'base_path': self._base_path()})
-            pads.api.register_teardown_fn('{}_clean_up'.format(self.__class__.__name__), self.store)
+            pads.api.register_cleanup_fn('{}_clean_up'.format(self.__class__.__name__), self.finalize_output)
         return _return
 
 
@@ -273,11 +273,10 @@ class OutputInjectionLogger(InjectionLogger):
         return InjectionLoggerModel
 
     def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, **kwargs):
-        self.store_schema(self._base_path())
-
         _pypads_hook_params = _pypads_env.parameter
 
-        logger_call = InjectionLoggerCall(logging_env=_pypads_env, created_by=self.store_schema())
+        self.store()
+        logger_call = InjectionLoggerCall(logging_env=_pypads_env, created_by=self)
         output = self.build_output(_pypads_env)
 
         try:

@@ -4,7 +4,7 @@ from typing import Type
 
 from pydantic import HttpUrl, BaseModel
 
-from pypads.app.injections.base_logger import LoggerCall, SimpleLogger
+from pypads.app.injections.base_logger import SimpleLogger, LoggerCall
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
 from pypads.arguments import ontology_uri
 from pypads.model.logger_model import LoggerModel

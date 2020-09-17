@@ -96,7 +96,7 @@ class PypadsRunCache(Cache):
             pads.cache.run_delete(run_id)
             logger.debug("Cleared run cache after run " + run_id)
 
-        pads.api.register_teardown_fn("cache_cleanup", cleanup_cache, order=sys.maxsize)
+        pads.api.register_cleanup_fn("cache_cleanup", cleanup_cache, order=sys.maxsize)
 
 
 class PypadsCache(Cache):

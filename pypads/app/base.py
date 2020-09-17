@@ -12,7 +12,7 @@ from pypads import logger
 from pypads.app.actuators import ActuatorPluginManager, PyPadsActuators
 from pypads.app.api import ApiPluginManager, PyPadsApi
 from pypads.app.backends.mlflow import MLFlowBackendFactory
-from pypads.app.backends.repository import SchemaRepository
+from pypads.app.backends.repository import SchemaRepository, LoggerRepository
 from pypads.app.decorators import DecoratorPluginManager, PyPadsDecorators
 from pypads.app.misc.caches import PypadsCache
 from pypads.app.validators import ValidatorPluginManager, validators, PyPadsValidators
@@ -171,6 +171,7 @@ class PyPads:
             self.api.register_setup(fn.__class__.__name__ + "_" + str(id(fn)), fn)
 
         self._schema_repository = SchemaRepository()
+        self._logger_repository = LoggerRepository()
 
         # Activate tracking by punching the import lib
         if autostart:
@@ -274,6 +275,10 @@ class PyPads:
     @property
     def schema_repository(self) -> SchemaRepository:
         return self._schema_repository
+
+    @property
+    def logger_repository(self) -> LoggerRepository:
+        return self._logger_repository
 
     @property
     def cache(self) -> PypadsCache:

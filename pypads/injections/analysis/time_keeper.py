@@ -56,7 +56,7 @@ def add_run_time(log_function, name, time):
     from pypads.app.pypads import get_current_pads
     pads = get_current_pads()
 
-    pads.api.register_teardown_fn("timings", print_timings)
+    pads.api.register_cleanup_fn("timings", print_timings)
 
     if not pads.cache.run_exists("timings"):
         pads.cache.run_add("timings", OrderedDict())

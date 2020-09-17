@@ -87,7 +87,8 @@ class RepositoryObject:
             runs = self.pads.backend.search_runs(experiment_ids=self.repository.id,
                                                  filter_string="tags.`pypads_unique_uid` = \"" + str(uid) + "\"")
             if len(runs) > 0:
-                self.run_id = runs.pop().info.run_id
+                # TODO is this correct? Mlflow returns a dataframe
+                self.run_id = runs.iloc[0][0]
 
         if self.run_id is None:
             self.run_id = self.pads.backend.create_run(experiment_id=self.repository.id).info.run_id
@@ -105,7 +106,7 @@ class RepositoryObject:
         :return:
         """
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
-            return self.pads.api.log_mem_artifact(*args, **kwargs)
+            return self.get_artifact_path(self.pads.api.log_mem_artifact(*args, **kwargs))
 
     def log_artifact(self, *args, **kwargs):
         """
@@ -116,7 +117,7 @@ class RepositoryObject:
         :return:
         """
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
-            return self.pads.api.log_artifact(*args, **kwargs)
+            return self.get_artifact_path(self.pads.api.log_artifact(*args, **kwargs))
 
     def log_param(self, *args, **kwargs):
         """
@@ -127,7 +128,7 @@ class RepositoryObject:
         :return:
         """
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
-            self.pads.api.log_param(*args, **kwargs)
+            return self.get_artifact_path(self.pads.api.log_param(*args, **kwargs))
 
     def log_metric(self, *args, **kwargs):
         """
@@ -138,7 +139,7 @@ class RepositoryObject:
         :return:
         """
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
-            self.pads.api.log_metric(*args, **kwargs)
+            return self.get_artifact_path(self.pads.api.log_metric(*args, **kwargs))
 
     def set_tag(self, *args, **kwargs):
         """
@@ -149,7 +150,7 @@ class RepositoryObject:
         :return:
         """
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
-            self.pads.api.set_tag(*args, **kwargs)
+            return self.get_artifact_path(self.pads.api.set_tag(*args, **kwargs))
 
     def get_rel_base_path(self):
         return os.path.join(self.repository.id, self.run_id)
@@ -167,3 +168,14 @@ class SchemaRepository(Repository):
         :param kwargs:
         """
         super().__init__(*args, name="pypads_schemata", **kwargs)
+
+
+class LoggerRepository(Repository):
+
+    def __init__(self, *args, **kwargs):
+        """
+        Repository holding all the relevant logger information
+        :param args:
+        :param kwargs:
+        """
+        super().__init__(*args, name="pypads_logger", **kwargs)

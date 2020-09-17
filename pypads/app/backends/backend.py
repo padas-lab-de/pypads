@@ -26,7 +26,7 @@ class BackendInterface:
         return self._pypads
 
     @abstractmethod
-    def log_artifact(self, local_path, artifact_path=None) -> str:
+    def log_artifact(self, local_path, artifact_path="") -> str:
         """
         Logs an artifact.
         :param local_path: Path from which to take the artifact

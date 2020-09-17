@@ -1,5 +1,4 @@
-import os
-from typing import Union, Type, Optional
+from typing import Type, Optional
 
 from pydantic import HttpUrl, BaseModel
 
@@ -8,8 +7,6 @@ from pypads.app.injections.base_logger import TrackedObject
 from pypads.app.injections.injection import InjectionLogger
 from pypads.arguments import ontology_uri
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
-from pypads.model.storage import MetricMetaModel, ArtifactMetaModel
-from pypads.utils.logging_util import FileFormats
 
 
 class MetricTO(TrackedObject):
@@ -42,9 +39,8 @@ class MetricTO(TrackedObject):
                 type(
                     value)) + "' of '" + self.name + "' as artifact instead.")
             if self.as_artifact:
-                path = os.path.join(self._base_path(), self._get_artifact_path(self.name))
-                self.name = path
-                self.store_artifact(path, value, description="The metric returned by {}".format(self.name))
+                self.name = self.store_artifact(self.get_artifact_path(self.name), value,
+                                                description="The metric returned by {}".format(self.name))
                 return True
         return False
 

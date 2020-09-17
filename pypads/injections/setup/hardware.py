@@ -19,7 +19,7 @@ class HardwareTO(TrackedObject):
     class HardwareModel(TrackedObjectModel):
         uri: HttpUrl = f"{ontology_uri}env/hardware-information"
         name: str = "Hardware Info"
-        tags : List[str] = ...
+        tags: List[str] = []
 
         class Config:
             orm_mode = True
@@ -44,7 +44,7 @@ class ISystemRSF(RunSetup):
 
     class ISystemRSFOutput(OutputModel):
         is_a: HttpUrl = f"{ontology_uri}ISystemRSF-Output"
-        system_info: HardwareTO.get_model_cls() = ...
+        system_info: str = ...
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
@@ -62,7 +62,7 @@ class ISystemRSF(RunSetup):
         system_info.add_tag("pypads.system.version", uname.version, description="Operating system version")
         system_info.add_tag("pypads.system.machine", uname.machine, description="Operating system machine")
         system_info.add_tag("pypads.system.processor", uname.processor, description="Processor technology")
-        system_info.store(_logger_output, "system_info")
+        self.system_info = system_info.store(_logger_output, "system_info")
 
 
 class ICpuRSF(RunSetup):

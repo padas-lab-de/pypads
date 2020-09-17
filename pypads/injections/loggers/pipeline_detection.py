@@ -86,7 +86,7 @@ class PipelineTO(TrackedObject):
     def _set_last_tracked(self, last_tracked):
         self.last_tracked = last_tracked
 
-    def _get_artifact_path(self, name=None):
+    def get_artifact_path(self, name=None):
         if name is not None:
             return os.path.join(str(id(self)), "pipeline", name)
         else:
@@ -118,7 +118,7 @@ class PipelineTrackerILF(MultiInjectionLogger):
         super().__init__(*args, **kwargs)
 
     @staticmethod
-    def store(pads, *args, **kwargs):
+    def finalize_output(pads, *args, **kwargs):
         pipeline_tracker = pads.cache.run_get(pads.cache.run_get("pipeline_tracker"))
         call = pipeline_tracker.get("call")
         output = pipeline_tracker.get("output")
@@ -131,7 +131,7 @@ class PipelineTrackerILF(MultiInjectionLogger):
         if network is not None and len(network.nodes) > 0:
             from networkx import DiGraph
             from networkx.drawing.nx_agraph import to_agraph
-            path = os.path.join(pipeline._base_path(), pipeline._get_artifact_path("pypads_pipeline"))
+            path = os.path.join(pipeline._base_path(), pipeline.get_artifact_path("pypads_pipeline"))
             pipeline.store_artifact(network,
                                     ArtifactMetaModel(path=path, description="networkx graph",
                                                       format=FileFormats.pickle))
@@ -196,7 +196,7 @@ class PipelineTrackerILF(MultiInjectionLogger):
                     nx.draw_networkx_edge_labels(network, pos)
                     plt.savefig(folder)
                 if os.path.exists(folder):
-                    path = os.path.join(pipeline._base_path(), pipeline._get_artifact_path())
+                    path = os.path.join(pipeline._base_path(), pipeline.get_artifact_path())
                     try_mlflow_log(mlflow.log_artifact, folder, artifact_path=path)
 
         call.output = output.store(pipeline_tracker.get("base_path"))

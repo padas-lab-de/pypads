@@ -75,16 +75,17 @@ class MLFlowBackend(BackendInterface):
         return [FileInfo(is_dir=a.is_dir, path=a.path, file_size=a.file_size) for a in
                 self.mlf.list_artifacts(run_id, path=path)]
 
-    def get_artifact_uri(self, artifact_path=None):
-        return mlflow.get_artifact_uri(artifact_path=None)
+    def get_artifact_uri(self, artifact_path=""):
+        return mlflow.get_artifact_uri(artifact_path=artifact_path)
 
-    def log_artifact(self, local_path, artifact_path=None):
-        return mlflow.log_artifact(local_path, artifact_path)
+    def log_artifact(self, local_path, artifact_path=""):
+        mlflow.log_artifact(local_path, artifact_path)
+        return os.path.join(artifact_path, local_path.rsplit(os.sep, 1)[1])
 
     def log_mem_artifact(self, artifact, meta: ArtifactMetaModel, preserveFolder=True):
         tmp_path = store_tmp_artifact(meta.path, artifact, write_format=meta.file_format)
         if preserveFolder:
-            artifact_path = None
+            artifact_path = ""
             splits = meta.path.rsplit(os.sep, 1)
             if len(splits) > 1:
                 artifact_path = splits[0]
@@ -170,11 +171,11 @@ class LocalMlFlowBackend(MLFlowBackend):
                     except Exception as e:
                         logger.error("pushing logs to remote failed due to this error '{}'".format(str(e)))
 
-        self.pypads.api.register_teardown_fn("commit", commit, nested=False, intermediate=False,
-                                             error_message="A problem executing the result management function was detected."
-                                                           " Check if you have to commit / push results manually."
-                                                           " Following exception caused the problem: {0}",
-                                             order=sys.maxsize - 1)
+        self.pypads.api.register_cleanup_fn("commit", commit,
+                                            error_message="A problem executing the result management function was detected."
+                                                          " Check if you have to commit / push results manually."
+                                                          " Following exception caused the problem: {0}",
+                                            order=sys.maxsize - 1)
 
     def add_result_remote(self, remote, uri):
         """

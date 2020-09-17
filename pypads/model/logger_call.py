@@ -3,7 +3,7 @@ from typing import Optional, List
 from pydantic import BaseModel, HttpUrl, root_validator
 
 from pypads.arguments import ontology_uri
-from pypads.model.models import IdBasedOntologyEntry, IdBasedEntry
+from pypads.model.models import IdBasedOntologyEntry
 
 
 class ContextModel(BaseModel):
@@ -55,8 +55,8 @@ class LoggerCallModel(IdBasedOntologyEntry):
     failed: Optional[str] = None
     execution_time: Optional[float] = ...
 
-    created_by: IdBasedEntry = ...  # reference to LoggerModel
-    output: Optional[IdBasedEntry] = ...  # reference to OutputModel of the logger
+    created_by: str = ...  # reference to LoggerModel
+    output: Optional[str] = ...  # reference to OutputModel of the logger
 
     is_a: HttpUrl = f"{ontology_uri}LoggerCall"
 

@@ -7,8 +7,7 @@ from pypads.app.injections.base_logger import LoggerCall, TrackedObject
 from pypads.app.injections.injection import InjectionLogger
 from pypads.arguments import ontology_uri
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
-from pypads.model.storage import ArtifactMetaModel
-from pypads.utils.logging_util import FileFormats, _to_artifact_meta_name
+from pypads.utils.logging_util import FileFormats
 
 
 class InputTO(TrackedObject):
@@ -32,13 +31,11 @@ class InputTO(TrackedObject):
         self._add_param(name, value, format, "keyword-argument")
 
     def _add_param(self, name, value, format, type):
-        path = os.path.join(self._base_path(), self._get_artifact_path(name))
+        path = self.get_artifact_path(name)
+        description = "Input to function with index {} and type {}".format(len(self.inputs), type)
+        self.inputs.append(self.store_artifact(path, value, write_format=format, description=description))
 
-        description = "Input to function with index {} and type {}".format(len(self.inputs),type)
-        self.inputs.append(os.path.join(path, name))
-        self.store_artifact(name, value, write_format=format,description=description, path=path)
-
-    def _get_artifact_path(self, name):
+    def get_artifact_path(self, name):
         return os.path.join(str(id(self)), "input", name)
 
 
@@ -104,13 +101,12 @@ class OutputTO(TrackedObject):
 
     def __init__(self, value, format, *args, tracked_by: LoggerCall, **kwargs):
         super().__init__(*args, content_format=format, tracked_by=tracked_by, **kwargs)
-        path = os.path.join(self._base_path(), self._get_artifact_path())
-        self.output = path
-        self.store_artifact(path, value, write_format= format, description="Output of function call {}".format(
-                                                         self.tracked_by.original_call))
+        self.output = self.store_artifact(self.get_artifact_path(), value, write_format=format,
+                                          description="Output of function call {}".format(
+                                              self._tracked_by.original_call))
 
-    def _get_artifact_path(self, name="output"):
-        return super()._get_artifact_path(name)
+    def get_artifact_path(self, name="output"):
+        return super().get_artifact_path(name)
 
 
 class OutputILF(InjectionLogger):

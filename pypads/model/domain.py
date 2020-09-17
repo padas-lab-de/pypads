@@ -74,7 +74,6 @@ class RunObjectModel(BaseModel):
         :return:
         """
         from pypads.app.pypads import get_current_pads
-        get_current_pads().api.log_mem_artifact("{}#{}".format(self.__class__.__name__, self.uid),
+        get_current_pads().api.log_mem_artifact(os.path.join(self.__class__.__name__, str(self.uid)),
                                                 self.json(by_alias=True),
-                                                write_format=FileFormats.json,
-                                                path=os.path.join(self.__class__.__name__, str(self.uid)))
+                                                write_format=FileFormats.json)
