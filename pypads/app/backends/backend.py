@@ -5,8 +5,8 @@ from typing import List
 from mlflow.entities import ViewType
 from mlflow.tracking.fluent import SEARCH_MAX_RESULTS_PANDAS
 
-from pypads.model.models import MetricMetaModel, ParameterMetaModel, TagMetaModel, FileInfo, \
-    ArtifactInfo
+from pypads.model.storage import MetricMetaModel, ParameterMetaModel, TagMetaModel, FileInfo, ArtifactInfo, \
+    ArtifactMetaModel
 from pypads.utils.logging_util import get_temp_folder, read_artifact, _to_artifact_meta_name, _to_metric_meta_name, \
     _to_param_meta_name, FileFormats
 
@@ -37,7 +37,7 @@ class BackendInterface:
         raise NotImplementedError("")
 
     @abstractmethod
-    def log_mem_artifact(self, artifact, path, file_format: FileFormats, preserveFolder=True):
+    def log_mem_artifact(self, artifact, meta: ArtifactMetaModel, preserveFolder=True):
         raise NotImplementedError("")
 
     @abstractmethod

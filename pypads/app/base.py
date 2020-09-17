@@ -89,7 +89,6 @@ class PyPads:
     def __init__(self, uri=None, folder=None, mappings: List[MappingCollection] = None, hooks=None,
                  events=None, setup_fns=None, config=None, pre_initialized_cache: PypadsCache = None,
                  disable_plugins=None, autostart=None):
-        # Set the singleton instance
 
         if disable_plugins is None:
             disable_plugins = []
@@ -148,6 +147,8 @@ class PyPads:
         # Store function registry into cache
         self._cache.add("events", events)
 
+        self._schema_repository = SchemaRepository()
+
         # Init mapping registry
         self._mapping_registry = MappingRegistry.from_params(self, mappings)
 
@@ -183,8 +184,6 @@ class PyPads:
                 pads.api.end_run()
 
         self.add_atexit_fn(cleanup)
-
-        self._schema_repository = SchemaRepository()
 
         if autostart:
             if isinstance(autostart, str):

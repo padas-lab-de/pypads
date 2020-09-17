@@ -5,8 +5,8 @@ from typing import List, Union, Tuple, Set
 from pypads import logger
 from pypads.app.misc.inheritance import SuperStop
 from pypads.importext.versioning import LibSelector, VersionNotFoundException
+from pypads.model.domain import LibraryModel
 from pypads.model.metadata import ModelObject
-from pypads.model.models import LibraryModel
 
 DEFAULT_ORDER = 1
 
@@ -273,7 +273,7 @@ class ProvenanceMixin(ModelObject, metaclass=ABCMeta):
         else:
             setattr(self, "defined_in", lib_model)
 
-        if not hasattr(self, "uri") or getattr(self, "uri") is None:
+        if not hasattr(self, "uri") or getattr(self, "uri") is None and hasattr(self, "uid") and hasattr(self, "is_a"):
             setattr(self, "uri", "{}#{}".format(getattr(self, "is_a"), self.uid))
 
     def _get_library_descriptor(self) -> LibraryModel:

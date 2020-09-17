@@ -1,7 +1,7 @@
 import os
 import traceback
 from abc import abstractmethod, ABCMeta
-from typing import Type, Set, List, Callable
+from typing import Type, Set, List, Callable, Optional
 
 import mlflow
 from pydantic import HttpUrl, BaseModel
@@ -14,8 +14,8 @@ from pypads.app.misc.mixins import DependencyMixin, DefensiveCallableMixin, Time
 from pypads.arguments import ontology_uri
 from pypads.importext.versioning import LibSelector
 from pypads.injections.analysis.time_keeper import TimingDefined
-from pypads.model.models import MetricMetaModel, \
-    ParameterMetaModel, ArtifactMetaModel, TrackedObjectModel, LoggerCallModel, OutputModel, EmptyOutput, TagMetaModel
+from pypads.model.logger_call import LoggerCallModel
+from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.utils.logging_util import FileFormats
 from pypads.utils.util import dict_merge, persistent_hash
 
@@ -103,6 +103,9 @@ class LoggerCall(ProvenanceMixin):
 
 
 class TrackedObject(ProvenanceMixin):
+    """
+    A collection of tracked information
+    """
     is_a = f"{ontology_uri}tracked_object"
 
     @classmethod
@@ -113,54 +116,65 @@ class TrackedObject(ProvenanceMixin):
         super().__init__(*args, tracked_by=tracked_by, **kwargs)
 
     @staticmethod
-    def _store_metric(val, meta: MetricMetaModel):
+    def store_metric(key, value, description="", step=None, meta: dict = None):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
-        consolidated_json = pads.cache.get('consolidated_dict', None)
-        if consolidated_json is not None:
-            metrics_dict = consolidated_json.get('metrics', {})
-            metrics_list = metrics_dict.get(meta.name, [])
-            metrics_list.append(val)
-            metrics_dict[meta.name] = metrics_list
-            consolidated_json['metrics'] = metrics_dict
-            pads.cache.add('consolidated_dict', consolidated_json)
-        pads.api.log_metric(meta.name, val, meta=meta)
+        # consolidated_json = pads.cache.get('consolidated_dict', None)
+        # if consolidated_json is not None:
+        #     metrics_dict = consolidated_json.get('metrics', {})
+        #     metrics_list = metrics_dict.get(meta.name, [])
+        #     metrics_list.append(val)
+        #     metrics_dict[meta.name] = metrics_list
+        #     consolidated_json['metrics'] = metrics_dict
+        #     pads.cache.add('consolidated_dict', consolidated_json)
+        pads.api.log_metric(key, value, description=description, step=step, meta=meta)
 
     @staticmethod
-    def _store_param(val, meta: ParameterMetaModel):
+    def store_param(key, value, description="", meta: dict = None):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
-        consolidated_json = pads.cache.get('consolidated_dict', None)
-        if consolidated_json is not None:
-            # Set the parameter
-            estimator_name = meta.name[:meta.name.rfind('.')]
-            parameters = consolidated_json.get('parameters', {})
-            estimator_dict = parameters.get(estimator_name, {})
-            estimator_dict[meta.name.split(sep='.')[-1]] = val
+        # consolidated_json = pads.cache.get('consolidated_dict', None)
+        # if consolidated_json is not None:
+        #     # Set the parameter
+        #     estimator_name = meta.name[:meta.name.rfind('.')]
+        #     parameters = consolidated_json.get('parameters', {})
+        #     estimator_dict = parameters.get(estimator_name, {})
+        #     estimator_dict[meta.name.split(sep='.')[-1]] = val
+        #
+        #     # Store the dictionaries back into the cache
+        #     parameters[estimator_name] = estimator_dict
+        #     consolidated_json['parameters'] = parameters
+        #     pads.cache.add('consolidated_dict', consolidated_json)
 
-            # Store the dictionaries back into the cache
-            parameters[estimator_name] = estimator_dict
-            consolidated_json['parameters'] = parameters
-            pads.cache.add('consolidated_dict', consolidated_json)
-
-        get_current_pads().api.log_param(meta.name, val, meta=meta)
+        pads.api.log_param(key, value, description=description, meta=meta)
 
     @staticmethod
-    def _store_artifact(val, meta: ArtifactMetaModel):
+    def store_artifact(self, name, obj, write_format=FileFormats.text, description="", path=None, meta=None):
         from pypads.app.pypads import get_current_pads
-        get_current_pads().api.log_mem_artifact(meta.path, val, meta=meta, write_format=meta.format)
+        get_current_pads().api.log_mem_artifact(name, obj, write_format=write_format, description=description,
+                                                path=path, meta=meta)
 
     @staticmethod
-    def _store_tag(val, meta: TagMetaModel):
+    def store_tag(key, value, value_format="string", description="", meta: dict = None):
+        """
+        Set a tag for your current run.
+        :param meta: Meta information you want to store about the parameter. This is an extension by pypads creating a
+        json containing some meta information.
+        :param value_format: Format of the value held in tag
+        :param description: Description what this tag indicates
+        :param key: Tag key
+        :param value: Tag value
+        :return:
+        """
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
-        consolidated_json = pads.cache.get('consolidated_dict', None)
-        if consolidated_json is not None:
-            tags = consolidated_json.get('tags', dict())
-            tags[meta.name] = val
-            consolidated_json['tags'] = tags
-            pads.cache.add('consolidated_json', consolidated_json)
-        pads.api.set_tag(meta.name, val)
+        # consolidated_json = pads.cache.get('consolidated_dict', None)
+        # if consolidated_json is not None:
+        #     tags = consolidated_json.get('tags', dict())
+        #     tags[meta.name] = val
+        #     consolidated_json['tags'] = tags
+        #     pads.cache.add('consolidated_json', consolidated_json)
+        pads.api.set_tag(key, value, value_format=value_format, description=description, meta=meta)
 
     def _base_path(self):
         return os.path.join(self.tracked_by.created_by, "TrackedObjects", self.__class__.__name__)
@@ -251,21 +265,26 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
     def build_output(cls, _pypads_env, **kwargs):
         schema_class = cls.output_schema_class()
 
-        class OutputModelHolder(LoggerOutput):
+        if schema_class:
+            class OutputModelHolder(LoggerOutput):
 
-            @classmethod
-            def get_model_cls(cls) -> Type[BaseModel]:
-                return schema_class
+                @classmethod
+                def get_model_cls(cls) -> Type[BaseModel]:
+                    return schema_class
 
-        return OutputModelHolder(_pypads_env, **kwargs)
+            return OutputModelHolder(_pypads_env, **kwargs)
+        return None
 
     @classmethod
-    def output_schema_class(cls) -> Type[OutputModel]:
-        return EmptyOutput
+    def output_schema_class(cls) -> Optional[Type[OutputModel]]:
+        return None
 
     @classmethod
     def output_schema(cls):
-        return cls.output_schema_class().schema()
+        schema_class = cls.output_schema_class()
+        if schema_class:
+            return schema_class.schema()
+        return None
 
     @classmethod
     def _default_output_class(cls, clazz: Type[TrackedObject]) -> Type[OutputModel]:
@@ -295,12 +314,13 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
                 schema_entity.set_tag("pypads.schema_name", schema["title"], "Name for the schema stored here.")
 
             schema = cls.output_schema()
-            schema_hash = persistent_hash(str(schema))
-            if not schema_repo.has_object(uid=schema_hash):
-                schema_entity = schema_repo.get_object(uid=schema_hash)
-                schema_path = os.path.join(path, cls.__name__ + "_output_schema")
-                schema_entity.log_mem_artifact(schema_path, schema, write_format=FileFormats.json)
-                schema_entity.set_tag("pypads.schema_name", schema["title"], "Name for the schema stored here.")
+            if schema:
+                schema_hash = persistent_hash(str(schema))
+                if not schema_repo.has_object(uid=schema_hash):
+                    schema_entity = schema_repo.get_object(uid=schema_hash)
+                    schema_path = os.path.join(path, cls.__name__ + "_output_schema")
+                    schema_entity.log_mem_artifact(schema_path, schema, write_format=FileFormats.json)
+                    schema_entity.set_tag("pypads.schema_name", schema["title"], "Name for the schema stored here.")
 
             cls._schema_path = path
         return cls._schema_path
@@ -369,13 +389,15 @@ class SimpleLogger(Logger):
             logger_call.execution_time = time
         except Exception as e:
             logger_call.failed = str(e)
-            output.set_failure_state(e)
+            if output:
+                output.set_failure_state(e)
             raise e
         finally:
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
             if "_pypads_silent" not in kwargs_ or not kwargs_["_pypads_silent"]:
-                logger_call.output = output.store(self._base_path())
+                if output:
+                    logger_call.output = output.store(self._base_path())
                 logger_call.store()
         return _return
 

@@ -6,7 +6,7 @@ from pydantic import BaseModel, HttpUrl
 from pypads.app.injections.base_logger import LoggerCall, TrackedObject
 from pypads.app.injections.injection import InjectionLogger
 from pypads.arguments import ontology_uri
-from pypads.model.models import TrackedObjectModel, OutputModel
+from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.utils.logging_util import FileFormats
 from pypads.utils.util import local_uri_to_path, sizeof_fmt, PeriodicThread
 

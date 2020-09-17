@@ -6,8 +6,8 @@ from pydantic import BaseModel
 
 from pypads import logger
 from pypads.importext.wrapping.base_wrapper import Context
+from pypads.model.logger_call import FunctionReferenceModel, CallAccessorModel, CallIdModel, CallModel
 from pypads.model.metadata import ModelObject
-from pypads.model.models import FunctionReferenceModel, CallAccessorModel, CallIdModel, CallModel
 
 
 class FunctionReference(ModelObject):

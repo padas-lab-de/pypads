@@ -6,7 +6,8 @@ from pydantic import BaseModel, HttpUrl
 from pypads.app.injections.base_logger import LoggerCall, TrackedObject
 from pypads.app.injections.injection import InjectionLogger
 from pypads.arguments import ontology_uri
-from pypads.model.models import ArtifactMetaModel, TrackedObjectModel, OutputModel
+from pypads.model.logger_output import OutputModel, TrackedObjectModel
+from pypads.model.storage import ArtifactMetaModel
 from pypads.utils.logging_util import FileFormats
 
 
@@ -48,7 +49,7 @@ class InputTO(TrackedObject):
                                                                                                   type),
                                  format=format)
         self.inputs.append(self.InputModel.ParamModel(content_format=format, name=name, value=meta, type=type))
-        self._store_artifact(value, meta)
+        self.store_artifact(value, meta)
 
     def _get_artifact_path(self, name):
         return os.path.join(str(id(self)), "input", name)
@@ -119,10 +120,10 @@ class OutputTO(TrackedObject):
         super().__init__(*args, content_format=format, tracked_by=tracked_by, **kwargs)
         path = os.path.join(self._base_path(), self._get_artifact_path())
         self.output = path
-        self._store_artifact(value, ArtifactMetaModel(path=path,
-                                                      description="Output of function call {}".format(
-                                                          self.tracked_by.original_call),
-                                                      format=format))
+        self.store_artifact(value, ArtifactMetaModel(path=path,
+                                                     description="Output of function call {}".format(
+                                                         self.tracked_by.original_call),
+                                                     format=format))
 
     def _get_artifact_path(self, name="output"):
         return super()._get_artifact_path(name)

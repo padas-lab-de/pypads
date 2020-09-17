@@ -5,7 +5,7 @@ from typing import Type, List
 from pydantic import validate_model, BaseModel, ValidationError
 
 from pypads.app.misc.inheritance import SuperStop
-from pypads.model.models import RunObjectModel
+from pypads.model.domain import RunObjectModel
 from pypads.utils.util import has_direct_attr
 
 

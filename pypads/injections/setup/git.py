@@ -1,5 +1,5 @@
 import os
-from typing import List, Type
+from typing import Type
 
 from pydantic import HttpUrl, BaseModel
 
@@ -8,7 +8,8 @@ from pypads.app.injections.base_logger import TrackedObject
 from pypads.app.injections.run_loggers import RunSetup
 from pypads.app.misc.managed_git import ManagedGit
 from pypads.arguments import ontology_uri
-from pypads.model.models import TrackedObjectModel, TagMetaModel, ArtifactMetaModel, OutputModel
+from pypads.model.logger_output import OutputModel, TrackedObjectModel
+from pypads.model.storage import ArtifactMetaModel
 from pypads.utils.logging_util import FileFormats
 
 
@@ -18,7 +19,6 @@ class GitTO(TrackedObject):
 
         source: str = ...
         version: str = ...
-        tags: List[TagMetaModel] = []
         git_log: ArtifactMetaModel = ...
 
         class Config:
@@ -31,17 +31,14 @@ class GitTO(TrackedObject):
     def __init__(self, *args, source, tracked_by, **kwargs):
         super().__init__(*args, source=source, tracked_by=tracked_by, **kwargs)
 
-    def add_tag(self, name, value, description):
-        meta = TagMetaModel(name=name, description=description)
-        self.tags.append(meta)
-
-        self._store_tag(value, meta)
+    def add_tag(self, *args, **kwargs):
+        self.store_tag(*args, **kwargs)
 
     def store_git_log(self, name, value, format=FileFormats.text):
         path = os.path.join(self._base_path(), self._get_artifact_path(name))
         self.git_log = ArtifactMetaModel(path=path, description="Commit logs for the git repository", format=format)
 
-        self._store_artifact(value, self.git_log)
+        self.store_artifact(value, self.git_log)
 
     def _get_artifact_path(self, name):
         return os.path.join(str(id(self)), name)

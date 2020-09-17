@@ -8,7 +8,9 @@ from pypads.app.env import LoggerEnv
 from pypads.app.injections.base_logger import LoggerCall, TrackedObject
 from pypads.app.injections.run_loggers import RunSetup
 from pypads.arguments import ontology_uri
-from pypads.model.models import TrackedObjectModel, LibraryModel, OutputModel, ArtifactMetaModel
+from pypads.model.domain import LibraryModel
+from pypads.model.logger_output import OutputModel, TrackedObjectModel
+from pypads.model.storage import ArtifactMetaModel
 from pypads.utils.logging_util import FileFormats
 
 
@@ -38,9 +40,9 @@ class DependencyTO(TrackedObject):
             name, version = item.split('==')
             self.dependencies.append(LibraryModel(name=name, version=version))
         path = os.path.join(self._base_path(), self._get_artifact_path("pip_freeze"))
-        self._store_artifact("\n".join(pip_freeze),
-                             ArtifactMetaModel(path=path, description="dependency list from pip freeze",
-                                               format=FileFormats.text))
+        self.store_artifact("\n".join(pip_freeze),
+                            ArtifactMetaModel(path=path, description="dependency list from pip freeze",
+                                              format=FileFormats.text))
 
     def _get_artifact_path(self, name):
         return os.path.join(str(id(self)), "Env", name)
@@ -105,7 +107,7 @@ class LoguruTO(TrackedObject):
     def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
         super().__init__(*args, tracked_by=tracked_by, **kwargs)
         path = os.path.join(self._base_path(), self._get_artifact_path("logs.log"))
-        self.meta = ArtifactMetaModel(path=path, description="Logs of the current run", format=FileFormats.text)
+        self.meta = ArtifactMetaModel(path=path, description="Logs of the current run", file_format=FileFormats.text)
 
 
 class LoguruRSF(RunSetup):

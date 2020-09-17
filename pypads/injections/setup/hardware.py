@@ -1,4 +1,4 @@
-from typing import List, Type
+from typing import Type
 
 from pydantic.main import BaseModel
 from pydantic.networks import HttpUrl
@@ -7,7 +7,7 @@ from pypads.app.env import LoggerEnv
 from pypads.app.injections.base_logger import TrackedObject, LoggerCall
 from pypads.app.injections.run_loggers import RunSetup
 from pypads.arguments import ontology_uri
-from pypads.model.models import TagMetaModel, TrackedObjectModel, OutputModel
+from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.utils.util import sizeof_fmt, local_uri_to_path
 
 
@@ -19,7 +19,6 @@ class HardwareTO(TrackedObject):
     class HardwareModel(TrackedObjectModel):
         uri: HttpUrl = f"{ontology_uri}env/hardware-information"
         name: str = "Hardware Info"
-        report: List[TagMetaModel] = []
 
         class Config:
             orm_mode = True
@@ -30,12 +29,6 @@ class HardwareTO(TrackedObject):
 
     def __init__(self, *args, tracked_by: LoggerCall, name: str, uri: str, **kwargs):
         super().__init__(*args, tracked_by=tracked_by, name=name, uri=uri, **kwargs)
-
-    def add_tag(self, name, value, description):
-        meta = TagMetaModel(name=name, description=description)
-        self.report.append(meta)
-
-        self._store_tag(value, meta)
 
 
 class ISystemRSF(RunSetup):
@@ -58,12 +51,12 @@ class ISystemRSF(RunSetup):
         system_info = HardwareTO(name="System Info", tracked_by=_logger_call,
                                  uri=f"{ontology_uri}env/system-information")
 
-        system_info.add_tag("pypads.system", uname.system, description="Operating system")
-        system_info.add_tag("pypads.system.node", uname.node, description="Operating system node")
-        system_info.add_tag("pypads.system.release", uname.release, description="Operating system release")
-        system_info.add_tag("pypads.system.version", uname.version, description="Operating system version")
-        system_info.add_tag("pypads.system.machine", uname.machine, description="Operating system machine")
-        system_info.add_tag("pypads.system.processor", uname.processor, description="Processor technology")
+        system_info.store_tag("pypads.system", uname.system, description="Operating system")
+        system_info.store_tag("pypads.system.node", uname.node, description="Operating system node")
+        system_info.store_tag("pypads.system.release", uname.release, description="Operating system release")
+        system_info.store_tag("pypads.system.version", uname.version, description="Operating system version")
+        system_info.store_tag("pypads.system.machine", uname.machine, description="Operating system machine")
+        system_info.store_tag("pypads.system.processor", uname.processor, description="Processor technology")
         system_info.store(_logger_output, "system_info")
 
 

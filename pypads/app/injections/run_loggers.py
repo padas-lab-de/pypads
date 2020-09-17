@@ -9,7 +9,7 @@ from pypads import logger
 from pypads.app.injections.base_logger import LoggerCall, SimpleLogger
 from pypads.app.misc.mixins import OrderMixin
 from pypads.arguments import ontology_uri
-from pypads.model.models import RunLoggerModel
+from pypads.model.logger_model import RunLoggerModel
 from pypads.utils.util import inheritors
 
 

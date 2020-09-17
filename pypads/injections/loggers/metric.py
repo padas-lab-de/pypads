@@ -7,7 +7,8 @@ from pypads import logger
 from pypads.app.injections.base_logger import TrackedObject
 from pypads.app.injections.injection import InjectionLogger
 from pypads.arguments import ontology_uri
-from pypads.model.models import TrackedObjectModel, ArtifactMetaModel, MetricMetaModel, OutputModel
+from pypads.model.logger_output import OutputModel, TrackedObjectModel
+from pypads.model.storage import MetricMetaModel, ArtifactMetaModel
 from pypads.utils.logging_util import FileFormats
 
 
@@ -37,7 +38,7 @@ class MetricTO(TrackedObject):
         if isinstance(value, float):
             self.value = MetricMetaModel(name=self.name, step=step,
                                          description="The metric returned by {}".format(self.name))
-            self._store_metric(value, self.value)
+            self.store_metric(value, self.value)
             return True
         else:
             logger.warning("Mlflow metrics have to be doubles. Could log the return value of type '" + str(
@@ -46,7 +47,7 @@ class MetricTO(TrackedObject):
             if self.to_artifact:
                 path = os.path.join(self._base_path(), self._get_artifact_path(self.name))
                 self.value = ArtifactMetaModel(path=path, description="", format=FileFormats.text)
-                self._store_artifact(value, self.value)
+                self.store_artifact(value, self.value)
                 return True
         return False
 

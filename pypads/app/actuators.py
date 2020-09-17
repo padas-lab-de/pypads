@@ -7,7 +7,7 @@ from pydantic import HttpUrl, BaseModel
 from pypads.app.injections.base_logger import LoggerCall, SimpleLogger
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
 from pypads.arguments import ontology_uri
-from pypads.model.models import LoggerModel
+from pypads.model.logger_model import LoggerModel
 from pypads.utils.util import inheritors
 
 actuator_plugins = set()

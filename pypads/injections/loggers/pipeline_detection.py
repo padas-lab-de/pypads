@@ -10,7 +10,8 @@ from pypads import logger
 from pypads.app.injections.base_logger import TrackedObject, LoggerCall
 from pypads.app.injections.injection import InjectionLoggerCall, MultiInjectionLogger
 from pypads.arguments import ontology_uri
-from pypads.model.models import TrackedObjectModel, OutputModel, ArtifactMetaModel
+from pypads.model.logger_output import OutputModel, TrackedObjectModel
+from pypads.model.storage import ArtifactMetaModel
 from pypads.utils.logging_util import FileFormats, get_temp_folder
 from pypads.utils.util import is_package_available
 
@@ -131,9 +132,9 @@ class PipelineTrackerILF(MultiInjectionLogger):
             from networkx import DiGraph
             from networkx.drawing.nx_agraph import to_agraph
             path = os.path.join(pipeline._base_path(), pipeline._get_artifact_path("pypads_pipeline"))
-            pipeline._store_artifact(network,
-                                     ArtifactMetaModel(path=path, description="networkx graph",
-                                                       format=FileFormats.pickle))
+            pipeline.store_artifact(network,
+                                    ArtifactMetaModel(path=path, description="networkx graph",
+                                                      format=FileFormats.pickle))
             if is_package_available("networkx"):
                 base_folder = get_temp_folder()
                 folder = base_folder + "pipeline_graph.png"

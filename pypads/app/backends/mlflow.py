@@ -9,9 +9,8 @@ from mlflow.tracking.fluent import SEARCH_MAX_RESULTS_PANDAS
 
 from pypads import logger
 from pypads.app.backends.backend import BackendInterface
-from pypads.model.models import MetricMetaModel, ParameterMetaModel, TagMetaModel, \
-    FileInfo
-from pypads.utils.logging_util import store_tmp_artifact, FileFormats
+from pypads.model.storage import MetricMetaModel, ParameterMetaModel, TagMetaModel, FileInfo, ArtifactMetaModel
+from pypads.utils.logging_util import store_tmp_artifact
 from pypads.utils.util import string_to_int
 
 
@@ -82,11 +81,11 @@ class MLFlowBackend(BackendInterface):
     def log_artifact(self, local_path, artifact_path=None):
         return mlflow.log_artifact(local_path, artifact_path)
 
-    def log_mem_artifact(self, artifact, path, write_format: FileFormats, preserveFolder=True):
-        tmp_path = store_tmp_artifact(path, artifact, write_format=write_format)
+    def log_mem_artifact(self, artifact, meta: ArtifactMetaModel, preserveFolder=True):
+        tmp_path = store_tmp_artifact(meta.path, artifact, write_format=meta.file_format)
         if preserveFolder:
             artifact_path = None
-            splits = path.rsplit(os.sep, 1)
+            splits = meta.path.rsplit(os.sep, 1)
             if len(splits) > 1:
                 artifact_path = splits[0]
             return self.log_artifact(tmp_path, artifact_path=artifact_path)

@@ -1,12 +1,11 @@
 import re
-
 from typing import Type
 
 from pydantic.main import BaseModel
 
 from pypads.importext.semver import parse_constraint
+from pypads.model.domain import LibSelectorModel
 from pypads.model.metadata import ModelObject
-from pypads.model.models import LibSelectorModel
 from pypads.utils.util import is_package_available, find_package_version, find_package_regex_versions
 
 

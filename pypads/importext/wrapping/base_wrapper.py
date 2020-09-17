@@ -9,8 +9,8 @@ from pydantic import BaseModel
 
 from pypads import logger
 from pypads.importext.mappings import MatchedMapping
+from pypads.model.logger_call import ContextModel
 from pypads.model.metadata import ModelHolder
-from pypads.model.models import ContextModel
 
 
 def fullname(o):

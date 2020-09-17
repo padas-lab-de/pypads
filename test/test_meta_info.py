@@ -1,4 +1,4 @@
-from pypads.model.models import ParameterMetaModel, MetricMetaModel, ArtifactMetaModel
+from pypads.model.storage import MetricMetaModel, ParameterMetaModel, ArtifactMetaModel
 from pypads.utils.logging_util import FileFormats
 from test.base_test import BaseTest, TEST_FOLDER
 

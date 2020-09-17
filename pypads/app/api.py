@@ -18,10 +18,10 @@ from pypads.arguments import ontology_uri
 from pypads.bindings.anchors import get_anchor, Anchor
 from pypads.importext.mappings import Mapping, MatchedMapping, make_run_time_mapping_collection
 from pypads.importext.package_path import PackagePathMatcher, PackagePath
-from pypads.model.models import TagMetaModel, ParameterMetaModel, MetricMetaModel, ArtifactMetaModel, \
-    ArtifactInfo
+from pypads.model.storage import MetricMetaModel, ParameterMetaModel, ArtifactMetaModel, TagMetaModel, ArtifactInfo
 from pypads.utils.logging_util import get_temp_folder, \
-    _to_artifact_meta_name, _to_metric_meta_name, _to_param_meta_name, FileFormats, read_artifact
+    _to_artifact_meta_name, _to_metric_meta_name, _to_param_meta_name, FileFormats, read_artifact, _to_tag_meta_name, \
+    find_file_format
 
 api_plugins = set()
 cmds = set()
@@ -163,24 +163,28 @@ class PyPadsApi(IApi):
 
     # ---- logging ----
     @cmd
-    def log_artifact(self, local_path, meta=None, artifact_path=None):
+    def log_artifact(self, local_path, description="", meta=None, artifact_path=None):
         """
         Function to log an artifact on local disk. This artifact is transferred into the context of mlflow.
         The context might be a local repository, sftp etc.
+        :param description: Description of the artifact.
         :param artifact_path: Path where to store the artifact
         :param local_path: Path of the artifact to log
         :param meta: Meta information you want to store about the artifact. This is an extension by pypads creating a
         json containing some meta information.
         :return:
         """
-        self.pypads.backend.log_artifact(local_path, artifact_path=artifact_path)
-        self.log_artifact_meta(os.path.basename(local_path), meta)
+        meta_model = ArtifactMetaModel(path=os.path.basename(local_path), description=description,
+                                       file_format=find_file_format(local_path), additional_data=meta)
+        self.pypads.backend.log_artifact(local_path, artifact_path=artifact_path, meta=meta_model)
+        self._log_artifact_meta(os.path.basename(local_path), meta)
         return artifact_path
 
     @cmd
-    def log_mem_artifact(self, name, obj, write_format=FileFormats.text, path=None, meta=None):
+    def log_mem_artifact(self, name, obj, write_format=FileFormats.text, description="", path=None, meta=None):
         """
         See log_artifact. This logs directly from memory by storing the memory to a temporary file.
+        :param description: Description of the artifact.
         :param name: Name of the new file to create.
         :param obj: Object you want to store
         :param write_format: Format to write to. FileFormats currently include text and binary.
@@ -192,20 +196,20 @@ class PyPadsApi(IApi):
 
         if path:
             name = os.path.join(path, name)
-        if meta is None:
-            meta = ArtifactMetaModel(path=name, description='Artifact meta information', format=write_format)
-        self.pypads.backend.log_mem_artifact(obj, path=name, write_format=write_format)
-        self.log_artifact_meta(name, meta)
+        meta_model = ArtifactMetaModel(path=name, description=description, file_format=write_format,
+                                       additional_data=meta)
+        self.pypads.backend.log_mem_artifact(obj, meta_model)
+        self._log_artifact_meta(name, meta_model)
         return name
 
-    @cmd
-    def log_artifact_meta(self, name, meta=None):
+    def _log_artifact_meta(self, name, meta=None):
         self._write_meta(_to_artifact_meta_name(name), meta)
 
     @cmd
-    def log_metric(self, key, value, step=None, meta: MetricMetaModel = None):
+    def log_metric(self, key, value, description="", step=None, meta: dict = None):
         """
         Log a metric to mlflow.
+        :param description: Description of the metric.
         :param key: Metric key
         :param value: Metric value
         :param step: A step for metrics which can change while executing
@@ -213,44 +217,51 @@ class PyPadsApi(IApi):
         json containing some meta information.
         :return:
         """
-        if not meta:
-            meta = MetricMetaModel(name=key, step=step, description="Metric meta information")
-        self.pypads.backend.log_metric(value, meta=meta)
-        self.log_metric_meta(meta.name, meta)
+        meta_model = MetricMetaModel(name=key, step=step, description="", additional_data=meta)
+        self.pypads.backend.log_metric(value, meta=meta_model)
+        self._log_metric_meta(key, meta_model)
 
-    @cmd
-    def log_metric_meta(self, key, meta=None):
+    def _log_metric_meta(self, key, meta=None):
         self._write_meta(_to_metric_meta_name(key), meta)
 
     @cmd
-    def log_param(self, key, value, meta: ParameterMetaModel = None):
+    def log_param(self, key, value, description="", meta: dict = None):
         """
         Log a parameter of the execution.
+        :param description: Description of the parameter.
         :param key: Parameter key
         :param value: Parameter value
         :param meta: Meta information you want to store about the parameter. This is an extension by pypads creating a
         json containing some meta information.
         :return:
         """
-        if not meta:
-            meta = ParameterMetaModel(name=key, type=str(type(value)), description="Parameter meta information")
-        self.pypads.backend.log_parameter(value, meta=meta)
-        self.log_param_meta(meta.name, meta)
+        meta_model = ParameterMetaModel(name=key, value_format=str(type(value)),
+                                        description=description, additional_data=meta)
+        self.pypads.backend.log_parameter(value, meta=meta_model)
+        self._log_param_meta(key, meta_model)
 
-    @cmd
-    def log_param_meta(self, key, meta=None):
+    def _log_param_meta(self, key, meta):
         self._write_meta(_to_param_meta_name(key), meta)
 
     @cmd
-    def set_tag(self, key, value, description="No description given."):
+    def set_tag(self, key, value, value_format="string", description="", meta: dict = None):
         """
         Set a tag for your current run.
+        :param meta: Meta information you want to store about the parameter. This is an extension by pypads creating a
+        json containing some meta information.
+        :param value_format: Format of the value held in tag
         :param description: Description what this tag indicates
         :param key: Tag key
         :param value: Tag value
         :return:
         """
-        return self.pypads.backend.set_tag(value, TagMetaModel(name=key, description=description))
+        meta_model = TagMetaModel(name=key, description=description, value_format=value_format, additional_data=meta)
+        out = self.pypads.backend.set_tag(value, meta=meta_model)
+        self._log_tag_meta(key, meta_model)
+        return out
+
+    def _log_tag_meta(self, key, meta):
+        self._write_meta(_to_tag_meta_name(key), meta)
 
     @cmd
     def store_logger_output(self, lo, path=""):
@@ -258,7 +269,7 @@ class PyPadsApi(IApi):
         return self.log_mem_artifact(name=str(id(lo)), obj=lo.json(by_alias=True), write_format=FileFormats.json,
                                      path=path)
 
-    def _write_meta(self, name, meta, write_format=FileFormats.yaml):
+    def _write_meta(self, name, meta, write_format=FileFormats.json):
         """
         Write the meta information about an given object name as artifact.
         :param name: Name of the object
@@ -266,8 +277,9 @@ class PyPadsApi(IApi):
         :return:
         """
         if meta:
-            self.pypads.backend.log_mem_artifact(meta.json(by_alias=True), path=name + ".meta",
-                                                 write_format=write_format)
+            self.pypads.backend.log_mem_artifact(meta.json(by_alias=True),
+                                                 ArtifactMetaModel(description="This is a dummy", path=name + ".meta",
+                                                                   file_format=write_format))
 
     def _read_meta(self, name, read_format=FileFormats.yaml):
         """

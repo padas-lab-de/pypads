@@ -7,8 +7,9 @@ from pypads.app.env import InjectionLoggerEnv
 from pypads.app.injections.base_logger import TrackedObject, LoggerCall
 from pypads.app.injections.injection import InjectionLogger
 from pypads.arguments import ontology_uri
-from pypads.model.models import TrackedObjectModel, ContextModel, OutputModel, \
-    ParameterMetaModel
+from pypads.model.logger_call import ContextModel
+from pypads.model.logger_output import OutputModel, TrackedObjectModel
+from pypads.model.storage import ParameterMetaModel
 from pypads.utils.util import dict_merge
 
 
@@ -38,7 +39,7 @@ class ParametersTO(TrackedObject):
                                   description=description,
                                   type=type)
         self.hyperparameters.append(meta)
-        self._store_param(value, meta)
+        self.store_param(value, meta)
 
 
 # def persist_parameter(_pypads_env, key, value):

@@ -10,7 +10,8 @@ from pypads.app.env import InjectionLoggerEnv
 from pypads.app.injections.base_logger import LoggerCall, Logger, LoggerExecutor, OriginalExecutor
 from pypads.app.misc.mixins import OrderMixin, NoCallAllowedError
 from pypads.arguments import ontology_uri
-from pypads.model.models import InjectionLoggerCallModel, InjectionLoggerModel, MultiInjectionLoggerCallModel
+from pypads.model.logger_call import InjectionLoggerCallModel, MultiInjectionLoggerCallModel
+from pypads.model.logger_model import InjectionLoggerModel
 from pypads.utils.util import inheritors
 
 
@@ -99,12 +100,14 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
             logger_call.post_time = post_time
         except Exception as e:
             logger_call.failed = str(e)
-            output.set_failure_state(e)
+            if output:
+                output.set_failure_state(e)
             raise e
         finally:
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
-            logger_call.output = output.store(self._base_path())
+            if output:
+                logger_call.output = output.store(self._base_path())
             logger_call.store()
         return _return
 
@@ -250,7 +253,8 @@ class MultiInjectionLogger(InjectionLogger):
             logger_call.post_time += post_time
         except Exception as e:
             logger_call.failed = str(e)
-            output.set_failure_state(e)
+            if output:
+                output.set_failure_state(e)
             raise e
         finally:
             for fn in self.cleanup_fns(logger_call):

@@ -21,8 +21,8 @@ def get_temp_folder(run=None):
     return os.path.join(pads.folder, "tmp", run.info.experiment_id, run.info.run_id) + os.path.sep
 
 
-def get_by_value_in_enum(value):
-    for k, v in FileFormats.__members__.items():
+def get_by_value_in_enum(value, enum):
+    for k, v in enum.__members__.items():
         if v.value == value:
             return v
     return None
@@ -33,6 +33,16 @@ class FileFormats(Enum):
     text = 'txt'
     yaml = 'yaml'
     json = 'json'
+    unknown = ''
+
+
+def find_file_format(file_name):
+    name_split = file_name.rsplit(".", 1)
+    if len(name_split) == 2:
+        enum = get_by_value_in_enum(name_split[1], FileFormats)
+        if enum:
+            return enum
+    return FileFormats.unknown
 
 
 def write_text(p, o):
@@ -188,3 +198,7 @@ def _to_metric_meta_name(name):
 
 def _to_param_meta_name(name):
     return name + ".param"
+
+
+def _to_tag_meta_name(name):
+    return name + ".tag"
