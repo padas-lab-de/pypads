@@ -187,7 +187,6 @@ class MultiInjectionLogger(InjectionLogger):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # TODO teardown fn for output storage
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
@@ -264,6 +263,59 @@ class MultiInjectionLogger(InjectionLogger):
             pads.cache.run_add(id(self), {'call': logger_call, 'output': output, 'base_path': self._base_path()})
             pads.api.register_teardown_fn('{}_clean_up'.format(self.__class__.__name__), self.store)
         return _return
+
+
+class OutputInjectionLogger(InjectionLogger):
+    is_a: HttpUrl = f"{ontology_uri}injection-logger"
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return InjectionLoggerModel
+
+    def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, **kwargs):
+        self.store_schema(self._base_path())
+
+        _pypads_hook_params = _pypads_env.parameter
+
+        logger_call = InjectionLoggerCall(logging_env=_pypads_env, created_by=self.store_schema())
+        output = self.build_output(_pypads_env)
+
+        try:
+            # Trigger pre run functions
+            _pre_result, pre_time = self._pre(ctx, _pypads_env=_pypads_env,
+                                              _logger_output=output,
+                                              _logger_call=logger_call,
+                                              _args=args,
+                                              _kwargs=kwargs, **{**self.static_parameters, **_pypads_hook_params})
+            logger_call.pre_time = pre_time
+
+            # Trigger function itself
+            _return, time = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _logger_call=logger_call,
+                                                  _logger_output=output, _args=args,
+                                                  _kwargs=kwargs)
+            logger_call.child_time = time
+
+            # Trigger post run functions
+            _post_result, post_time = self._post(ctx, _pypads_env=_pypads_env,
+                                                 _logger_output=output,
+                                                 _pypads_pre_return=_pre_result,
+                                                 _pypads_result=_return,
+                                                 _logger_call=logger_call,
+                                                 _args=args,
+                                                 _kwargs=kwargs, **{**self.static_parameters, **_pypads_hook_params})
+            logger_call.post_time = post_time
+        except Exception as e:
+            logger_call.failed = str(e)
+            if output:
+                output.set_failure_state(e)
+            raise e
+        finally:
+            for fn in self.cleanup_fns(logger_call):
+                fn(self, logger_call)
+            if output:
+                logger_call.output = output.store(self._base_path())
+            logger_call.store()
+        return _post_result
 
 
 def logging_functions():

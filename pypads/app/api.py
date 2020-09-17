@@ -228,6 +228,7 @@ class PyPadsApi(IApi):
     def log_param(self, key, value, description="", meta: dict = None):
         """
         Log a parameter of the execution.
+        :param type: Type of the parameter
         :param description: Description of the parameter.
         :param key: Parameter key
         :param value: Parameter value
@@ -235,7 +236,7 @@ class PyPadsApi(IApi):
         json containing some meta information.
         :return:
         """
-        meta_model = ParameterMetaModel(name=key, value_format=str(type(value)),
+        meta_model = ParameterMetaModel(name=key, value_format=type or str(type(value)),
                                         description=description, additional_data=meta)
         self.pypads.backend.log_parameter(value, meta=meta_model)
         self._log_param_meta(key, meta_model)

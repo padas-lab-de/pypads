@@ -9,7 +9,7 @@ from pypads.app.injections.injection import InjectionLogger
 from pypads.arguments import ontology_uri
 from pypads.model.logger_call import ContextModel
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
-from pypads.model.storage import ParameterMetaModel
+from pypads.utils.logging_util import _to_param_meta_name
 from pypads.utils.util import dict_merge
 
 
@@ -21,38 +21,22 @@ class ParametersTO(TrackedObject):
     class HyperParameterModel(TrackedObjectModel):
         uri: HttpUrl = f"{ontology_uri}ModelHyperparameter"
 
-        context: ContextModel = ...
-        hyperparameters: List[ParameterMetaModel] = []
+        model: ContextModel = ...
+        hyperparameters: List[str] = []
 
     def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
         super().__init__(*args, tracked_by=tracked_by, **kwargs)
-        self.context = tracked_by._logging_env.call.call_id.context
+        self.model = tracked_by._logging_env.call.call_id.context
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.HyperParameterModel
 
-    def _persist_parameter(self, key, value, description=None, type=""):
+    def _persist_parameter(self, key, value, description=None):
         name = self.context.reference + "." + key
-        description = description or "Hyperparameter {} of context {}".format(name, self.context)
-        meta = ParameterMetaModel(name=name,
-                                  description=description,
-                                  type=type)
-        self.hyperparameters.append(meta)
-        self.store_param(value, meta)
-
-
-# def persist_parameter(_pypads_env, key, value):
-#     try:
-#         # TODO broken reference
-#         try_mlflow_log(mlflow.log_param,
-#                        _pypads_env.call.call_id.context.container.__name__ + "." + key + ".txt",
-#                        value)
-#     except Exception as e:
-#         logger.warning(
-#             "Couldn't track parameter. " + str(e) + " Trying to track with another name.")
-#         try_mlflow_log(mlflow.log_param,
-#                        str(_pypads_env.call) + "." + key + ".txt", value)
+        description = description or "Hyperparameter {} of context {}".format(name, self.model)
+        self.hyperparameters.append(_to_param_meta_name(name))
+        self.store_param(name, value, description)
 
 
 class ParametersILF(InjectionLogger):
@@ -95,7 +79,7 @@ class ParametersILF(InjectionLogger):
                             value = getattr(ctx, parameter["path"])
                             description = parameter.get('description', None)
                             type = parameter.get('kind_of_value', "")
-                            hyper_params._persist_parameter(key, value, description, type)
+                            hyper_params._persist_parameter(key, value, description)
                         else:
                             logger.warning("Couldn't access parameter " + key + " on " + str(ctx.__class__))
             else:
