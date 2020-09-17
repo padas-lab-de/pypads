@@ -82,15 +82,15 @@ class ICpuRSF(RunSetup):
         import psutil
         cpu_info = HardwareTO(name="Cpu Info", tracked_by=_logger_call,
                               uri=f"{ontology_uri}env/cpu-information")
-        cpu_info.add_tag("pypads.system.cpu.physical_cores", psutil.cpu_count(logical=False),
-                         description="Number of physical cores")
-        cpu_info.add_tag("pypads.system.cpu.total_cores", psutil.cpu_count(logical=True),
-                         description="Number of total cores")
+        cpu_info.store_tag("pypads.system.cpu.physical_cores", psutil.cpu_count(logical=False),
+                           description="Number of physical cores")
+        cpu_info.store_tag("pypads.system.cpu.total_cores", psutil.cpu_count(logical=True),
+                           description="Number of total cores")
         freq = psutil.cpu_freq()
-        cpu_info.add_tag("pypads.system.cpu.max_freq", f"{freq.max:2f}Mhz",
-                         description="Maximum processor frequency in (Mhz)")
-        cpu_info.add_tag("pypads.system.cpu.min_freq", f"{freq.min:2f}Mhz",
-                         description="Minimum processor frequencyin (Mhz)")
+        cpu_info.store_tag("pypads.system.cpu.max_freq", f"{freq.max:2f}Mhz",
+                           description="Maximum processor frequency in (Mhz)")
+        cpu_info.store_tag("pypads.system.cpu.min_freq", f"{freq.min:2f}Mhz",
+                           description="Minimum processor frequencyin (Mhz)")
         cpu_info.store(_logger_output, "cpu_info")
 
 
@@ -112,10 +112,10 @@ class IRamRSF(RunSetup):
                                  uri=f"{ontology_uri}env/memory-information")
         import psutil
         memory = psutil.virtual_memory()
-        memory_info.add_tag("pypads.system.memory.total", sizeof_fmt(memory.total),
-                            description="Total virtual memory RAM")
+        memory_info.store_tag("pypads.system.memory.total", sizeof_fmt(memory.total),
+                              description="Total virtual memory RAM")
         swap = psutil.swap_memory()
-        memory_info.add_tag("pypads.system.swap.total", sizeof_fmt(swap.total), description="Total swap memory")
+        memory_info.store_tag("pypads.system.swap.total", sizeof_fmt(swap.total), description="Total swap memory")
         memory_info.store(_logger_output, "memory_info")
 
 
@@ -140,7 +140,7 @@ class IDiskRSF(RunSetup):
         pads = _logger_call._logging_env.pypads
         path = local_uri_to_path(pads.backend.uri)
         disk_usage = psutil.disk_usage(path)
-        disk_info.add_tag("pypads.system.disk.total", sizeof_fmt(disk_usage.total), description="Total disk usage")
+        disk_info.store_tag("pypads.system.disk.total", sizeof_fmt(disk_usage.total), description="Total disk usage")
         disk_info.store(_logger_output, "disk_info")
 
 

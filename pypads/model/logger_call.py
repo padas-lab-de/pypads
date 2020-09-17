@@ -3,7 +3,6 @@ from typing import Optional, List
 from pydantic import BaseModel, HttpUrl, root_validator
 
 from pypads.arguments import ontology_uri
-from pypads.model.domain import RunObjectModel
 from pypads.model.models import OntologyEntry
 
 
@@ -49,13 +48,13 @@ class CallModel(OntologyEntry):
         orm_mode = True
 
 
-class LoggerCallModel(RunObjectModel):
+class LoggerCallModel(OntologyEntry):
     """
     Holds meta data about a logger execution
     """
     failed: Optional[str] = None
-    created_by: str = ...  # path to json of LoggerModel
     execution_time: Optional[float] = ...
+    created_by: str = ...  # path to json of LoggerModel
     output: Optional[str] = ...  # path to json of the OutputModel of the logger
     is_a: HttpUrl = f"{ontology_uri}LoggerCall"
 
