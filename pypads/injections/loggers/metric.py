@@ -21,8 +21,7 @@ class MetricTO(TrackedObject):
         uri: HttpUrl = f"{ontology_uri}Metric"
 
         name: str = ...  # Metric name
-        to_artifact: bool = False
-        value: Union[MetricMetaModel, ArtifactMetaModel] = ...
+        as_artifact: bool = False
 
         class Config:
             orm_mode = True
@@ -36,18 +35,16 @@ class MetricTO(TrackedObject):
                     self.tracked_by.original_call.call_id.wrappee.__name__
 
         if isinstance(value, float):
-            self.value = MetricMetaModel(name=self.name, step=step,
-                                         description="The metric returned by {}".format(self.name))
-            self.store_metric(value, self.value)
+            self.store_metric(self.name, value, description="The metric returned by {}".format(self.name), step=step)
             return True
         else:
             logger.warning("Mlflow metrics have to be doubles. Could log the return value of type '" + str(
                 type(
                     value)) + "' of '" + self.name + "' as artifact instead.")
-            if self.to_artifact:
+            if self.as_artifact:
                 path = os.path.join(self._base_path(), self._get_artifact_path(self.name))
-                self.value = ArtifactMetaModel(path=path, description="", format=FileFormats.text)
-                self.store_artifact(value, self.value)
+                self.name = path
+                self.store_artifact(path, value, description="The metric returned by {}".format(self.name))
                 return True
         return False
 
@@ -63,7 +60,7 @@ class MetricILF(InjectionLogger):
         # Add additional context information to
         # TODO context: dict = {**{"test": "testVal"}, **OntologyEntry.__field_defaults__["context"]}
         is_a: HttpUrl = f"{ontology_uri}MetricILF-Output"
-        metric: Optional[MetricTO.MetricModel] = None
+        metric: Optional[MetricTO.get_model_cls()] = None
 
         class Config:
             orm_mode = True
@@ -85,7 +82,7 @@ class MetricILF(InjectionLogger):
 
         result = _pypads_result
         metric = MetricTO(tracked_by=_logger_call,
-                          to_artifact=_pypads_artifact_fallback)
+                          as_artifact=_pypads_artifact_fallback)
 
         storable = metric.store_value(result, step=_logger_call.original_call.call_id.call_number)
 

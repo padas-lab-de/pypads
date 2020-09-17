@@ -41,7 +41,6 @@ class CpuTO(TrackedObject):
             class Config:
                 orm_mode = True
 
-        content_format: FileFormats = FileFormats.text
         cpu_cores: List[CpuCoreModel] = []
         total_usage: List[str] = []
         period: float = ...
@@ -124,7 +123,6 @@ class RamTO(TrackedObject):
             percentage: List[float] = ...
             type: str = ...
 
-        content_format: FileFormats = FileFormats.json
         virtual_memory: MemoryModel = None
         swap_memory: MemoryModel = None
         period: float = ...
@@ -246,7 +244,6 @@ class DiskTO(TrackedObject):
             class Config:
                 orm_mode = True
 
-        content_format: FileFormats = FileFormats.text
         partitions: List[PartitionModel] = []
 
         period: float = ...

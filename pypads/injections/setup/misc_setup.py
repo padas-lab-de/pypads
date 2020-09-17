@@ -23,7 +23,7 @@ class DependencyTO(TrackedObject):
         uri: HttpUrl = f"{ontology_uri}env/Dependencies"
 
         dependencies: List[LibraryModel] = []
-        content_format: FileFormats = FileFormats.text
+        pip_freeze: str = ...
 
         class Config:
             orm_mode = True
@@ -40,9 +40,9 @@ class DependencyTO(TrackedObject):
             name, version = item.split('==')
             self.dependencies.append(LibraryModel(name=name, version=version))
         path = os.path.join(self._base_path(), self._get_artifact_path("pip_freeze"))
-        self.store_artifact("\n".join(pip_freeze),
-                            ArtifactMetaModel(path=path, description="dependency list from pip freeze",
-                                              format=FileFormats.text))
+        self.pip_freeze = path
+        self.store_artifact(path, "\n".join(pip_freeze), write_format=FileFormats.text,
+                            description="dependency list from pip freeze")
 
     def _get_artifact_path(self, name):
         return os.path.join(str(id(self)), "Env", name)
@@ -95,7 +95,7 @@ class LoguruTO(TrackedObject):
     class LoguruModel(TrackedObjectModel):
         uri: HttpUrl = f"{ontology_uri}env/Logs"
 
-        meta: ArtifactMetaModel = ...
+        logs: str = ...
 
         class Config:
             orm_mode = True
@@ -107,7 +107,7 @@ class LoguruTO(TrackedObject):
     def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
         super().__init__(*args, tracked_by=tracked_by, **kwargs)
         path = os.path.join(self._base_path(), self._get_artifact_path("logs.log"))
-        self.meta = ArtifactMetaModel(path=path, description="Logs of the current run", file_format=FileFormats.text)
+        self.logs = path
 
 
 class LoguruRSF(RunSetup):
@@ -156,7 +156,7 @@ class LoguruRSF(RunSetup):
             except Exception:
                 pass
             for file in glob.glob(os.path.join(folder, "run_*.log")):
-                pads.api.log_artifact(file, artifact_path=logs.meta.path)
+                pads.api.log_artifact(file, description="Logs of the current run", artifact_path=logs.path)
 
         logs.store(_logger_output, "logs")
         _api.register_teardown_fn("logger_" + str(lid), remove_logger)

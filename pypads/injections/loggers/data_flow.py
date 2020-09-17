@@ -8,10 +8,9 @@ from pypads.app.injections.injection import InjectionLogger
 from pypads.arguments import ontology_uri
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.model.storage import ArtifactMetaModel
-from pypads.utils.logging_util import FileFormats
+from pypads.utils.logging_util import FileFormats, _to_artifact_meta_name
 
 
-# TODO Literal for python 3.7 / 3.8?
 class InputTO(TrackedObject):
     """
     Tracking object class for inputs of your tracked workflow.
@@ -20,17 +19,7 @@ class InputTO(TrackedObject):
     class InputModel(TrackedObjectModel):
         uri: HttpUrl = f"{ontology_uri}FunctionInput"
 
-        class ParamModel(BaseModel):
-            content_format: FileFormats = FileFormats.pickle
-            name: str = ...
-            value: ArtifactMetaModel = ...  # path to the artifact containing the param
-            type: str = ...
-
-            class Config:
-                orm_mode = True
-                arbitrary_types_allowed = True
-
-        inputs: List[ParamModel] = []
+        inputs: List[str] = []
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
@@ -44,12 +33,10 @@ class InputTO(TrackedObject):
 
     def _add_param(self, name, value, format, type):
         path = os.path.join(self._base_path(), self._get_artifact_path(name))
-        meta = ArtifactMetaModel(path=path,
-                                 description="Input to function with index {} and type {}".format(len(self.inputs),
-                                                                                                  type),
-                                 format=format)
-        self.inputs.append(self.InputModel.ParamModel(content_format=format, name=name, value=meta, type=type))
-        self.store_artifact(value, meta)
+
+        description = "Input to function with index {} and type {}".format(len(self.inputs),type)
+        self.inputs.append(os.path.join(path, name))
+        self.store_artifact(name, value, write_format=format,description=description, path=path)
 
     def _get_artifact_path(self, name):
         return os.path.join(str(id(self)), "input", name)
@@ -91,7 +78,7 @@ class InputILF(InjectionLogger):
 
         for (k, v) in _kwargs.items():
             inputs.add_kwarg(str(k), v, format=_pypads_write_format)
-        inputs.store(_logger_output,key="FunctionInput")
+        inputs.store(_logger_output, key="FunctionInput")
 
 
 class OutputTO(TrackedObject):
@@ -105,7 +92,6 @@ class OutputTO(TrackedObject):
     class OutputModel(TrackedObjectModel):
         uri: HttpUrl = f"{ontology_uri}FunctionOutput"
 
-        content_format: FileFormats = FileFormats.pickle
         output: str = ...  # Path to the output holding file
 
         class Config:
@@ -120,10 +106,8 @@ class OutputTO(TrackedObject):
         super().__init__(*args, content_format=format, tracked_by=tracked_by, **kwargs)
         path = os.path.join(self._base_path(), self._get_artifact_path())
         self.output = path
-        self.store_artifact(value, ArtifactMetaModel(path=path,
-                                                     description="Output of function call {}".format(
-                                                         self.tracked_by.original_call),
-                                                     format=format))
+        self.store_artifact(path, value, write_format= format, description="Output of function call {}".format(
+                                                         self.tracked_by.original_call))
 
     def _get_artifact_path(self, name="output"):
         return super()._get_artifact_path(name)

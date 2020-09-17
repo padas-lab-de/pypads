@@ -155,7 +155,7 @@ class TrackedObject(ProvenanceMixin):
         pads.api.log_param(key, value, description=description, meta=meta)
 
     @staticmethod
-    def store_artifact(self, name, obj, write_format=FileFormats.text, description="", path=None, meta=None):
+    def store_artifact(name, obj, write_format=FileFormats.text, description="", path=None, meta: dict = None):
         from pypads.app.pypads import get_current_pads
         get_current_pads().api.log_mem_artifact(name, obj, write_format=write_format, description=description,
                                                 path=path, meta=meta)

@@ -19,7 +19,7 @@ class GitTO(TrackedObject):
 
         source: str = ...
         version: str = ...
-        git_log: ArtifactMetaModel = ...
+        git_log: str = ... #reference to the log file
 
         class Config:
             orm_mode = True
@@ -36,9 +36,8 @@ class GitTO(TrackedObject):
 
     def store_git_log(self, name, value, format=FileFormats.text):
         path = os.path.join(self._base_path(), self._get_artifact_path(name))
-        self.git_log = ArtifactMetaModel(path=path, description="Commit logs for the git repository", format=format)
-
-        self.store_artifact(value, self.git_log)
+        self.git_log = path
+        self.store_artifact(path, value, description="Commit logs for the git repository", write_format=format)
 
     def _get_artifact_path(self, name):
         return os.path.join(str(id(self)), name)
