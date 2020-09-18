@@ -3,6 +3,7 @@ from abc import ABCMeta
 
 from pypads.model.domain import LibraryModel
 from pypads.model.metadata import ModelObject
+from pypads.utils.logging_util import _to_artifact_meta_name
 
 
 class PathAwareMixin(ModelObject, metaclass=ABCMeta):
@@ -51,7 +52,8 @@ class PathAwareMixin(ModelObject, metaclass=ABCMeta):
     def to_reference_path(rel_path):
         from pypads.app.pypads import get_current_pads
         run_info = get_current_pads().api.active_run().info
-        return os.path.join(run_info.experiment_id, run_info.run_id, "artifacts", rel_path)
+        return _to_artifact_meta_name(
+            os.path.join(run_info.experiment_id, run_info.run_id, "artifacts", rel_path)) + ".meta.json"
 
 
 class ProvenanceMixin(ModelObject, metaclass=ABCMeta):

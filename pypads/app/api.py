@@ -347,7 +347,7 @@ class PyPadsApi(IApi):
         return self.pypads.cache.get("pre_run_fns")
 
     @cmd
-    def register_setup(self, name, pre_fn: RunSetup, silent_duplicate=True):
+    def register_setup(self, name, pre_fn: Union[RunSetup, SimpleRunFunction], silent_duplicate=True):
         """
         Register a new pre_run function.
         :param name: Name of the registration
@@ -476,7 +476,7 @@ class PyPadsApi(IApi):
         :return:
         """
 
-        class TmpRunTeardownFunction(RunSetup):
+        class TmpRunTeardownFunction(RunTeardown):
             pass
 
         TmpRunTeardownFunction.__doc__ = description
