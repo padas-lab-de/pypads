@@ -1,3 +1,4 @@
+import inspect
 import os
 import traceback
 from abc import abstractmethod, ABCMeta
@@ -18,7 +19,7 @@ from pypads.model.logger_call import LoggerCallModel
 from pypads.model.logger_model import LoggerModel
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.model.mixins import ProvenanceMixin, PathAwareMixin
-from pypads.utils.logging_util import FileFormats
+from pypads.utils.logging_util import FileFormats, _to_artifact_meta_name
 from pypads.utils.util import dict_merge, persistent_hash
 
 
@@ -253,6 +254,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
         super().__init__(*args, parent_path="", **kwargs)
         self._tracked_objects: Set[TrackedObject] = set()
         self._cleanup_fns = {}
+        self.uid = self._persistent_hash()
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
@@ -312,21 +314,23 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
             pads = get_current_pads()
             logger_repo = pads.logger_repository
             # TODO get hash uid for logger
-            if not logger_repo.has_object(uid=self._persistent_hash()):
-                l = logger_repo.get_object(uid=self._persistent_hash())
+            if not logger_repo.has_object(uid=self.uid):
+                l = logger_repo.get_object(uid=self.uid)
                 self.__class__._pypads_stored = l.log_mem_artifact(os.path.join(path, self.get_relative_path()),
                                                                    self.json(by_alias=True),
                                                                    write_format=FileFormats.json)
             else:
-                l = logger_repo.get_object(uid=self._persistent_hash())
-                self.__class__._pypads_stored = l.get_rel_artifact_path(os.path.join(path, self.get_relative_path()))
+                l = logger_repo.get_object(uid=self.uid)
+                self.__class__._pypads_stored = _to_artifact_meta_name(
+                    l.get_rel_artifact_path(os.path.join(path, self.get_relative_path())))
         return self.__class__._pypads_stored
 
     def get_reference_path(self):
         return self.__class__._pypads_stored
 
     def _persistent_hash(self):
-        return persistent_hash("TODO")
+        # TODO include package? version? git hash? content with inspect? Something else?
+        return persistent_hash(inspect.getsource(self.__class__))
 
 
 class SimpleLogger(Logger):
