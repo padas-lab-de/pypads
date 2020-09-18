@@ -35,8 +35,8 @@ DEFAULT_CONTEXT = {
         "@id": f"{ontology_uri}represents",
         "@type": "http://www.w3.org/2001/XMLSchema#string"
     },
-    "tracked_by": {
-        "@id": f"{ontology_uri}tracked_by",
+    "produced_by": {
+        "@id": f"{ontology_uri}produced_by",
         "@type": f"{ontology_uri}LoggerCall"
     },
     "failed": {

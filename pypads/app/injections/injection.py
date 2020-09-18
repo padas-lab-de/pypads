@@ -70,7 +70,7 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
         self.store()
 
         logger_call = InjectionLoggerCall(logging_env=_pypads_env, created_by=self)
-        output = self.build_output(_pypads_env)
+        output = self.build_output(_pypads_env, logger_call)
 
         try:
             # Trigger pre run functions
@@ -188,7 +188,7 @@ class MultiInjectionLogger(InjectionLogger):
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
-        return MultiInjectionLoggerCallModel
+        return InjectionLoggerModel
 
     def _get_call(self, logging_env: InjectionLoggerEnv):
         from pypads.app.pypads import get_current_pads

@@ -119,10 +119,10 @@ class TrackedObject(ProvenanceMixin, PathAwareMixin):
     def get_model_cls(cls) -> Type[BaseModel]:
         return TrackedObjectModel
 
-    def __init__(self, *args, tracked_by, **kwargs):
-        self._tracked_by = tracked_by
-        self.tracked_by = tracked_by.get_relative_path()
-        super().__init__(*args, parent_path=tracked_by._created_by.get_dir_extension(),
+    def __init__(self, *args, defined_in, **kwargs):
+        self._defined_in = defined_in
+        self.defined_in = defined_in.get_relative_path()
+        super().__init__(*args, parent_path=self._tracked_by._created_by.get_dir_extension(),
                          **kwargs)
 
     @staticmethod
@@ -158,6 +158,10 @@ class TrackedObject(ProvenanceMixin, PathAwareMixin):
         pads = get_current_pads()
         return pads.api.set_tag(key, value, value_format=value_format, description=description, meta=meta)
 
+    @property
+    def _tracked_by(self):
+        return self._defined_in._produced_by
+
     def get_artifact_path(self, name):
         return os.path.join(self.get_dir(), self.get_file_name(), name)
 
@@ -178,8 +182,10 @@ class TrackedObject(ProvenanceMixin, PathAwareMixin):
 
 class LoggerOutput(ProvenanceMixin, PathAwareMixin):
 
-    def __init__(self, _pypads_env, *args, **kwargs):
+    def __init__(self, _pypads_env, _logger_call, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._produced_by = _logger_call
+        self.produced_by = _logger_call.get_relative_path()
         self._envs = [_pypads_env]
 
     def add_call_env(self, _pypads_env: LoggerEnv):
@@ -246,27 +252,26 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._tracked_objects: Set[TrackedObject] = set()
         self._cleanup_fns = {}
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
         return LoggerModel
 
-    def build_output(self, _pypads_env, **kwargs):
+    def build_output(self, _pypads_env, _logger_call, **kwargs):
         schema_class = self.output_schema_class()
 
         if schema_class:
             class OutputModelHolder(LoggerOutput):
 
-                def __init__(self, _pypads_env, *args, **kwargs):
+                def __init__(self, _pypads_env, _logger_call, *args, **kwargs):
                     super().__init__(_pypads_env, *args, **kwargs)
 
                 @classmethod
                 def get_model_cls(cls) -> Type[BaseModel]:
                     return schema_class
 
-            return OutputModelHolder(_pypads_env, parent_path=self.get_dir_extension(), **kwargs)
+            return OutputModelHolder(_pypads_env, _logger_call, parent_path=self.get_dir_extension(), **kwargs)
         return None
 
     @classmethod

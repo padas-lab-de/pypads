@@ -24,9 +24,9 @@ class ParametersTO(TrackedObject):
         ml_model: ContextModel = ...
         hyperparameters: List[str] = []
 
-    def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
-        super().__init__(*args, tracked_by=tracked_by, **kwargs)
-        self.ml_model = tracked_by._logging_env.call.call_id.context
+    def __init__(self, *args, defined_in: LoggerOutput, **kwargs):
+        super().__init__(*args, defined_in=defined_in, **kwargs)
+        self.ml_model = self._tracked_by._logging_env.call.call_id.context
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:

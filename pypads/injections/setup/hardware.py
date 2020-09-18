@@ -4,7 +4,7 @@ from pydantic.main import BaseModel
 from pydantic.networks import HttpUrl
 
 from pypads.app.env import LoggerEnv
-from pypads.app.injections.base_logger import TrackedObject, LoggerCall
+from pypads.app.injections.base_logger import TrackedObject, LoggerCall, LoggerOutput
 from pypads.app.injections.run_loggers import RunSetup
 from pypads.arguments import ontology_uri
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
@@ -28,8 +28,8 @@ class HardwareTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.HardwareModel
 
-    def __init__(self, *args, tracked_by: LoggerCall, name: str, uri: str, **kwargs):
-        super().__init__(*args, tracked_by=tracked_by, name=name, uri=uri, **kwargs)
+    def __init__(self, *args, defined_in: LoggerOutput, name: str, uri: str, **kwargs):
+        super().__init__(*args, defined_in=defined_in, name=name, uri=uri, **kwargs)
 
     def add_tag(self, key, value, description):
         self.tags.append(key)
@@ -53,7 +53,7 @@ class ISystemRSF(RunSetup):
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         import platform
         uname = platform.uname()
-        system_info = HardwareTO(name="System Info", tracked_by=_logger_call,
+        system_info = HardwareTO(name="System Info", defined_in=_logger_output,
                                  uri=f"{ontology_uri}env/system-information")
 
         system_info.add_tag("pypads.system", uname.system, description="Operating system")
