@@ -42,9 +42,6 @@ class DependencyTO(TrackedObject):
                                               write_format=FileFormats.text,
                                               description="dependency list from pip freeze")
 
-    def get_artifact_path(self, name):
-        return os.path.join(str(id(self)), "Env", name)
-
 
 class DependencyRSF(RunSetup):
     """Store information about dependencies used in the experimental environment."""

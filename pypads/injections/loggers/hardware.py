@@ -1,4 +1,3 @@
-import os
 from typing import List, Type
 
 from pydantic import BaseModel, HttpUrl
@@ -65,9 +64,6 @@ class CpuTO(TrackedObject):
                 core = self.cpu_cores[idx]
                 core.usage.append(usage)
         self.total_usage.append(cores[-1])
-
-    def get_artifact_path(self, name):
-        return os.path.join(str(id(self)), "cpu_usage", name)
 
 
 class CpuILF(InjectionLogger):
@@ -171,9 +167,6 @@ class RamTO(TrackedObject):
             self.swap_memory.used.append(used)
             self.swap_memory.free.append(free)
             self.swap_memory.percentage.append(percent)
-
-    def get_artifact_path(self, name):
-        return os.path.join(str(id(self)), "memory_usage", name)
 
 
 class RamILF(InjectionLogger):
@@ -284,9 +277,6 @@ class DiskTO(TrackedObject):
                     pm.free.append(info.get('free'))
                     pm.used.append(info.get('used'))
                     pm.percentage.append(info.get('percentage'))
-
-    def get_artifact_path(self, name):
-        return os.path.join(str(id(self)), "disk_usage", name)
 
 
 class DiskILF(InjectionLogger):

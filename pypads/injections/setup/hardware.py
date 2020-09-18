@@ -97,7 +97,7 @@ class ICpuRSF(RunSetup):
 class IRamRSF(RunSetup):
     _dependencies = {"psutil"}
     name = "Ram Run Setup Logger"
-    uri = f"{ontology_uri}Ram-run-logger"
+    uri = f"{ontology_uri}ram-run-logger"
 
     class IRamRSFOutput(OutputModel):
         is_a: HttpUrl = f"{ontology_uri}IRamRSF-Output"

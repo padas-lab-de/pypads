@@ -36,7 +36,7 @@ class InputTO(TrackedObject):
         self.inputs.append(self.store_artifact(path, value, write_format=format, description=description))
 
     def get_artifact_path(self, name):
-        return os.path.join(str(id(self)), "input", name)
+        return os.path.join(self.get_dir(), "input", name)
 
 
 class InputILF(InjectionLogger):

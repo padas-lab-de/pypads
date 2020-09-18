@@ -1,4 +1,3 @@
-import os
 import time
 import uuid
 from typing import Optional
@@ -7,7 +6,6 @@ from pydantic import BaseModel, Field, HttpUrl, root_validator
 
 from pypads.arguments import ontology_uri
 from pypads.model.models import OntologyEntry
-from pypads.utils.logging_util import FileFormats
 from pypads.utils.util import get_experiment_id, get_run_id
 
 
@@ -67,13 +65,3 @@ class RunObjectModel(BaseModel):
     run_id: Optional[str] = Field(default_factory=get_run_id)
     uid: uuid.UUID = Field(default_factory=uuid.uuid4)
     created_at: float = Field(default_factory=time.time)
-
-    def store(self):
-        """
-        Function to store the object as json into an artifact
-        :return:
-        """
-        from pypads.app.pypads import get_current_pads
-        get_current_pads().api.log_mem_artifact(os.path.join(self.__class__.__name__, str(self.uid)),
-                                                self.json(by_alias=True),
-                                                write_format=FileFormats.json)

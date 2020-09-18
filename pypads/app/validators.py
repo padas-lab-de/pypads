@@ -29,9 +29,6 @@ class Validator(SimpleLogger, metaclass=ABCMeta):
     def get_model_cls(cls) -> Type[BaseModel]:
         return LoggerModel
 
-    def _base_path(self):
-        return "Validators/{}/".format(self.__class__.__name__)
-
 
 class IValidators(Plugin):
 

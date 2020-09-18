@@ -98,14 +98,14 @@ class LoggerCall(ProvenanceMixin, PathAwareMixin):
         self.created_by = created_by.get_repository_path()
         if output and not isinstance(output, str):
             output = output.get_relative_path()
-        super().__init__(*args, parent_path=os.path.splitext(self.created_by)[0], output=output,
+        super().__init__(*args, parent_path=created_by.get_dir_extension(), output=output,
                          **kwargs)
         self._logging_env = logging_env
 
-    def store(self):
+    def store(self, path=""):
         from pypads.app.pypads import get_current_pads
         from pypads.utils.logging_util import FileFormats
-        get_current_pads().api.log_mem_artifact(self.get_relative_path(), self.json(by_alias=True),
+        get_current_pads().api.log_mem_artifact(os.path.join(path, self.get_relative_path()), self.json(by_alias=True),
                                                 FileFormats.json.value)
 
 
@@ -122,7 +122,7 @@ class TrackedObject(ProvenanceMixin, PathAwareMixin):
     def __init__(self, *args, tracked_by, **kwargs):
         self._tracked_by = tracked_by
         self.tracked_by = tracked_by.get_relative_path()
-        super().__init__(*args, parent_path=os.path.splitext(self.tracked_by)[0],
+        super().__init__(*args, parent_path=tracked_by._created_by.get_dir_extension(),
                          **kwargs)
 
     @staticmethod
@@ -248,18 +248,20 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
     def get_model_cls(cls) -> Type[BaseModel]:
         return LoggerModel
 
-    @classmethod
-    def build_output(cls, _pypads_env, **kwargs):
-        schema_class = cls.output_schema_class()
+    def build_output(self, _pypads_env, **kwargs):
+        schema_class = self.output_schema_class()
 
         if schema_class:
             class OutputModelHolder(LoggerOutput):
+
+                def __init__(self, _pypads_env, *args, **kwargs):
+                    super().__init__(_pypads_env, *args, **kwargs)
 
                 @classmethod
                 def get_model_cls(cls) -> Type[BaseModel]:
                     return schema_class
 
-            return OutputModelHolder(_pypads_env, **kwargs)
+            return OutputModelHolder(_pypads_env, parent_path=self.get_dir_extension(), **kwargs)
         return None
 
     @classmethod
@@ -309,10 +311,6 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
                     schema_entity.set_tag("pypads.schema_name", schema["title"], "Name for the schema stored here.")
             cls._schema_path = path
 
-    @abstractmethod
-    def _base_path(self):
-        return "Loggers/"
-
     def cleanup_fns(self, call: LoggerCall) -> List[Callable]:
         return self._cleanup_fns[call] if call in self._cleanup_fns.keys() else []
 
@@ -336,7 +334,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
                                                                    write_format=FileFormats.json)
             else:
                 l = logger_repo.get_object(uid=self._persistent_hash())
-                self.__class__._pypads_stored = l.get_artifact_path(os.path.join(path, self.get_relative_path()))
+                self.__class__._pypads_stored = l.get_rel_artifact_path(os.path.join(path, self.get_relative_path()))
         return self.__class__._pypads_stored
 
     def get_repository_path(self):
@@ -402,7 +400,7 @@ class SimpleLogger(Logger):
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
             if output:
-                logger_call.output = output.store(self._base_path())
+                logger_call.output = output.store()
             logger_call.store()
         return _return
 
