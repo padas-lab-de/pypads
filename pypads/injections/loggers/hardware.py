@@ -78,7 +78,7 @@ class CpuILF(InjectionLogger):
     class CpuILFOutput(OutputModel):
         is_a: HttpUrl = f"{ontology_uri}CpuILF-Output"
 
-        cpu_usage: CpuTO.get_model_cls() = ...
+        cpu_usage: str = ...
 
         class Config:
             orm_mode = True
@@ -187,7 +187,7 @@ class RamILF(InjectionLogger):
     class RamILFOutput(OutputModel):
         is_a: HttpUrl = f"{ontology_uri}RamILF-Output"
 
-        memory_usage: RamTO.RAMModel = ...
+        memory_usage: str = ...
 
         class Config:
             orm_mode = True
@@ -285,8 +285,8 @@ class DiskTO(TrackedObject):
                     pm.used.append(info.get('used'))
                     pm.percentage.append(info.get('percentage'))
 
-    def get_artifact_path(self, name):
-        return os.path.join(str(id(self)), "disk_usage", name)
+    # def get_artifact_path(self, name):
+    #     return os.path.join(str(id(self)), "disk_usage", name)
 
 
 class DiskILF(InjectionLogger):
@@ -299,7 +299,7 @@ class DiskILF(InjectionLogger):
 
     class DiskILFOutput(OutputModel):
         is_a: HttpUrl = f"{ontology_uri}DiskILF-Output"
-        disk_usage: List[DiskTO.DiskModel] = []
+        disk_usage: List[str] = []
 
         class Config:
             orm_mode = True

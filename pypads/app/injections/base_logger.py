@@ -161,14 +161,19 @@ class TrackedObject(ProvenanceMixin, PathAwareMixin):
     def get_artifact_path(self, name):
         return os.path.join(self.get_dir(), self.get_file_name(), name)
 
-    def store(self, output, key="tracked_object", *json_path):
+    def store(self, output, key="tracked_object", path="", *json_path):
         """
         :param output:
         :param key: Name of the tracking object in the schema
         :param json_path: path in the output schema
         :return:
         """
-        return output.add_tracked_object(self, key, *json_path)
+        self.store_schema(path=os.path.join(path, self.get_relative_path()))
+        from pypads.app.pypads import get_current_pads
+        get_current_pads().api.log_mem_artifact(os.path.join(path, self.get_relative_path()),
+                                                self.json(by_alias=True),
+                                                write_format=FileFormats.json)
+        output.add_tracked_object(os.path.join(path, self.get_relative_path()), key, *json_path)
 
 
 class LoggerOutput(ProvenanceMixin, PathAwareMixin):
@@ -192,11 +197,11 @@ class LoggerOutput(ProvenanceMixin, PathAwareMixin):
     def get_model_cls(cls) -> Type[BaseModel]:
         return OutputModel
 
-    def add_tracked_object(self, to: TrackedObject, key, *json_path):
+    def add_tracked_object(self, reference: str, key, *json_path):
         """
         Add a new tracked object to the logger output. Given json_path is the path to the tracked object
         in the result schema.
-        :param to: Tracked object
+        :param reference: reference to the tracked object
         :param key: key to place the tracked object at
         :param json_path: path to the tracked object holding dict
         :return:
@@ -207,15 +212,15 @@ class LoggerOutput(ProvenanceMixin, PathAwareMixin):
         if hasattr(curr, key):
             attr = getattr(curr, key)
             if isinstance(attr, List):
-                attr.append(to)
-                to = attr
+                attr.append(reference)
+                reference = attr
             elif isinstance(attr, Set):
-                attr.add(to)
-                to = attr
-        setattr(curr, key, to)
-        return to.get_relative_path()
+                attr.add(reference)
+                reference = attr
+        setattr(curr, key, reference)
 
     def store(self, path=""):
+        self.store_schema(path=os.path.join(path, self.get_relative_path()))
         self.additional_data = dict_merge(*[e.data for e in self._envs])
         from pypads.app.pypads import get_current_pads
         return get_current_pads().api.log_mem_artifact(os.path.join(path, self.get_relative_path()),
@@ -268,6 +273,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
 
     @classmethod
     def output_schema(cls):
+        # TODO not needed anymore
         schema_class = cls.output_schema_class()
         if schema_class:
             return schema_class.schema()
@@ -282,32 +288,6 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
                 orm_mode = True
 
         return DefaultOutput
-
-    @classmethod
-    def store_schema(cls, path=None):
-        if not cls._schema_path:
-            path = path or ""
-            from pypads.app.pypads import get_current_pads
-            pads = get_current_pads()
-            schema_repo = pads.schema_repository
-
-            schema = cls.schema()
-            schema_hash = persistent_hash(str(schema))
-            if not schema_repo.has_object(uid=schema_hash):
-                schema_entity = schema_repo.get_object(uid=schema_hash)
-                schema_path = os.path.join(path, cls.get_model_cls().__name__ + "_schema")
-                schema_entity.log_mem_artifact(schema_path, schema, write_format=FileFormats.json)
-                schema_entity.set_tag("pypads.schema_name", schema["title"], "Name for the schema stored here.")
-
-            schema = cls.output_schema()
-            if schema:
-                schema_hash = persistent_hash(str(schema))
-                if not schema_repo.has_object(uid=schema_hash):
-                    schema_entity = schema_repo.get_object(uid=schema_hash)
-                    schema_path = os.path.join(path, cls.__name__ + "_output_schema")
-                    schema_entity.log_mem_artifact(schema_path, schema, write_format=FileFormats.json)
-                    schema_entity.set_tag("pypads.schema_name", schema["title"], "Name for the schema stored here.")
-            cls._schema_path = path
 
     @abstractmethod
     def _base_path(self):

@@ -33,7 +33,7 @@ class ParametersTO(TrackedObject):
         return cls.HyperParameterModel
 
     def _persist_parameter(self, key, value, description=None):
-        name = self.context.reference + "." + key
+        name = self.model.reference + "." + key
         description = description or "Hyperparameter {} of context {}".format(name, self.model)
         self.hyperparameters.append(_to_param_meta_name(name))
         self.store_param(name, value, description)
@@ -48,7 +48,7 @@ class ParametersILF(InjectionLogger):
 
     class ParametersILFOutput(OutputModel):
         is_a: HttpUrl = f"{ontology_uri}ParametersILF-Output"
-        hyperparameters: ParametersTO.get_model_cls() = ...
+        hyperparameters: str = ...
 
         class Config:
             orm_mode = True

@@ -72,7 +72,7 @@ class ICpuRSF(RunSetup):
 
     class ICpuRSFOutput(OutputModel):
         is_a: HttpUrl = f"{ontology_uri}ICpuRSF-Output"
-        cpu_info: HardwareTO.get_model_cls() = ...
+        cpu_info: str = ...
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
@@ -101,7 +101,7 @@ class IRamRSF(RunSetup):
 
     class IRamRSFOutput(OutputModel):
         is_a: HttpUrl = f"{ontology_uri}IRamRSF-Output"
-        memory_info: HardwareTO.get_model_cls() = ...
+        memory_info: str = ...
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
@@ -126,7 +126,7 @@ class IDiskRSF(RunSetup):
 
     class IDiskRSFOutput(OutputModel):
         is_a: HttpUrl = f"{ontology_uri}IDiskRSF-Output"
-        disk_info: HardwareTO.get_model_cls() = ...
+        disk_info: str = ...
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
@@ -151,7 +151,7 @@ class IPidRSF(RunSetup):
 
     class IPidRSFOutput(OutputModel):
         is_a: HttpUrl = f"{ontology_uri}IPidRSF-Output"
-        process_info: HardwareTO.get_model_cls() = ...
+        process_info: str = ...
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
@@ -184,7 +184,7 @@ class ISocketInfoRSF(RunSetup):
 
     class ISocketInfoRSFOutput(OutputModel):
         is_a: HttpUrl = f"{ontology_uri}ISocketInfoRSF-Output"
-        socket_info: HardwareTO.get_model_cls() = ...
+        socket_info: str = ...
 
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         socket_info = HardwareTO(name="Socket Info", tracked_by=_logger_call,
@@ -202,7 +202,7 @@ class IMacAddressRSF(RunSetup):
 
     class IMacAddressRSFOutput(OutputModel):
         is_a: HttpUrl = f"{ontology_uri}IMacAddressRSF-Output"
-        mac_address: HardwareTO.get_model_cls() = ...
+        mac_address: str = ...
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:

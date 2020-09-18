@@ -28,8 +28,8 @@ class MetricTO(TrackedObject):
         return cls.MetricModel
 
     def store_value(self, value, step):
-        self.name = self.tracked_by.original_call.call_id.context.container.__name__ + "." + \
-                    self.tracked_by.original_call.call_id.wrappee.__name__
+        self.name = self._tracked_by.original_call.call_id.context.container.__name__ + "." + \
+                    self._tracked_by.original_call.call_id.wrappee.__name__
 
         if isinstance(value, float):
             self.store_metric(self.name, value, description="The metric returned by {}".format(self.name), step=step)
@@ -56,7 +56,7 @@ class MetricILF(InjectionLogger):
         # Add additional context information to
         # TODO context: dict = {**{"test": "testVal"}, **OntologyEntry.__field_defaults__["context"]}
         is_a: HttpUrl = f"{ontology_uri}MetricILF-Output"
-        metric: Optional[MetricTO.get_model_cls()] = None
+        metric: Optional[str] = None
 
         class Config:
             orm_mode = True

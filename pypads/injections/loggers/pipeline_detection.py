@@ -86,12 +86,6 @@ class PipelineTO(TrackedObject):
     def _set_last_tracked(self, last_tracked):
         self.last_tracked = last_tracked
 
-    def get_artifact_path(self, name=None):
-        if name is not None:
-            return os.path.join(str(id(self)), "pipeline", name)
-        else:
-            return os.path.join(str(id(self)), "pipeline", )
-
 
 class PipelineTrackerILF(MultiInjectionLogger):
     """
@@ -105,10 +99,14 @@ class PipelineTrackerILF(MultiInjectionLogger):
     class PipelineTrackerILFOutput(OutputModel):
         is_a: HttpUrl = f"{ontology_uri}PipelineILF-Output"
 
-        pipeline: PipelineTO.get_model_cls() = None
+        pipeline: str = None
 
         class Config:
             orm_mode = True
+
+        def __init__(self,*args,pipeline, **kwargs):
+            super().__init__(*args,**kwargs)
+            self._pipeline = pipeline
 
     @classmethod
     def output_schema_class(cls):
@@ -122,7 +120,7 @@ class PipelineTrackerILF(MultiInjectionLogger):
         pipeline_tracker = pads.cache.run_get(pads.cache.run_get("pipeline_tracker"))
         call = pipeline_tracker.get("call")
         output = pipeline_tracker.get("output")
-        pipeline = output.pipeline
+        pipeline = output._pipeline
 
         from networkx import MultiDiGraph
         network = MultiDiGraph(pipeline._get_network())
@@ -199,6 +197,7 @@ class PipelineTrackerILF(MultiInjectionLogger):
                     path = os.path.join(pipeline._base_path(), pipeline.get_artifact_path())
                     try_mlflow_log(mlflow.log_artifact, folder, artifact_path=path)
 
+        pipeline.store(output, key="pipeline")
         call.output = output.store(pipeline_tracker.get("base_path"))
         call.store()
 
@@ -212,7 +211,7 @@ class PipelineTrackerILF(MultiInjectionLogger):
         if _logger_output.pipeline is None:
             pipeline = PipelineTO(tracked_by=_logger_call, pipeline_type=_pypads_pipeline_type)
         else:
-            pipeline = _logger_output.pipeline
+            pipeline = _logger_output._pipeline
 
         network = pipeline.network
         last_tracked = pipeline.last_tracked
@@ -251,7 +250,7 @@ class PipelineTrackerILF(MultiInjectionLogger):
             network.add_edge(containing_node_id, node_id, plain_label=label, label=_step_number(network, label))
 
         pipeline._set_network(nx.to_dict_of_dicts(network))
-        pipeline.store(_logger_output, "pipeline")
+        _logger_output._pipeline = pipeline
         return node_id
 
     def __post__(self, ctx, *args, _pypads_pipeline_args=False, _logger_call: InjectionLoggerCall, _logger_output,
@@ -261,7 +260,7 @@ class PipelineTrackerILF(MultiInjectionLogger):
         pads = get_current_pads()
 
         import networkx as nx
-        pipeline = _logger_output.pipeline
+        pipeline = _logger_output._pipeline
         network = nx.MultiDiGraph(pipeline._get_network())
 
         node_id = _pypads_pre_return
@@ -276,4 +275,4 @@ class PipelineTrackerILF(MultiInjectionLogger):
                 network.add_node(containing_node_id, label=containing_node_label)
             network.add_edge(node_id, containing_node_id, plain_label=label, label=_step_number(network, label))
         pipeline._set_network(nx.to_dict_of_dicts(network))
-        pipeline.store(_logger_output, "pipeline")
+        _logger_output._pipeline = pipeline

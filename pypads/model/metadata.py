@@ -1,3 +1,4 @@
+import os
 from abc import abstractmethod, ABCMeta
 from collections import deque
 from typing import Type, List
@@ -6,7 +7,8 @@ from pydantic import validate_model, BaseModel, ValidationError
 
 from pypads.app.misc.inheritance import SuperStop
 from pypads.model.domain import RunObjectModel
-from pypads.utils.util import has_direct_attr
+from pypads.utils.logging_util import FileFormats
+from pypads.utils.util import has_direct_attr, persistent_hash
 
 
 class ModelInterface(SuperStop):
@@ -44,6 +46,7 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
     """
     An object building the model from itself on the fly.
     """
+    _schema_path = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -78,6 +81,24 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
         if cls.__doc__ is not None:
             schema["description"] = cls.__doc__
         return schema
+
+    @classmethod
+    def store_schema(cls, path=None):
+        if not cls._schema_path:
+            path = path or ""
+            from pypads.app.pypads import get_current_pads
+            pads = get_current_pads()
+            schema_repo = pads.schema_repository
+
+            schema = cls.schema()
+            schema_hash = persistent_hash(str(schema))
+            if not schema_repo.has_object(uid=schema_hash):
+                schema_entity = schema_repo.get_object(uid=schema_hash)
+                schema_path = os.path.join(path, cls.get_model_cls().__name__ + "_schema")
+                schema_entity.log_mem_artifact(schema_path, schema, write_format=FileFormats.json)
+                schema_entity.set_tag("pypads.schema_name", schema["title"], "Name for the schema stored here.")
+
+            cls._schema_path = path
 
     def json(self, *args, **kwargs):
         return self.model().json(*args, **kwargs)

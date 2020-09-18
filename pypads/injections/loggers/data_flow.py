@@ -49,7 +49,7 @@ class InputILF(InjectionLogger):
 
     class InputILFOutput(OutputModel):
         is_a: HttpUrl = f"{ontology_uri}InputILF-Output"
-        FunctionInput: InputTO.get_model_cls() = ...
+        FunctionInput: str = ...
 
         class Config:
             orm_mode = True
@@ -119,7 +119,7 @@ class OutputILF(InjectionLogger):
 
     class OutputILFOutput(OutputModel):
         is_a: HttpUrl = f"{ontology_uri}OutputILF-Output"
-        FunctionOutput: OutputTO.get_model_cls() = ...
+        FunctionOutput: str = ...
 
         class Config:
             orm_mode = True

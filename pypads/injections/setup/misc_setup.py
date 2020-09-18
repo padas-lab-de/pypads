@@ -42,8 +42,8 @@ class DependencyTO(TrackedObject):
                                               write_format=FileFormats.text,
                                               description="dependency list from pip freeze")
 
-    def get_artifact_path(self, name):
-        return os.path.join(str(id(self)), "Env", name)
+    # def get_artifact_path(self, name):
+    #     return os.path.join(str(id(self)), "Env", name)
 
 
 class DependencyRSF(RunSetup):
@@ -60,7 +60,7 @@ class DependencyRSF(RunSetup):
     class DependencyRSFOutput(OutputModel):
         uri: HttpUrl = f"{ontology_uri}DependencyRSF-Output"
 
-        dependencies: DependencyTO.get_model_cls() = None
+        dependencies: str = None
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
@@ -93,7 +93,7 @@ class LoguruTO(TrackedObject):
     class LoguruModel(TrackedObjectModel):
         uri: HttpUrl = f"{ontology_uri}env/Logs"
 
-        logs: str = ...
+        path: str = ...
 
         class Config:
             orm_mode = True
@@ -104,7 +104,7 @@ class LoguruTO(TrackedObject):
 
     def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
         super().__init__(*args, tracked_by=tracked_by, **kwargs)
-        self.logs = self.get_artifact_path("logs.log")
+        self.path = self.get_artifact_path("logs.log")
 
 
 class LoguruRSF(RunSetup):
@@ -118,7 +118,7 @@ class LoguruRSF(RunSetup):
     class LoguruRSFOutput(OutputModel):
         uri: HttpUrl = f"{ontology_uri}LoguruRSF-Output"
 
-        logs: LoguruTO.get_model_cls() = ...
+        logs: str = ...
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:

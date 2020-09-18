@@ -51,7 +51,7 @@ class IGitRSF(RunSetup):
 
     class IGitRSFOutput(OutputModel):
         is_a: HttpUrl = f"{ontology_uri}IGitRSF-Output"
-        git_info: GitTO.get_model_cls() = None
+        git_info: str = None
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
