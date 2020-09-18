@@ -125,9 +125,9 @@ class TrackedObject(ProvenanceMixin, PathAwareMixin):
     def get_model_cls(cls) -> Type[BaseModel]:
         return TrackedObjectModel
 
-    def __init__(self, *args, defined_in, **kwargs):
-        self._defined_in = defined_in
-        self.defined_in = defined_in.get_relative_path()
+    def __init__(self, *args, part_of, **kwargs):
+        self._part_of = part_of
+        self.part_of = part_of.get_reference_path()
         super().__init__(*args, parent_path=self._tracked_by._created_by.get_dir_extension(),
                          **kwargs)
 
@@ -166,7 +166,7 @@ class TrackedObject(ProvenanceMixin, PathAwareMixin):
 
     @property
     def _tracked_by(self):
-        return self._defined_in._produced_by
+        return self._part_of._produced_by
 
     def get_artifact_path(self, name):
         return os.path.join(self.get_dir(), self.get_file_name(), name)
@@ -191,7 +191,7 @@ class LoggerOutput(ProvenanceMixin, PathAwareMixin):
     def __init__(self, _pypads_env, _logger_call, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._produced_by = _logger_call
-        self.produced_by = _logger_call.get_relative_path()
+        self.produced_by = _logger_call.get_reference_path()
         self._envs = [_pypads_env]
 
     def add_call_env(self, _pypads_env: LoggerEnv):
@@ -272,7 +272,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
             class OutputModelHolder(LoggerOutput):
 
                 def __init__(self, _pypads_env, _logger_call, *args, **kwargs):
-                    super().__init__(_pypads_env, *args, **kwargs)
+                    super().__init__(_pypads_env, _logger_call, *args, **kwargs)
 
                 @classmethod
                 def get_model_cls(cls) -> Type[BaseModel]:
@@ -377,7 +377,7 @@ class SimpleLogger(Logger):
         _pypads_params = _pypads_env.parameter
 
         logger_call = self.build_call_object(_pypads_env, created_by=self)
-        output = self.build_output(_pypads_env)
+        output = self.build_output(_pypads_env, logger_call)
 
         try:
             _return, time = self._fn(*args, _pypads_env=_pypads_env, _logger_call=logger_call, _logger_output=output,

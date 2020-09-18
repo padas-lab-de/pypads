@@ -28,8 +28,8 @@ class HardwareTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.HardwareModel
 
-    def __init__(self, *args, defined_in: LoggerOutput, name: str, uri: str, **kwargs):
-        super().__init__(*args, defined_in=defined_in, name=name, uri=uri, **kwargs)
+    def __init__(self, *args, part_of: LoggerOutput, name: str, uri: str, **kwargs):
+        super().__init__(*args, part_of=part_of, name=name, uri=uri, **kwargs)
 
     def add_tag(self, key, value, description):
         self.tags.append(key)
@@ -53,7 +53,7 @@ class ISystemRSF(RunSetup):
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         import platform
         uname = platform.uname()
-        system_info = HardwareTO(name="System Info", defined_in=_logger_output,
+        system_info = HardwareTO(name="System Info", part_of=_logger_output,
                                  uri=f"{ontology_uri}env/system-information")
 
         system_info.add_tag("pypads.system", uname.system, description="Operating system")
@@ -80,7 +80,7 @@ class ICpuRSF(RunSetup):
 
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         import psutil
-        cpu_info = HardwareTO(name="Cpu Info", tracked_by=_logger_call,
+        cpu_info = HardwareTO(name="Cpu Info", part_of=_logger_output,
                               uri=f"{ontology_uri}env/cpu-information")
         cpu_info.store_tag("pypads.system.cpu.physical_cores", psutil.cpu_count(logical=False),
                            description="Number of physical cores")
@@ -108,7 +108,7 @@ class IRamRSF(RunSetup):
         return cls.IRamRSFOutput
 
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
-        memory_info = HardwareTO(name="Memory Info", tracked_by=_logger_call,
+        memory_info = HardwareTO(name="Memory Info", part_of=_logger_output,
                                  uri=f"{ontology_uri}env/memory-information")
         import psutil
         memory = psutil.virtual_memory()
@@ -133,7 +133,7 @@ class IDiskRSF(RunSetup):
         return cls.IDiskRSFOutput
 
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
-        disk_info = HardwareTO(name="Disk Info", tracked_by=_logger_call,
+        disk_info = HardwareTO(name="Disk Info", part_of=_logger_output,
                                uri=f"{ontology_uri}env/disk-information")
         import psutil
         # see https://www.thepythoncode.com/article/get-hardware-system-information-python
@@ -158,7 +158,7 @@ class IPidRSF(RunSetup):
         return cls.IPidRSFOutput
 
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
-        process_info = HardwareTO(name="Process Info", tracked_by=_logger_call,
+        process_info = HardwareTO(name="Process Info", part_of=_logger_output,
                                   uri=f"{ontology_uri}env/process-information")
         import psutil
         import os
@@ -187,7 +187,7 @@ class ISocketInfoRSF(RunSetup):
         socket_info: str = ...
 
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
-        socket_info = HardwareTO(name="Socket Info", tracked_by=_logger_call,
+        socket_info = HardwareTO(name="Socket Info", part_of=_logger_output,
                                  uri=f"{ontology_uri}env/socker-information")
         import socket
         socket_info.add_tag("pypads.system.hostname", socket.gethostname(), description="Hostname of open socket")
@@ -209,7 +209,7 @@ class IMacAddressRSF(RunSetup):
         return cls.IMacAddressRSFOutput
 
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
-        mac_address = HardwareTO(name="Mac Address", tracked_by=_logger_call,
+        mac_address = HardwareTO(name="Mac Address", part_of=_logger_output,
                                  uri=f"{ontology_uri}env/mac-address-information")
         import re, uuid
         mac_address.add_tag("pypads.system.macaddress", ':'.join(re.findall('..', '%012x' % uuid.getnode())),

@@ -3,7 +3,7 @@ from typing import Type
 from pydantic import HttpUrl, BaseModel
 
 from pypads.app.env import LoggerEnv
-from pypads.app.injections.base_logger import TrackedObject
+from pypads.app.injections.base_logger import TrackedObject, LoggerOutput
 from pypads.app.injections.run_loggers import RunSetup
 from pypads.app.misc.managed_git import ManagedGit
 from pypads.arguments import ontology_uri
@@ -26,8 +26,8 @@ class GitTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.GitModel
 
-    def __init__(self, *args, source, tracked_by, **kwargs):
-        super().__init__(*args, source=source, tracked_by=tracked_by, **kwargs)
+    def __init__(self, *args, source, part_of: LoggerOutput, **kwargs):
+        super().__init__(*args, source=source, part_of=part_of, **kwargs)
 
     def add_tag(self, *args, **kwargs):
         self.store_tag(*args, **kwargs)
@@ -62,7 +62,7 @@ class IGitRSF(RunSetup):
         managed_git: ManagedGit = pads.managed_git_factory(source_name)
         if managed_git:
             repo = managed_git.repo
-            git_info = GitTO(tracked_by=_logger_call, source=source_name or repo.working_dir,
+            git_info = GitTO(part_of=_logger_output, source=source_name or repo.working_dir,
                              version=repo.head.commit.hexsha)
             # Disable pager for returns
             repo.git.set_persistent_git_options(no_pager=True)

@@ -3,7 +3,7 @@ from typing import List, Type
 
 from pydantic import BaseModel, HttpUrl
 
-from pypads.app.injections.base_logger import LoggerCall, TrackedObject
+from pypads.app.injections.base_logger import LoggerCall, TrackedObject, LoggerOutput
 from pypads.app.injections.injection import InjectionLogger
 from pypads.arguments import ontology_uri
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
@@ -68,7 +68,7 @@ class InputILF(InjectionLogger):
         :return:
         """
 
-        inputs = InputTO(tracked_by=_logger_call)
+        inputs = InputTO(part_of=_logger_output)
         for i in range(len(_args)):
             arg = _args[i]
             inputs.add_arg(str(i), arg, format=_pypads_write_format)
@@ -99,8 +99,8 @@ class OutputTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.OutputModel
 
-    def __init__(self, value, format, *args, tracked_by: LoggerCall, **kwargs):
-        super().__init__(*args, content_format=format, tracked_by=tracked_by, **kwargs)
+    def __init__(self, value, format, *args, part_of: LoggerOutput, **kwargs):
+        super().__init__(*args, content_format=format, part_of=part_of, **kwargs)
         self.output = self.store_artifact(self.get_artifact_path(), value, write_format=format,
                                           description="Output of function call {}".format(
                                               self._tracked_by.original_call))
@@ -137,5 +137,5 @@ class OutputILF(InjectionLogger):
         :param kwargs:
         :return:
         """
-        output = OutputTO(_pypads_result, format=_pypads_write_format, tracked_by=_logger_call)
+        output = OutputTO(_pypads_result, format=_pypads_write_format, part_of=_logger_output)
         output.store(_logger_output, key="FunctionOutput")

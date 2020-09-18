@@ -4,7 +4,7 @@ from pydantic import HttpUrl, BaseModel
 
 from pypads import logger
 from pypads.app.env import InjectionLoggerEnv
-from pypads.app.injections.base_logger import TrackedObject, LoggerCall
+from pypads.app.injections.base_logger import TrackedObject, LoggerCall, LoggerOutput
 from pypads.app.injections.injection import InjectionLogger
 from pypads.arguments import ontology_uri
 from pypads.model.logger_call import ContextModel
@@ -24,8 +24,8 @@ class ParametersTO(TrackedObject):
         ml_model: ContextModel = ...
         hyperparameters: List[str] = []
 
-    def __init__(self, *args, defined_in: LoggerOutput, **kwargs):
-        super().__init__(*args, defined_in=defined_in, **kwargs)
+    def __init__(self, *args, part_of: LoggerOutput, **kwargs):
+        super().__init__(*args, part_of=part_of, **kwargs)
         self.ml_model = self._tracked_by._logging_env.call.call_id.context
 
     @classmethod
@@ -65,7 +65,7 @@ class ParametersILF(InjectionLogger):
         :param kwargs:
         :return:
         """
-        hyper_params = ParametersTO(tracked_by=_logger_call)
+        hyper_params = ParametersTO(part_of=_logger_output)
         try:
             data = {}
             for mm in _pypads_env.mappings:

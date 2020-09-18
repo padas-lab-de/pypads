@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from pydantic.networks import HttpUrl
 
 from pypads import logger
-from pypads.app.injections.base_logger import TrackedObject, LoggerCall
+from pypads.app.injections.base_logger import TrackedObject, LoggerCall, LoggerOutput
 from pypads.app.injections.injection import InjectionLoggerCall, MultiInjectionLogger
 from pypads.arguments import ontology_uri
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
@@ -70,8 +70,8 @@ class PipelineTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.PipelineModel
 
-    def __init__(self, *args, tracked_by: LoggerCall, network=None, pipeline_type="", last_tracked=None, **kwargs):
-        super().__init__(*args, tracked_by=tracked_by, network=network, pipeline_type=pipeline_type,
+    def __init__(self, *args, part_of: LoggerOutput, network=None, pipeline_type="", last_tracked=None, **kwargs):
+        super().__init__(*args, part_of=part_of, network=network, pipeline_type=pipeline_type,
                          last_tracked=last_tracked, **kwargs)
 
     def _get_network(self):
@@ -209,7 +209,7 @@ class PipelineTrackerILF(MultiInjectionLogger):
         pads.cache.run_add("pipeline_tracker", id(self))
 
         if _logger_output.pipeline is None:
-            pipeline = PipelineTO(tracked_by=_logger_call, pipeline_type=_pypads_pipeline_type)
+            pipeline = PipelineTO(part_of=_logger_output, pipeline_type=_pypads_pipeline_type)
         else:
             pipeline = _logger_output._pipeline
 

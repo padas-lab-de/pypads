@@ -77,7 +77,7 @@ class MetricILF(InjectionLogger):
         """
 
         result = _pypads_result
-        metric = MetricTO(defined_in=_logger_output,
+        metric = MetricTO(part_of=_logger_output,
                           as_artifact=_pypads_artifact_fallback)
 
         storable = metric.store_value(result, step=_logger_call.original_call.call_id.call_number)

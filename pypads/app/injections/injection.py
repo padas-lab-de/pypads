@@ -201,7 +201,7 @@ class MultiInjectionLogger(InjectionLogger):
             self.store()
             return MultiInjectionLoggerCall(logging_env=logging_env, created_by=self)
 
-    def _get_output(self, _pypads_env):
+    def _get_output(self, _pypads_env,_logger_call):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         if pads.cache.run_exists(id(self)):
@@ -209,7 +209,7 @@ class MultiInjectionLogger(InjectionLogger):
             logger_output.add_call_env(_pypads_env)
             return logger_output
         else:
-            return self.build_output(_pypads_env)
+            return self.build_output(_pypads_env,_logger_call)
 
     @staticmethod
     @abstractmethod
@@ -220,7 +220,7 @@ class MultiInjectionLogger(InjectionLogger):
         _pypads_hook_params = _pypads_env.parameter
 
         logger_call = self._get_call(_pypads_env)
-        output = self._get_output(_pypads_env)
+        output = self._get_output(_pypads_env, logger_call)
 
         try:
             # Trigger pre run functions

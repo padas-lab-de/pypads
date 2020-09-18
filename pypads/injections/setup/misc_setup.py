@@ -5,7 +5,7 @@ from pydantic import HttpUrl, BaseModel
 
 from pypads import logger
 from pypads.app.env import LoggerEnv
-from pypads.app.injections.base_logger import LoggerCall, TrackedObject
+from pypads.app.injections.base_logger import LoggerCall, TrackedObject, LoggerOutput
 from pypads.app.injections.run_loggers import RunSetup
 from pypads.arguments import ontology_uri
 from pypads.model.domain import LibraryModel
@@ -31,8 +31,8 @@ class DependencyTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.DependencyModel
 
-    def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
-        super().__init__(*args, tracked_by=tracked_by, **kwargs)
+    def __init__(self, *args, part_of: LoggerOutput, **kwargs):
+        super().__init__(*args, part_of=part_of, **kwargs)
 
     def _add_dependency(self, pip_freeze):
         for item in pip_freeze:
@@ -69,7 +69,7 @@ class DependencyRSF(RunSetup):
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         pads = _pypads_env.pypads
         logger.info("Tracking execution to run with id " + pads.api.active_run().info.run_id)
-        dependencies = DependencyTO(tracked_by=_logger_call)
+        dependencies = DependencyTO(part_of=_logger_output)
         try:
             # Execute pip freeze
             try:
@@ -102,8 +102,8 @@ class LoguruTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.LoguruModel
 
-    def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
-        super().__init__(*args, tracked_by=tracked_by, **kwargs)
+    def __init__(self, *args, part_of: LoggerOutput, **kwargs):
+        super().__init__(*args, part_of=part_of, **kwargs)
         self.path = self.get_artifact_path("logs.log")
 
 
@@ -136,7 +136,7 @@ class LoguruRSF(RunSetup):
         from pypads.utils.logging_util import get_temp_folder
         folder = get_temp_folder()
 
-        logs = LoguruTO(tracked_by=_logger_call)
+        logs = LoguruTO(part_of=_logger_output)
 
         # TODO loguru has problems with multiprocessing / make rotation configurable etc
         from pypads.pads_loguru import logger_manager
