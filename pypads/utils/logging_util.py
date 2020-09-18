@@ -153,7 +153,7 @@ def store_tmp_artifact(file_name, obj, write_format: FileFormats):
             if os.path.isdir(get_temp_folder()):
                 shutil.rmtree(get_temp_folder())
 
-    pads.api.register_cleanup_fn("tmp_cleanup", tmp_cleanup)
+    pads.api.register_teardown_utility("tmp_cleanup", tmp_cleanup)
 
     base_path = get_temp_folder()
     path = os.path.join(base_path, file_name)

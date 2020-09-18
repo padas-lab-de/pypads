@@ -171,11 +171,11 @@ class LocalMlFlowBackend(MLFlowBackend):
                     except Exception as e:
                         logger.error("pushing logs to remote failed due to this error '{}'".format(str(e)))
 
-        self.pypads.api.register_cleanup_fn("commit", commit,
-                                            error_message="A problem executing the result management function was detected."
-                                                          " Check if you have to commit / push results manually."
-                                                          " Following exception caused the problem: {0}",
-                                            order=sys.maxsize - 1)
+        self.pypads.api.register_teardown_utility("commit", commit,
+                                                  error_message="A problem executing the result management function was detected."
+                                                                " Check if you have to commit / push results manually."
+                                                                " Following exception caused the problem: {0}",
+                                                  order=sys.maxsize - 1)
 
     def add_result_remote(self, remote, uri):
         """

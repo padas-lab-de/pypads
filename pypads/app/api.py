@@ -10,7 +10,7 @@ from mlflow.entities import ViewType
 from pypads import logger
 from pypads.app.backends.repository import repository_experiments
 from pypads.app.env import LoggerEnv
-from pypads.app.injections.run_loggers import RunSetup, RunTeardown, CleanUpFunction
+from pypads.app.injections.run_loggers import RunSetup, RunTeardown, SimpleRunFunction
 from pypads.app.misc.caches import Cache
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
 from pypads.app.misc.mixins import FunctionHolderMixin
@@ -365,9 +365,9 @@ class PyPadsApi(IApi):
 
     @cmd
     def register_setup_fn(self, name, description, fn, error_message=None, nested=True, intermediate=True, order=0,
-                          silent_duplicate=True, silent=False):
+                          silent_duplicate=True):
         """
-        Register a new pre_run_function by building it from given parameters.
+        Register a new setup logger by building it from given parameters.
         :param error_message: Error message to log on failure.
         :param description: A description of the setup function.
         :param name: Name of the registration
@@ -378,7 +378,6 @@ class PyPadsApi(IApi):
         :param order: Value defining the execution order for pre run function.
         The lower the value the sooner a function gets executed.
         :param silent_duplicate: Ignore log output if post_run was already registered.
-        :param silent: Flag to disable storing of Output, Calls and Schemata
         :return:
         """
 
@@ -390,6 +389,26 @@ class PyPadsApi(IApi):
         self.register_setup(name,
                             TmpRunSetupFunction(fn=fn, message=error_message, nested=nested, intermediate=intermediate,
                                                 order=order),
+                            silent_duplicate=silent_duplicate)
+
+    @cmd
+    def register_setup_utility(self, name, fn, error_message=None, order=0, silent_duplicate=True):
+        """
+        Register a new utility function for setup. This is not a Logger.
+        :param error_message: Error message to log on failure.
+        :param name: Name of the registration
+        :param fn: Function to register
+        An intermediate run is a nested run managed specifically by pypads.
+        :param order: Value defining the execution order for pre run function.
+        The lower the value the sooner a function gets executed.
+        :param silent_duplicate: Ignore log output if post_run was already registered.
+        :return:
+        """
+        """
+        Register a new cleanup function to do simple cleanup tasks after a run. This is not considered an own logger.
+        """
+        self.register_setup(name,
+                            pre_fn=SimpleRunFunction(fn=fn, message=error_message, order=order),
                             silent_duplicate=silent_duplicate)
 
     @cmd
@@ -422,7 +441,7 @@ class PyPadsApi(IApi):
         return self.pypads.cache.run_get("post_run_fns")
 
     @cmd
-    def register_teardown(self, name, post_fn: Union[RunTeardown, CleanUpFunction], silent_duplicate=True):
+    def register_teardown(self, name, post_fn: Union[RunTeardown, SimpleRunFunction], silent_duplicate=True):
         """
         Register a new post run function.
         :param name: Name of the registration
@@ -467,13 +486,13 @@ class PyPadsApi(IApi):
                                silent_duplicate=silent_duplicate)
 
     @cmd
-    def register_cleanup_fn(self, name, fn, error_message=None,
-                            order=0, silent_duplicate=True):
+    def register_teardown_utility(self, name, fn, error_message=None,
+                                  order=0, silent_duplicate=True):
         """
         Register a new cleanup function to do simple cleanup tasks after a run. This is not considered an own logger.
         """
         self.register_teardown(name,
-                               post_fn=CleanUpFunction(fn=fn, message=error_message, order=order),
+                               post_fn=SimpleRunFunction(fn=fn, message=error_message, order=order),
                                silent_duplicate=silent_duplicate)
 
     @cmd
