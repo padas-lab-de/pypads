@@ -56,7 +56,7 @@ class PipelineTO(TrackedObject):
     """
 
     class PipelineModel(TrackedObjectModel):
-        uri: HttpUrl = f"{ontology_uri}Pipeline"
+        is_a: HttpUrl = f"{ontology_uri}Pipeline"
 
         network: dict = ...
         pipeline_type: str = ...

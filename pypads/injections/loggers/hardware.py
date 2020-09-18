@@ -32,7 +32,7 @@ class CpuTO(TrackedObject):
     """
 
     class CPUModel(TrackedObjectModel):
-        uri: HttpUrl = f"{ontology_uri}CpuData"
+        is_a: HttpUrl = f"{ontology_uri}CpuData"
 
         class CpuCoreModel(BaseModel):
             name: str = ...
@@ -115,7 +115,7 @@ class RamTO(TrackedObject):
     """
 
     class RAMModel(TrackedObjectModel):
-        uri: HttpUrl = f"{ontology_uri}RamData"
+        is_a: HttpUrl = f"{ontology_uri}RamData"
 
         class MemoryModel(BaseModel):
             used: List[int] = ...
@@ -230,7 +230,7 @@ class DiskTO(TrackedObject):
     """
 
     class DiskModel(TrackedObjectModel):
-        uri: HttpUrl = f"{ontology_uri}DiskData"
+        is_a: HttpUrl = f"{ontology_uri}DiskData"
 
         class PartitionModel(BaseModel):
             name: str = ...

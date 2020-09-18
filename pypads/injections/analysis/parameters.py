@@ -19,7 +19,7 @@ class ParametersTO(TrackedObject):
     """
 
     class HyperParameterModel(TrackedObjectModel):
-        uri: HttpUrl = f"{ontology_uri}ModelHyperparameter"
+        is_a: HttpUrl = f"{ontology_uri}ModelHyperparameter"
 
         ml_model: ContextModel = ...
         hyperparameters: List[str] = []

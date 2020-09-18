@@ -13,7 +13,7 @@ from pypads.utils.logging_util import FileFormats
 
 class GitTO(TrackedObject):
     class GitModel(TrackedObjectModel):
-        uri: HttpUrl = f"{ontology_uri}SourceCode-Management"
+        is_a: HttpUrl = f"{ontology_uri}SourceCode-Management"
 
         source: str = ...
         version: str = ...

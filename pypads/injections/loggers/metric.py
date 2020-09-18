@@ -15,7 +15,7 @@ class MetricTO(TrackedObject):
     """
 
     class MetricModel(TrackedObjectModel):
-        uri: HttpUrl = f"{ontology_uri}Metric"
+        is_a: HttpUrl = f"{ontology_uri}Metric"
 
         name: str = ...  # Metric name
         as_artifact: bool = False
