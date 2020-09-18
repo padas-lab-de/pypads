@@ -1,4 +1,3 @@
-import os
 from typing import Type
 
 from pydantic import HttpUrl, BaseModel
@@ -36,9 +35,6 @@ class GitTO(TrackedObject):
     def store_git_log(self, name, value, format=FileFormats.text):
         self.git_log = self.store_artifact(self.get_artifact_path(name), value,
                                            description="Commit logs for the git repository", write_format=format)
-
-    def get_artifact_path(self, name):
-        return os.path.join(str(id(self)), name)
 
 
 class IGitRSF(RunSetup):

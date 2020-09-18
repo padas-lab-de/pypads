@@ -40,8 +40,6 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
     def get_model_cls(cls) -> Type[BaseModel]:
         return InjectionLoggerModel
 
-    def _base_path(self):
-        return "InjectionLoggers/{}/".format(self.__class__.__name__)
 
     def __pre__(self, ctx, *args,
                 _logger_call, _logger_output, _args, _kwargs, **kwargs):
@@ -107,7 +105,7 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
             if output:
-                logger_call.output = output.store(self._base_path())
+                logger_call.output = output.store()
             logger_call.store()
         return _return
 
@@ -192,9 +190,6 @@ class MultiInjectionLogger(InjectionLogger):
     def get_model_cls(cls) -> Type[BaseModel]:
         return MultiInjectionLoggerCallModel
 
-    def _base_path(self):
-        return "InjectionLoggers/{}/".format(self.__class__.__name__)
-
     def _get_call(self, logging_env: InjectionLoggerEnv):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
@@ -260,7 +255,7 @@ class MultiInjectionLogger(InjectionLogger):
                 fn(self, logger_call)
             from pypads.app.pypads import get_current_pads
             pads = get_current_pads()
-            pads.cache.run_add(id(self), {'call': logger_call, 'output': output, 'base_path': self._base_path()})
+            pads.cache.run_add(id(self), {'call': logger_call, 'output': output})
             pads.api.register_cleanup_fn('{}_clean_up'.format(self.__class__.__name__), self.finalize_output)
         return _return
 
@@ -312,7 +307,7 @@ class OutputInjectionLogger(InjectionLogger):
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
             if output:
-                logger_call.output = output.store(self._base_path())
+                logger_call.output = output.store()
             logger_call.store()
         return _post_result
 

@@ -54,15 +54,15 @@ def get_default_ctx_path():
     """
     try:
         global default_ctx_path
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
         if not default_ctx_path:
-            from pypads.app.pypads import get_current_pads
-            pads = get_current_pads()
             obj = pads.schema_repository.get_object(uid=persistent_hash(str(DEFAULT_CONTEXT)))
-            default_ctx_path = obj.get_artifact_path(obj.log_mem_artifact("pypads_context_default", DEFAULT_CONTEXT,
-                                                                          write_format=FileFormats.json))
+            default_ctx_path = obj.get_rel_artifact_path(obj.log_mem_artifact("pypads_context_default", DEFAULT_CONTEXT,
+                                                                              write_format=FileFormats.json))
             obj.set_tag("pypads.schema_name", "pypads_context_default")
         return os.path.join(pads.uri, default_ctx_path + ".json")
-    except Exception:
+    except Exception as e:
         # Return context itself instead
         return DEFAULT_CONTEXT
 
