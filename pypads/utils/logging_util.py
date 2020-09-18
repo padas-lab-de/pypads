@@ -176,7 +176,7 @@ def store_tmp_artifact(file_name, obj, write_format: FileFormats):
 def read_artifact(path, read_format: FileFormats = None):
     if read_format is None:
         file_extension = path.split('.')[-1]
-        read_format = get_by_value_in_enum(file_extension)
+        read_format = get_by_value_in_enum(file_extension, FileFormats)
         if not read_format:
             logger.warning("Configured read format " + read_format + " not supported! ")
             return

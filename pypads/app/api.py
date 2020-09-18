@@ -269,7 +269,7 @@ class PyPadsApi(IApi):
                                                                       path=name + ".meta",
                                                                       file_format=write_format))
 
-    def _read_meta(self, name, read_format=FileFormats.yaml):
+    def _read_meta(self, name, read_format=FileFormats.json):
         """
         Read the metainformation of a object name.
         :param name:
@@ -611,8 +611,8 @@ class PyPadsApi(IApi):
                         artifacts.extend(self.pypads.api.list_artifacts(run_id=run_id, path=os.path.join(c.path, "*")))
                     else:
                         artifacts.append(ArtifactInfo(file_size=c.file_size,
-                                                      meta=self.pypads.backend.get_artifact_meta(run_id=run_id,
-                                                                                                 relative_path=c.path)))
+                                                      meta=self.pypads.backend.get_artifact(run_id=run_id,
+                                                                                            path=c.path)))
                 return artifacts
 
             # Get a certain run
