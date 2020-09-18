@@ -188,7 +188,7 @@ class MultiInjectionLogger(InjectionLogger):
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
-        return MultiInjectionLoggerCallModel
+        return InjectionLoggerModel
 
     def _get_call(self, logging_env: InjectionLoggerEnv):
         from pypads.app.pypads import get_current_pads
