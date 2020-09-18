@@ -291,10 +291,6 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
 
         return DefaultOutput
 
-    @abstractmethod
-    def _base_path(self):
-        return "Loggers/"
-
     def cleanup_fns(self, call: LoggerCall) -> List[Callable]:
         return self._cleanup_fns[call] if call in self._cleanup_fns.keys() else []
 

@@ -129,7 +129,7 @@ class PipelineTrackerILF(MultiInjectionLogger):
         if network is not None and len(network.nodes) > 0:
             from networkx import DiGraph
             from networkx.drawing.nx_agraph import to_agraph
-            path = os.path.join(pipeline._base_path(), pipeline.get_artifact_path("pypads_pipeline"))
+            path = pipeline.get_artifact_path("pypads_pipeline")
             pipeline.store_artifact(network,
                                     ArtifactMetaModel(path=path, description="networkx graph",
                                                       format=FileFormats.pickle))
@@ -194,7 +194,7 @@ class PipelineTrackerILF(MultiInjectionLogger):
                     nx.draw_networkx_edge_labels(network, pos)
                     plt.savefig(folder)
                 if os.path.exists(folder):
-                    path = os.path.join(pipeline._base_path(), pipeline.get_artifact_path())
+                    path = pipeline.get_artifact_path()
                     try_mlflow_log(mlflow.log_artifact, folder, artifact_path=path)
 
         pipeline.store(output, key="pipeline")
