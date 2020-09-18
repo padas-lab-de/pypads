@@ -118,7 +118,10 @@ class BackendInterface:
         """
         raise NotImplementedError("")
 
-    def get_artifact_meta(self, run_id, relative_path, read_format: FileFormats = FileFormats.yaml):
+    def get_artifact(self, run_id, path):
+        return read_artifact(self.download_tmp_artifacts(run_id, path))
+
+    def get_artifact_meta(self, run_id, relative_path, read_format: FileFormats = FileFormats.json):
         """
         Gets the as artifact stored meta information about the in relative_path defined artifact
         :param read_format:
@@ -126,10 +129,10 @@ class BackendInterface:
         :param relative_path:
         :return:
         """
-        return read_artifact(self.download_tmp_artifacts(run_id, _to_artifact_meta_name(
-            relative_path.rsplit(".", 1)[0]) + ".meta." + read_format.value))
+        return self.get_artifact(run_id, _to_artifact_meta_name(
+            relative_path.rsplit(".", 1)[0]) + ".meta." + read_format.value)
 
-    def get_metric_meta(self, run_id, relative_path, read_format: FileFormats = FileFormats.yaml):
+    def get_metric_meta(self, run_id, relative_path, read_format: FileFormats = FileFormats.json):
         """
         Gets the as artifact stored meta information about the in relative_path defined metric
         :param read_format:
@@ -137,10 +140,10 @@ class BackendInterface:
         :param relative_path:
         :return:
         """
-        return read_artifact(self.download_tmp_artifacts(run_id, _to_metric_meta_name(
-            relative_path.rsplit(".", 1)[0]) + ".meta." + read_format.value))
+        return self.get_artifact(run_id, _to_metric_meta_name(
+            relative_path.rsplit(".", 1)[0]) + ".meta." + read_format.value)
 
-    def get_parameter_meta(self, run_id, relative_path, read_format: FileFormats = FileFormats.yaml):
+    def get_parameter_meta(self, run_id, relative_path, read_format: FileFormats = FileFormats.json):
         """
         Gets the as artifact stored meta information about the in relative_path defined parameter
         :param read_format:
@@ -148,8 +151,8 @@ class BackendInterface:
         :param relative_path:
         :return:
         """
-        return read_artifact(self.download_tmp_artifacts(run_id, _to_param_meta_name(
-            relative_path.rsplit(".", 1)[0]) + ".meta." + read_format.value))
+        return self.get_artifact(run_id, _to_param_meta_name(
+            relative_path.rsplit(".", 1)[0]) + ".meta." + read_format.value)
 
     def download_tmp_artifacts(self, run_id, relative_path):
         """
@@ -191,7 +194,7 @@ class BackendInterface:
         """
         artifacts = self.list_non_meta_files(run_id, path=path)
         return [ArtifactInfo.construct(file_size=a.file_size,
-                                       meta=self.get_artifact_meta(run_id=run_id, relative_path=a.path))
+                                       meta=self.get_artifact(run_id=run_id, path=a.path))
                 for a in artifacts if not a.is_dir]
 
     @abstractmethod
