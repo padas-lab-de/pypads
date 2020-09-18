@@ -54,10 +54,10 @@ class RunTeardown(RunLogger, metaclass=ABCMeta):
 
 class SimpleRunFunction(FunctionHolderMixin, BaseDefensiveCallableMixin, OrderMixin):
     """
-    This function doesn't represent an own logger and is used to cleanup the job of another logger.
+    This function doesn't represent an own logger and is used to cleanup the job of another logger or setup something.
     """
 
-    def __init__(self, *args, error_message="Some clean up function failed.", **kwargs):
+    def __init__(self, *args, error_message="Some utility function failed.", **kwargs):
         super().__init__(*args, error_message=error_message, **kwargs)
 
 

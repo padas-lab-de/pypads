@@ -95,9 +95,14 @@ class LoggerCall(ProvenanceMixin, PathAwareMixin):
 
     def __init__(self, *args, logging_env: LoggerEnv, created_by, output=None, **kwargs):
         self._created_by = created_by
-        self.created_by = created_by.get_repository_path()
-        if output and not isinstance(output, str):
-            output = output.get_relative_path()
+        self.created_by = created_by.get_reference_path()
+
+        # Set output
+        if output:
+            if not isinstance(output, str):
+                output = output.get_relative_path()
+            self.output = output.get_reference_path()
+
         super().__init__(*args, parent_path=created_by.get_dir_extension(), output=output,
                          **kwargs)
         self._logging_env = logging_env
@@ -245,7 +250,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
     _schema_path = None
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, parent_path="", **kwargs)
         self._tracked_objects: Set[TrackedObject] = set()
         self._cleanup_fns = {}
 
@@ -317,7 +322,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
                 self.__class__._pypads_stored = l.get_rel_artifact_path(os.path.join(path, self.get_relative_path()))
         return self.__class__._pypads_stored
 
-    def get_repository_path(self):
+    def get_reference_path(self):
         return self.__class__._pypads_stored
 
     def _persistent_hash(self):
