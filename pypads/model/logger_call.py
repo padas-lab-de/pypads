@@ -59,6 +59,7 @@ class LoggerCallModel(IdBasedOntologyEntry):
     output: Optional[str] = ...  # reference to OutputModel of the logger
 
     is_a: HttpUrl = f"{ontology_uri}LoggerCall"
+    name: str = "Call"
 
     class Config:
         orm_mode = True
