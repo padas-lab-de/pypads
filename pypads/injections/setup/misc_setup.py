@@ -19,7 +19,7 @@ class DependencyTO(TrackedObject):
     """
 
     class DependencyModel(TrackedObjectModel):
-        uri: HttpUrl = f"{ontology_uri}env/Dependencies"
+        is_a: HttpUrl = f"{ontology_uri}env/Dependencies"
 
         dependencies: List[LibraryModel] = []
         pip_freeze: str = ...
@@ -91,7 +91,7 @@ class LoguruTO(TrackedObject):
     """
 
     class LoguruModel(TrackedObjectModel):
-        uri: HttpUrl = f"{ontology_uri}env/Logs"
+        is_a: HttpUrl = f"{ontology_uri}env/Logs"
 
         path: str = ...
 

@@ -16,7 +16,7 @@ class InputTO(TrackedObject):
     """
 
     class InputModel(TrackedObjectModel):
-        uri: HttpUrl = f"{ontology_uri}FunctionInput"
+        is_a: HttpUrl = f"{ontology_uri}FunctionInput"
 
         inputs: List[str] = []
 
@@ -87,7 +87,7 @@ class OutputTO(TrackedObject):
         return "inputs"
 
     class OutputModel(TrackedObjectModel):
-        uri: HttpUrl = f"{ontology_uri}FunctionOutput"
+        is_a: HttpUrl = f"{ontology_uri}FunctionOutput"
 
         output: str = ...  # Path to the output holding file
 

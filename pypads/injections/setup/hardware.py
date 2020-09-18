@@ -17,7 +17,7 @@ class HardwareTO(TrackedObject):
     """
 
     class HardwareModel(TrackedObjectModel):
-        uri: HttpUrl = f"{ontology_uri}env/hardware-information"
+        is_a: HttpUrl = f"{ontology_uri}env/hardware-information"
         name: str = "Hardware Info"
         tags: List[str] = []
 
