@@ -21,22 +21,22 @@ class ParametersTO(TrackedObject):
     class HyperParameterModel(TrackedObjectModel):
         uri: HttpUrl = f"{ontology_uri}ModelHyperparameter"
 
-        model: ContextModel = ...
+        ml_model: ContextModel = ...
         hyperparameters: List[str] = []
 
     def __init__(self, *args, tracked_by: LoggerCall, **kwargs):
         super().__init__(*args, tracked_by=tracked_by, **kwargs)
-        self.model = tracked_by._logging_env.call.call_id.context
+        self.ml_model = tracked_by._logging_env.call.call_id.context
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.HyperParameterModel
 
-    def _persist_parameter(self, key, value, description=None):
-        name = self.model.reference + "." + key
-        description = description or "Hyperparameter {} of context {}".format(name, self.model)
+    def _persist_parameter(self, key, value, param_type=None, description=None):
+        name = self.ml_model.reference + "." + key
+        description = description or "Hyperparameter {} of context {}".format(name, self.ml_model)
         self.hyperparameters.append(_to_param_meta_name(name))
-        self.store_param(name, value, description)
+        self.store_param(name, value, param_type=param_type, description=description)
 
 
 class ParametersILF(InjectionLogger):
@@ -79,7 +79,7 @@ class ParametersILF(InjectionLogger):
                             value = getattr(ctx, parameter["path"])
                             description = parameter.get('description', None)
                             type = parameter.get('kind_of_value', "")
-                            hyper_params._persist_parameter(key, value, description)
+                            hyper_params._persist_parameter(key, value, type, description)
                         else:
                             logger.warning("Couldn't access parameter " + key + " on " + str(ctx.__class__))
             else:
