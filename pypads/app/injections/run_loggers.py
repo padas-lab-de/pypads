@@ -52,7 +52,7 @@ class RunTeardown(RunLogger, metaclass=ABCMeta):
         return super().__real_call__(*args, **kwargs)
 
 
-class CleanUpFunction(FunctionHolderMixin, BaseDefensiveCallableMixin, OrderMixin):
+class SimpleRunFunction(FunctionHolderMixin, BaseDefensiveCallableMixin, OrderMixin):
     """
     This function doesn't represent an own logger and is used to cleanup the job of another logger.
     """

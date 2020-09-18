@@ -338,8 +338,8 @@ class PyPads:
             def set_config(*args, **kwargs):
                 mlflow.set_tag(CONFIG_NAME, value)
 
-            self.api.register_setup_fn("config_persist", "Function persisting the current pypads configuration.",
-                                       set_config, nested=False, intermediate=False)
+            #  Function persisting the current pypads configuration.
+            self.api.register_setup_utility("config_persist", set_config)
         self._cache.add("config", value)
 
     @property

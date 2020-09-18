@@ -156,4 +156,4 @@ class LoguruRSF(RunSetup):
                 pads.api.log_artifact(file, description="Logs of the current run", artifact_path=logs.path)
 
         logs.store(_logger_output, "logs")
-        _api.register_cleanup_fn("logger_" + str(lid), remove_logger)
+        _api.register_teardown_utility("logger_" + str(lid), remove_logger)

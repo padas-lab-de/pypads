@@ -256,7 +256,7 @@ class MultiInjectionLogger(InjectionLogger):
             from pypads.app.pypads import get_current_pads
             pads = get_current_pads()
             pads.cache.run_add(id(self), {'call': logger_call, 'output': output})
-            pads.api.register_cleanup_fn('{}_clean_up'.format(self.__class__.__name__), self.finalize_output)
+            pads.api.register_teardown_utility('{}_clean_up'.format(self.__class__.__name__), self.finalize_output)
         return _return
 
 
