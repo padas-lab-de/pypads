@@ -26,11 +26,11 @@ class PathAwareMixin(ModelObject, metaclass=ABCMeta):
         return os.path.join(self._parent_path, self.get_dir_extension())
 
     def get_dir_extension(self):
+        if hasattr(self, "name"):
+            return self.name
         if hasattr(self, "uri"):
             ext = self.uri.rsplit('/', 1)[-1]
             return os.sep.join(ext.rsplit('#', 1))
-        if hasattr(self, "name"):
-            return self.name
         return self.__class__.__name__
 
     def get_file_name(self):
