@@ -132,10 +132,10 @@ class TrackedObject(ProvenanceMixin, PathAwareMixin):
         return pads.api.log_metric(key, value, description=description, step=step, meta=meta)
 
     @staticmethod
-    def store_param(key, value, description="", meta: dict = None):
+    def store_param(key, value, param_type=None, description="", meta: dict = None):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
-        return pads.api.log_param(key, value, description=description, meta=meta)
+        return pads.api.log_param(key, value, value_format=param_type, description=description, meta=meta)
 
     @staticmethod
     def store_artifact(name, obj, write_format=FileFormats.text, description="", path=None, meta: dict = None):
