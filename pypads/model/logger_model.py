@@ -1,7 +1,6 @@
-import uuid
 from typing import List
 
-from pydantic import Field, HttpUrl
+from pydantic import HttpUrl
 
 from pypads.arguments import ontology_uri
 from pypads.model.domain import LibSelectorModel
@@ -13,7 +12,7 @@ class LoggerModel(OntologyEntry):
     A reference object for a logger.
     """
     name: str = "GenericTrackingFunction"
-    uid: uuid.UUID = Field(default_factory=uuid.uuid4)
+    uid: str = ...
     is_a: HttpUrl = f"{ontology_uri}logger"
     dependencies: List[LibSelectorModel] = {}
     supported_libraries: List[LibSelectorModel] = ...

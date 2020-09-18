@@ -40,6 +40,19 @@ class PathAwareMixin(ModelObject, metaclass=ABCMeta):
         """
         return str(self.uid) if hasattr(self, "uid") else str(id(self))
 
+    def get_reference_path(self):
+        """
+        Returns the path of the object for the currently active repository.
+        :return:
+        """
+        return self.to_reference_path(self.get_relative_path())
+
+    @staticmethod
+    def to_reference_path(rel_path):
+        from pypads.app.pypads import get_current_pads
+        run_info = get_current_pads().api.active_run().info
+        return os.path.join(run_info.experiment_id, run_info.run_id, "artifacts", rel_path)
+
 
 class ProvenanceMixin(ModelObject, metaclass=ABCMeta):
     """
