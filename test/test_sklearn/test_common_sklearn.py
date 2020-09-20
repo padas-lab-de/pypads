@@ -66,7 +66,6 @@ class CommonSklearnTest(BaseSklearnTest):
         tags = tracker.mlf.list_artifacts(run.info.run_id, path='../tags')
         assert 'pypads.system.processor' in ''.join([m.path for m in tags])
 
-        tracker.api.list_artifacts()
         tracker.api.end_run()
         # !-------------------------- asserts ---------------------------
 

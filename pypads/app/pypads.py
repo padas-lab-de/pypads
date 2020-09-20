@@ -10,6 +10,7 @@ from pypads.app.base import PyPads, CONFIG_NAME
 configs = {}
 current_pads = None
 
+
 # !--- Clean the config cache after run ---
 
 
@@ -18,24 +19,27 @@ def set_current_pads(pads: Union[None, PyPads]):
     current_pads = pads
 
 
-def get_current_pads() -> Union[None, PyPads]:
+def get_current_pads(init=False) -> Union[None, PyPads]:
     """
     Get the currently active pypads instance. All duck punched objects use this function for interacting with pypads.
     :return:
     """
     global current_pads
     if not current_pads:
-        # Try to reload pads if it was already defined in the active run
-        config = get_current_config()
+        if init:
+            # Try to reload pads if it was already defined in the active run
+            config = get_current_config()
 
-        if config:
-            logger.warning(
-                "PyPads seems to be missing on given run with saved configuration. Reinitializing.")
-            return PyPads(config=config)
+            if config:
+                logger.warning(
+                    "PyPads seems to be missing on given run with saved configuration. Reinitializing.")
+                return PyPads(config=config)
+            else:
+                logger.warning(
+                    "PyPads has to be initialized before it can be used. Initializing for your with default values.")
+                return PyPads()
         else:
-            logger.warning(
-                "PyPads has to be initialized before logging can be used. Initializing for your with default values.")
-            return PyPads()
+            logger.error("Pypads didn't get initialized and can't be used. Inititalize PyPads by creating an instance.")
     return current_pads
 
 
