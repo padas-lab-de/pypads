@@ -48,7 +48,7 @@ def print_timings(pads, *args, **kwargs):
         for i in range(1, v[0]):
             tabs += "\t"
         out += tabs + str(k) + ": " + str(v[1]) + "\n"
-    pads.api.log_mem_artifact("timings", out, write_format=FileFormats.text)
+    pads.api.log_mem_artifact("timings", out, write_format=FileFormats.json)
     pads.api.log_mem_artifact("loggers", get_logger_times(), write_format=FileFormats.text)
 
 

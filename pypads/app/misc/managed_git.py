@@ -56,7 +56,7 @@ class ManagedGit:
             path = os.getcwd()
             if pads:
                 from mlflow.utils.mlflow_tags import MLFLOW_SOURCE_NAME
-                pads.api.set_tag(MLFLOW_SOURCE_NAME, path)
+                pads.api.set_tag(path, MLFLOW_SOURCE_NAME)
         return path
 
     def _init_git_repo(self, path):

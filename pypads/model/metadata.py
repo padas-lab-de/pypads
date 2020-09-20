@@ -96,7 +96,7 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
                 schema_entity = schema_repo.get_object(uid=schema_hash)
                 schema_path = os.path.join(path, cls.get_model_cls().__name__ + "_schema")
                 schema_entity.log_mem_artifact(schema_path, schema, write_format=FileFormats.json)
-                schema_entity.set_tag("pypads.schema_name", schema["title"], "Name for the schema stored here.")
+                schema_entity.set_tag("pypads.schema_name", schema["title"])
 
             cls._schema_path = path
 

@@ -76,6 +76,6 @@ class STraceStop(RunTeardown):
             os.killpg(os.getpgid(self._proc.pid), signal.SIGTERM)
             self._proc.terminate()
         try:
-            pads.api.log_artifact(self._trace_file)
+            pads.api.log_artifact(self._trace_file, description="Strace of the experiment process.")
         except Exception as e:
             pass

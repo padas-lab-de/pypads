@@ -178,7 +178,8 @@ class TrackedObject(ProvenanceMixin, PathAwareMixin):
         :param json_path: path in the output schema
         :return:
         """
-        self.store_schema(path=os.path.join(path, self.get_relative_path()))
+        self.store_schema()
+        # self.store_schema(path=os.path.join(path, self.get_relative_path()))
         from pypads.app.pypads import get_current_pads
         get_current_pads().api.log_mem_artifact(os.path.join(path, self.get_relative_path()),
                                                 self.json(by_alias=True),
@@ -232,7 +233,8 @@ class LoggerOutput(ProvenanceMixin, PathAwareMixin):
         setattr(curr, key, reference)
 
     def store(self, path=""):
-        self.store_schema(path=os.path.join(path, self.get_relative_path()))
+        self.store_schema()
+        # self.store_schema(path=os.path.join(path, self.get_relative_path()))
         self.additional_data = dict_merge(*[e.data for e in self._envs])
         from pypads.app.pypads import get_current_pads
         return get_current_pads().api.log_mem_artifact(os.path.join(path, self.get_relative_path()),
@@ -312,7 +314,8 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
         self._cleanup_fns[call].append(fn)
 
     def store(self, path=""):
-        self.store_schema(path=os.path.join(path, self.get_relative_path()))
+        self.store_schema()
+        # self.store_schema(path=os.path.join(path, self.get_relative_path()))
 
         if not self.__class__._pypads_stored:
             from pypads.app.pypads import get_current_pads
@@ -321,7 +324,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
             # TODO get hash uid for logger
             if not logger_repo.has_object(uid=self.uid):
                 l = logger_repo.get_object(uid=self.uid)
-                self.__class__._pypads_stored = l.log_mem_artifact(os.path.join(path, self.get_relative_path()),
+                self.__class__._pypads_stored = l.log_mem_artifact(self.__class__.__name__,
                                                                    self.json(by_alias=True),
                                                                    write_format=FileFormats.json)
             else:

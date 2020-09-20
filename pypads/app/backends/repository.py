@@ -1,5 +1,7 @@
 import os
 
+from pypads.utils.logging_util import FileFormats
+
 repository_experiments = []
 
 
@@ -95,62 +97,48 @@ class RepositoryObject:
 
         if uid:
             self.set_tag("pypads_unique_uid", uid,
-                         "Unique id of the object. This might be a hash for a dataset or similar.")
+                         description="Unique id of the object. This might be a hash for a dataset or similar.")
 
-    def log_mem_artifact(self, *args, **kwargs):
+    def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", meta=None):
         """
         Activates the repository context and stores an artifact from memory into it.
-        :param args:
-        :param run_id: Id of the run to log into. If none is given a new one is created
-        :param kwargs:
         :return:
         """
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
-            return self.get_rel_artifact_path(self.pads.api.log_mem_artifact(*args, **kwargs))
+            return self.get_rel_artifact_path(
+                self.pads.api.log_mem_artifact(path, obj, write_format, description, meta))
 
-    def log_artifact(self, *args, **kwargs):
+    def log_artifact(self, local_path, description="", meta=None, artifact_path=None):
         """
         Activates the repository context and stores an artifact into it.
-        :param args:
-        :param run_id: Id of the run to log into. If none is given a new one is created
-        :param kwargs:
         :return:
         """
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
-            return self.get_rel_artifact_path(self.pads.api.log_artifact(*args, **kwargs))
+            return self.get_rel_artifact_path(self.pads.api.log_artifact(local_path, description, meta, artifact_path))
 
-    def log_param(self, *args, **kwargs):
+    def log_param(self, key, value, value_format=None, description="", meta: dict = None):
         """
         Activates the repository context and stores an parameter into it.
-        :param args:
-        :param run_id: Id of the run to log into. If none is given a new one is created
-        :param kwargs:
         :return:
         """
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
-            return self.get_rel_artifact_path(self.pads.api.log_param(*args, **kwargs))
+            return self.get_rel_artifact_path(self.pads.api.log_param(key, value, value_format, description, meta))
 
-    def log_metric(self, *args, **kwargs):
+    def log_metric(self, key, value, description="", step=None, meta: dict = None):
         """
         Activates the repository context and stores an metric into it.
-        :param args:
-        :param run_id: Id of the run to log into. If none is given a new one is created
-        :param kwargs:
         :return:
         """
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
-            return self.get_rel_artifact_path(self.pads.api.log_metric(*args, **kwargs))
+            return self.get_rel_artifact_path(self.pads.api.log_metric(self, key, value, description, step, meta))
 
-    def set_tag(self, *args, **kwargs):
+    def set_tag(self, key, value, value_format="string", description="", meta: dict = None):
         """
         Activates the repository context and stores an tag into it.
-        :param args:
-        :param run_id: Id of the run to log into. If none is given a new one is created
-        :param kwargs:
         :return:
         """
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
-            return self.get_rel_artifact_path(self.pads.api.set_tag(*args, **kwargs))
+            return self.get_rel_artifact_path(self.pads.api.set_tag(key, value, value_format, description, meta))
 
     def get_rel_base_path(self):
         return os.path.join(self.repository.id, self.run_id)

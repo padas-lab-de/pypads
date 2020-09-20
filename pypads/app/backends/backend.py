@@ -5,8 +5,7 @@ from typing import List
 from mlflow.entities import ViewType
 from mlflow.tracking.fluent import SEARCH_MAX_RESULTS_PANDAS
 
-from pypads.model.storage import MetricMetaModel, ParameterMetaModel, TagMetaModel, FileInfo, ArtifactInfo, \
-    ArtifactMetaModel
+from pypads.model.storage import FileInfo, ArtifactInfo
 from pypads.utils.logging_util import get_temp_folder, read_artifact, _to_artifact_meta_name, _to_metric_meta_name, \
     _to_param_meta_name, FileFormats
 
@@ -37,19 +36,19 @@ class BackendInterface:
         raise NotImplementedError("")
 
     @abstractmethod
-    def log_mem_artifact(self, artifact, meta: ArtifactMetaModel, preserveFolder=True):
+    def log_mem_artifact(self, path: str, artifact, write_format, preserveFolder=True):
         raise NotImplementedError("")
 
     @abstractmethod
-    def log_metric(self, metric, meta: MetricMetaModel):
+    def log_metric(self, name, metric, step):
         raise NotImplementedError("")
 
     @abstractmethod
-    def log_parameter(self, parameter, meta: ParameterMetaModel):
+    def log_parameter(self, name, parameter):
         raise NotImplementedError("")
 
     @abstractmethod
-    def set_tag(self, tag, meta: TagMetaModel):
+    def set_tag(self, key, value):
         raise NotImplementedError("")
 
     @abstractmethod
@@ -183,7 +182,8 @@ class BackendInterface:
         :param path:
         :return:
         """
-        return [a for a in self.list_files(run_id, path=path) if not str(a.path).endswith("meta.yaml")]
+        return [a for a in self.list_files(run_id, path=path) if
+                not str(a.path).endswith("meta." + FileFormats.json.value)]
 
     def list_artifacts(self, run_id, path=None):
         """
@@ -194,7 +194,7 @@ class BackendInterface:
         """
         artifacts = self.list_non_meta_files(run_id, path=path)
         return [ArtifactInfo.construct(file_size=a.file_size,
-                                       meta=self.get_artifact(run_id=run_id, path=a.path))
+                                       meta=self.get_artifact_meta(run_id=run_id, relative_path=a.path))
                 for a in artifacts if not a.is_dir]
 
     @abstractmethod

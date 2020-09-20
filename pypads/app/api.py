@@ -170,14 +170,14 @@ class PyPadsApi(IApi):
         :param description: Description of the artifact.
         :param artifact_path: Path where to store the artifact
         :param local_path: Path of the artifact to log
-        :param meta: Meta information you want to store about the artifact. This is an extension by pypads creating a
+        :param meta: Additional meta information you want to store about the artifact. This is an extension by pypads creating a
         json containing some meta information.
         :return:
         """
-        meta_model = ArtifactMetaModel(path=os.path.basename(local_path), description=description,
+        meta_model = ArtifactMetaModel(path=self.pypads.backend.log_artifact(local_path, artifact_path=artifact_path),
+                                       description=description,
                                        file_format=find_file_format(local_path), additional_data=meta)
-        self.pypads.backend.log_artifact(local_path, artifact_path=artifact_path, meta=meta_model)
-        return self._log_artifact_meta(os.path.basename(local_path), meta)
+        return self._log_artifact_meta(os.path.basename(local_path), meta_model)
 
     @cmd
     def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", meta=None):
@@ -191,9 +191,9 @@ class PyPadsApi(IApi):
         json containing some meta information.
         :return:
         """
-        meta_model = ArtifactMetaModel(path=path, description=description, file_format=write_format,
+        meta_model = ArtifactMetaModel(path=self.pypads.backend.log_mem_artifact(path, obj, write_format),
+                                       description=description, file_format=write_format,
                                        additional_data=meta)
-        self.pypads.backend.log_mem_artifact(obj, meta_model)
         return self._log_artifact_meta(path, meta_model)
 
     def _log_artifact_meta(self, name, meta=None):
@@ -211,8 +211,8 @@ class PyPadsApi(IApi):
         json containing some meta information.
         :return:
         """
-        meta_model = MetricMetaModel(name=key, step=step, description="", additional_data=meta)
-        self.pypads.backend.log_metric(value, meta=meta_model)
+        meta_model = MetricMetaModel(name=key, step=step, description=description, additional_data=meta)
+        self.pypads.backend.log_metric(name=key, metric=value, step=step)
         return self._log_metric_meta(key, meta_model)
 
     def _log_metric_meta(self, key, meta=None):
@@ -232,7 +232,7 @@ class PyPadsApi(IApi):
         """
         meta_model = ParameterMetaModel(name=key, value_format=value_format or str(type(value)),
                                         description=description, additional_data=meta)
-        self.pypads.backend.log_parameter(value, meta=meta_model)
+        self.pypads.backend.log_parameter(name=meta_model.name, parameter=value)
         return self._log_param_meta(key, meta_model)
 
     def _log_param_meta(self, key, meta):
@@ -251,7 +251,7 @@ class PyPadsApi(IApi):
         :return:
         """
         meta_model = TagMetaModel(name=key, description=description, value_format=value_format, additional_data=meta)
-        self.pypads.backend.set_tag(value, meta=meta_model)
+        self.pypads.backend.set_tag(key=meta_model.name, value=value)
         return self._log_tag_meta(key, meta_model)
 
     def _log_tag_meta(self, key, meta):
@@ -264,10 +264,8 @@ class PyPadsApi(IApi):
         :param meta: Metainformation to store
         :return:
         """
-        return self.pypads.backend.log_mem_artifact(meta.json(by_alias=True),
-                                                    ArtifactMetaModel(description="This is a dummy",
-                                                                      path=name + ".meta",
-                                                                      file_format=write_format))
+        return self.pypads.backend.log_mem_artifact(name + ".meta",
+                                                    meta.json(by_alias=True), write_format=write_format)
 
     def _read_meta(self, name, read_format=FileFormats.json):
         """
@@ -611,8 +609,8 @@ class PyPadsApi(IApi):
                         artifacts.extend(self.pypads.api.list_artifacts(run_id=run_id, path=os.path.join(c.path, "*")))
                     else:
                         artifacts.append(ArtifactInfo(file_size=c.file_size,
-                                                      meta=self.pypads.backend.get_artifact(run_id=run_id,
-                                                                                            path=c.path)))
+                                                      meta=self.pypads.backend.get_artifact_meta(run_id=run_id,
+                                                                                                 relative_path=c.path)))
                 return artifacts
 
             # Get a certain run

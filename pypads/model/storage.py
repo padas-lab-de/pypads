@@ -41,7 +41,6 @@ class FileInfo:
 
 class MetricInfo(BaseModel):
     meta: MetricMetaModel = ...
-    file_size: int = ...
     # value = ...  # TODO load on access?
 
 
@@ -52,6 +51,7 @@ class ParameterInfo(BaseModel):
 
 class ArtifactInfo(BaseModel):
     meta: ArtifactMetaModel = ...
+    file_size: int = ...
     # content = ...  # TODO load on access?
 
 
