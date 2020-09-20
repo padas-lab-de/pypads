@@ -8,7 +8,7 @@ __pycache__/
 *.so
 
 # Peotry
-poetry.lock
+# poetry.lock
 
 # Distribution / packaging
 .Python

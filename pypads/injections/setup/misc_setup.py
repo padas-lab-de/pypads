@@ -5,7 +5,7 @@ from pydantic import HttpUrl, BaseModel
 
 from pypads import logger
 from pypads.app.env import LoggerEnv
-from pypads.app.injections.base_logger import LoggerCall, TrackedObject, LoggerOutput
+from pypads.app.injections.base_logger import TrackedObject, LoggerOutput
 from pypads.app.injections.run_loggers import RunSetup
 from pypads.arguments import ontology_uri
 from pypads.model.domain import LibraryModel
@@ -34,10 +34,12 @@ class DependencyTO(TrackedObject):
     def __init__(self, *args, part_of: LoggerOutput, **kwargs):
         super().__init__(*args, part_of=part_of, **kwargs)
 
-    def _add_dependency(self, pip_freeze):
+    def add_dependency(self, pip_freeze):
         for item in pip_freeze:
-            name, version = item.split('==')
-            self.dependencies.append(LibraryModel(name=name, version=version))
+            splits = item.split('==')
+            if len(splits) == 2:
+                name, version = splits
+                self.dependencies.append(LibraryModel(name=name, version=version))
         self.pip_freeze = self.store_artifact(self.get_artifact_path("pip_freeze"), "\n".join(pip_freeze),
                                               write_format=FileFormats.text,
                                               description="dependency list from pip freeze")
@@ -78,7 +80,7 @@ class DependencyRSF(RunSetup):
             except ImportError:  # pip < 10.0
                 # noinspection PyUnresolvedReferences,PyPackageRequirements
                 from pip.operations import freeze
-            dependencies._add_dependency(list(freeze.freeze()))
+            dependencies.add_dependency(list(freeze.freeze()))
         except Exception as e:
             _logger_output.set_failure_state(e)
         finally:

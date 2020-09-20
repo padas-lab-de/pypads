@@ -1,3 +1,4 @@
+import time
 import traceback
 from abc import abstractmethod, ABCMeta
 from typing import List, Union, Tuple, Set
@@ -151,6 +152,13 @@ class IntermediateCallableMixin(CallableMixin):
         return self._intermediate
 
 
+def timed(f):
+    start = time.time()
+    ret = f()
+    elapsed = time.time() - start
+    return ret, elapsed
+
+
 class TimedCallableMixin(CallableMixin):
     __metaclass__ = ABCMeta
     """
@@ -163,7 +171,6 @@ class TimedCallableMixin(CallableMixin):
 
     def __call__(self, *args, **kwargs):
         c = super().__call__
-        from pypads.injections.analysis.time_keeper import timed
         _return, time = timed(lambda: c(*args, **kwargs))
         return _return, time
 
@@ -271,5 +278,7 @@ class BaseDefensiveCallableMixin(DefensiveCallableMixin):
         super().__init__(*args, **kwargs)
 
     def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
-        logger.warning(self._message.format("{}.{}".format(self.__class__.__name__, self.__name__), str(error),
+        logger.warning(self._message.format("{}.{}".format(self.__class__.__name__, self.__name__)
+                                            if hasattr(self, "__name__") else self.__class__.__name__,
+                                            str(error),
                                             traceback.format_exc()))

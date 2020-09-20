@@ -14,7 +14,6 @@ from pypads.app.misc.mixins import DependencyMixin, DefensiveCallableMixin, Time
     FunctionHolderMixin, BaseDefensiveCallableMixin
 from pypads.arguments import ontology_uri
 from pypads.importext.versioning import LibSelector
-from pypads.injections.analysis.time_keeper import TimingDefined
 from pypads.model.logger_call import LoggerCallModel
 from pypads.model.logger_model import LoggerModel
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
@@ -64,10 +63,6 @@ class LoggerExecutor(DefensiveCallableMixin, FunctionHolderMixin, TimedCallableM
         """
         try:
             raise error
-        except TimingDefined:
-
-            # Ignore if due to timing defined
-            pass
         except NotImplementedError:
 
             # Ignore if only pre or post where defined

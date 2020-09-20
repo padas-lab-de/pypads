@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from functools import wraps
 from typing import List, Iterable, Union
 
+import jsonpath_rw_ext
 import mlflow
 from mlflow.entities import ViewType
 
@@ -616,7 +617,16 @@ class PyPadsApi(IApi):
             # Get a certain run
             return self.pypads.backend.list_artifacts(run_id=run_id, path=path)
 
-    # @cmd
+    @cmd
+    def search_artifacts_json_path(self, experiment_id=None, run_id=None, path: str = None, view_type=ViewType.ALL,
+                                   search=""):
+        """
+        Searches in meta information of the artifacts.
+        :return:
+        """
+        return [a for a in self.list_artifacts(experiment_id, run_id, path, view_type) if
+                jsonpath_rw_ext.match(search, a.meta)]
+
     # def search_artifacts(self, experiment_id=None, run_id=None, search: str = None):
     #     # TODO REWORK ME
     #     if experiment_id is not None:
