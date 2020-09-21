@@ -39,7 +39,8 @@ def get_current_pads(init=False) -> Union[None, PyPads]:
                     "PyPads has to be initialized before it can be used. Initializing for your with default values.")
                 return PyPads()
         else:
-            logger.error("Pypads didn't get initialized and can't be used. Inititalize PyPads by creating an instance.")
+            raise Exception(
+                "Pypads didn't get initialized and can't be used. Inititalize PyPads by creating an instance.")
     return current_pads
 
 

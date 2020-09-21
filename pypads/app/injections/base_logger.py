@@ -106,7 +106,8 @@ class LoggerCall(ProvenanceMixin, PathAwareMixin):
     def store(self, path=""):
         from pypads.app.pypads import get_current_pads
         from pypads.utils.logging_util import FileFormats
-        get_current_pads().api.log_mem_artifact(os.path.join(path, self.get_relative_path()), self.json(by_alias=True),
+        get_current_pads().api.log_mem_artifact(os.path.join(path, self.get_relative_path()),
+                                                self.json(by_alias=True),
                                                 FileFormats.json.value)
 
 
@@ -138,8 +139,7 @@ class TrackedObject(ProvenanceMixin, PathAwareMixin):
         pads = get_current_pads()
         return pads.api.log_param(key, value, value_format=param_type, description=description, meta=meta)
 
-    @staticmethod
-    def store_artifact(name, obj, write_format=FileFormats.text, description="", path=None, meta: dict = None):
+    def store_artifact(self, name, obj, write_format=FileFormats.text, description="", path=None, meta: dict = None):
         from pypads.app.pypads import get_current_pads
         return get_current_pads().api.log_mem_artifact(name, obj, write_format=write_format, description=description,
                                                        meta=meta)

@@ -7,7 +7,7 @@ from mlflow.tracking.fluent import SEARCH_MAX_RESULTS_PANDAS
 
 from pypads.model.storage import FileInfo, ArtifactInfo
 from pypads.utils.logging_util import get_temp_folder, read_artifact, _to_artifact_meta_name, _to_metric_meta_name, \
-    _to_param_meta_name, FileFormats
+    _to_param_meta_name, FileFormats, _to_tag_meta_name
 
 
 class BackendInterface:
@@ -140,7 +140,7 @@ class BackendInterface:
         :return:
         """
         return self.get_artifact(run_id, _to_metric_meta_name(
-            relative_path.rsplit(".", 1)[0]) + ".meta." + read_format.value)
+            relative_path) + ".meta." + read_format.value)
 
     def get_parameter_meta(self, run_id, relative_path, read_format: FileFormats = FileFormats.json):
         """
@@ -151,7 +151,18 @@ class BackendInterface:
         :return:
         """
         return self.get_artifact(run_id, _to_param_meta_name(
-            relative_path.rsplit(".", 1)[0]) + ".meta." + read_format.value)
+            relative_path) + ".meta." + read_format.value)
+
+    def get_tag_meta(self, run_id, relative_path, read_format: FileFormats = FileFormats.json):
+        """
+        Gets the as artifact stored meta information about the in relative_path defined tag
+        :param read_format:
+        :param run_id:
+        :param relative_path:
+        :return:
+        """
+        return self.get_artifact(run_id, _to_tag_meta_name(
+            relative_path) + ".meta." + read_format.value)
 
     def download_tmp_artifacts(self, run_id, relative_path):
         """
@@ -185,7 +196,7 @@ class BackendInterface:
         return [a for a in self.list_files(run_id, path=path) if
                 not str(a.path).endswith("meta." + FileFormats.json.value)]
 
-    def list_artifacts(self, run_id, path=None):
+    def list_artifacts(self, run_id, path=None) -> List[ArtifactInfo]:
         """
         This lists artifacts including their meta information.
         :param run_id:

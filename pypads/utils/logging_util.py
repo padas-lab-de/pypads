@@ -98,6 +98,8 @@ def read_pickle(p):
     try:
         with open(p, "rb") as fd:
             return pickle.load(fd)
+    except FileNotFoundError:
+        return None
     except Exception as e:
         logger.warning("Couldn't read pickle file. " + str(e))
 
@@ -106,6 +108,8 @@ def read_yaml(p):
     try:
         with open(p, "r") as fd:
             return yaml.full_load(fd)
+    except FileNotFoundError:
+        return None
     except Exception as e:
         logger.warning("Couldn't read artifact as yaml. Trying to read it as text instead. " + str(e))
         return read_text(p)
@@ -115,6 +119,8 @@ def read_json(p):
     try:
         with open(p, "r") as fd:
             return json.load(fd)
+    except FileNotFoundError:
+        return None
     except Exception as e:
         logger.warning("Couldn't read artifact as json. Trying to read it as text instead. " + str(e))
         return read_text(p)
@@ -183,8 +189,7 @@ def read_artifact(path, read_format: FileFormats = None):
     try:
         data = readers[read_format](path)
     except Exception as e:
-        logger.warning("Reading artifact failed for '" + path + "'. " + str(e))
-        data = "Cannot view content"
+        data = None
     return data
 
 

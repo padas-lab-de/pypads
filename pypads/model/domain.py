@@ -1,5 +1,4 @@
 import time
-import uuid
 from typing import Optional
 
 from pydantic import BaseModel, Field, HttpUrl, root_validator
@@ -63,5 +62,4 @@ class RunObjectModel(BaseModel):
     """
     experiment_id: Optional[str] = Field(default_factory=get_experiment_id)
     run_id: Optional[str] = Field(default_factory=get_run_id)
-    uid: uuid.UUID = Field(default_factory=uuid.uuid4)
     created_at: float = Field(default_factory=time.time)

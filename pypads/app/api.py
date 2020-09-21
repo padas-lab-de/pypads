@@ -19,7 +19,8 @@ from pypads.arguments import ontology_uri
 from pypads.bindings.anchors import get_anchor, Anchor
 from pypads.importext.mappings import Mapping, MatchedMapping, make_run_time_mapping_collection
 from pypads.importext.package_path import PackagePathMatcher, PackagePath
-from pypads.model.storage import MetricMetaModel, ParameterMetaModel, ArtifactMetaModel, TagMetaModel, ArtifactInfo
+from pypads.model.storage import MetricMetaModel, ParameterMetaModel, ArtifactMetaModel, TagMetaModel, ArtifactInfo, \
+    TagInfo, ParameterInfo, MetricInfo
 from pypads.utils.logging_util import get_temp_folder, \
     _to_artifact_meta_name, _to_metric_meta_name, _to_param_meta_name, FileFormats, read_artifact, _to_tag_meta_name, \
     find_file_format
@@ -168,6 +169,7 @@ class PyPadsApi(IApi):
         """
         Function to log an artifact on local disk. This artifact is transferred into the context of mlflow.
         The context might be a local repository, sftp etc.
+        :param type: If artifact needs to be logged with a special pypads type meta information.
         :param description: Description of the artifact.
         :param artifact_path: Path where to store the artifact
         :param local_path: Path of the artifact to log
@@ -176,14 +178,15 @@ class PyPadsApi(IApi):
         :return:
         """
         meta_model = ArtifactMetaModel(path=self.pypads.backend.log_artifact(local_path, artifact_path=artifact_path),
-                                       description=description,
-                                       file_format=find_file_format(local_path), additional_data=meta)
+                                       description=description, file_format=find_file_format(local_path),
+                                       additional_data=meta)
         return self._log_artifact_meta(os.path.basename(local_path), meta_model)
 
     @cmd
     def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", meta=None):
         """
         See log_artifact. This logs directly from memory by storing the memory to a temporary file.
+        :param type: If artifact needs to be logged with a special pypads type meta information.
         :param description: Description of the artifact.
         :param path: path of the new file to create.
         :param obj: Object you want to store
@@ -519,10 +522,10 @@ class PyPadsApi(IApi):
         """
         run = self.active_run()
 
-        consolidated_dict = self.pypads.cache.get('consolidated_dict', None)
-        if consolidated_dict is not None:
-            # Dump data to disk
-            self.log_mem_artifact("consolidated_log", consolidated_dict, write_format=FileFormats.json)
+        # consolidated_dict = self.pypads.cache.get('consolidated_dict', None)
+        # if consolidated_dict is not None:
+        #     # Dump data to disk
+        #     self.log_mem_artifact("consolidated_log", consolidated_dict, write_format=FileFormats.json)
 
         chached_fns = self._get_teardown_cache()
         fn_list = [v for i, v in chached_fns.items()]
@@ -553,10 +556,6 @@ class PyPadsApi(IApi):
         return self.pypads.backend.get_run(run_id)
 
     @cmd
-    def _get_metric_history(self, run):
-        return {key: self.pypads.backend.get_metric_history(run.info.run_id, key) for key in run.data.metrics}
-
-    @cmd
     def list_experiments(self, view_type: ViewType = ViewType.ALL):
         return self.pypads.backend.list_experiments(view_type)
 
@@ -565,35 +564,114 @@ class PyPadsApi(IApi):
         return self.pypads.backend.list_run_infos(experiment_id=experiment_id, run_view_type=run_view_type)
 
     @cmd
-    def list_metrics(self, run_id=None):
-        run = self.get_run(run_id)
-        return self._get_metric_history(run)
-
-    @cmd
-    def list_parameters(self, run_id=None):
-        run = self.get_run(run_id)
-        return run.data.params
-
-    @cmd
-    def list_tags(self, run_id=None):
-        run = self.get_run(run_id)
-        return run.data.tags
-
-    @cmd
-    def list_artifacts(self, experiment_id=None, run_id=None, path: str = None, view_type=ViewType.ALL):
+    def get_metrics(self, experiment_id=None, run_id=None, name: str = None, view_type=ViewType.ALL, history=False):
         if run_id is None:
+            # Get all experiments
+            if experiment_id is None:
+                experiments = self.pypads.backend.list_experiments(view_type=view_type)
+                return [metric for experiment in experiments for metric in
+                        self.get_metrics(experiment_id=experiment.experiment_id, name=name, view_type=view_type,
+                                         history=history) if
+                        experiment.experiment_id not in repository_experiments]
 
+            # Get all runs
+            run_infos = self.pypads.backend.list_run_infos(experiment_id=experiment_id, run_view_type=view_type)
+            return [metric for run_info in run_infos for metric in
+                    self.get_metrics(run_id=run_info.run_id, name=name, view_type=view_type, history=history)]
+        if not name:
+            run = self.get_run(run_id)
+            return [
+                MetricInfo(meta=self.pypads.backend.get_metric_meta(run_id=run.info.run_id, relative_path=name),
+                           content=run.data.metrics[name] if not history else self.pypads.backend.get_metric_history(
+                               run.info.run_id, name)) for name in iter(run.data.metrics.keys())]
+        run = self.get_run(run_id)
+        if name in run.data.metrics:
+            return [MetricInfo(meta=self.pypads.backend.get_metric_meta(run_id=run.info.run_id, relative_path=name),
+                               content=run.data.metrics[
+                                   name] if not history else self.pypads.backend.get_metric_history(
+                                   run.info.run_id, name))]
+        return []
+
+    @cmd
+    def get_parameters(self, experiment_id=None, run_id=None, name: str = None, view_type=ViewType.ALL):
+        if run_id is None:
+            # Get all experiments
+            if experiment_id is None:
+                experiments = self.pypads.backend.list_experiments(view_type=view_type)
+                return [parameter for experiment in experiments for parameter in
+                        self.get_parameters(experiment_id=experiment.experiment_id, name=name) if
+                        experiment.experiment_id not in repository_experiments]
+
+            # Get all runs
+            run_infos = self.pypads.backend.list_run_infos(experiment_id=experiment_id, run_view_type=view_type)
+            return [parameter for run_info in run_infos for parameter in
+                    self.get_parameters(run_id=run_info.run_id, name=name)]
+        if not name:
+            run = self.get_run(run_id)
+            return [
+                ParameterInfo(meta=self.pypads.backend.get_parameter_meta(run_id=run.info.run_id, relative_path=name),
+                              content=run.data.params[name]) for name in run.data.params.keys()]
+        run = self.get_run(run_id)
+
+        if name in run.data.params:
+            return [
+                ParameterInfo(meta=self.pypads.backend.get_parameter_meta(run_id=run.info.run_id, relative_path=name),
+                              content=run.data.params[name])]
+        return []
+
+    @cmd
+    def get_tags(self, experiment_id=None, run_id=None, name: str = None, view_type=ViewType.ALL):
+        if run_id is None:
+            # Get all experiments
+            if experiment_id is None:
+                experiments = self.pypads.backend.list_experiments(view_type=view_type)
+                return [tag for experiment in experiments for tag in
+                        self.get_tags(experiment_id=experiment.experiment_id, name=name) if
+                        experiment.experiment_id not in repository_experiments]
+
+            # Get all runs
+            run_infos = self.pypads.backend.list_run_infos(experiment_id=experiment_id, run_view_type=view_type)
+            return [tag for run_info in run_infos for tag in
+                    self.get_tags(run_id=run_info.run_id, name=name)]
+        if not name:
+            run = self.get_run(run_id)
+            tags = []
+            for name in iter(run.data.tags.keys()):
+                tag_meta = self.pypads.backend.get_tag_meta(run_id=run.info.run_id, relative_path=name)
+                if tag_meta:
+                    tags.append(
+                        TagInfo(meta=tag_meta,
+                                content=run.data.tags[name]))
+            return tags
+
+        run = self.get_run(run_id)
+        if name in run.data.tags:
+            return [TagInfo(meta=self.pypads.backend.get_tag_meta(run_id=run.info.run_id, relative_path=name),
+                            content=run.data.tags[name])]
+        return []
+
+    @cmd
+    def load_artifact(self, relative_path, run_id=None, read_format: FileFormats = None):
+        if not run_id:
+            run_id = self.pypads.api.active_run().info.run_id
+        return read_artifact(
+            self.pypads.backend.download_tmp_artifacts(run_id=run_id, relative_path=relative_path),
+            read_format=read_format)
+
+    @cmd
+    def get_artifacts(self, experiment_id=None, run_id=None, path: str = None, view_type=ViewType.ALL):
+        if run_id is None:
             # Get all experiments
             if experiment_id is None:
                 experiments = self.pypads.backend.list_experiments(view_type=view_type)
                 return [artifact for experiment in experiments for artifact in
-                        self.list_artifacts(experiment_id=experiment.experiment_id, path=path) if
+                        self.get_artifacts(experiment_id=experiment.experiment_id, path=path) if
                         experiment.experiment_id not in repository_experiments]
 
             # Get all runs
             run_infos = self.pypads.backend.list_run_infos(experiment_id=experiment_id, run_view_type=view_type)
             return [artifact for run_info in run_infos for artifact in
-                    self.list_artifacts(run_id=run_info.run_id, path=path)]
+                    self.get_artifacts(run_id=run_info.run_id, path=path)]
         else:
 
             # Check for searching all artifacts
@@ -607,7 +685,7 @@ class PyPadsApi(IApi):
                 artifacts = []
                 for c in current:
                     if c.is_dir:
-                        artifacts.extend(self.pypads.api.list_artifacts(run_id=run_id, path=os.path.join(c.path, "*")))
+                        artifacts.extend(self.pypads.api.get_artifacts(run_id=run_id, path=os.path.join(c.path, "*")))
                     else:
                         artifacts.append(ArtifactInfo(file_size=c.file_size,
                                                       meta=self.pypads.backend.get_artifact_meta(run_id=run_id,
@@ -624,8 +702,8 @@ class PyPadsApi(IApi):
         Searches in meta information of the artifacts.
         :return:
         """
-        return [a for a in self.list_artifacts(experiment_id, run_id, path, view_type) if
-                jsonpath_rw_ext.match(search, a.meta)]
+        return [a for a in [r.dict() for r in self.get_artifacts(experiment_id, run_id, path, view_type)] if
+                len(jsonpath_rw_ext.match(search, a.meta)) > 0]
 
     # def search_artifacts(self, experiment_id=None, run_id=None, search: str = None):
     #     # TODO REWORK ME
@@ -641,14 +719,14 @@ class PyPadsApi(IApi):
     #         run = self.get_run(run_id)
     #         path = run.info.artifact_uri
     #         return get_paths(path, search=search)
-    #
-    # @cmd
-    # def list_logger_calls(self, run_id=None):
-    #     # TODO REWORK ME
-    #     run = self.get_run(run_id)
-    #     path = run.info.artifact_uri
-    #     return get_artifacts(path, search="Calls")
-    #
+
+    @cmd
+    def list_logger_calls(self, run_id=None):
+        # TODO REWORK ME
+        run = self.get_run(run_id)
+        path = run.info.artifact_uri
+        return self.search_artifacts_json_path(path, search="$[?(@.meta.type == 'LoggerCall')]")
+
     # @cmd
     # def list_tracked_objects(self, run_id):
     #     # TODO REWORK ME

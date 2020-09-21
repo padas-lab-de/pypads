@@ -72,7 +72,7 @@ class OntologyEntry(BaseModel):
     Object representing an (potential) entry in a knowledge base
     """
     uri: HttpUrl = ...
-    context: Union[List[str], str] = Field(alias='@context', default=None)
+    context: Union[List[Union[str, dict]], str, dict] = Field(alias='@context', default=None)
 
     @root_validator
     def add_context(cls, values):

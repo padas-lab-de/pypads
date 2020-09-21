@@ -83,21 +83,34 @@ class RepositoryObject:
         from pypads.app.pypads import get_current_pads
         self.pads = get_current_pads()
         self._name = name
+        self._run = None
 
-        self.run_id = run_id
+        # UID is given. Check for existence.
         if uid:
             runs = self.pads.backend.search_runs(experiment_ids=self.repository.id,
                                                  filter_string="tags.`pypads_unique_uid` = \"" + str(uid) + "\"")
+
+            # If exists set the run_id to the existing one instead
             if len(runs) > 0:
                 # TODO is this correct? Mlflow returns a dataframe
-                self.run_id = runs.iloc[0][0]
+                self._run = self.pads.api.get_run(run_id=runs.iloc[0][0])
 
-        if self.run_id is None:
-            self.run_id = self.pads.backend.create_run(experiment_id=self.repository.id).info.run_id
+        # If no run_id was found with uid create a new run and get its id
+        if self.run is None:
+            if run_id is None:
+                # If a uid is given and the tag for the run is not set already set it
+                self._run = self.pads.backend.create_run(experiment_id=self.repository.id,
+                                                         tags={"pypads_unique_uid": uid} if uid else None)
+            else:
+                self._run = self.pads.api.get_run(run_id=run_id)
 
-        if uid:
-            self.set_tag("pypads_unique_uid", uid,
-                         description="Unique id of the object. This might be a hash for a dataset or similar.")
+    @property
+    def run(self):
+        return self._run
+
+    @property
+    def run_id(self):
+        return self.run.info.run_id
 
     def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", meta=None):
         """
@@ -106,7 +119,7 @@ class RepositoryObject:
         """
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
             return self.get_rel_artifact_path(
-                self.pads.api.log_mem_artifact(path, obj, write_format, description, meta))
+                self.pads.api.log_mem_artifact(path, obj, write_format, description=description, meta=meta))
 
     def log_artifact(self, local_path, description="", meta=None, artifact_path=None):
         """
@@ -114,7 +127,8 @@ class RepositoryObject:
         :return:
         """
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
-            return self.get_rel_artifact_path(self.pads.api.log_artifact(local_path, description, meta, artifact_path))
+            return self.get_rel_artifact_path(
+                self.pads.api.log_artifact(local_path, description, meta, artifact_path))
 
     def log_param(self, key, value, value_format=None, description="", meta: dict = None):
         """
