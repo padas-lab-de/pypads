@@ -183,7 +183,7 @@ class PyPadsApi(IApi):
         return self._log_artifact_meta(os.path.basename(local_path), meta_model)
 
     @cmd
-    def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", meta=None):
+    def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", meta=None, write_meta=True):
         """
         See log_artifact. This logs directly from memory by storing the memory to a temporary file.
         :param type: If artifact needs to be logged with a special pypads type meta information.
@@ -195,6 +195,8 @@ class PyPadsApi(IApi):
         json containing some meta information.
         :return:
         """
+        if not write_meta:
+            return self.pypads.backend.log_mem_artifact(path, obj, write_format)
         meta_model = ArtifactMetaModel(path=self.pypads.backend.log_mem_artifact(path, obj, write_format),
                                        description=description, file_format=write_format,
                                        additional_data=meta)
