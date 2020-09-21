@@ -112,23 +112,25 @@ class RepositoryObject:
     def run_id(self):
         return self.run.info.run_id
 
-    def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", meta=None):
+    def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", artifact_type=None, meta=None):
         """
         Activates the repository context and stores an artifact from memory into it.
         :return:
         """
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
             return self.get_rel_artifact_path(
-                self.pads.api.log_mem_artifact(path, obj, write_format, description=description, meta=meta))
+                self.pads.api.log_mem_artifact(path=path, obj=obj, write_format=write_format, description=description,
+                                               artifact_type=artifact_type, meta=meta))
 
-    def log_artifact(self, local_path, description="", meta=None, artifact_path=None):
+    def log_artifact(self, local_path, description="", meta=None, artifact_type=None, artifact_path=None):
         """
         Activates the repository context and stores an artifact into it.
         :return:
         """
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
             return self.get_rel_artifact_path(
-                self.pads.api.log_artifact(local_path, description, meta, artifact_path))
+                self.pads.api.log_artifact(local_path=local_path, description=description, meta=meta,
+                                           artifact_type=artifact_type, artifact_path=artifact_path))
 
     def log_param(self, key, value, value_format=None, description="", meta: dict = None):
         """

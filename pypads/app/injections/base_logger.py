@@ -106,9 +106,9 @@ class LoggerCall(ProvenanceMixin, PathAwareMixin):
     def store(self, path=""):
         from pypads.app.pypads import get_current_pads
         from pypads.utils.logging_util import FileFormats
-        get_current_pads().api.log_mem_artifact(os.path.join(path, self.get_relative_path()),
-                                                self.json(by_alias=True),
-                                                FileFormats.json.value)
+        get_current_pads().api.log_mem_artifact(path=os.path.join(path, self.get_relative_path()),
+                                                obj=self.json(by_alias=True),
+                                                write_format=FileFormats.json.value, artifact_type="Call")
 
 
 class TrackedObject(ProvenanceMixin, PathAwareMixin):
@@ -178,7 +178,7 @@ class TrackedObject(ProvenanceMixin, PathAwareMixin):
         from pypads.app.pypads import get_current_pads
         get_current_pads().api.log_mem_artifact(os.path.join(path, self.get_relative_path()),
                                                 self.json(by_alias=True),
-                                                write_format=FileFormats.json)
+                                                write_format=FileFormats.json, artifact_type="TrackedObject")
         output.add_tracked_object(os.path.join(path, self.get_relative_path()), key, *json_path)
 
 
@@ -234,7 +234,7 @@ class LoggerOutput(ProvenanceMixin, PathAwareMixin):
         from pypads.app.pypads import get_current_pads
         return get_current_pads().api.log_mem_artifact(os.path.join(path, self.get_relative_path()),
                                                        self.json(by_alias=True),
-                                                       write_format=FileFormats.json)
+                                                       write_format=FileFormats.json, artifact_type="Output")
 
     def set_failure_state(self, e: Exception):
         self.failed = "Logger Output might be inaccurate/corrupt due to exception in execution: '{}'".format(str(e))

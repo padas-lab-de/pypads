@@ -165,11 +165,11 @@ class PyPadsApi(IApi):
 
     # ---- logging ----
     @cmd
-    def log_artifact(self, local_path, description="", meta=None, artifact_path=None):
+    def log_artifact(self, local_path, description="", artifact_type=None, meta=None, artifact_path=None):
         """
         Function to log an artifact on local disk. This artifact is transferred into the context of mlflow.
         The context might be a local repository, sftp etc.
-        :param type: If artifact needs to be logged with a special pypads type meta information.
+:param artifact_type: If artifact needs to be logged with a special pypads type meta information.
         :param description: Description of the artifact.
         :param artifact_path: Path where to store the artifact
         :param local_path: Path of the artifact to log
@@ -179,14 +179,14 @@ class PyPadsApi(IApi):
         """
         meta_model = ArtifactMetaModel(path=self.pypads.backend.log_artifact(local_path, artifact_path=artifact_path),
                                        description=description, file_format=find_file_format(local_path),
-                                       additional_data=meta)
+                                       additional_data=meta, type=artifact_type)
         return self._log_artifact_meta(os.path.basename(local_path), meta_model)
 
     @cmd
-    def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", meta=None):
+    def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", artifact_type=None, meta=None):
         """
         See log_artifact. This logs directly from memory by storing the memory to a temporary file.
-        :param type: If artifact needs to be logged with a special pypads type meta information.
+        :param artifact_type: If artifact needs to be logged with a special pypads type meta information.
         :param description: Description of the artifact.
         :param path: path of the new file to create.
         :param obj: Object you want to store
@@ -197,7 +197,7 @@ class PyPadsApi(IApi):
         """
         meta_model = ArtifactMetaModel(path=self.pypads.backend.log_mem_artifact(path, obj, write_format),
                                        description=description, file_format=write_format,
-                                       additional_data=meta)
+                                       additional_data=meta, type=artifact_type)
         return self._log_artifact_meta(path, meta_model)
 
     def _log_artifact_meta(self, name, meta=None):
@@ -705,35 +705,21 @@ class PyPadsApi(IApi):
         return [a for a in [r.dict() for r in self.get_artifacts(experiment_id, run_id, path, view_type)] if
                 len(jsonpath_rw_ext.match(search, a.meta)) > 0]
 
-    # def search_artifacts(self, experiment_id=None, run_id=None, search: str = None):
-    #     # TODO REWORK ME
-    #     if experiment_id is not None:
-    #         paths = dict()
-    #         runs = self.list_run_infos(experiment_id=experiment_id)
-    #         for run in runs:
-    #             run = self.get_run(run.info.run_id)
-    #             paths[run.info.run_id] = get_paths(run.info.artifact_uri, search=search)
-    #         return paths
-    #
-    #     else:
-    #         run = self.get_run(run_id)
-    #         path = run.info.artifact_uri
-    #         return get_paths(path, search=search)
+    @cmd
+    def get_logger_calls(self, experiment_id=None, run_id=None, path: str = None, view_type=ViewType.ALL):
+        return self.search_artifacts_json_path(experiment_id=experiment_id, run_id=run_id, path=path,
+                                               view_type=view_type, search="$[?(@.meta.type == 'Call')]")
 
     @cmd
-    def list_logger_calls(self, run_id=None):
-        # TODO REWORK ME
-        run = self.get_run(run_id)
-        path = run.info.artifact_uri
-        return self.search_artifacts_json_path(path, search="$[?(@.meta.type == 'LoggerCall')]")
+    def get_tracked_objects(self, experiment_id=None, run_id=None, path: str = None, view_type=ViewType.ALL):
+        return self.search_artifacts_json_path(experiment_id=experiment_id, run_id=run_id, path=path,
+                                               view_type=view_type, search="$[?(@.meta.type == 'TrackedObject')]")
 
-    # @cmd
-    # def list_tracked_objects(self, run_id):
-    #     # TODO REWORK ME
-    #     run = self.get_run(run_id)
-    #     path = run.info.artifact_uri
-    #     return get_artifacts(path, search="TrackedObjects")
-    #
+    @cmd
+    def get_outputs(self, experiment_id=None, run_id=None, path: str = None, view_type=ViewType.ALL):
+        return self.search_artifacts_json_path(experiment_id=experiment_id, run_id=run_id, path=path,
+                                               view_type=view_type, search="$[?(@.meta.type == 'Outputs')]")
+
     # # # !-- results management ---
     # @cmd
     # def to_json(self, experiment_id):
