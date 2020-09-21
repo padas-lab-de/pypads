@@ -59,7 +59,7 @@ def get_default_ctx_path():
         if not default_ctx_path:
             obj = pads.schema_repository.get_object(uid=persistent_hash(str(DEFAULT_CONTEXT)))
             default_ctx_path = obj.log_mem_artifact("pypads_context_default", DEFAULT_CONTEXT,
-                                                    write_format=FileFormats.json)
+                                                    write_format=FileFormats.json, write_meta=False)
             obj.set_tag("pypads.schema_name", "pypads_context_default")
         return os.path.join(default_ctx_path)
     except Exception as e:
