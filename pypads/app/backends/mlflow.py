@@ -110,17 +110,19 @@ class LocalMlFlowBackend(MLFlowBackend):
         :param uri:
         :param pypads:
         """
-        super().__init__(uri, pypads)
-        self._managed_result_git = None
+        manage_results = uri.startswith("git://")
 
-        manage_results = self._uri.startswith("git://")
+        self._managed_result_git = None
 
         # If the results should be git managed
         if manage_results:
-            result_path = self._uri[5:]
-            self._uri = os.path.join(self._uri[5:], "r_" + str(string_to_int(uri)), "experiments")
+            result_path = uri[5:]
+            uri = os.path.join(uri[5:], "r_" + str(string_to_int(uri)), "experiments")
+            super().__init__(uri, pypads)
             self.manage_results(result_path)
-            pypads.cache.add('uri', self._uri)
+            pypads.cache.add('uri', uri)
+        else:
+            super().__init__(uri, pypads)
 
     @property
     def managed_result_git(self):
