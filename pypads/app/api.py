@@ -319,7 +319,7 @@ class PyPadsApi(IApi):
     # ---- run management ----
     @contextmanager
     @cmd
-    def intermediate_run(self, setups=True, nested=True, **kwargs):
+    def intermediate_run(self, setups=True, nested=True, clear_cache=True, **kwargs):
         """
         Spawn an intermediate nested run.
         This run closes automatically after the "with" block and restarts the parent run.
@@ -335,9 +335,11 @@ class PyPadsApi(IApi):
             yield run
         finally:
             if not mlflow.active_run() is enclosing_run:
+                run_id = mlflow.active_run().info.run_id
                 self.pypads.api.end_run()
-                self.pypads.cache.run_clear()
-                self.pypads.cache.run_delete()
+                if clear_cache:
+                    self.pypads.cache.run_clear(run_id=run_id)
+                    self.pypads.cache.run_delete(run_id=run_id)
             else:
                 mlflow.start_run(run_id=enclosing_run.info.run_id)
 
