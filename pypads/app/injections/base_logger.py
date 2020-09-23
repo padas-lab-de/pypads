@@ -1,5 +1,6 @@
 import inspect
 import os
+import time
 import traceback
 from abc import abstractmethod, ABCMeta
 from typing import Type, Set, List, Callable, Optional
@@ -75,7 +76,9 @@ class LoggerExecutor(DefensiveCallableMixin, FunctionHolderMixin, TimedCallableM
 
             # Catch other exceptions for this single logger
             try:
-                mlflow.set_tag("pypads_failure", str(error))
+                # Failure at timestamp
+                mlflow.set_tag(f"pypads.failure.{kwargs['_logger_call']._created_by.name}.{str(time.time())}",
+                               str(error))
             except Exception as e:
                 pass
             logger.error(

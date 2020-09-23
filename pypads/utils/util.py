@@ -227,6 +227,12 @@ def get_experiment_id():
     return None
 
 
+def get_experiment_name():
+    if mlflow.active_run():
+        return mlflow.get_experiment(mlflow.active_run().info.experiment_id).name
+    return None
+
+
 def get_run_id():
     if mlflow.active_run():
         return mlflow.active_run().info.run_id

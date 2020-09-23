@@ -318,6 +318,8 @@ class DiskILF(InjectionLogger):
         from pypads.app.base import PyPads
         from pypads.app.pypads import get_current_pads
         pads: PyPads = get_current_pads()
+
+        # TODO pads.uri might not be local!!!
         if _pypads_disk_usage is None:
             _pypads_disk_usage = [local_uri_to_path(pads.uri)]
 

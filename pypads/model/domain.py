@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, HttpUrl, root_validator
 
 from pypads.arguments import ontology_uri
 from pypads.model.models import OntologyEntry
-from pypads.utils.util import get_experiment_id, get_run_id
+from pypads.utils.util import get_experiment_id, get_run_id, get_experiment_name
 
 
 class LibraryModel(OntologyEntry):
@@ -61,5 +61,6 @@ class RunObjectModel(BaseModel):
     The metadata should contain all necessary non-binary data to describe an entity.
     """
     experiment_id: Optional[str] = Field(default_factory=get_experiment_id)
+    experiment_name: Optional[str] = Field(default_factory=get_experiment_name)
     run_id: Optional[str] = Field(default_factory=get_run_id)
     created_at: float = Field(default_factory=time.time)

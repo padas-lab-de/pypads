@@ -9,7 +9,7 @@ import mlflow
 from mlflow.entities import ViewType
 
 from pypads import logger
-from pypads.app.backends.repository import repository_experiments
+from pypads.app.backends.repository import Repository
 from pypads.app.env import LoggerEnv
 from pypads.app.injections.run_loggers import RunSetup, RunTeardown, SimpleRunFunction
 from pypads.app.misc.caches import Cache
@@ -183,7 +183,8 @@ class PyPadsApi(IApi):
         return self._log_artifact_meta(os.path.basename(local_path), meta_model)
 
     @cmd
-    def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", artifact_type=None, meta=None, write_meta=True):
+    def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", artifact_type=None, meta=None,
+                         write_meta=True):
         """
         See log_artifact. This logs directly from memory by storing the memory to a temporary file.
         :param artifact_type: If artifact needs to be logged with a special pypads type meta information.
@@ -571,10 +572,10 @@ class PyPadsApi(IApi):
             # Get all experiments
             if experiment_id is None:
                 experiments = self.pypads.backend.list_experiments(view_type=view_type)
-                return [metric for experiment in experiments for metric in
+                return [metric for experiment in experiments if
+                        not Repository.is_repository(experiment) for metric in
                         self.get_metrics(experiment_id=experiment.experiment_id, name=name, view_type=view_type,
-                                         history=history) if
-                        experiment.experiment_id not in repository_experiments]
+                                         history=history)]
 
             # Get all runs
             run_infos = self.pypads.backend.list_run_infos(experiment_id=experiment_id, run_view_type=view_type)
@@ -600,9 +601,9 @@ class PyPadsApi(IApi):
             # Get all experiments
             if experiment_id is None:
                 experiments = self.pypads.backend.list_experiments(view_type=view_type)
-                return [parameter for experiment in experiments for parameter in
-                        self.get_parameters(experiment_id=experiment.experiment_id, name=name) if
-                        experiment.experiment_id not in repository_experiments]
+                return [parameter for experiment in experiments if
+                        not Repository.is_repository(experiment) for parameter in
+                        self.get_parameters(experiment_id=experiment.experiment_id, name=name)]
 
             # Get all runs
             run_infos = self.pypads.backend.list_run_infos(experiment_id=experiment_id, run_view_type=view_type)
@@ -627,9 +628,9 @@ class PyPadsApi(IApi):
             # Get all experiments
             if experiment_id is None:
                 experiments = self.pypads.backend.list_experiments(view_type=view_type)
-                return [tag for experiment in experiments for tag in
-                        self.get_tags(experiment_id=experiment.experiment_id, name=name) if
-                        experiment.experiment_id not in repository_experiments]
+                return [tag for experiment in experiments if
+                        not Repository.is_repository(experiment) for tag in
+                        self.get_tags(experiment_id=experiment.experiment_id, name=name)]
 
             # Get all runs
             run_infos = self.pypads.backend.list_run_infos(experiment_id=experiment_id, run_view_type=view_type)
@@ -666,9 +667,9 @@ class PyPadsApi(IApi):
             # Get all experiments
             if experiment_id is None:
                 experiments = self.pypads.backend.list_experiments(view_type=view_type)
-                return [artifact for experiment in experiments for artifact in
-                        self.get_artifacts(experiment_id=experiment.experiment_id, path=path) if
-                        experiment.experiment_id not in repository_experiments]
+                return [artifact for experiment in experiments if
+                        not Repository.is_repository(experiment) for artifact in
+                        self.get_artifacts(experiment_id=experiment.experiment_id, path=path)]
 
             # Get all runs
             run_infos = self.pypads.backend.list_run_infos(experiment_id=experiment_id, run_view_type=view_type)
@@ -678,7 +679,7 @@ class PyPadsApi(IApi):
 
             # Check for searching all artifacts
             if path and path.endswith("*"):
-                path = path[:-1]
+                path = path[:-2]
                 if path == "":
                     path = None
 

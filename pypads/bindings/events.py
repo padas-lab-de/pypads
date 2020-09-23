@@ -9,6 +9,7 @@ from pypads.injections.loggers.debug import Log, LogInit
 from pypads.injections.loggers.hardware import CpuILF, RamILF, DiskILF
 from pypads.injections.loggers.metric import MetricILF
 from pypads.injections.loggers.mlflow.mlflow_autolog import MlflowAutologger
+from pypads.injections.loggers.pipeline_detection import PipelineTrackerILF
 from pypads.utils.logging_util import FileFormats
 
 # maps events to loggers
@@ -21,7 +22,7 @@ DEFAULT_LOGGING_FNS = {
                  DiskILF(_pypads_write_format=FileFormats.text)],
     "metric": MetricILF(),
     "autolog": MlflowAutologger(),
-    # "pipeline": PipelineTrackerILF(_pypads_pipeline_type="normal", _pypads_pipeline_args=False),
+    "pipeline": PipelineTrackerILF(_pypads_pipeline_type="normal", _pypads_pipeline_args=False),
     "log": Log(),
     "init": LogInit()
 }

@@ -101,6 +101,9 @@ class MLFlowBackend(BackendInterface):
     def set_tag(self, key, value):
         return mlflow.set_tag(key, value)
 
+    def set_experiment_tag(self, experiment_id, key, value):
+        return self.mlf.set_experiment_tag(experiment_id, key, value)
+
 
 class LocalMlFlowBackend(MLFlowBackend):
 

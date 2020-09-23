@@ -52,6 +52,10 @@ class BackendInterface:
         raise NotImplementedError("")
 
     @abstractmethod
+    def set_experiment_tag(self, experiment_id, key, value):
+        raise NotImplementedError("")
+
+    @abstractmethod
     def get_metric_history(self, run_id, key):
         raise NotImplementedError("")
 
@@ -174,6 +178,7 @@ class BackendInterface:
         local_path = os.path.join(get_temp_folder(), relative_path)
         if not os.path.exists(os.path.dirname(local_path)):
             os.makedirs(os.path.dirname(local_path))
+        print(f"{run_id}, {relative_path}")
         return self.download_artifacts(run_id=run_id, relative_path=relative_path, dst_path=local_path)
 
     @abstractmethod
