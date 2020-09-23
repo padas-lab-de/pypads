@@ -257,6 +257,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
         super().__init__(*args, **kwargs)
         self._cleanup_fns = {}
         self.uid = self._persistent_hash()
+        self.identity = self.__class__.__name__
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
@@ -331,9 +332,10 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
     def get_reference_path(self):
         return self.__class__._pypads_stored
 
-    def _persistent_hash(self):
+    @classmethod
+    def _persistent_hash(cls):
         # TODO include package? version? git hash? content with inspect? Something else?
-        return persistent_hash(inspect.getsource(self.__class__))
+        return persistent_hash(inspect.getsource(cls))
 
 
 class SimpleLogger(Logger):

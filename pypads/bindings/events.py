@@ -113,18 +113,18 @@ class FunctionRegistry:
         identities = {}
         filtered_fns = set()
         for spec, fn in fitting_fns:
-            if not hasattr(fn, "uid") or fn.uid is None:
+            if not hasattr(fn, "identity") or fn.identity is None:
                 filtered_fns.add(fn)
-            elif fn.uid in identities:
+            elif fn.identity in identities:
                 # If we are more specific and have the same identity remove old fn
-                if identities[fn.uid][0] <= spec:
-                    if identities[fn.uid][0] < spec:
-                        if fn.uid in identities:
-                            filtered_fns.remove(identities[fn.uid][1])
+                if identities[fn.identity][0] <= spec:
+                    if identities[fn.identity][0] < spec:
+                        if fn.identity in identities:
+                            filtered_fns.remove(identities[fn.identity][1])
                     filtered_fns.add(fn)
-                    identities[fn.uid] = (spec, fn)
+                    identities[fn.identity] = (spec, fn)
             else:
                 # If not seen add it
                 filtered_fns.add(fn)
-                identities[fn.uid] = (spec, fn)
+                identities[fn.identity] = (spec, fn)
         return filtered_fns
