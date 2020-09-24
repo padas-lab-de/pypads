@@ -100,7 +100,7 @@ class RepositoryObject:
             if run_id is None:
                 # If a uid is given and the tag for the run is not set already set it
                 self._run = self.pads.backend.create_run(experiment_id=self.repository.id,
-                                                         tags={"pypads_unique_uid": uid} if uid else None)
+                                                         tags={"pypads_unique_uid": str(uid)} if uid else None)
             else:
                 self._run = self.pads.api.get_run(run_id=run_id)
 

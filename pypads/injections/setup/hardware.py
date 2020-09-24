@@ -8,7 +8,7 @@ from pypads.app.injections.base_logger import TrackedObject, LoggerCall, LoggerO
 from pypads.app.injections.run_loggers import RunSetup
 from pypads.arguments import ontology_uri
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
-from pypads.utils.util import sizeof_fmt, local_uri_to_path
+from pypads.utils.util import sizeof_fmt, uri_to_path
 
 
 class HardwareTO(TrackedObject):
@@ -138,7 +138,7 @@ class IDiskRSF(RunSetup):
         import psutil
         # see https://www.thepythoncode.com/article/get-hardware-system-information-python
         pads = _logger_call._logging_env.pypads
-        path = local_uri_to_path(pads.backend.uri)
+        path = uri_to_path(pads.backend.uri)
         disk_usage = psutil.disk_usage(path)
         disk_info.store_tag("pypads.system.disk.total", sizeof_fmt(disk_usage.total), description="Total disk usage")
         disk_info.store(_logger_output, "disk_info")
