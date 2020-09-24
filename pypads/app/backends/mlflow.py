@@ -135,6 +135,12 @@ class LocalMlFlowBackend(MLFlowBackend):
         return artifact_utils.get_artifact_uri(run_id=run_id, artifact_path=relative_path)
 
     def download_artifacts(self, run_id, relative_path, dst_path=None):
+        local_location = os.path.join(dst_path, relative_path)
+        if os.path.exists(local_location):  # TODO check file digest or something similar??
+            logger.debug(
+                f"Skipped downloading file because a file f{local_location} with the same name already exists.")
+            return local_location
+
         return artifact_utils.get_artifact_uri(run_id=run_id, artifact_path=relative_path)
 
     def manage_results(self, result_path):

@@ -178,7 +178,6 @@ class BackendInterface:
         local_path = os.path.join(get_temp_folder(), relative_path)
         if not os.path.exists(os.path.dirname(local_path)):
             os.makedirs(os.path.dirname(local_path))
-        print(f"{run_id}, {relative_path}")
         return self.download_artifacts(run_id=run_id, relative_path=relative_path, dst_path=local_path)
 
     @abstractmethod
