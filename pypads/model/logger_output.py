@@ -1,4 +1,4 @@
-from typing import Optional, Union, List
+from typing import Optional
 
 from pydantic import HttpUrl
 
@@ -23,7 +23,7 @@ class TrackedObjectModel(IdBasedOntologyEntry):
     is_a: HttpUrl = f"{ontology_uri}TrackedObject"
     # tracked_by: str = ...  # id for the logger_call
     name: str = "TrackedObject"
-    part_of : str = ... # reference to the logger_output
+    part_of: str = ...  # reference to the logger_output
 
     class Config:
         orm_mode = True

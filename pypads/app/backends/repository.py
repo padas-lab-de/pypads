@@ -2,8 +2,6 @@ import os
 
 from pypads.utils.logging_util import FileFormats
 
-repository_experiments = []
-
 
 class Repository:
 
@@ -22,9 +20,12 @@ class Repository:
 
         if repo is None:
             repo = self.pads.backend.get_experiment(self.pads.backend.create_experiment(name))
+            self.pads.backend.set_experiment_tag(repo.experiment_id, Repository.__class__.__name__, True)
         self._repo = repo
 
-        repository_experiments.append(repo.experiment_id)
+    @staticmethod
+    def is_repository(experiment):
+        return Repository.__class__.__name__ in experiment.tags
 
     def get_object(self, run_id=None, uid=None, name=None):
         """
@@ -112,7 +113,8 @@ class RepositoryObject:
     def run_id(self):
         return self.run.info.run_id
 
-    def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", artifact_type=None, meta=None, write_meta=True):
+    def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", artifact_type=None, meta=None,
+                         write_meta=True):
         """
         Activates the repository context and stores an artifact from memory into it.
         :return:

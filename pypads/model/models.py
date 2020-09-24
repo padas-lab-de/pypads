@@ -9,39 +9,41 @@ from pypads.utils.logging_util import FileFormats
 from pypads.utils.util import persistent_hash
 
 DEFAULT_CONTEXT = {
-    "uri": "@id",
-    "is_a": "@type",
-    "experiment_id": {
-        "@id": f"{ontology_uri}contained_in",
-        "@type": f"{ontology_uri}Experiment"
-    },
-    "run_id": {
-        "@id": f"{ontology_uri}contained_in",
-        "@type": f"{ontology_uri}Run"
-    },
-    "created_at": {
-        "@id": f"{ontology_uri}created_at",
-        "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
-    },
-    "name": {
-        "@id": f"{ontology_uri}label",
-        "@type": "http://www.w3.org/2001/XMLSchema#string"
-    },
-    "context": {
-        "@id": f"{ontology_uri}relates_to",
-        "@type": f"{ontology_uri}Context"
-    },
-    "reference": {
-        "@id": f"{ontology_uri}represents",
-        "@type": "http://www.w3.org/2001/XMLSchema#string"
-    },
-    "produced_by": {
-        "@id": f"{ontology_uri}produced_by",
-        "@type": f"{ontology_uri}LoggerCall"
-    },
-    "failed": {
-        "@id": f"{ontology_uri}failure",
-        "@type": "http://www.w3.org/2001/XMLSchema#boolean"
+    "@context": {
+        "uri": "@id",
+        "is_a": "@type",
+        "experiment_id": {
+            "@id": f"{ontology_uri}contained_in",
+            "@type": f"{ontology_uri}Experiment"
+        },
+        "run_id": {
+            "@id": f"{ontology_uri}contained_in",
+            "@type": f"{ontology_uri}Run"
+        },
+        "created_at": {
+            "@id": f"{ontology_uri}created_at",
+            "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+        },
+        "name": {
+            "@id": f"{ontology_uri}label",
+            "@type": "http://www.w3.org/2001/XMLSchema#string"
+        },
+        "context": {
+            "@id": f"{ontology_uri}relates_to",
+            "@type": f"{ontology_uri}Context"
+        },
+        "reference": {
+            "@id": f"{ontology_uri}represents",
+            "@type": "http://www.w3.org/2001/XMLSchema#string"
+        },
+        "produced_by": {
+            "@id": f"{ontology_uri}produced_by",
+            "@type": f"{ontology_uri}LoggerCall"
+        },
+        "failed": {
+            "@id": f"{ontology_uri}failure",
+            "@type": "http://www.w3.org/2001/XMLSchema#boolean"
+        }
     }
 }
 default_ctx_path = None
@@ -80,9 +82,12 @@ class OntologyEntry(BaseModel):
             values['context'] = get_default_ctx_path()
         else:
             if isinstance(values['context'], List):
-                values['context'].append(get_default_ctx_path())
+                if len(values['context']) > 0:
+                    if values['context'][0] != get_default_ctx_path():
+                        values['context'].append(get_default_ctx_path())
             else:
-                values['context'] = [get_default_ctx_path(), values['context']]
+                if values['context'] != get_default_ctx_path():
+                    values['context'] = [get_default_ctx_path(), values['context']]
         return values
 
 

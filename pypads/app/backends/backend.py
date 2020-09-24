@@ -52,6 +52,10 @@ class BackendInterface:
         raise NotImplementedError("")
 
     @abstractmethod
+    def set_experiment_tag(self, experiment_id, key, value):
+        raise NotImplementedError("")
+
+    @abstractmethod
     def get_metric_history(self, run_id, key):
         raise NotImplementedError("")
 

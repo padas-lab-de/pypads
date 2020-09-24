@@ -62,6 +62,7 @@ class ExtendableMixin:
         for i in instances:
             if hasattr(i, item):
                 return getattr(i, item)
+        raise AttributeError(f"{self.__class__.__name__} object has no attribute {item}.")
 
     def __get_instance(self, index):
         return self._instances[index]
