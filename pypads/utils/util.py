@@ -2,6 +2,7 @@ import functools
 import hashlib
 import inspect
 import operator
+import os
 import threading
 from functools import reduce
 from typing import Tuple
@@ -11,6 +12,7 @@ import pkg_resources
 
 from pypads import logger
 from pypads.app.misc.caches import Cache
+from pypads.utils.logging_util import get_temp_folder
 
 
 def get_class_that_defined_method(meth):
@@ -83,12 +85,19 @@ def sizeof_fmt(num, suffix='B'):
     return '{:3.1f}{}{}'.format(val, ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z'][magnitude], suffix)
 
 
-def local_uri_to_path(uri):
+def uri_to_path(uri):
     """
     Convert URI to local filesystem path.
     """
     from six.moves import urllib
-    path = urllib.parse.urlparse(uri).path if uri.startswith("file:") else uri
+    if uri.startswith("file:"):
+        path = urllib.parse.urlparse(uri).path
+    elif uri.startswith("http:") or uri.startswith("https:"):
+        from pypads.app.pypads import get_current_pads
+        pads= get_current_pads()
+        path = os.path.join(pads.folder, "tmp")
+    else:
+        path = uri
     return urllib.request.url2pathname(path)
 
 

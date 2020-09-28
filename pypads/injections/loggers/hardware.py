@@ -7,7 +7,7 @@ from pypads.app.injections.base_logger import LoggerCall, TrackedObject, LoggerO
 from pypads.app.injections.injection import InjectionLogger
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.utils.logging_util import FileFormats
-from pypads.utils.util import local_uri_to_path, sizeof_fmt, PeriodicThread
+from pypads.utils.util import uri_to_path, sizeof_fmt, PeriodicThread
 
 
 def _get_cpu_usage():
@@ -319,7 +319,7 @@ class DiskILF(InjectionLogger):
 
         # TODO pads.uri might not be local!!!
         if _pypads_disk_usage is None:
-            _pypads_disk_usage = [local_uri_to_path(pads.uri)]
+            _pypads_disk_usage = [uri_to_path(pads.uri)]
 
         def track_disk_usage(to: DiskTO):
             to.add_disk_usage()
