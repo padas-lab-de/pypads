@@ -1,11 +1,10 @@
 from typing import Type, Optional
 
-from pydantic import HttpUrl, BaseModel
+from pydantic import BaseModel
 
 from pypads import logger
 from pypads.app.injections.base_logger import TrackedObject
 from pypads.app.injections.injection import InjectionLogger
-from pypads.arguments import ontology_uri
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
 
 
@@ -15,7 +14,7 @@ class MetricTO(TrackedObject):
     """
 
     class MetricModel(TrackedObjectModel):
-        is_a: HttpUrl = f"{ontology_uri}Metric"
+        category: str = "Metric"
 
         name: str = ...  # Metric name
         as_artifact: bool = False
@@ -50,12 +49,12 @@ class MetricILF(InjectionLogger):
     Function logging the wrapped metric function
     """
     name = "Metric Injection Logger"
-    uri = f"{ontology_uri}metric-logger"
+    category: str = "MetricLogger"
 
     class MetricILFOutput(OutputModel):
         # Add additional context information to
         # TODO context: dict = {**{"test": "testVal"}, **OntologyEntry.__field_defaults__["context"]}
-        is_a: HttpUrl = f"{ontology_uri}MetricILF-Output"
+        category: str = "MetricILF-Output"
         metric: Optional[str] = None
 
         class Config:

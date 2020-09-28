@@ -1,13 +1,12 @@
 import os
 from typing import List, Type
 
-from pydantic import HttpUrl, BaseModel
+from pydantic import BaseModel
 
 from pypads import logger
 from pypads.app.env import LoggerEnv
 from pypads.app.injections.base_logger import TrackedObject, LoggerOutput
 from pypads.app.injections.run_loggers import RunSetup
-from pypads.arguments import ontology_uri
 from pypads.model.domain import LibraryModel
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.utils.logging_util import FileFormats
@@ -19,7 +18,7 @@ class DependencyTO(TrackedObject):
     """
 
     class DependencyModel(TrackedObjectModel):
-        is_a: HttpUrl = f"{ontology_uri}env/Dependencies"
+        category: str = "Dependencies"
 
         dependencies: List[LibraryModel] = []
         pip_freeze: str = ...
@@ -52,7 +51,7 @@ class DependencyRSF(RunSetup):
     """Store information about dependencies used in the experimental environment."""
 
     name = "Dependencies Run Setup Logger"
-    uri = f"{ontology_uri}dependency-run-logger"
+    category: str = "DependencyRunLogger"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -60,7 +59,7 @@ class DependencyRSF(RunSetup):
     _dependencies = {"pip"}
 
     class DependencyRSFOutput(OutputModel):
-        uri: HttpUrl = f"{ontology_uri}DependencyRSF-Output"
+        category: str = "DependencyRSF-Output"
 
         dependencies: str = None
 
@@ -93,7 +92,7 @@ class LoguruTO(TrackedObject):
     """
 
     class LoguruModel(TrackedObjectModel):
-        is_a: HttpUrl = f"{ontology_uri}env/Logs"
+        category: str = "Logs"
 
         path: str = ...
 
@@ -113,13 +112,12 @@ class LoguruRSF(RunSetup):
     """Store all logs of the current run into a file."""
 
     name = "Loguru Run Setup Logger"
-    uri = f"{ontology_uri}loguru-run-logger"
+    category: str = "LoguruRunLogger"
 
     _dependencies = {"loguru"}
 
     class LoguruRSFOutput(OutputModel):
-        uri: HttpUrl = f"{ontology_uri}LoguruRSF-Output"
-
+        category: str = "LoguruRSF-Output"
         logs: str = ...
 
     @classmethod

@@ -1,28 +1,20 @@
 import time
 from typing import Optional
 
-from pydantic import BaseModel, Field, HttpUrl, root_validator
+from pydantic import BaseModel, Field
 
-from pypads.arguments import ontology_uri
-from pypads.model.models import OntologyEntry
+from pypads.model.models import IdBasedEntry
 from pypads.utils.util import get_experiment_id, get_run_id, get_experiment_name
 
 
-class LibraryModel(OntologyEntry):
+class LibraryModel(IdBasedEntry):
     """
     Representation of a package or library
     """
-    is_a: str = f"{ontology_uri}Software"
+    category: str = "Software"
     name: str = ...
     version: str = ...
     extracted: bool = False
-    uri: HttpUrl = None
-
-    @root_validator
-    def set_default_uri(cls, values):
-        if values['uri'] is None:
-            values['uri'] = f"{values['is_a']}#{values['name']}"
-        return values
 
 
 class LibSelectorModel(BaseModel):

@@ -4,12 +4,10 @@ from typing import Type
 import mlflow
 from mlflow.utils.autologging_utils import try_mlflow_log
 from pydantic import BaseModel
-from pydantic.networks import HttpUrl
 
 from pypads import logger
 from pypads.app.injections.base_logger import TrackedObject, LoggerOutput
 from pypads.app.injections.injection import InjectionLoggerCall, MultiInjectionLogger
-from pypads.arguments import ontology_uri
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.model.storage import ArtifactMetaModel
 from pypads.utils.logging_util import FileFormats, get_temp_folder
@@ -56,7 +54,7 @@ class PipelineTO(TrackedObject):
     """
 
     class PipelineModel(TrackedObjectModel):
-        is_a: HttpUrl = f"{ontology_uri}Pipeline"
+        category: str = "Pipeline"
 
         network: dict = ...
         pipeline_type: str = ...
@@ -91,13 +89,13 @@ class PipelineTrackerILF(MultiInjectionLogger):
     """
     Injection logger that tracks multiple calls.
     """
-    name = "PipeLineLogger"
-    uri = f"{ontology_uri}pipeline-logger"
+    name = "Generic Pipeline Logger"
+    category: str = "PipelineLogger"
 
     _dependencies = {"networkx"}
 
     class PipelineTrackerILFOutput(OutputModel):
-        is_a: HttpUrl = f"{ontology_uri}PipelineILF-Output"
+        category: str = "PipelineILF-Output"
 
         pipeline: str = None
 

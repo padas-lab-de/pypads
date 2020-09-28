@@ -175,7 +175,7 @@ class BackendInterface:
         :param relative_path:
         :return:
         """
-        local_path = os.path.join(get_temp_folder(), relative_path)
+        local_path = os.path.join(get_temp_folder(self.get_run(run_id)), relative_path)
         if not os.path.exists(os.path.dirname(local_path)):
             os.makedirs(os.path.dirname(local_path))
         return self.download_artifacts(run_id=run_id, relative_path=relative_path, dst_path=local_path)

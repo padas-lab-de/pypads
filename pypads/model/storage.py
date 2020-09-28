@@ -3,9 +3,8 @@ from typing import Optional, List, Union
 
 from pydantic import BaseModel
 
-from pypads.arguments import ontology_uri
 from pypads.model.domain import RunObjectModel
-from pypads.model.models import IdBasedOntologyEntry
+from pypads.model.models import IdBasedEntry
 from pypads.utils.logging_util import FileFormats
 
 
@@ -16,7 +15,7 @@ def extract_persistent_data(data):
         return {}
 
 
-class MetadataModel(IdBasedOntologyEntry, RunObjectModel):
+class MetadataModel(IdBasedEntry, RunObjectModel):
     description: str = ...
     additional_data: \
         Optional[dict] = {}  # Additional data should hold all persistent additional data (Defined by _persistent)
@@ -25,24 +24,24 @@ class MetadataModel(IdBasedOntologyEntry, RunObjectModel):
 class MetricMetaModel(MetadataModel):
     name: str = ...
     step: int = ...
-    is_a: str = f"{ontology_uri}MLMetric"
+    category: str = "MLMetric"
 
 
 class ParameterMetaModel(MetadataModel):
     name: str = ...
     value_format: str = ...
-    is_a: str = f"{ontology_uri}HyperParameter"
+    category: str = "HyperParameter"
 
 
 class ArtifactMetaModel(MetadataModel):
     path: str = ...
     file_format: FileFormats = ...
-    is_a: str = f"{ontology_uri}Artifact"
+    category: str = "Artifact"
     type: Optional[str] = ...
 
 
 class TagMetaModel(MetadataModel):
-    is_a: str = f"{ontology_uri}MLTag"
+    category: str = "MLTag"
     name: str = ...
     value_format: str = ...
 

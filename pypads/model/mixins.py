@@ -68,8 +68,8 @@ class ProvenanceMixin(ModelObject, metaclass=ABCMeta):
         else:
             setattr(self, "defined_in", lib_model)
 
-        if not hasattr(self, "uri") or getattr(self, "uri") is None and hasattr(self, "uid") and hasattr(self, "is_a"):
-            setattr(self, "uri", "{}#{}".format(getattr(self, "is_a"), self.uid))
+        # if not hasattr(self, "uri") or getattr(self, "uri") is None and hasattr(self, "uid") and hasattr(self, "is_a"):
+        #     setattr(self, "uri", "{}#{}".format(getattr(self, "is_a"), self.uid))
 
     def _get_library_descriptor(self) -> LibraryModel:
         """

@@ -6,15 +6,13 @@ from pypads.app.env import LoggerEnv
 from pypads.app.injections.base_logger import TrackedObject, LoggerOutput
 from pypads.app.injections.run_loggers import RunSetup
 from pypads.app.misc.managed_git import ManagedGit
-from pypads.arguments import ontology_uri
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.utils.logging_util import FileFormats
 
 
 class GitTO(TrackedObject):
     class GitModel(TrackedObjectModel):
-        is_a: HttpUrl = f"{ontology_uri}SourceCode-Management"
-
+        category: str = "SourceCode-Management"
         source: str = ...
         version: str = ...
         git_log: str = ...  # reference to the log file
@@ -41,12 +39,12 @@ class IGitRSF(RunSetup):
     """
     Function tracking the source code via git.
     """
-    name = "Git Run Setup Logger"
-    uri: HttpUrl = f"{ontology_uri}git-run-logger"
+    name = "Generic Git Run Setup Logger"
+    category: str = "GitRunLogger"
     _dependencies = {"git"}
 
     class IGitRSFOutput(OutputModel):
-        is_a: HttpUrl = f"{ontology_uri}IGitRSF-Output"
+        is_a: HttpUrl = "IGitRSF-Output"
         git_info: str = None
 
     @classmethod

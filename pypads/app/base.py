@@ -90,14 +90,14 @@ class PyPads:
                  events=None, setup_fns=None, config=None, pre_initialized_cache: PypadsCache = None,
                  disable_plugins=None, autostart=None):
 
+        from pypads.app.pypads import set_current_pads
+        set_current_pads(self)
+
         if disable_plugins is None:
             disable_plugins = []
         for name, plugin in discovered_plugins.items():
             if name not in disable_plugins:
-                plugin.activate()
-
-        from pypads.app.pypads import set_current_pads
-        set_current_pads(self)
+                plugin.activate(self)
 
         # Init variable to filled later in this constructor
         self._atexit_fns = []
@@ -504,6 +504,7 @@ class PyPads:
         :param reload_modules: Force a reload of affected modules. CAREFUL THIS IS EXPERIMENTAL!
         :return:
         """
+        logger.info("Activating tracking...")
         if affected_modules is None:
             # Modules are affected if they are mapped by a library or are already punched
             affected_modules = self.wrap_manager.module_wrapper.punched_module_names | \

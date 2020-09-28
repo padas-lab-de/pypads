@@ -1,11 +1,10 @@
 import os
 from typing import List, Type
 
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 
 from pypads.app.injections.base_logger import LoggerCall, TrackedObject, LoggerOutput
 from pypads.app.injections.injection import InjectionLogger
-from pypads.arguments import ontology_uri
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.utils.logging_util import FileFormats
 
@@ -16,8 +15,7 @@ class InputTO(TrackedObject):
     """
 
     class InputModel(TrackedObjectModel):
-        is_a: HttpUrl = f"{ontology_uri}FunctionInput"
-
+        category: str = "FunctionInput"
         inputs: List[str] = []
 
     @classmethod
@@ -44,11 +42,11 @@ class InputILF(InjectionLogger):
     Function logging the input parameters of the current pipeline object function call.
     """
 
-    name = "InputLogger"
-    uri = f"{ontology_uri}input-logger"
+    name = "Generic-InputLogger"
+    category = "InputLogger"
 
     class InputILFOutput(OutputModel):
-        is_a: HttpUrl = f"{ontology_uri}InputILF-Output"
+        category: str = "InputILF-Output"
         FunctionInput: str = ...
 
         class Config:
@@ -87,7 +85,7 @@ class OutputTO(TrackedObject):
         return "inputs"
 
     class OutputModel(TrackedObjectModel):
-        is_a: HttpUrl = f"{ontology_uri}FunctionOutput"
+        category: str = "FunctionOutput"
 
         output: str = ...  # Path to the output holding file
 
@@ -114,11 +112,11 @@ class OutputILF(InjectionLogger):
     Function logging the output of the current pipeline object function call.
     """
 
-    name = "OutputLogger"
-    uri = f"{ontology_uri}output-logger"
+    name = "GenericOutputLogger"
+    category = "OutputLogger"
 
     class OutputILFOutput(OutputModel):
-        is_a: HttpUrl = f"{ontology_uri}OutputILF-Output"
+        category: str = "OutputILF-Output"
         FunctionOutput: str = ...
 
         class Config:

@@ -2,11 +2,10 @@ from abc import ABCMeta
 from functools import wraps
 from typing import Type
 
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 
 from pypads.app.injections.base_logger import LoggerCall, SimpleLogger
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
-from pypads.arguments import ontology_uri
 from pypads.injections.analysis.determinism import check_determinism
 from pypads.model.logger_model import LoggerModel
 
@@ -15,7 +14,7 @@ validator_set = set()
 
 
 class Validator(SimpleLogger, metaclass=ABCMeta):
-    is_a: HttpUrl = f"{ontology_uri}validator"
+    category: str = "Validator"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -23,7 +22,7 @@ class Validator(SimpleLogger, metaclass=ABCMeta):
 
     def build_call_object(self, _pypads_env, **kwargs):
         return LoggerCall(logging_env=_pypads_env,
-                          is_a=f"{ontology_uri}ValidatorLoggerCall", **kwargs)
+                          category="ValidatorLoggerCall", **kwargs)
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:

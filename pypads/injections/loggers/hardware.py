@@ -1,11 +1,10 @@
 import os
 from typing import List, Type
 
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 
 from pypads.app.injections.base_logger import LoggerCall, TrackedObject, LoggerOutput
 from pypads.app.injections.injection import InjectionLogger
-from pypads.arguments import ontology_uri
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.utils.logging_util import FileFormats
 from pypads.utils.util import local_uri_to_path, sizeof_fmt, PeriodicThread
@@ -32,7 +31,7 @@ class CpuTO(TrackedObject):
     """
 
     class CPUModel(TrackedObjectModel):
-        is_a: HttpUrl = f"{ontology_uri}CpuData"
+        category: str = "CpuData"
 
         class CpuCoreModel(BaseModel):
             name: str = ...
@@ -72,12 +71,11 @@ class CpuTO(TrackedObject):
 
 class CpuILF(InjectionLogger):
     """This logger extracts the cpu information of your machine."""
-    name = "CPULogger"
-    uri = f"{ontology_uri}cpu-logger"
+    name = "Generic CPULogger"
+    category: str = "CPULogger"
 
     class CpuILFOutput(OutputModel):
-        is_a: HttpUrl = f"{ontology_uri}CpuILF-Output"
-
+        category: str = "CpuILF-Output"
         cpu_usage: str = ...
 
         class Config:
@@ -115,7 +113,7 @@ class RamTO(TrackedObject):
     """
 
     class RAMModel(TrackedObjectModel):
-        is_a: HttpUrl = f"{ontology_uri}RamData"
+        category: str = "RamData"
 
         class MemoryModel(BaseModel):
             used: List[int] = ...
@@ -181,11 +179,11 @@ class RamILF(InjectionLogger):
     This function only writes an information of a constructor execution to the stdout.
     """
 
-    name = "RAMLogger"
-    uri = f"{ontology_uri}ram-logger"
+    name = "Generic RAM Logger"
+    category: str = "RAMLogger"
 
     class RamILFOutput(OutputModel):
-        is_a: HttpUrl = f"{ontology_uri}RamILF-Output"
+        category: str = "RamILF-Output"
 
         memory_usage: str = ...
 
@@ -230,7 +228,7 @@ class DiskTO(TrackedObject):
     """
 
     class DiskModel(TrackedObjectModel):
-        is_a: HttpUrl = f"{ontology_uri}DiskData"
+        category: str = "DiskData"
 
         class PartitionModel(BaseModel):
             name: str = ...
@@ -294,11 +292,11 @@ class DiskILF(InjectionLogger):
     This function only writes an information of a constructor execution to the stdout.
     """
 
-    name = "DiskLogger"
-    uri = f"{ontology_uri}disk-logger"
+    name = "Generic Disk Logger"
+    category: str = "DiskLogger"
 
     class DiskILFOutput(OutputModel):
-        is_a: HttpUrl = f"{ontology_uri}DiskILF-Output"
+        category: str = "DiskILF-Output"
         disk_usage: List[str] = []
 
         class Config:

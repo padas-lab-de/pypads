@@ -1,19 +1,16 @@
 from typing import List
 
-from pydantic import HttpUrl
-
-from pypads.arguments import ontology_uri
 from pypads.model.domain import LibSelectorModel
-from pypads.model.models import OntologyEntry
+from pypads.model.models import IdBasedEntry
 
 
-class LoggerModel(OntologyEntry):
+class LoggerModel(IdBasedEntry):
     """
     A reference object for a logger.
     """
-    name: str = "GenericTrackingFunction"
+    name: str = "Generic Tracking Function"
     uid: str = ...
-    is_a: HttpUrl = f"{ontology_uri}logger"
+    category: str = "Logger"
     dependencies: List[LibSelectorModel] = {}
     supported_libraries: List[LibSelectorModel] = ...
     allow_nested: bool = True
@@ -27,8 +24,8 @@ class RunLoggerModel(LoggerModel):
     """
     Tracking function being executed on run teardown or setup
     """
-    name: str = "GenericRunLogger"
-    is_a: HttpUrl = f"{ontology_uri}run-logger"
+    name: str = "Generic Run Logger"
+    category: str = "RunLogger"
 
     class Config:
         orm_mode = True
@@ -38,8 +35,8 @@ class InjectionLoggerModel(LoggerModel):
     """
     Tracking function being exectured on injection hook execution
     """
-    name: str = "GenericInjectionLogger"
-    is_a: HttpUrl = f"{ontology_uri}injection-logger"
+    name: str = "Generic Injection Logger"
+    category: str = "InjectionLogger"
 
     class Config:
         orm_mode = True

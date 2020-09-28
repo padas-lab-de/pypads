@@ -1,14 +1,13 @@
 from typing import Optional, List
 
-from pydantic import BaseModel, HttpUrl, root_validator
+from pydantic import BaseModel, root_validator
 
-from pypads.arguments import ontology_uri
-from pypads.model.models import IdBasedOntologyEntry
+from pypads.model.models import IdBasedEntry, Entry
 
 
-class ContextModel(BaseModel):
+class ContextModel(Entry):
     reference: str = ...  # Path to the context e.g.: sklearn.tree.tree.DecisionTree
-    is_a: str = f"{ontology_uri}Context"
+    category: str = "Context"
 
     class Config:
         orm_mode = True
@@ -39,8 +38,8 @@ class CallIdModel(CallAccessorModel):
         orm_mode = True
 
 
-class CallModel(IdBasedOntologyEntry):
-    is_a: HttpUrl = f"{ontology_uri}Call"
+class CallModel(IdBasedEntry):
+    category: str = "Call"
     call_id: CallIdModel = ...  # Id of the call
     finished: bool = False
 
@@ -48,7 +47,7 @@ class CallModel(IdBasedOntologyEntry):
         orm_mode = True
 
 
-class LoggerCallModel(IdBasedOntologyEntry):
+class LoggerCallModel(IdBasedEntry):
     """
     Holds meta data about a logger execution
     """
@@ -57,8 +56,6 @@ class LoggerCallModel(IdBasedOntologyEntry):
 
     created_by: str = ...  # reference to LoggerModel
     output: Optional[str] = ...  # reference to OutputModel of the logger
-
-    is_a: HttpUrl = f"{ontology_uri}LoggerCall"
     name: str = "Call"
 
     class Config:
@@ -73,7 +70,7 @@ class InjectionLoggerCallModel(LoggerCallModel):
     post_time: Optional[float] = ...
     child_time: Optional[float] = ...
     original_call: CallModel = ...  # Triggered by following call
-    is_a: HttpUrl = f"{ontology_uri}InjectionLoggerCall"
+    category: str = "InjectionLoggerCall"
     execution_time: Optional[float] = None
 
     @root_validator
@@ -93,7 +90,7 @@ class MultiInjectionLoggerCallModel(InjectionLoggerCallModel):
     pre_time: Optional[float] = 0.0
     post_time: Optional[float] = 0.0
     child_time: Optional[float] = 0.0
-    is_a: HttpUrl = f"{ontology_uri}MultiInjectionLoggerCall"
+    category: str = "MultiInjectionLoggerCall"
 
     class Config:
         orm_mode = True

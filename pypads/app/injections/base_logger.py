@@ -6,14 +6,13 @@ from abc import abstractmethod, ABCMeta
 from typing import Type, Set, List, Callable, Optional
 
 import mlflow
-from pydantic import HttpUrl, BaseModel
+from pydantic import BaseModel
 
 from pypads import logger
 from pypads.app.env import LoggerEnv
 from pypads.app.misc.mixins import DependencyMixin, DefensiveCallableMixin, TimedCallableMixin, \
     IntermediateCallableMixin, NoCallAllowedError, ConfigurableCallableMixin, LibrarySpecificMixin, \
     FunctionHolderMixin, BaseDefensiveCallableMixin
-from pypads.arguments import ontology_uri
 from pypads.importext.versioning import LibSelector
 from pypads.model.logger_call import LoggerCallModel
 from pypads.model.logger_model import LoggerModel
@@ -118,7 +117,7 @@ class TrackedObject(ProvenanceMixin, PathAwareMixin):
     """
     A collection of tracked information
     """
-    is_a = f"{ontology_uri}tracked_object"
+    is_a = "TrackedObject"
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
@@ -250,7 +249,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
     """
 
     _pypads_stored = None
-    is_a: HttpUrl = f"{ontology_uri}tracking-function"
+    category: str = "TrackingFunction"
 
     # Default allow all libraries
     supported_libraries = {LibSelector(name=".*", constraint="*")}
