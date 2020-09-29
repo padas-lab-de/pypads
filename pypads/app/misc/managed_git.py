@@ -20,7 +20,7 @@ class ManagedGitFactory(DefensiveCallableMixin, DependencyMixin):
     _dependencies = {"git"}
 
     def __real_call__(self, path, *args, **kwargs):
-        return ManagedGit(path, pads=self.pads)
+        return ManagedGit(path, pads=self.pads, source=kwargs.get('source',True))
 
 
 class ManagedGit:
@@ -29,7 +29,7 @@ class ManagedGit:
      branching etc.
     """
 
-    def __init__(self, path, pads=None):
+    def __init__(self, path, pads=None, source=True):
         import git
 
         if not pads:
@@ -42,29 +42,33 @@ class ManagedGit:
         if os.path.isfile(path):
             path = os.path.dirname(path)
         # if path is not representing the source code path
-        path = self._verify_path(path)
+        path = self._verify_path(path, source=source)
         from git import InvalidGitRepositoryError
         try:
             self.repo = git.Repo(path, search_parent_directories=True)
+            if source:
+                self.preserve_changes(message="Pypads tracked changes")
         except InvalidGitRepositoryError:
             logger.warning("No existing git repository was found on {0}, initializing a new one...".format(path))
-            self._init_git_repo(path)
+            self._init_git_repo(path, source=source)
 
-    def _verify_path(self,path, pads=None):
+    def _verify_path(self,path, pads=None, source=True):
         # Fix: when using PyPads within a IPython Notebook.
-        if path != os.getcwd():
+        if path != os.getcwd() and source:
             path = os.getcwd()
             if pads:
                 from mlflow.utils.mlflow_tags import MLFLOW_SOURCE_NAME
                 pads.api.set_tag(path, MLFLOW_SOURCE_NAME)
         return path
 
-    def _init_git_repo(self, path):
+    def _init_git_repo(self, path, source=True):
         import git
         from git import InvalidGitRepositoryError, GitCommandError, GitError
         try:
             self.repo = git.Repo.init(path, bare=False)
             self._add_git_ignore()
+            if source:
+                self.commit_changes(message="Pypads initial commit")
             logger.info("Repository was successfully initialized")
         except (InvalidGitRepositoryError, GitCommandError, GitError) as e:
             raise Exception(
@@ -99,7 +103,9 @@ class ManagedGit:
             else:
                 branch = orig_branch
                 diff = None
-            return branch, diff
+
+            self.pads.api.set_tag("pypads.git.branch", str(branch))
+            self.pads.api.set_tag("pypads.git.diff", str(diff))
         except Exception as e:
             raise Exception("Preserving commit failed due to %s" % str(e))
 
@@ -133,9 +139,7 @@ class ManagedGit:
         branch = self.repo.git.checkout(orig_branch, b=branch_name)
 
         self.repo.git.stash('apply')
-        self.add_untracked_files()
-        self.repo.git.commit(message=message)
-
+        self.commit_changes(message='Preserved changes commit')
         # create the tag with diff for this branch
         diff_raw = self.repo.git.diff('master', '--raw')
         diff = self.repo.git.diff('master')
