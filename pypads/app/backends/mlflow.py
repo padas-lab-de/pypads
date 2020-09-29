@@ -149,7 +149,7 @@ class LocalMlFlowBackend(MLFlowBackend):
         :param result_path: Path where the result git should be.
         :return:
         """
-        self._managed_result_git = self.pypads.managed_git_factory(result_path)
+        self._managed_result_git = self.pypads.managed_git_factory(result_path, source=False)
 
         def commit(pads, *args, **kwargs):
             message = "Added results for run " + pads.api.active_run().info.run_id
