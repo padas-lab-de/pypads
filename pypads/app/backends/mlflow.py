@@ -69,7 +69,7 @@ class MLFlowBackend(BackendInterface):
         return mlflow.delete_run(run_id)
 
     def download_artifacts(self, run_id, relative_path, dst_path=None):
-        return self.mlf.download_artifacts(run_id, relative_path, dst_path=None)
+        return self.mlf.download_artifacts(run_id, relative_path, dst_path=dst_path)
 
     def list_files(self, run_id, path=None) -> List[FileInfo]:
         return [FileInfo(is_dir=a.is_dir, path=a.path, file_size=a.file_size) for a in

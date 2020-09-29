@@ -1,8 +1,9 @@
 import random
 from logging import warning
-from padrepads.util import _is_package_available
 
 # Logging
+from pypads.utils.util import is_package_available
+
 
 def log_random_seed(key):
     from pypads.app.base import PyPads
@@ -57,7 +58,7 @@ def numpy_seed(seed):
 numpy.random.seed = numpy_seed
 
 # --- pytorch seed ---
-if _is_package_available("torch"):
+if is_package_available("torch"):
     # noinspection PyPackageRequirements,PyUnresolvedReferences
     import torch
 
@@ -109,7 +110,7 @@ def set_random_seed(seed):
     # global seeds for numpy seem to not work with RandomState()
 
     # --- set pytorch seed ---
-    if _is_package_available("torch"):
+    if is_package_available("torch"):
         # noinspection PyPackageRequirements,PyUnresolvedReferences
         import torch
         torch.manual_seed(seed)

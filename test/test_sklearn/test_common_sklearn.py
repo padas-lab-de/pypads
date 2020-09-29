@@ -42,6 +42,8 @@ class CommonSklearnTest(BaseSklearnTest):
         tracker.activate_tracking()
         tracker.start_track(experiment_name="Additional Experiment 2")
 
+        tracker.actuators.set_random_seed(seed=1)
+
         import timeit
         t = timeit.Timer(sklearn_simple_decision_tree_experiment)
         from pypads import logger

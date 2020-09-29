@@ -564,22 +564,23 @@ class PyPadsApi(IApi):
         return self.pypads.backend.list_experiments(view_type)
 
     @cmd
-    def list_run_infos(self, experiment_id, run_view_type: ViewType = ViewType.ALL):
-        return self.pypads.backend.list_run_infos(experiment_id=experiment_id, run_view_type=run_view_type)
+    def list_run_infos(self, experiment_name, run_view_type: ViewType = ViewType.ALL):
+        experiment = self.pypads.backend.get_experiment_by_name(experiment_name)
+        return self.pypads.backend.list_run_infos(experiment_name=experiment.name, run_view_type=run_view_type)
 
     @cmd
-    def get_metrics(self, experiment_id=None, run_id=None, name: str = None, view_type=ViewType.ALL, history=False):
+    def get_metrics(self, experiment_name=None, run_id=None, name: str = None, view_type=ViewType.ALL, history=False):
         if run_id is None:
             # Get all experiments
-            if experiment_id is None:
+            if experiment_name is None:
                 experiments = self.pypads.backend.list_experiments(view_type=view_type)
                 return [metric for experiment in experiments if
                         not Repository.is_repository(experiment) for metric in
-                        self.get_metrics(experiment_id=experiment.experiment_id, name=name, view_type=view_type,
+                        self.get_metrics(experiment_name=experiment.name, name=name, view_type=view_type,
                                          history=history)]
 
             # Get all runs
-            run_infos = self.pypads.backend.list_run_infos(experiment_id=experiment_id, run_view_type=view_type)
+            run_infos = self.pypads.backend.list_run_infos(experiment_name=experiment_name, run_view_type=view_type)
             return [metric for run_info in run_infos for metric in
                     self.get_metrics(run_id=run_info.run_id, name=name, view_type=view_type, history=history)]
         if not name:
@@ -597,17 +598,17 @@ class PyPadsApi(IApi):
         return []
 
     @cmd
-    def get_parameters(self, experiment_id=None, run_id=None, name: str = None, view_type=ViewType.ALL):
+    def get_parameters(self, experiment_name=None, run_id=None, name: str = None, view_type=ViewType.ALL):
         if run_id is None:
             # Get all experiments
-            if experiment_id is None:
+            if experiment_name is None:
                 experiments = self.pypads.backend.list_experiments(view_type=view_type)
                 return [parameter for experiment in experiments if
                         not Repository.is_repository(experiment) for parameter in
-                        self.get_parameters(experiment_id=experiment.experiment_id, name=name)]
+                        self.get_parameters(experiment_name=experiment.name, name=name)]
 
             # Get all runs
-            run_infos = self.pypads.backend.list_run_infos(experiment_id=experiment_id, run_view_type=view_type)
+            run_infos = self.pypads.backend.list_run_infos(experiment_name=experiment_name, run_view_type=view_type)
             return [parameter for run_info in run_infos for parameter in
                     self.get_parameters(run_id=run_info.run_id, name=name)]
         if not name:
@@ -624,24 +625,28 @@ class PyPadsApi(IApi):
         return []
 
     @cmd
-    def get_tags(self, experiment_id=None, run_id=None, name: str = None, view_type=ViewType.ALL):
+    def get_tags(self, experiment_name=None, run_id=None, name: str = None, view_type=ViewType.ALL):
         if run_id is None:
             # Get all experiments
-            if experiment_id is None:
+            if experiment_name is None:
                 experiments = self.pypads.backend.list_experiments(view_type=view_type)
                 return [tag for experiment in experiments if
                         not Repository.is_repository(experiment) for tag in
-                        self.get_tags(experiment_id=experiment.experiment_id, name=name)]
+                        self.get_tags(experiment_name=experiment.name, name=name)]
 
             # Get all runs
-            run_infos = self.pypads.backend.list_run_infos(experiment_id=experiment_id, run_view_type=view_type)
+            run_infos = self.pypads.backend.list_run_infos(experiment_name=experiment_name, run_view_type=view_type)
             return [tag for run_info in run_infos for tag in
                     self.get_tags(run_id=run_info.run_id, name=name)]
         if not name:
             run = self.get_run(run_id)
             tags = []
             for name in iter(run.data.tags.keys()):
-                tag_meta = self.pypads.backend.get_tag_meta(run_id=run.info.run_id, relative_path=name)
+                tag_meta = None
+                try:
+                    tag_meta = self.pypads.backend.get_tag_meta(run_id=run.info.run_id, relative_path=name)
+                except Exception:
+                    pass
                 if tag_meta:
                     tags.append(
                         TagInfo(meta=tag_meta,
@@ -663,17 +668,17 @@ class PyPadsApi(IApi):
             read_format=read_format)
 
     @cmd
-    def get_artifacts(self, experiment_id=None, run_id=None, path: str = None, view_type=ViewType.ALL):
+    def get_artifacts(self, experiment_name=None, run_id=None, path: str = None, view_type=ViewType.ALL):
         if run_id is None:
             # Get all experiments
-            if experiment_id is None:
+            if experiment_name is None:
                 experiments = self.pypads.backend.list_experiments(view_type=view_type)
                 return [artifact for experiment in experiments if
                         not Repository.is_repository(experiment) for artifact in
-                        self.get_artifacts(experiment_id=experiment.experiment_id, path=path)]
+                        self.get_artifacts(experiment_name=experiment.name, path=path)]
 
             # Get all runs
-            run_infos = self.pypads.backend.list_run_infos(experiment_id=experiment_id, run_view_type=view_type)
+            run_infos = self.pypads.backend.list_run_infos(experiment_name=experiment_name, run_view_type=view_type)
             return [artifact for run_info in run_infos for artifact in
                     self.get_artifacts(run_id=run_info.run_id, path=path)]
         else:
@@ -700,28 +705,28 @@ class PyPadsApi(IApi):
             return self.pypads.backend.list_artifacts(run_id=run_id, path=path)
 
     @cmd
-    def search_artifacts_json_path(self, experiment_id=None, run_id=None, path: str = None, view_type=ViewType.ALL,
+    def search_artifacts_json_path(self, experiment_name=None, run_id=None, path: str = None, view_type=ViewType.ALL,
                                    search=""):
         """
         Searches in meta information of the artifacts.
         :return:
         """
-        return [a for a in [r.dict() for r in self.get_artifacts(experiment_id, run_id, path, view_type)] if
+        return [a for a in [r.dict() for r in self.get_artifacts(experiment_name, run_id, path, view_type)] if
                 len(jsonpath_rw_ext.match(search, a.meta)) > 0]
 
     @cmd
-    def get_logger_calls(self, experiment_id=None, run_id=None, path: str = None, view_type=ViewType.ALL):
-        return self.search_artifacts_json_path(experiment_id=experiment_id, run_id=run_id, path=path,
+    def get_logger_calls(self, experiment_name=None, run_id=None, path: str = None, view_type=ViewType.ALL):
+        return self.search_artifacts_json_path(experiment_name=experiment_name, run_id=run_id, path=path,
                                                view_type=view_type, search="$[?(@.meta.type == 'Call')]")
 
     @cmd
-    def get_tracked_objects(self, experiment_id=None, run_id=None, path: str = None, view_type=ViewType.ALL):
-        return self.search_artifacts_json_path(experiment_id=experiment_id, run_id=run_id, path=path,
+    def get_tracked_objects(self, experiment_name=None, run_id=None, path: str = None, view_type=ViewType.ALL):
+        return self.search_artifacts_json_path(experiment_name=experiment_name, run_id=run_id, path=path,
                                                view_type=view_type, search="$[?(@.meta.type == 'TrackedObject')]")
 
     @cmd
-    def get_outputs(self, experiment_id=None, run_id=None, path: str = None, view_type=ViewType.ALL):
-        return self.search_artifacts_json_path(experiment_id=experiment_id, run_id=run_id, path=path,
+    def get_outputs(self, experiment_name=None, run_id=None, path: str = None, view_type=ViewType.ALL):
+        return self.search_artifacts_json_path(experiment_name=experiment_name, run_id=run_id, path=path,
                                                view_type=view_type, search="$[?(@.meta.type == 'Outputs')]")
 
     # # # !-- results management ---

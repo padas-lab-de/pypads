@@ -5,7 +5,6 @@ from test.base_test import BaseTest
 
 def sklearn_simple_decision_tree_experiment(min_samples_leaf=1):
     from sklearn import datasets
-    from sklearn.metrics.classification import f1_score
     from sklearn.tree import DecisionTreeClassifier
 
     # load the iris datasets
@@ -18,6 +17,7 @@ def sklearn_simple_decision_tree_experiment(min_samples_leaf=1):
     expected = dataset.target
     predicted = model.predict(dataset.data)
     # summarize the fit of the model
+    from sklearn.metrics.classification import f1_score
     print("Score: " + str(f1_score(expected, predicted, average="macro")))
 
 

@@ -2,10 +2,11 @@ from abc import ABCMeta
 from functools import wraps
 from typing import List
 
+from pypads.app.env import LoggerEnv
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
 from pypads.app.misc.mixins import FunctionHolderMixin
 from pypads.importext.mappings import Mapping
-from pypads.utils.util import inheritors, get_class_that_defined_method
+from pypads.utils.util import inheritors, get_class_that_defined_method, get_experiment_id, get_run_id
 
 decorator_plugins = set()
 
@@ -43,7 +44,8 @@ def decorator(f):
     @wraps(f)
     def wrapper(self, *args, **kwargs):
         # self is an instance of the class
-        return Decorator(fn=f)(self, *args, **kwargs)
+        return Decorator(fn=f)(self, *args, _pypads_env=LoggerEnv(parameter=dict(), experiment_id=get_experiment_id(),
+                                                                  run_id=get_run_id()), **kwargs)
 
     return wrapper
 

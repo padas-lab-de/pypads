@@ -76,6 +76,7 @@ class LoggerExecutor(DefensiveCallableMixin, FunctionHolderMixin, TimedCallableM
             # Catch other exceptions for this single logger
             try:
                 # Failure at timestamp
+                # TODO Failure list mlflow.get_run(run_id=_pypads_env.run_id).tags
                 mlflow.set_tag(f"pypads.failure.{kwargs['_logger_call']._created_by.name}.{str(time.time())}",
                                str(error))
             except Exception as e:
@@ -117,7 +118,7 @@ class TrackedObject(ProvenanceMixin, PathAwareMixin):
     """
     A collection of tracked information
     """
-    is_a = "TrackedObject"
+    category = "TrackedObject"
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:

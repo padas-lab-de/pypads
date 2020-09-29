@@ -4,10 +4,12 @@ from typing import Type
 
 from pydantic import BaseModel
 
+from pypads.app.env import LoggerEnv
 from pypads.app.injections.base_logger import LoggerCall, SimpleLogger
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
 from pypads.injections.analysis.determinism import check_determinism
 from pypads.model.logger_model import LoggerModel
+from pypads.utils.util import get_run_id, get_experiment_id
 
 validator_plugins = set()
 validator_set = set()
@@ -53,7 +55,8 @@ def validator(f):
     @wraps(f)
     def wrapper(self, *args, **kwargs):
         # self is an instance of the class
-        return Validator(fn=f)(self, *args, **kwargs)
+        return Validator(fn=f)(self, *args, _pypads_env=LoggerEnv(parameter=dict(), experiment_id=get_experiment_id(),
+                                                                  run_id=get_run_id()), **kwargs)
 
     return wrapper
 

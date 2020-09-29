@@ -616,12 +616,13 @@ class PyPads:
 
         # override active run if used
         if experiment_name and run.info.experiment_id is not experiment.experiment_id:
-            logger.warning("Active run doesn't match given input name " + experiment_name + ". Recreating new run.")
+            logger.warning(
+                "Active experiment_id of run doesn't match given input name " + experiment_name + ". Recreating new run.")
             try:
-                self.api.start_run(experiment_id=experiment_name, nested=True)
+                self.api.start_run(experiment_id=experiment.experiment_id, nested=True)
             except Exception:
                 mlflow.end_run()
-                self.api.start_run(experiment_id=experiment_name)
+                self.api.start_run(experiment_id=experiment.experiment_id)
         return self
 
 

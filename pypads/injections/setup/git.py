@@ -1,6 +1,6 @@
 from typing import Type
 
-from pydantic import HttpUrl, BaseModel
+from pydantic import BaseModel
 
 from pypads.app.env import LoggerEnv
 from pypads.app.injections.base_logger import TrackedObject, LoggerOutput
@@ -44,7 +44,7 @@ class IGitRSF(RunSetup):
     _dependencies = {"git"}
 
     class IGitRSFOutput(OutputModel):
-        is_a: HttpUrl = "IGitRSF-Output"
+        category: str = "IGitRSF-Output"
         git_info: str = None
 
     @classmethod

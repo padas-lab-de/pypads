@@ -4,10 +4,11 @@ from typing import Type
 
 from pydantic import BaseModel
 
+from pypads.app.env import LoggerEnv
 from pypads.app.injections.base_logger import SimpleLogger, LoggerCall
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
 from pypads.model.logger_model import LoggerModel
-from pypads.utils.util import inheritors
+from pypads.utils.util import inheritors, get_experiment_id, get_run_id
 
 actuator_plugins = set()
 
@@ -48,7 +49,8 @@ def actuator(f):
     @wraps(f)
     def wrapper(self, *args, **kwargs):
         # self is an instance of the class
-        return Actuator(fn=f)(self, *args, **kwargs)
+        return Actuator(fn=f)(self, *args, _pypads_env=LoggerEnv(parameter=dict(), experiment_id=get_experiment_id(),
+                                                                 run_id=get_run_id()), **kwargs)
 
     return wrapper
 
@@ -63,7 +65,7 @@ class PyPadsActuators(IActuators):
         return get_current_pads()
 
     @actuator
-    def set_random_seed(self, seed=None):
+    def set_random_seed(self, _pypads_env=None, _logger_call=None, _logger_output=None, _pypads_params=None, seed=None):
         # Set seed if needed
         if seed is None:
             import random
