@@ -172,6 +172,10 @@ class MultiInjectionLoggerCall(LoggerCall):
         super().__init__(*args, original_call=logging_env.call, logging_env=logging_env, **kwargs)
         self.call_stack = [logging_env.call]
 
+    @property
+    def last_call(self):
+        return self.call_stack[-1]
+
     def add_call(self, call: Call):
         self.call_stack.append(call)
 
