@@ -57,25 +57,26 @@ class IGitRSF(RunSetup):
         run = pads.api.active_run()
         tags = run.data.tags
         source_name = tags.get("mlflow.source.name", None)
-        managed_git: ManagedGit = pads.managed_git_factory(source_name)
-        if managed_git:
-            repo = managed_git.repo
-            git_info = GitTO(part_of=_logger_output, source=source_name or repo.working_dir,
-                             version=repo.head.commit.hexsha)
-            # Disable pager for returns
-            repo.git.set_persistent_git_options(no_pager=True)
-            try:
-                git_info.add_tag("pypads.git.description", repo.description, description="Repository description")
-                git_info.add_tag("pypads.git.describe", repo.git.describe("--all"), description="")
-                git_info.store_git_log("pypads.git.log", repo.git.log(kill_after_timeout=_pypads_timeout))
-                remotes = repo.remotes
-                remote_out = "No remotes existing"
-                if len(remotes) > 0:
-                    remote_out = ""
-                    for remote in remotes:
-                        remote_out += remote.name + ": " + remote.url + "\n"
-                git_info.add_tag("pypads.git.remotes", remote_out, description="Remotes of the repositories")
-            except Exception as e:
-                _logger_output.set_failure_state(e)
-            finally:
-                git_info.store(_logger_output, "git_info")
+        if "unittest" not in source_name:
+            managed_git: ManagedGit = pads.managed_git_factory(source_name)
+            if managed_git:
+                repo = managed_git.repo
+                git_info = GitTO(part_of=_logger_output, source=source_name or repo.working_dir,
+                                 version=repo.head.commit.hexsha)
+                # Disable pager for returns
+                repo.git.set_persistent_git_options(no_pager=True)
+                try:
+                    git_info.add_tag("pypads.git.description", repo.description, description="Repository description")
+                    git_info.add_tag("pypads.git.describe", repo.git.describe("--all"), description="")
+                    git_info.store_git_log("pypads.git.log", repo.git.log(kill_after_timeout=_pypads_timeout))
+                    remotes = repo.remotes
+                    remote_out = "No remotes existing"
+                    if len(remotes) > 0:
+                        remote_out = ""
+                        for remote in remotes:
+                            remote_out += remote.name + ": " + remote.url + "\n"
+                    git_info.add_tag("pypads.git.remotes", remote_out, description="Remotes of the repositories")
+                except Exception as e:
+                    _logger_output.set_failure_state(e)
+                finally:
+                    git_info.store(_logger_output, "git_info")
