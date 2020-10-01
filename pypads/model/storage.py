@@ -62,14 +62,14 @@ class ParameterInfo(BaseModel):
     meta: ParameterMetaModel = ...
     content: str = ...
 
-
-class ArtifactInfo(BaseModel):
+@dataclass
+class ArtifactInfo:
     meta: ArtifactMetaModel = ...
     file_size: int = ...
 
     def content(self):
         from pypads.app.pypads import get_current_pads
-        return get_current_pads().api.load_artifact(relative_path=self.meta.path, run_id=self.meta.run_id,
+        return get_current_pads().results.load_artifact(relative_path=self.meta.path, run_id=self.meta.run_id,
                                                     read_format=self.meta.file_format)
 
 

@@ -94,7 +94,7 @@ class RepositoryObject:
             # If exists set the run_id to the existing one instead
             if len(runs) > 0:
                 # TODO is this correct? Mlflow returns a dataframe
-                self._run = self.pads.api.get_run(run_id=runs.iloc[0][0])
+                self._run = self.pads.results.get_run(run_id=runs.iloc[0][0])
 
         # If no run_id was found with uid create a new run and get its id
         if self.run is None:
@@ -103,7 +103,7 @@ class RepositoryObject:
                 self._run = self.pads.backend.create_run(experiment_id=self.repository.id,
                                                          tags={"pypads_unique_uid": str(uid)} if uid else None)
             else:
-                self._run = self.pads.api.get_run(run_id=run_id)
+                self._run = self.pads.results.get_run(run_id=run_id)
 
     @property
     def run(self):

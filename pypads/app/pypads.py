@@ -50,7 +50,7 @@ def is_nested_run():
     :return:
     """
     pads = get_current_pads()
-    tags = pads.api.get_run(pads.api.active_run().info.run_id).data.tags
+    tags = pads.results.get_run(pads.api.active_run().info.run_id).data.tags
     return "mlflow.parentRunId" in tags
 
 
