@@ -1,15 +1,16 @@
 import os
-from typing import List, Type
+import uuid
+from typing import List, Type, Union
 
 from pydantic import BaseModel
 
 from pypads import logger
 from pypads.app.env import LoggerEnv
-from pypads.app.injections.base_logger import TrackedObject, LoggerOutput
 from pypads.app.injections.run_loggers import RunSetup
+from pypads.app.injections.tracked_object import TrackedObject
 from pypads.model.domain import LibraryModel
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
-from pypads.utils.logging_util import FileFormats
+from pypads.utils.logging_util import FileFormats, get_artifact_dir
 
 
 class DependencyTO(TrackedObject):
@@ -19,9 +20,10 @@ class DependencyTO(TrackedObject):
 
     class DependencyModel(TrackedObjectModel):
         category: str = "Dependencies"
+        description = "A object holding all dependencies found in the current environment."
 
         dependencies: List[LibraryModel] = []
-        pip_freeze: str = ...
+        pip_freeze: Union[uuid.UUID, str] = ...
 
         class Config:
             orm_mode = True
@@ -30,16 +32,16 @@ class DependencyTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.DependencyModel
 
-    def __init__(self, *args, part_of: LoggerOutput, **kwargs):
-        super().__init__(*args, part_of=part_of, **kwargs)
+    def __init__(self, *args, parent: Union[OutputModel, 'TrackedObject'], **kwargs):
+        super().__init__(*args, parent=parent, **kwargs)
 
-    def add_dependency(self, pip_freeze):
+    def add_dependency(self: Union['DependencyTO', DependencyModel], pip_freeze):
         for item in pip_freeze:
             splits = item.split('==')
             if len(splits) == 2:
                 name, version = splits
                 self.dependencies.append(LibraryModel(name=name, version=version))
-        self.pip_freeze = self.store_artifact(self.get_artifact_path("pip_freeze"), "\n".join(pip_freeze),
+        self.pip_freeze = self.store_artifact("pip_freeze", "\n".join(pip_freeze),
                                               write_format=FileFormats.text,
                                               description="dependency list from pip freeze")
 
@@ -60,8 +62,7 @@ class DependencyRSF(RunSetup):
 
     class DependencyRSFOutput(OutputModel):
         category: str = "DependencyRSF-Output"
-
-        dependencies: str = None
+        dependencies: Union[uuid.UUID, str] = None
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
@@ -70,7 +71,7 @@ class DependencyRSF(RunSetup):
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         pads = _pypads_env.pypads
         logger.info("Tracking execution to run with id " + pads.api.active_run().info.run_id)
-        dependencies = DependencyTO(part_of=_logger_output)
+        dependencies = DependencyTO(parent=_logger_output)
         try:
             # Execute pip freeze
             try:
@@ -83,29 +84,32 @@ class DependencyRSF(RunSetup):
         except Exception as e:
             _logger_output.set_failure_state(e)
         finally:
-            dependencies.store(_logger_output, "dependencies")
+            _logger_output.dependencies = dependencies.store()
 
 
-class LoguruTO(TrackedObject):
+class LogTO(TrackedObject):
     """
     Tracking object class for run env info, i.e dependencies.
     """
 
-    class LoguruModel(TrackedObjectModel):
-        category: str = "Logs"
+    class LogModel(TrackedObjectModel):
+        category: str = "Log"
+        description = "A log file containing the log output of the run."
 
-        path: str = ...
+        path: Union[uuid.UUID, str] = ...
+
+        # TODO add log_level
 
         class Config:
             orm_mode = True
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
-        return cls.LoguruModel
+        return cls.LogModel
 
-    def __init__(self, *args, part_of: LoggerOutput, **kwargs):
-        super().__init__(*args, part_of=part_of, **kwargs)
-        self.path = self.get_artifact_path("logs.log")
+    def __init__(self, *args, parent: Union[OutputModel, 'TrackedObject'], **kwargs):
+        super().__init__(*args, parent=parent, **kwargs)
+        self.path = os.path.join(get_artifact_dir(self), "logs.log")
 
 
 class LoguruRSF(RunSetup):
@@ -118,7 +122,7 @@ class LoguruRSF(RunSetup):
 
     class LoguruRSFOutput(OutputModel):
         category: str = "LoguruRSF-Output"
-        logs: str = ...
+        logs: Union[uuid.UUID, str] = ...
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
@@ -136,7 +140,7 @@ class LoguruRSF(RunSetup):
         from pypads.utils.logging_util import get_temp_folder
         folder = get_temp_folder()
 
-        logs = LoguruTO(part_of=_logger_output)
+        logs = LogTO(parent=_logger_output)
 
         # TODO loguru has problems with multiprocessing / make rotation configurable etc
         from pypads.pads_loguru import logger_manager
@@ -155,5 +159,5 @@ class LoguruRSF(RunSetup):
             for file in glob.glob(os.path.join(folder, "run_*.log")):
                 pads.api.log_artifact(file, description="Logs of the current run", artifact_path=logs.path)
 
-        logs.store(_logger_output, "logs")
+        _logger_output.logs = logs.store()
         _api.register_teardown_utility("logger_" + str(lid), remove_logger)

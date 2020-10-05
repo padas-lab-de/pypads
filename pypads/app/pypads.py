@@ -50,7 +50,7 @@ def is_nested_run():
     :return:
     """
     pads = get_current_pads()
-    tags = pads.api.get_run(pads.api.active_run().info.run_id).data.tags
+    tags = pads.results.get_run(pads.api.active_run().info.run_id).data.tags
     return "mlflow.parentRunId" in tags
 
 
@@ -73,7 +73,11 @@ def get_current_config(default=None):
     if active_run in configs.keys():
         return configs[active_run]
     if not active_run:
-        return default
+        pads = get_current_pads()
+        if pads.config:
+            return pads.config
+        else:
+            return default
     run = mlflow.get_run(active_run.info.run_id)
     if CONFIG_NAME in run.data.tags:
         configs[active_run] = ast.literal_eval(run.data.tags[CONFIG_NAME])

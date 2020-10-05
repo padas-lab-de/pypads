@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from pypads import logger
 from pypads.app.call import Call
 from pypads.app.env import InjectionLoggerEnv
-from pypads.app.injections.base_logger import LoggerCall, Logger, LoggerExecutor, OriginalExecutor
+from pypads.app.injections.base_logger import Logger, LoggerExecutor, OriginalExecutor
+from pypads.app.injections.tracked_object import LoggerCall
 from pypads.app.misc.mixins import OrderMixin, NoCallAllowedError
 from pypads.model.logger_call import InjectionLoggerCallModel, MultiInjectionLoggerCallModel
 from pypads.model.logger_model import InjectionLoggerModel
@@ -68,7 +69,7 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
 
         self.store()
 
-        logger_call = InjectionLoggerCall(logging_env=_pypads_env, created_by=self)
+        logger_call = InjectionLoggerCall(logging_env=_pypads_env, creator=self)
         output = self.build_output(_pypads_env, logger_call)
 
         try:
@@ -141,7 +142,7 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
             logger.error("Logging failed for " + str(self) + ": " + str(error) + "\nTrace:\n" + traceback.format_exc())
 
             # Try to call the original unwrapped function if something broke
-            original = _pypads_env.call.call_id.context.original(_pypads_env.callback)
+            original = _pypads_env.producer.call_id.context.original(_pypads_env.callback)
             if callable(original):
                 try:
                     logger.error("Trying to recover from: " + str(e))
@@ -158,8 +159,8 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
 
                 # Original function was not accessiblete
                 raise Exception("Couldn't fall back to original function for " + str(
-                    _pypads_env.call.call_id.context.original_name(_pypads_env.callback)) + " on " + str(
-                    _pypads_env.call.call_id.context) + ". Can't recover from " + str(error))
+                    _pypads_env.logger_call.call_id.context.original_name(_pypads_env.callback)) + " on " + str(
+                    _pypads_env.logger_call.call_id.context) + ". Can't recover from " + str(error))
 
 
 class MultiInjectionLoggerCall(LoggerCall):
@@ -202,7 +203,7 @@ class MultiInjectionLogger(InjectionLogger):
             return logger_call
         else:
             self.store()
-            return MultiInjectionLoggerCall(logging_env=logging_env, created_by=self)
+            return MultiInjectionLoggerCall(logging_env=logging_env, creator=self)
 
     def _get_output(self, _pypads_env,_logger_call):
         from pypads.app.pypads import get_current_pads
@@ -274,7 +275,7 @@ class OutputInjectionLogger(InjectionLogger):
         _pypads_hook_params = _pypads_env.parameter
 
         self.store()
-        logger_call = InjectionLoggerCall(logging_env=_pypads_env, created_by=self)
+        logger_call = InjectionLoggerCall(logging_env=_pypads_env, creator=self)
         output = self.build_output(_pypads_env)
 
         try:

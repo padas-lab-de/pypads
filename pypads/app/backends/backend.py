@@ -1,13 +1,13 @@
 import os
 from abc import abstractmethod
-from typing import List
+from typing import List, Union
 
 from mlflow.entities import ViewType
 from mlflow.tracking.fluent import SEARCH_MAX_RESULTS_PANDAS
 
-from pypads.model.storage import FileInfo, ArtifactInfo
-from pypads.utils.logging_util import get_temp_folder, read_artifact, _to_artifact_meta_name, _to_metric_meta_name, \
-    _to_param_meta_name, FileFormats, _to_tag_meta_name
+from pypads.model.logger_output import FileInfo
+from pypads.model.models import IdBasedEntry, ResultType
+from pypads.utils.logging_util import get_temp_folder, read_artifact
 
 
 class BackendInterface:
@@ -25,30 +25,32 @@ class BackendInterface:
         return self._pypads
 
     @abstractmethod
-    def log_artifact(self, local_path, artifact_path="") -> str:
+    def log_artifact(self, meta, local_path) -> str:
         """
-        Logs an artifact.
+        Logs an artifact from disk.
+        :param meta: ArtifactTracking object holding meta information
         :param local_path: Path from which to take the artifact
-        :param meta: Metadata about the artifact.
-        :param artifact_path: Path where to place the artifact
         :return: Returns a relative path to the artifact including name and file extension.
         """
         raise NotImplementedError("")
 
-    @abstractmethod
-    def log_mem_artifact(self, path: str, artifact, write_format, preserveFolder=True):
+    def log(self, obj: IdBasedEntry):
+        """
+        Log some entry to backend.
+        :param obj: Entry object to be logged
+        :param payload: Payload if an memory artifact is to be stored.
+        :return:
+        """
         raise NotImplementedError("")
 
-    @abstractmethod
-    def log_metric(self, name, metric, step):
-        raise NotImplementedError("")
-
-    @abstractmethod
-    def log_parameter(self, name, parameter):
-        raise NotImplementedError("")
-
-    @abstractmethod
-    def set_tag(self, key, value):
+    def get(self, run_id, uid, storage_type: Union[ResultType, str]):
+        """
+        Get an entry.
+        :param run_id: Run to get the object from
+        :param uid: Uid or path for getting
+        :param storage_type: Type of the entity
+        :return:
+        """
         raise NotImplementedError("")
 
     @abstractmethod
@@ -121,52 +123,8 @@ class BackendInterface:
         """
         raise NotImplementedError("")
 
-    def get_artifact(self, run_id, path):
+    def load_artifact_data(self, run_id, path):
         return read_artifact(self.download_tmp_artifacts(run_id, path))
-
-    def get_artifact_meta(self, run_id, relative_path, read_format: FileFormats = FileFormats.json):
-        """
-        Gets the as artifact stored meta information about the in relative_path defined artifact
-        :param read_format:
-        :param run_id:
-        :param relative_path:
-        :return:
-        """
-        return self.get_artifact(run_id, _to_artifact_meta_name(
-            relative_path.rsplit(".", 1)[0]) + ".meta." + read_format.value)
-
-    def get_metric_meta(self, run_id, relative_path, read_format: FileFormats = FileFormats.json):
-        """
-        Gets the as artifact stored meta information about the in relative_path defined metric
-        :param read_format:
-        :param run_id:
-        :param relative_path:
-        :return:
-        """
-        return self.get_artifact(run_id, _to_metric_meta_name(
-            relative_path) + ".meta." + read_format.value)
-
-    def get_parameter_meta(self, run_id, relative_path, read_format: FileFormats = FileFormats.json):
-        """
-        Gets the as artifact stored meta information about the in relative_path defined parameter
-        :param read_format:
-        :param run_id:
-        :param relative_path:
-        :return:
-        """
-        return self.get_artifact(run_id, _to_param_meta_name(
-            relative_path) + ".meta." + read_format.value)
-
-    def get_tag_meta(self, run_id, relative_path, read_format: FileFormats = FileFormats.json):
-        """
-        Gets the as artifact stored meta information about the in relative_path defined tag
-        :param read_format:
-        :param run_id:
-        :param relative_path:
-        :return:
-        """
-        return self.get_artifact(run_id, _to_tag_meta_name(
-            relative_path) + ".meta." + read_format.value)
 
     def download_tmp_artifacts(self, run_id, relative_path):
         """
@@ -190,27 +148,30 @@ class BackendInterface:
         """
         raise NotImplementedError("")
 
-    def list_non_meta_files(self, run_id, path=None) -> List[FileInfo]:
-        """
-        This lists only artifacts which are not metadata files.
-        :param run_id:
-        :param path:
-        :return:
-        """
-        return [a for a in self.list_files(run_id, path=path) if
-                not str(a.path).endswith("meta." + FileFormats.json.value)]
+    # def list_non_meta_files(self, run_id, path=None) -> List[FileInfo]:
+    #     """
+    #     This lists only artifacts which are not metadata files.
+    #     :param run_id:
+    #     :param path:
+    #     :return:
+    #     """
+    #     return [a for a in self.list_files(run_id, path=path) if
+    #             not str(a.path).endswith("meta." + FileFormats.json.value)]
+    #
+    # def list_artifacts(self, run_id, path=None) -> List[ArtifactInfo]:
+    #     """
+    #     This lists artifacts including their meta information.
+    #     :param run_id:
+    #     :param path:
+    #     :return:
+    #     """
+    #     artifacts = self.list_non_meta_files(run_id, path=path)
+    #     return [ArtifactInfo.construct(file_size=a.file_size,
+    #                                    meta=self.get_artifact_meta(run_id=run_id, relative_path=a.path))
+    #             for a in artifacts if not a.is_dir]
 
-    def list_artifacts(self, run_id, path=None) -> List[ArtifactInfo]:
-        """
-        This lists artifacts including their meta information.
-        :param run_id:
-        :param path:
-        :return:
-        """
-        artifacts = self.list_non_meta_files(run_id, path=path)
-        return [ArtifactInfo.construct(file_size=a.file_size,
-                                       meta=self.get_artifact_meta(run_id=run_id, relative_path=a.path))
-                for a in artifacts if not a.is_dir]
+    def list(self, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None):
+        raise NotImplementedError("The used backend doesn't support this form of querying.")
 
     @abstractmethod
     def get_artifact_uri(self, artifact_path=None):

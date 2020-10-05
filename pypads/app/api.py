@@ -4,25 +4,21 @@ from contextlib import contextmanager
 from functools import wraps
 from typing import List, Iterable, Union
 
-import jsonpath_rw_ext
 import mlflow
-from mlflow.entities import ViewType
 
 from pypads import logger
-from pypads.app.backends.repository import Repository
 from pypads.app.env import LoggerEnv
+from pypads.app.injections.base_logger import dummy_logger
 from pypads.app.injections.run_loggers import RunSetup, RunTeardown, SimpleRunFunction
+from pypads.app.injections.tracked_object import LoggerOutput, ParameterTO, TagTO, ArtifactTO, MetricTO
 from pypads.app.misc.caches import Cache
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
 from pypads.app.misc.mixins import FunctionHolderMixin
 from pypads.bindings.anchors import get_anchor, Anchor
 from pypads.importext.mappings import Mapping, MatchedMapping, make_run_time_mapping_collection
 from pypads.importext.package_path import PackagePathMatcher, PackagePath
-from pypads.model.storage import MetricMetaModel, ParameterMetaModel, ArtifactMetaModel, TagMetaModel, ArtifactInfo, \
-    TagInfo, ParameterInfo, MetricInfo
-from pypads.utils.logging_util import get_temp_folder, \
-    _to_artifact_meta_name, _to_metric_meta_name, _to_param_meta_name, FileFormats, read_artifact, _to_tag_meta_name, \
-    find_file_format
+from pypads.utils.logging_util import get_temp_folder, FileFormats, read_artifact, find_file_format
+from pypads.utils.util import get_experiment_id, get_run_id
 
 api_plugins = set()
 cmds = set()
@@ -84,16 +80,18 @@ class PyPadsApi(IApi):
 
     # noinspection PyMethodMayBeStatic
     @cmd
-    def track(self, fn, ctx=None, anchors: List = None, mapping: Mapping = None, meta={}):
+    def track(self, fn, ctx=None, anchors: List = None, mapping: Mapping = None, additional_data=None):
         """
         Method to inject logging capabilities into a function
-        :param meta: Additional meta data to be provided to the tracking. This should be used to map to rdf.
+        :param additional_data: Additional meta data to be provided to the tracking. This should be used to map to rdf.
         :param fn: Function to extend
         :param ctx: Ctx which defined the function
         :param anchors: Anchors to trigger on function call
         :param mapping: Mapping defining this extension
         :return: The extended function
         """
+        if additional_data is None:
+            additional_data = {}
 
         # Warn if ctx doesn't defined the function we want to track
         if ctx is not None and not hasattr(ctx, fn.__name__):
@@ -135,7 +133,7 @@ class PyPadsApi(IApi):
             # For all events we want to hook to
             mapping = Mapping(PackagePathMatcher(ctx_path + "." + fn.__name__), make_run_time_mapping_collection(lib),
                               _anchors,
-                              {**meta, **{"category": "CustomTrack", "concept": fn.__name__}})
+                              {**additional_data, **{"category": "CustomTrack", "concept": fn.__name__}})
 
         # Wrap the function of given context and return it
         return self.pypads.wrap_manager.wrap(fn, ctx=ctx, matched_mappings={MatchedMapping(mapping, PackagePath(
@@ -163,155 +161,126 @@ class PyPadsApi(IApi):
         return out
 
     # ---- logging ----
+    def get_programmatic_output(self):
+        if not self.pypads.cache.run_exists("programmatic_output"):
+            self.pypads.cache.run_add("programmatic_output",
+                                      LoggerOutput(_pypads_env=self.create_dummy_env(), producer=dummy_logger))
+        else:
+            return self.pypads.cache.run_get("programmatic_output")
+
+    @staticmethod
+    def create_dummy_env(data=None) -> LoggerEnv:
+        """
+        Create a dummy environment to be used for programmatically called logging instead of hooks
+        :param data:
+        :return:
+        """
+        if data is None:
+            data = {}
+        return LoggerEnv(parameter=dict(), experiment_id=get_experiment_id(), run_id=get_run_id(),
+                         data={**data, **{"programmatic": True}})
+
     @cmd
-    def log_artifact(self, local_path, description="", artifact_type=None, meta=None, artifact_path=None):
+    def log_artifact(self, local_path, description="", additional_data=None, artifact_path=None, holder=None):
         """
         Function to log an artifact on local disk. This artifact is transferred into the context of mlflow.
         The context might be a local repository, sftp etc.
-:param artifact_type: If artifact needs to be logged with a special pypads type meta information.
+        :param output_model: Output model to which this artifact is to be added. For direct calls this can be None.
         :param description: Description of the artifact.
         :param artifact_path: Path where to store the artifact
         :param local_path: Path of the artifact to log
-        :param meta: Additional meta information you want to store about the artifact. This is an extension by pypads creating a
+        :param additional_data: Additional meta information you want to store about the artifact. This is an extension by pypads creating a
         json containing some meta information.
         :return:
         """
-        meta_model = ArtifactMetaModel(path=self.pypads.backend.log_artifact(local_path, artifact_path=artifact_path),
-                                       description=description, file_format=find_file_format(local_path),
-                                       additional_data=meta, type=artifact_type)
-        return self._log_artifact_meta(os.path.basename(local_path), meta_model)
+        if holder is None:
+            holder = self.get_programmatic_output()
+        return self.pypads.backend.log_artifact(
+            ArtifactTO(value=artifact_path, description=description, file_format=find_file_format(local_path),
+                       additional_data=additional_data, parent=holder), local_path)
 
     @cmd
-    def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", artifact_type=None, meta=None,
-                         write_meta=True):
+    def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", additional_data=None,
+                         holder=None):
         """
         See log_artifact. This logs directly from memory by storing the memory to a temporary file.
-        :param artifact_type: If artifact needs to be logged with a special pypads type meta information.
+        :param holder: Output model to which to add the artifact
         :param description: Description of the artifact.
         :param path: path of the new file to create.
         :param obj: Object you want to store
         :param write_format: Format to write to. FileFormats currently include text and binary.
-        :param meta: Meta information you want to store about the artifact. This is an extension by pypads creating a
+        :param additional_data: Meta information you want to store about the artifact.
+        This is an extension by pypads creating a
         json containing some meta information.
         :return:
         """
-        if not write_meta:
-            return self.pypads.backend.log_mem_artifact(path, obj, write_format)
-        meta_model = ArtifactMetaModel(path=self.pypads.backend.log_mem_artifact(path, obj, write_format),
-                                       description=description, file_format=write_format,
-                                       additional_data=meta, type=artifact_type)
-        return self._log_artifact_meta(path, meta_model)
-
-    def _log_artifact_meta(self, name, meta=None):
-        return self._write_meta(_to_artifact_meta_name(name), meta)
+        if holder is None:
+            holder = self.get_programmatic_output()
+        return ArtifactTO(data=path, content=obj, description=description, file_format=write_format,
+                          additional_data=additional_data, parent=holder).store()
 
     @cmd
-    def log_metric(self, key, value, description="", step=None, meta: dict = None):
+    def log_metric(self, key, value, description="", step=None, additional_data: dict = None, holder=None):
         """
         Log a metric to mlflow.
+        :param holder: Output model to which to add the artifact
         :param description: Description of the metric.
         :param key: Metric key
         :param value: Metric value
         :param step: A step for metrics which can change while executing
-        :param meta: Meta information you want to store about the metric. This is an extension by pypads creating a
+        :param additional_data: Meta information you want to store about the metric. This is an extension by pypads creating a
         json containing some meta information.
         :return:
         """
-        meta_model = MetricMetaModel(name=key, step=step, description=description, additional_data=meta)
-        self.pypads.backend.log_metric(name=key, metric=value, step=step)
-        return self._log_metric_meta(key, meta_model)
-
-    def _log_metric_meta(self, key, meta=None):
-        return self._write_meta(_to_metric_meta_name(key), meta)
+        if holder is None:
+            holder = self.get_programmatic_output()
+        return MetricTO(name=key, step=step, data=value, description=description, additional_data=additional_data,
+                        parent=holder).store()
 
     @cmd
-    def log_param(self, key, value, value_format=None, description="", meta: dict = None):
+    def log_param(self, key, value, value_format=None, description="", additional_data: dict = None, holder=None):
         """
         Log a parameter of the execution.
+        :param holder: Output model to which to add the artifact
         :param value_format: Type of the parameter
         :param description: Description of the parameter.
         :param key: Parameter key
         :param value: Parameter value
-        :param meta: Meta information you want to store about the parameter. This is an extension by pypads creating a
-        json containing some meta information.
+        :param additional_data: Meta information you want to store about the parameter. This is an extension by pypads
+        creating a json containing some meta information.
         :return:
         """
-        meta_model = ParameterMetaModel(name=key, value_format=value_format or str(type(value)),
-                                        description=description, additional_data=meta)
-        self.pypads.backend.log_parameter(name=meta_model.name, parameter=value)
-        return self._log_param_meta(key, meta_model)
-
-    def _log_param_meta(self, key, meta):
-        return self._write_meta(_to_param_meta_name(key), meta)
+        if holder is None:
+            holder = self.get_programmatic_output()
+        return ParameterTO(name=key, value_format=value_format or str(type(value)),
+                           description=description, additional_data=additional_data,
+                           data=value, parent=holder).store()
 
     @cmd
-    def set_tag(self, key, value, value_format="string", description="", meta: dict = None):
+    def set_tag(self, key, value, value_format="string", description="", additional_data: dict = None,
+                holder=None):
         """
         Set a tag for your current run.
-        :param meta: Meta information you want to store about the parameter. This is an extension by pypads creating a
-        json containing some meta information.
+        :param holder: Output model to which to add the artifact
+        :param additional_data: Meta information you want to store about the parameter. This is an extension by
+        pypads creating a json containing some meta information.
         :param value_format: Format of the value held in tag
         :param description: Description what this tag indicates
         :param key: Tag key
         :param value: Tag value
         :return:
         """
-        meta_model = TagMetaModel(name=key, description=description, value_format=value_format, additional_data=meta)
-        self.pypads.backend.set_tag(key=meta_model.name, value=value)
-        return self._log_tag_meta(key, meta_model)
-
-    def _log_tag_meta(self, key, meta):
-        return self._write_meta(_to_tag_meta_name(key), meta)
-
-    def _write_meta(self, name, meta, write_format=FileFormats.json):
-        """
-        Write the meta information about an given object name as artifact.
-        :param name: Name of the object
-        :param meta: Metainformation to store
-        :return:
-        """
-        return self.pypads.backend.log_mem_artifact(name + ".meta",
-                                                    meta.json(by_alias=True), write_format=write_format)
-
-    def _read_meta(self, name, read_format=FileFormats.json):
-        """
-        Read the metainformation of a object name.
-        :param name:
-        :return:
-        """
-        # TODO format / json / etc?
-        return read_artifact(name + ".meta." + read_format.value)
+        if holder is None:
+            holder = self.get_programmatic_output()
+        return self.pypads.backend.log(
+            TagTO(name=key, value_format=value_format or str(type(value)),
+                  description=description, additional_data=additional_data,
+                  data=value,
+                  parent=holder))
 
     @cmd
     def artifact(self, name):
         return read_artifact(name)
-
-    @cmd
-    def metric_meta(self, name):
-        """
-        Load the meta information of a metric by given name.
-        :param name: Name of the metric
-        :return:
-        """
-        return self._read_meta(_to_metric_meta_name(name))
-
-    @cmd
-    def param_meta(self, name):
-        """
-        Load the meta information of a parameter by given name.
-        :param name: Name of the parameter
-        :return:
-        """
-        return self._read_meta(_to_param_meta_name(name))
-
-    @cmd
-    def artifact_meta(self, name):
-        """
-        Load the meta information of an artifact by given name.
-        :param name: Name of the artifact
-        :return:
-        """
-        return self._read_meta(_to_artifact_meta_name(name))
 
     # !--- logging ----
 
@@ -552,190 +521,6 @@ class PyPadsApi(IApi):
         # !-- Clean tmp files in disk cache after run ---
 
     # !--- run management ---
-
-    # --- results management ---
-    @cmd
-    def get_run(self, run_id=None):
-        run_id = run_id or self.active_run().info.run_id
-        return self.pypads.backend.get_run(run_id)
-
-    @cmd
-    def list_experiments(self, view_type: ViewType = ViewType.ALL):
-        return self.pypads.backend.list_experiments(view_type)
-
-    @cmd
-    def list_run_infos(self, experiment_name, run_view_type: ViewType = ViewType.ALL):
-        experiment = self.pypads.backend.get_experiment_by_name(experiment_name)
-        return self.pypads.backend.list_run_infos(experiment_name=experiment.name, run_view_type=run_view_type)
-
-    @cmd
-    def get_metrics(self, experiment_name=None, run_id=None, name: str = None, view_type=ViewType.ALL, history=False):
-        if run_id is None:
-            # Get all experiments
-            if experiment_name is None:
-                experiments = self.pypads.backend.list_experiments(view_type=view_type)
-                return [metric for experiment in experiments if
-                        not Repository.is_repository(experiment) for metric in
-                        self.get_metrics(experiment_name=experiment.name, name=name, view_type=view_type,
-                                         history=history)]
-
-            # Get all runs
-            run_infos = self.pypads.backend.list_run_infos(experiment_name=experiment_name, run_view_type=view_type)
-            return [metric for run_info in run_infos for metric in
-                    self.get_metrics(run_id=run_info.run_id, name=name, view_type=view_type, history=history)]
-        if not name:
-            run = self.get_run(run_id)
-            return [
-                MetricInfo(meta=self.pypads.backend.get_metric_meta(run_id=run.info.run_id, relative_path=name),
-                           content=run.data.metrics[name] if not history else self.pypads.backend.get_metric_history(
-                               run.info.run_id, name)) for name in iter(run.data.metrics.keys())]
-        run = self.get_run(run_id)
-        if name in run.data.metrics:
-            return [MetricInfo(meta=self.pypads.backend.get_metric_meta(run_id=run.info.run_id, relative_path=name),
-                               content=run.data.metrics[
-                                   name] if not history else self.pypads.backend.get_metric_history(
-                                   run.info.run_id, name))]
-        return []
-
-    @cmd
-    def get_parameters(self, experiment_name=None, run_id=None, name: str = None, view_type=ViewType.ALL):
-        if run_id is None:
-            # Get all experiments
-            if experiment_name is None:
-                experiments = self.pypads.backend.list_experiments(view_type=view_type)
-                return [parameter for experiment in experiments if
-                        not Repository.is_repository(experiment) for parameter in
-                        self.get_parameters(experiment_name=experiment.name, name=name)]
-
-            # Get all runs
-            run_infos = self.pypads.backend.list_run_infos(experiment_name=experiment_name, run_view_type=view_type)
-            return [parameter for run_info in run_infos for parameter in
-                    self.get_parameters(run_id=run_info.run_id, name=name)]
-        if not name:
-            run = self.get_run(run_id)
-            return [
-                ParameterInfo(meta=self.pypads.backend.get_parameter_meta(run_id=run.info.run_id, relative_path=name),
-                              content=run.data.params[name]) for name in run.data.params.keys()]
-        run = self.get_run(run_id)
-
-        if name in run.data.params:
-            return [
-                ParameterInfo(meta=self.pypads.backend.get_parameter_meta(run_id=run.info.run_id, relative_path=name),
-                              content=run.data.params[name])]
-        return []
-
-    @cmd
-    def get_tags(self, experiment_name=None, run_id=None, name: str = None, view_type=ViewType.ALL):
-        if run_id is None:
-            # Get all experiments
-            if experiment_name is None:
-                experiments = self.pypads.backend.list_experiments(view_type=view_type)
-                return [tag for experiment in experiments if
-                        not Repository.is_repository(experiment) for tag in
-                        self.get_tags(experiment_name=experiment.name, name=name)]
-
-            # Get all runs
-            run_infos = self.pypads.backend.list_run_infos(experiment_name=experiment_name, run_view_type=view_type)
-            return [tag for run_info in run_infos for tag in
-                    self.get_tags(run_id=run_info.run_id, name=name)]
-        if not name:
-            run = self.get_run(run_id)
-            tags = []
-            for name in iter(run.data.tags.keys()):
-                tag_meta = None
-                try:
-                    tag_meta = self.pypads.backend.get_tag_meta(run_id=run.info.run_id, relative_path=name)
-                except Exception:
-                    pass
-                if tag_meta:
-                    tags.append(
-                        TagInfo(meta=tag_meta,
-                                content=run.data.tags[name]))
-            return tags
-
-        run = self.get_run(run_id)
-        if name in run.data.tags:
-            return [TagInfo(meta=self.pypads.backend.get_tag_meta(run_id=run.info.run_id, relative_path=name),
-                            content=run.data.tags[name])]
-        return []
-
-    @cmd
-    def load_artifact(self, relative_path, run_id=None, read_format: FileFormats = None):
-        if not run_id:
-            run_id = self.pypads.api.active_run().info.run_id
-        return read_artifact(
-            self.pypads.backend.download_tmp_artifacts(run_id=run_id, relative_path=relative_path),
-            read_format=read_format)
-
-    @cmd
-    def get_artifacts(self, experiment_name=None, run_id=None, path: str = None, view_type=ViewType.ALL):
-        if run_id is None:
-            # Get all experiments
-            if experiment_name is None:
-                experiments = self.pypads.backend.list_experiments(view_type=view_type)
-                return [artifact for experiment in experiments if
-                        not Repository.is_repository(experiment) for artifact in
-                        self.get_artifacts(experiment_name=experiment.name, path=path)]
-
-            # Get all runs
-            run_infos = self.pypads.backend.list_run_infos(experiment_name=experiment_name, run_view_type=view_type)
-            return [artifact for run_info in run_infos for artifact in
-                    self.get_artifacts(run_id=run_info.run_id, path=path)]
-        else:
-
-            # Check for searching all artifacts
-            if path and path.endswith("*"):
-                path = path[:-2]
-                if path == "":
-                    path = None
-
-                current = self.pypads.backend.list_non_meta_files(run_id=run_id, path=path)
-
-                artifacts = []
-                for c in current:
-                    if c.is_dir:
-                        artifacts.extend(self.pypads.api.get_artifacts(run_id=run_id, path=os.path.join(c.path, "*")))
-                    else:
-                        artifacts.append(ArtifactInfo(file_size=c.file_size,
-                                                      meta=self.pypads.backend.get_artifact_meta(run_id=run_id,
-                                                                                                 relative_path=c.path)))
-                return artifacts
-
-            # Get a certain run
-            return self.pypads.backend.list_artifacts(run_id=run_id, path=path)
-
-    @cmd
-    def search_artifacts_json_path(self, experiment_name=None, run_id=None, path: str = None, view_type=ViewType.ALL,
-                                   search=""):
-        """
-        Searches in meta information of the artifacts.
-        :return:
-        """
-        return [a for a in [r.dict() for r in self.get_artifacts(experiment_name, run_id, path, view_type)] if
-                len(jsonpath_rw_ext.match(search, a.meta)) > 0]
-
-    @cmd
-    def get_logger_calls(self, experiment_name=None, run_id=None, path: str = None, view_type=ViewType.ALL):
-        return self.search_artifacts_json_path(experiment_name=experiment_name, run_id=run_id, path=path,
-                                               view_type=view_type, search="$[?(@.meta.type == 'Call')]")
-
-    @cmd
-    def get_tracked_objects(self, experiment_name=None, run_id=None, path: str = None, view_type=ViewType.ALL):
-        return self.search_artifacts_json_path(experiment_name=experiment_name, run_id=run_id, path=path,
-                                               view_type=view_type, search="$[?(@.meta.type == 'TrackedObject')]")
-
-    @cmd
-    def get_outputs(self, experiment_name=None, run_id=None, path: str = None, view_type=ViewType.ALL):
-        return self.search_artifacts_json_path(experiment_name=experiment_name, run_id=run_id, path=path,
-                                               view_type=view_type, search="$[?(@.meta.type == 'Outputs')]")
-
-    # # # !-- results management ---
-    # @cmd
-    # def to_json(self, experiment_id):
-    #     # TODO REWORK ME
-    #     # Function to be called before ending the tracker
-    #     from pypads.utils.files_util import consolidate_run_output_files
-    #     consolidate_run_output_files(root_path=path)
 
     @cmd
     def help(self):

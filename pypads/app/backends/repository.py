@@ -1,6 +1,30 @@
 import os
 
+from pymongo import MongoClient
+
 from pypads.utils.logging_util import FileFormats
+
+
+class MongoRepository:
+
+    def __init__(self, *args, name, **kwargs):
+        self._mongo_client = MongoClient(os.environ['MONGO_URL'], username=os.environ['MONGO_USER'],
+                                         password=os.environ['MONGO_PW'], authSource=os.environ['MONGO_DB'])
+        self._db = self._mongo_client[os.environ['MONGO_DB']]
+        self._collection = self._db[name]
+
+    def has_object(self, uid):
+        return self.get_object(uid) is not None
+
+    def get_object(self, uid):
+        return self._collection.find_one({"_id": str(uid)})
+
+    def store(self, doc):
+        self._collection.insert_one(doc)
+
+    @property
+    def collection(self):
+        return self._collection
 
 
 class Repository:
@@ -113,8 +137,7 @@ class RepositoryObject:
     def run_id(self):
         return self.run.info.run_id
 
-    def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", artifact_type=None, meta=None,
-                         write_meta=True):
+    def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", additional_data=None):
         """
         Activates the repository context and stores an artifact from memory into it.
         :return:
@@ -122,17 +145,18 @@ class RepositoryObject:
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
             return self.get_rel_artifact_path(
                 self.pads.api.log_mem_artifact(path=path, obj=obj, write_format=write_format, description=description,
-                                               artifact_type=artifact_type, meta=meta, write_meta=write_meta))
+                                               additional_data=additional_data))
 
-    def log_artifact(self, local_path, description="", meta=None, artifact_type=None, artifact_path=None):
+    def log_artifact(self, local_path, description="", additional_data=None, artifact_path=None):
         """
         Activates the repository context and stores an artifact into it.
         :return:
         """
         with self.repository.context(self.run_id, run_name=self._name) as ctx:
             return self.get_rel_artifact_path(
-                self.pads.api.log_artifact(local_path=local_path, description=description, meta=meta,
-                                           artifact_type=artifact_type, artifact_path=artifact_path))
+                self.pads.api.log_artifact(local_path=local_path, description=description,
+                                           additional_data=additional_data,
+                                           artifact_path=artifact_path))
 
     def log_param(self, key, value, value_format=None, description="", meta: dict = None):
         """
@@ -165,7 +189,7 @@ class RepositoryObject:
         return os.path.join(self.get_rel_base_path(), "artifacts", path)
 
 
-class SchemaRepository(Repository):
+class SchemaRepository(MongoRepository):
 
     def __init__(self, *args, **kwargs):
         """
@@ -176,7 +200,7 @@ class SchemaRepository(Repository):
         super().__init__(*args, name="pypads_schemata", **kwargs)
 
 
-class LoggerRepository(Repository):
+class LoggerRepository(MongoRepository):
 
     def __init__(self, *args, **kwargs):
         """

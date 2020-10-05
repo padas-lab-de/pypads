@@ -1,10 +1,11 @@
-from typing import Type, Optional
+from typing import Type, Optional, Union
+from uuid import UUID
 
 from pydantic import BaseModel
 
 from pypads import logger
-from pypads.app.injections.base_logger import TrackedObject
 from pypads.app.injections.injection import InjectionLogger
+from pypads.app.injections.tracked_object import TrackedObject
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
 
 
@@ -15,6 +16,7 @@ class MetricTO(TrackedObject):
 
     class MetricModel(TrackedObjectModel):
         category: str = "Metric"
+        description = "A tracked metric of the experiment."
 
         name: str = ...  # Metric name
         as_artifact: bool = False
@@ -27,8 +29,8 @@ class MetricTO(TrackedObject):
         return cls.MetricModel
 
     def store_value(self, value, step):
-        self.name = self._tracked_by.original_call.call_id.context.container.__name__ + "." + \
-                    self._tracked_by.original_call.call_id.wrappee.__name__
+        self.name = self.producer.original_call.call_id.context.container.__name__ + "." + \
+                    self.producer.original_call.call_id.wrappee.__name__
 
         if isinstance(value, float):
             self.store_metric(self.name, value, description="The metric returned by {}".format(self.name), step=step)
@@ -38,7 +40,7 @@ class MetricTO(TrackedObject):
                 type(
                     value)) + "' of '" + self.name + "' as artifact instead.")
             if self.as_artifact:
-                self.name = self.store_artifact(self.get_artifact_path(self.name), value,
+                self.name = self.store_artifact(self.name, value,
                                                 description="The metric returned by {}".format(self.name))
                 return True
         return False
@@ -55,7 +57,7 @@ class MetricILF(InjectionLogger):
         # Add additional context information to
         # TODO context: dict = {**{"test": "testVal"}, **OntologyEntry.__field_defaults__["context"]}
         category: str = "MetricILF-Output"
-        metric: Optional[str] = None
+        metric: Optional[Union[UUID, str]] = None
 
         class Config:
             orm_mode = True
@@ -76,10 +78,10 @@ class MetricILF(InjectionLogger):
         """
 
         result = _pypads_result
-        metric = MetricTO(part_of=_logger_output,
+        metric = MetricTO(parent=_logger_output,
                           as_artifact=_pypads_artifact_fallback)
 
         storable = metric.store_value(result, step=_logger_call.original_call.call_id.call_number)
 
         if storable:
-            metric.store(_logger_output, key="metric")
+            _logger_output.metric = metric.store()

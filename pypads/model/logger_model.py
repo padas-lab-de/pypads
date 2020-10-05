@@ -1,7 +1,7 @@
-from typing import List
+from typing import List, Union
 
 from pypads.model.domain import LibSelectorModel
-from pypads.model.models import IdBasedEntry
+from pypads.model.models import IdBasedEntry, ResultType
 
 
 class LoggerModel(IdBasedEntry):
@@ -15,6 +15,7 @@ class LoggerModel(IdBasedEntry):
     supported_libraries: List[LibSelectorModel] = ...
     allow_nested: bool = True
     allow_intermediate: bool = True
+    storage_type: Union[str, ResultType] = ResultType.logger
 
     class Config:
         orm_mode = True

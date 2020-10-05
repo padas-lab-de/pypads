@@ -15,6 +15,7 @@ from pypads.app.backends.mlflow import MLFlowBackendFactory
 from pypads.app.backends.repository import SchemaRepository, LoggerRepository
 from pypads.app.decorators import DecoratorPluginManager, PyPadsDecorators
 from pypads.app.misc.caches import PypadsCache
+from pypads.app.results import ResultPluginManager, results, PyPadsResults
 from pypads.app.validators import ValidatorPluginManager, validators, PyPadsValidators
 from pypads.bindings.events import FunctionRegistry
 from pypads.bindings.hooks import HookRegistry
@@ -64,8 +65,9 @@ DEFAULT_CONFIG = {
     # Activate to ignore tracking on recursive calls of the same function with the same mapping
     "recursion_depth": -1,  # Limit the tracking of recursive calls
     "log_on_failure": True,  # Log the stdout / stderr output when the execution of the experiment failed
-    "include_default_mappings": True  # Include the default mappings additionally to the passed mapping if a mapping
+    "include_default_mappings": True,  # Include the default mappings additionally to the passed mapping if a mapping
     # is passed
+    "mongo_db": True  # Use a mongo_db endpoint
 }
 
 DEFAULT_SETUP_FNS = {DependencyRSF(), LoguruRSF(), IGitRSF(_pypads_timeout=3), ISystemRSF(), IRamRSF(), ICpuRSF(),
@@ -86,10 +88,20 @@ class PyPads:
     PyPads app. Serves as the main entrypoint to PyPads. After constructing this app tracking is activated.
     """
 
+    def __new__(cls, *args, **kwargs):
+        try:
+            from pypads.app.pypads import get_current_pads
+            if get_current_pads() is not None:
+                logger.warning("Currently only one tracker can be activated at once."
+                               "PyPads was already intialized. Reusing the old instance.")
+                return get_current_pads()
+        except Exception as e:
+            pass
+        return super().__new__(cls)
+
     def __init__(self, uri=None, folder=None, mappings: List[MappingCollection] = None, hooks=None,
                  events=None, setup_fns=None, config=None, pre_initialized_cache: PypadsCache = None,
                  disable_plugins=None, autostart=None):
-
         from pypads.app.pypads import set_current_pads
         set_current_pads(self)
 
@@ -117,6 +129,9 @@ class PyPads:
         # Init Validators
         self._validators = ValidatorPluginManager()
 
+        # Init Results
+        self._results = ResultPluginManager()
+
         # Init CallTracker
         self._call_tracker = CallTracker(self)
 
@@ -129,14 +144,14 @@ class PyPads:
         # Store uri into cache
         self._cache.add("uri", uri or os.environ.get('MLFLOW_PATH') or os.path.join(self.folder, ".mlruns"))
 
+        # Store config into cache
+        self.config = {**DEFAULT_CONFIG, **config} if config else DEFAULT_CONFIG
+
         # Enable git tracking of the current repository
         from pypads.app.misc.managed_git import ManagedGitFactory
         self._managed_git_factory = ManagedGitFactory(self)
 
         self._backend = MLFlowBackendFactory.make(self.uri)
-
-        # Store config into cache
-        self.config = {**DEFAULT_CONFIG, **config} if config else DEFAULT_CONFIG
 
         # Store config into cache
         self._cache.add("mappings", mappings)
@@ -272,6 +287,10 @@ class PyPads:
         from pypads.app.api import api
         return api()
 
+    @staticmethod
+    def available_results():
+        return results()
+
     @property
     def schema_repository(self) -> SchemaRepository:
         return self._schema_repository
@@ -313,7 +332,7 @@ class PyPads:
         if self._cache.exists("config"):
             return self._cache.get("config")
         if self.api.active_run() is not None:
-            tags = self.api.get_run(mlflow.active_run().info.run_id).data.tags
+            tags = self.results.get_run(mlflow.active_run().info.run_id).data.tags
             if CONFIG_NAME not in tags:
                 raise Exception("Config for pypads is not defined.")
             try:
@@ -423,6 +442,14 @@ class PyPads:
         return self._actuators
 
     @property
+    def results(self) -> Union[ResultPluginManager, PyPadsResults]:
+        """
+        Access the results of pypads.
+        :return: PyPadsResults
+        """
+        return self._results
+
+    @property
     def wrap_manager(self):
         """
         Return the wrap manager of PyPads. This is used to wrap modules, functions and classes.
@@ -504,7 +531,6 @@ class PyPads:
         :param reload_modules: Force a reload of affected modules. CAREFUL THIS IS EXPERIMENTAL!
         :return:
         """
-        logger.info("Activating tracking...")
         if affected_modules is None:
             # Modules are affected if they are mapped by a library or are already punched
             affected_modules = self.wrap_manager.module_wrapper.punched_module_names | \
@@ -512,6 +538,7 @@ class PyPads:
 
         global tracking_active
         if not tracking_active:
+            logger.info("Activating tracking by extending importlib...")
             from pypads.app.pypads import set_current_pads
             set_current_pads(self)
 
@@ -544,7 +571,8 @@ class PyPads:
 
             tracking_active = True
         else:
-            raise Exception("Currently only one tracker can be activated at once.")
+            # TODO check if a second tracker / tracker activation doesn't break the tracking
+            logger.warning("Tracking was already activated.")
         return self
 
     def deactivate_tracking(self, run_atexits=False, reload_modules=True):
@@ -615,7 +643,7 @@ class PyPads:
             experiment_name) if experiment_name else self.backend.get_experiment(run.info.experiment_id)
 
         # override active run if used
-        if experiment_name and run.info.experiment_id is not experiment.experiment_id:
+        if experiment_name and run.info.experiment_id != experiment.experiment_id:
             logger.warning(
                 "Active experiment_id of run doesn't match given input name " + experiment_name + ". Recreating new run.")
             try:

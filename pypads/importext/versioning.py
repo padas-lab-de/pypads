@@ -76,3 +76,6 @@ class LibSelector(ModelObject):
 
     def __str__(self):
         return "LibSelector[name=" + self.name + "," + self.constraint + "]"
+
+
+all_libs = LibSelector(name=".*", constraint="*")

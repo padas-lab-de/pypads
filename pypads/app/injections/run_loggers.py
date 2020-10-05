@@ -5,7 +5,8 @@ from pydantic.main import BaseModel
 
 # Default init_run fns
 from pypads import logger
-from pypads.app.injections.base_logger import LoggerCall, SimpleLogger
+from pypads.app.injections.base_logger import SimpleLogger
+from pypads.app.injections.tracked_object import LoggerCall
 from pypads.app.misc.mixins import OrderMixin, FunctionHolderMixin, BaseDefensiveCallableMixin
 from pypads.model.logger_model import RunLoggerModel
 from pypads.utils.util import inheritors
