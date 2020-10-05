@@ -2,6 +2,7 @@ import os
 
 from pypads import logger
 from pypads.app.misc.mixins import DefensiveCallableMixin, DependencyMixin
+from pypads.utils.util import persistent_hash
 
 
 class ManagedGitFactory(DefensiveCallableMixin, DependencyMixin):
@@ -47,7 +48,7 @@ class ManagedGit:
         try:
             self.repo = git.Repo(path, search_parent_directories=True)
             if source:
-                self.preserve_changes(message="Pypads tracked changes")
+                self.preserve_changes(message="Tracking changes while preserving them in your current branch.")
         except InvalidGitRepositoryError:
             logger.warning("No existing git repository was found on {0}, initializing a new one...".format(path))
             self._init_git_repo(path, source=source)
@@ -78,19 +79,16 @@ class ManagedGit:
     def preserve_changes(self, message=""):
         try:
             orig_branch = self.repo.active_branch.name
-            run = self.pads.api.active_run()
             if len(self.repo.index.diff('HEAD')) > 0 or len(
                     self.repo.index.diff(None)) > 0 or self.repo.untracked_files:
                 logger.warning("There are uncommitted changes in your git!")
-                # Save those changes to stash
-                self.repo.git.stash('push', '--include-untracked')
 
                 # check if the changes were already tracked by PyPads
                 branch, diff = self.search_tracking_branch(ref=orig_branch)
 
-                if not branch:
+                if branch is None:
                     branch, diff = self.create_tracking_branch(message)
-                    logger.info("Created branch " + branch.name)
+                    logger.info("Created branch " + branch)
                     # Log the commit hash, branch and diff
                 else:
                     logger.info("Using already existing pypads branch " + branch.name)
@@ -100,6 +98,7 @@ class ManagedGit:
 
                 # and pop the stash
                 self.repo.git.stash('pop')
+
             else:
                 branch = orig_branch
                 diff = None
@@ -122,7 +121,7 @@ class ManagedGit:
         try:
             for tag in tags:
                 diff = self.repo.git.diff(ref, tag.tag, '--raw')
-                if diff == tag.message:
+                if persistent_hash(diff) == tag.message:
                     return branches.get(tag.tag), self.repo.git.diff(ref, tag.tag)
         except Exception as e:
             logger.warning("Checking existing branches failed due to %s" % str(e))
@@ -134,18 +133,21 @@ class ManagedGit:
         run = self.pads.api.active_run()
         logger.warning("Stashing, branching out, "
                        "committing, reverting back and unstashing...")
+        # push untracked changes to the stash
+        self.repo.git.stash('push', '--include-untracked')
+
         # branch out, apply the stashed changes and commit
         branch_name = "PyPads/{}".format(run.info.run_id)
         branch = self.repo.git.checkout(orig_branch, b=branch_name)
-
         self.repo.git.stash('apply')
-        self.commit_changes(message='Preserved changes commit')
-        # create the tag with diff for this branch
+        self.commit_changes(message=message)
+
+        # create the tag with the hash of git diff for this branch
         diff_raw = self.repo.git.diff('master', '--raw')
         diff = self.repo.git.diff('master')
-        # TODO hash diff?
+        diff_raw = persistent_hash(diff_raw)
         self.repo.create_tag(path=branch_name, message=diff_raw)
-        return branch, diff
+        return branch_name, diff
 
     def commit_changes(self, message=""):
         try:
