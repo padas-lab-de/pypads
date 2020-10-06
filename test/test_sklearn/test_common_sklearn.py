@@ -2,6 +2,7 @@ import datetime
 
 import mlflow
 
+from pypads.model.models import ResultType
 from test.base_test import TEST_FOLDER
 from test.test_sklearn.base_sklearn_test import BaseSklearnTest, sklearn_simple_decision_tree_experiment, \
     sklearn_pipeline_experiment
@@ -41,7 +42,6 @@ class CommonSklearnTest(BaseSklearnTest):
         tracker = PyPads(uri="http://mlflow.padre-lab.eu")
         tracker.activate_tracking()
         tracker.start_track(experiment_name="Additional Experiment 2")
-
         tracker.actuators.set_random_seed(seed=1)
 
         import timeit
@@ -69,10 +69,14 @@ class CommonSklearnTest(BaseSklearnTest):
         # tags = tracker.mlf.list_artifacts(run.info.run_id, path='../tags')
         # assert 'pypads.system.processor' in ''.join([m.path for m in tags])
 
-        tracker.api.get_artifacts(run_id=tracker.api.active_run().info.run_id, path="*")
-        tracker.api.get_tags(run_id=tracker.api.active_run().info.run_id, name='pypads.system.process.cwd')
-        tracker.api.get_metrics(run_id=tracker.api.active_run().info.run_id, history=True)
-        tracker.api.get_parameters(run_id=tracker.api.active_run().info.run_id)
+        def test_list():
+            tracker.backend.list(ResultType.artifact, run_id=tracker.api.active_run().info.run_id)
+
+        print(timeit.Timer(test_list).timeit(1))
+        tracker.backend.list(ResultType.metric, run_id=tracker.api.active_run().info.run_id)
+        tracker.backend.list(ResultType.tag, run_id=tracker.api.active_run().info.run_id)
+        tracker.backend.list(ResultType.parameter, run_id=tracker.api.active_run().info.run_id)
+        tracker.backend.list(ResultType.tracked_object, run_id=tracker.api.active_run().info.run_id)
 
         tracker.api.end_run()
         # !-------------------------- asserts ---------------------------

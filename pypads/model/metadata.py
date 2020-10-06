@@ -1,4 +1,3 @@
-import os
 from abc import abstractmethod, ABCMeta
 from collections import deque
 from typing import Type, List
@@ -7,7 +6,8 @@ from pydantic import validate_model, BaseModel, ValidationError
 
 from pypads.app.misc.inheritance import SuperStop
 from pypads.model.domain import RunObjectModel
-from pypads.utils.logging_util import FileFormats
+from pypads.model.models import ResultType, IdBasedEntry
+from pypads.utils.logging_util import jsonable_encoder
 from pypads.utils.util import has_direct_attr, persistent_hash
 
 
@@ -63,15 +63,19 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
         for key in fields:
             if not has_direct_attr(self, key) and self.get_model_fields():
                 setattr(self, key, self.get_model_fields()[key].get_default())
-        if issubclass(self.get_model_cls(), RunObjectModel) and (
-                not hasattr(self, "uri") or getattr(self, "uri") is None):
-            setattr(self, "uri", "{}#{}".format(getattr(self, 'is_a'), getattr(self, 'uid')))
 
     def model(self):
         return self.get_model_cls().from_orm(self)
 
     def validate(self):
         validate_model(self.get_model_cls(), self.model().__dict__)
+
+    def typed_id(self):
+        cls = self.get_model_cls()
+        if issubclass(cls, IdBasedEntry):
+            return cls.typed_id(self)
+        else:
+            raise Exception(f"Can't extracted typed id: Model {str(cls)} is not an IdBasedEntry.")
 
     @classmethod
     def schema(cls):
@@ -93,15 +97,18 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
             schema = cls.schema()
             schema_hash = persistent_hash(str(schema))
             if not schema_repo.has_object(uid=schema_hash):
-                schema_entity = schema_repo.get_object(uid=schema_hash)
-                schema_path = os.path.join(path, cls.get_model_cls().__name__ + "_schema")
-                schema_entity.log_mem_artifact(schema_path, schema, write_format=FileFormats.json)
-                schema_entity.set_tag("pypads.schema_name", schema["title"])
+                # TODO store schema as string for now because $ is reserved in MongoDB
+                schema["storage_type"] = ResultType.schema
+                schema_wrapper = {"_id": str(schema_hash), "schema": str(jsonable_encoder(schema))}
+                schema_repo.store(schema_wrapper)
 
             cls._schema_path = path
 
     def json(self, *args, **kwargs):
         return self.model().json(*args, **kwargs)
+
+    def dict(self, *args, **kwargs):
+        return self.model().dict(*args, **kwargs)
 
 
 class ModelHolder(ModelInterface, metaclass=ABCMeta):

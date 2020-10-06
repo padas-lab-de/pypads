@@ -12,7 +12,6 @@ import pkg_resources
 
 from pypads import logger
 from pypads.app.misc.caches import Cache
-from pypads.utils.logging_util import get_temp_folder
 
 
 def get_class_that_defined_method(meth):

@@ -1,10 +1,9 @@
-import os
 from typing import List, Type
 
 from pydantic import BaseModel
 
-from pypads.app.injections.base_logger import LoggerCall, TrackedObject, LoggerOutput
 from pypads.app.injections.injection import InjectionLogger
+from pypads.app.injections.tracked_object import LoggerCall, TrackedObject, LoggerOutput
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.utils.logging_util import FileFormats
 
@@ -16,6 +15,7 @@ class InputTO(TrackedObject):
 
     class InputModel(TrackedObjectModel):
         category: str = "FunctionInput"
+        description = "The input to the tracked function."
         inputs: List[str] = []
 
     @classmethod
@@ -29,12 +29,8 @@ class InputTO(TrackedObject):
         self._add_param(name, value, format, "keyword-argument")
 
     def _add_param(self, name, value, format, type):
-        path = self.get_artifact_path(name)
         description = "Input to function with index {} and type {}".format(len(self.inputs), type)
-        self.inputs.append(self.store_artifact(path, value, write_format=format, description=description))
-
-    def get_artifact_path(self, name):
-        return os.path.join(self.get_dir(), "input", name)
+        self.inputs.append(self.store_artifact(name, value, write_format=format, description=description))
 
 
 class InputILF(InjectionLogger):
@@ -66,7 +62,7 @@ class InputILF(InjectionLogger):
         :return:
         """
 
-        inputs = InputTO(part_of=_logger_output)
+        inputs = InputTO(parent=_logger_output)
         for i in range(len(_args)):
             arg = _args[i]
             inputs.add_arg(str(i), arg, format=_pypads_write_format)
@@ -86,6 +82,7 @@ class OutputTO(TrackedObject):
 
     class OutputModel(TrackedObjectModel):
         category: str = "FunctionOutput"
+        description = "The output of the tracked function."
 
         output: str = ...  # Path to the output holding file
 
@@ -97,14 +94,11 @@ class OutputTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.OutputModel
 
-    def __init__(self, value, format, *args, part_of: LoggerOutput, **kwargs):
-        super().__init__(*args, content_format=format, part_of=part_of, **kwargs)
-        self.output = self.store_artifact(self.get_artifact_path(), value, write_format=format,
-                                          description="Output of function call {}".format(
-                                              self._tracked_by.original_call))
-
-    def get_artifact_path(self, name="output"):
-        return super().get_artifact_path(name)
+    def __init__(self, value, format, *args, parent: LoggerOutput, **kwargs):
+        super().__init__(*args, content_format=format, parent=parent, **kwargs)
+        # self.output = self.store_artifact(self.get_artifact_path(), value, write_format=format,
+        #                                   description="Output of function call {}".format(
+        #                                       self.producer.original_call))
 
 
 class OutputILF(InjectionLogger):
@@ -135,5 +129,5 @@ class OutputILF(InjectionLogger):
         :param kwargs:
         :return:
         """
-        output = OutputTO(_pypads_result, format=_pypads_write_format, part_of=_logger_output)
-        output.store(_logger_output, key="FunctionOutput")
+        output = OutputTO(_pypads_result, format=_pypads_write_format, parent=_logger_output)
+        _logger_output["FunctionOutput"] = output.store()

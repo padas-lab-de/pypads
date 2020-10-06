@@ -3,8 +3,8 @@ from typing import Type
 from pydantic import BaseModel
 
 from pypads.app.env import LoggerEnv
-from pypads.app.injections.base_logger import TrackedObject, LoggerOutput
 from pypads.app.injections.run_loggers import RunSetup
+from pypads.app.injections.tracked_object import TrackedObject, LoggerOutput
 from pypads.app.misc.managed_git import ManagedGit
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.utils.logging_util import FileFormats
@@ -13,6 +13,7 @@ from pypads.utils.logging_util import FileFormats
 class GitTO(TrackedObject):
     class GitModel(TrackedObjectModel):
         category: str = "SourceCode-Management"
+        description = "Information about the git repository in which the experiment is located.."
         source: str = ...
         version: str = ...
         git_log: str = ...  # reference to the log file
@@ -24,14 +25,14 @@ class GitTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.GitModel
 
-    def __init__(self, *args, source, part_of: LoggerOutput, **kwargs):
-        super().__init__(*args, source=source, part_of=part_of, **kwargs)
+    def __init__(self, *args, source, parent: LoggerOutput, **kwargs):
+        super().__init__(*args, source=source, parent=parent, **kwargs)
 
     def add_tag(self, *args, **kwargs):
         self.store_tag(*args, **kwargs)
 
     def store_git_log(self, name, value, format=FileFormats.text):
-        self.git_log = self.store_artifact(self.get_artifact_path(name), value,
+        self.git_log = self.store_artifact(name, value,
                                            description="Commit logs for the git repository", write_format=format)
 
 
@@ -61,7 +62,7 @@ class IGitRSF(RunSetup):
             managed_git: ManagedGit = pads.managed_git_factory(source_name)
             if managed_git:
                 repo = managed_git.repo
-                git_info = GitTO(part_of=_logger_output, source=source_name or repo.working_dir,
+                git_info = GitTO(parent=_logger_output, source=source_name or repo.working_dir,
                                  version=repo.head.commit.hexsha)
                 # Disable pager for returns
                 repo.git.set_persistent_git_options(no_pager=True)

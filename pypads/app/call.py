@@ -1,6 +1,6 @@
 import os
 import threading
-from typing import Type
+from typing import Type, Optional
 
 from pydantic import BaseModel
 
@@ -145,20 +145,13 @@ class CallId(CallAccessor):
                          instance_number=instance_number, call_number=call_number,
                          **kwargs)
 
-    @classmethod
-    def from_accessor(cls, accessor: CallAccessor, instance_number, call_number):
-        return CallId(accessor.instance, accessor.context, accessor.wrappee, instance_number, call_number)
-
-    def to_parent_folder(self):
-        return os.path.join("process_" + str(self.process) + str(self.thread))
-
     def to_folder(self):
-        return os.path.join(*self.to_fragements())
+        return os.path.join(*self.to_fragments())
 
     def __str__(self):
-        return ".".join(self.to_fragements())
+        return ".".join(self.to_fragments())
 
-    def to_fragements(self):
+    def to_fragments(self):
         return ("process_" + str(self.process), "thread_" + str(self.thread),
                 "context_" + self.context.container.__name__,
                 "instance_" + str(
@@ -171,7 +164,7 @@ class Call(ModelObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return CallModel
 
-    def __init__(self, call_id: CallId, *args, **kwargs):
+    def __init__(self, call_id: Optional[CallId], *args, **kwargs):
         super().__init__(*args, call_id=call_id, **kwargs)
         self._active_hooks = set()
 
@@ -187,5 +180,5 @@ class Call(ModelObject):
     def remove_hook(self, hook):
         self._active_hooks.remove(hook)
 
-    def to_folder(self):
+    def to_folder(self: CallModel):
         return self.call_id.to_folder()

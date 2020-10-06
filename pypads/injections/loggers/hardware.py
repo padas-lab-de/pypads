@@ -1,10 +1,9 @@
-import os
 from typing import List, Type
 
 from pydantic import BaseModel
 
-from pypads.app.injections.base_logger import LoggerCall, TrackedObject, LoggerOutput
 from pypads.app.injections.injection import InjectionLogger
+from pypads.app.injections.tracked_object import LoggerCall, TrackedObject, LoggerOutput
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.utils.logging_util import FileFormats
 from pypads.utils.util import uri_to_path, sizeof_fmt, PeriodicThread
@@ -32,6 +31,7 @@ class CpuTO(TrackedObject):
 
     class CPUModel(TrackedObjectModel):
         category: str = "CpuData"
+        description = "Information about the CPU used for the experiment."
 
         class CpuCoreModel(BaseModel):
             name: str = ...
@@ -52,8 +52,8 @@ class CpuTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.CPUModel
 
-    def __init__(self, *args, part_of: LoggerOutput, **kwargs):
-        super().__init__(*args, part_of=part_of, **kwargs)
+    def __init__(self, *args, parent: LoggerOutput, **kwargs):
+        super().__init__(*args, parent=parent, **kwargs)
 
     def add_cpu_usage(self):
         cores = _get_cpu_usage()
@@ -64,9 +64,6 @@ class CpuTO(TrackedObject):
                 core = self.cpu_cores[idx]
                 core.usage.append(usage)
         self.total_usage.append(cores[-1])
-
-    def get_artifact_path(self, name):
-        return os.path.join(str(id(self)), "cpu_usage", name)
 
 
 class CpuILF(InjectionLogger):
@@ -90,7 +87,7 @@ class CpuILF(InjectionLogger):
     def __pre__(self, ctx, *args, _pypads_write_format=FileFormats.text, _logger_call: LoggerCall, _logger_output,
                 _pypads_period=1.0, _args, _kwargs,
                 **kwargs):
-        cpu_usage = CpuTO(part_of=_logger_output, content_format=_pypads_write_format)
+        cpu_usage = CpuTO(parent=_logger_output, content_format=_pypads_write_format)
         cpu_usage.period = _pypads_period
 
         def track_cpu_usage(to: CpuTO):
@@ -114,6 +111,7 @@ class RamTO(TrackedObject):
 
     class RAMModel(TrackedObjectModel):
         category: str = "RamData"
+        description = "Information about the RAM used for the experiment."
 
         class MemoryModel(BaseModel):
             used: List[int] = ...
@@ -129,8 +127,8 @@ class RamTO(TrackedObject):
             orm_mode = True
             arbitrary_types_allowed = True
 
-    def __init__(self, *args, part_of: LoggerOutput, **kwargs):
-        super().__init__(*args, part_of=part_of, **kwargs)
+    def __init__(self, *args, parent: LoggerOutput, **kwargs):
+        super().__init__(*args, parent=parent, **kwargs)
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
@@ -170,9 +168,6 @@ class RamTO(TrackedObject):
             self.swap_memory.free.append(free)
             self.swap_memory.percentage.append(percent)
 
-    def get_artifact_path(self, name):
-        return os.path.join(str(id(self)), "memory_usage", name)
-
 
 class RamILF(InjectionLogger):
     """
@@ -198,7 +193,7 @@ class RamILF(InjectionLogger):
 
     def __pre__(self, ctx, *args, _pypads_write_format=FileFormats.json, _logger_call: LoggerCall, _logger_output,
                 _pypads_period=1.0, _args, _kwargs, **kwargs):
-        memory_usage = RamTO(part_of= _logger_output, content_format=_pypads_write_format)
+        memory_usage = RamTO(parent=_logger_output, content_format=_pypads_write_format)
 
         def track_mem_usage(to: RamTO):
             to.add_memory_usage()
@@ -229,6 +224,7 @@ class DiskTO(TrackedObject):
 
     class DiskModel(TrackedObjectModel):
         category: str = "DiskData"
+        description = "Information about the disk used for the experiment."
 
         class PartitionModel(BaseModel):
             name: str = ...
@@ -251,9 +247,9 @@ class DiskTO(TrackedObject):
             orm_mode = True
             arbitrary_types_allowed = True
 
-    def __init__(self, *args, part_of: LoggerOutput, path=None, **kwargs):
+    def __init__(self, *args, parent: LoggerOutput, path=None, **kwargs):
         self.path = path
-        super().__init__(*args, part_of=part_of, **kwargs)
+        super().__init__(*args, parent=parent, **kwargs)
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
@@ -325,7 +321,7 @@ class DiskILF(InjectionLogger):
             to.add_disk_usage()
 
         for p in _pypads_disk_usage:
-            disk_usage_to = DiskTO(part_of=_logger_output, content_format=_pypads_write_format, path=p)
+            disk_usage_to = DiskTO(parent=_logger_output, content_format=_pypads_write_format, path=p)
             disk_usage_to.init_disk_usage()
             disk_usage_to.period = _pypads_period
             thread = PeriodicThread(target=track_disk_usage, sleep=_pypads_period, args=(disk_usage_to,))
@@ -334,7 +330,7 @@ class DiskILF(InjectionLogger):
             # stop thread store disk_usage object
             def cleanup_thread(logger, _logger_call):
                 thread.join()
-                disk_usage_to.store(_logger_output, key="disk_usage")
+                _logger_output.disk_usage = disk_usage_to.store()
 
             self.register_cleanup_fn(_logger_call, fn=cleanup_thread)
 

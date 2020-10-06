@@ -1,14 +1,14 @@
-from typing import List, Type
+import uuid
+from typing import List, Type, Union
 
 from pydantic import BaseModel
 
 from pypads import logger
 from pypads.app.env import InjectionLoggerEnv
-from pypads.app.injections.base_logger import TrackedObject, LoggerOutput
 from pypads.app.injections.injection import InjectionLogger
+from pypads.app.injections.tracked_object import TrackedObject
 from pypads.model.logger_call import ContextModel
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
-from pypads.utils.logging_util import _to_param_meta_name
 from pypads.utils.util import dict_merge
 
 
@@ -19,12 +19,13 @@ class ParametersTO(TrackedObject):
 
     class HyperParameterModel(TrackedObjectModel):
         category: str = "ModelHyperparameter"
+        description = "The parameters of the experiment."
         ml_model: ContextModel = ...
-        hyperparameters: List[str] = []
+        hyperparameters: List[Union[uuid.UUID, str]] = []
 
-    def __init__(self, *args, part_of: LoggerOutput, **kwargs):
-        super().__init__(*args, part_of=part_of, **kwargs)
-        self.ml_model = self._tracked_by._logging_env.call.call_id.context
+    def __init__(self, *args, parent: Union[OutputModel, 'TrackedObject'], **kwargs):
+        super().__init__(*args, parent=parent, **kwargs)
+        self.ml_model = self.producer.original_call.call_id.context
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
@@ -33,8 +34,7 @@ class ParametersTO(TrackedObject):
     def _persist_parameter(self, key, value, param_type=None, description=None):
         name = self.ml_model.reference + "." + key
         description = description or "Hyperparameter {} of context {}".format(name, self.ml_model)
-        self.hyperparameters.append(_to_param_meta_name(name))
-        self.store_param(name, value, param_type=param_type, description=description)
+        self.hyperparameters.append(self.store_param(name, value, param_type=param_type, description=description))
 
 
 class ParametersILF(InjectionLogger):
@@ -46,7 +46,7 @@ class ParametersILF(InjectionLogger):
 
     class ParametersILFOutput(OutputModel):
         category: str = "ParametersILF-Output"
-        hyperparameters: str = ...
+        hyperparameters: Union[uuid.UUID, str] = ...
 
         class Config:
             orm_mode = True
@@ -63,7 +63,7 @@ class ParametersILF(InjectionLogger):
         :param kwargs:
         :return:
         """
-        hyper_params = ParametersTO(part_of=_logger_output)
+        hyper_params = ParametersTO(parent=_logger_output)
         try:
             data = {}
             for mm in _pypads_env.mappings:
@@ -89,4 +89,4 @@ class ParametersILF(InjectionLogger):
             logger.error("Couldn't extract parameters on " + str(_pypads_env) + " due to " + str(e))
             # TODO what to with keras etc? Or define multiple loggers.
         finally:
-            hyper_params.store(_logger_output, "hyperparameters")
+            _logger_output.hyperparameters = hyper_params.store()

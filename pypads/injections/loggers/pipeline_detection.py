@@ -6,10 +6,9 @@ from mlflow.utils.autologging_utils import try_mlflow_log
 from pydantic import BaseModel
 
 from pypads import logger
-from pypads.app.injections.base_logger import TrackedObject, LoggerOutput
 from pypads.app.injections.injection import InjectionLoggerCall, MultiInjectionLogger
-from pypads.model.logger_output import OutputModel, TrackedObjectModel
-from pypads.model.storage import ArtifactMetaModel
+from pypads.app.injections.tracked_object import TrackedObject, LoggerOutput
+from pypads.model.logger_output import OutputModel, TrackedObjectModel, ArtifactMetaModel
 from pypads.utils.logging_util import FileFormats, get_temp_folder
 from pypads.utils.util import is_package_available
 
@@ -55,6 +54,7 @@ class PipelineTO(TrackedObject):
 
     class PipelineModel(TrackedObjectModel):
         category: str = "Pipeline"
+        description = "The Pipeline of the experiment."
 
         network: dict = ...
         pipeline_type: str = ...
@@ -68,8 +68,8 @@ class PipelineTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.PipelineModel
 
-    def __init__(self, *args, part_of: LoggerOutput, network=None, pipeline_type="", last_tracked=None, **kwargs):
-        super().__init__(*args, part_of=part_of, network=network, pipeline_type=pipeline_type,
+    def __init__(self, *args, parent: LoggerOutput, network=None, pipeline_type="", last_tracked=None, **kwargs):
+        super().__init__(*args, parent=parent, network=network, pipeline_type=pipeline_type,
                          last_tracked=last_tracked, **kwargs)
 
     def _get_network(self):
@@ -127,7 +127,7 @@ class PipelineTrackerILF(MultiInjectionLogger):
         if network is not None and len(network.nodes) > 0:
             from networkx import DiGraph
             from networkx.drawing.nx_agraph import to_agraph
-            path = pipeline.get_artifact_path("pypads_pipeline")
+            path = "pypads_pipeline"
             pipeline.store_artifact(network,
                                     ArtifactMetaModel(path=path, description="networkx graph",
                                                       format=FileFormats.pickle))
@@ -192,11 +192,11 @@ class PipelineTrackerILF(MultiInjectionLogger):
                     nx.draw_networkx_edge_labels(network, pos)
                     plt.savefig(folder)
                 if os.path.exists(folder):
-                    path = pipeline.get_artifact_path()
+                    path = "pipeline"
                     try_mlflow_log(mlflow.log_artifact, folder, artifact_path=path)
 
-        pipeline.store(output, key="pipeline")
-        call.output = output.store(pipeline_tracker.get("base_path"))
+        pipeline.store()
+        call.output = output.store()
         call.store()
 
     def __pre__(self, ctx, *args, _logger_call: InjectionLoggerCall, _pypads_pipeline_type="normal",
@@ -207,7 +207,7 @@ class PipelineTrackerILF(MultiInjectionLogger):
         pads.cache.run_add("pipeline_tracker", id(self))
 
         if _logger_output.pipeline is None:
-            pipeline = PipelineTO(part_of=_logger_output, pipeline_type=_pypads_pipeline_type)
+            pipeline = PipelineTO(parent=_logger_output, pipeline_type=_pypads_pipeline_type)
         else:
             pipeline = _logger_output._pipeline
 

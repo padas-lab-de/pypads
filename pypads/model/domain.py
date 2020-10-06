@@ -1,9 +1,9 @@
 import time
-from typing import Optional
+from typing import Optional, Union
 
 from pydantic import BaseModel, Field
 
-from pypads.model.models import IdBasedEntry
+from pypads.model.models import IdBasedEntry, ResultType
 from pypads.utils.util import get_experiment_id, get_run_id, get_experiment_name
 
 
@@ -15,6 +15,7 @@ class LibraryModel(IdBasedEntry):
     name: str = ...
     version: str = ...
     extracted: bool = False
+    storage_type: Union[str, ResultType] = ResultType.library
 
 
 class LibSelectorModel(BaseModel):

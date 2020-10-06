@@ -1,17 +1,21 @@
 import os
 import sys
-from typing import List
+from typing import List, Union
 
 import mlflow
 from mlflow.entities import ViewType
 from mlflow.tracking import MlflowClient, artifact_utils
 from mlflow.tracking.fluent import SEARCH_MAX_RESULTS_PANDAS
+from pymongo import MongoClient
 
 from pypads import logger
 from pypads.app.backends.backend import BackendInterface
-from pypads.model.storage import FileInfo
-from pypads.utils.logging_util import store_tmp_artifact
-from pypads.utils.util import string_to_int
+from pypads.app.injections.tracked_object import ArtifactTO
+from pypads.app.misc.inheritance import SuperStop
+from pypads.model.logger_output import FileInfo, MetricMetaModel, ParameterMetaModel, ArtifactMetaModel, TagMetaModel
+from pypads.model.models import ResultType, IdBasedEntry
+from pypads.utils.logging_util import FileFormats, jsonable_encoder, store_tmp_artifact
+from pypads.utils.util import string_to_int, get_run_id
 
 
 class MLFlowBackend(BackendInterface):
@@ -78,31 +82,96 @@ class MLFlowBackend(BackendInterface):
     def get_artifact_uri(self, artifact_path=""):
         return mlflow.get_artifact_uri(artifact_path=artifact_path)
 
-    def log_artifact(self, local_path, artifact_path=""):
-        mlflow.log_artifact(local_path, artifact_path)
-        return os.path.join(artifact_path, local_path.rsplit(os.sep, 1)[1])
+    def log_artifact(self, meta, local_path):
+        path = self._log_artifact(local_path=local_path, artifact_path=meta.value)
+        meta.value = path
+        self.log_json(meta)
+        return path
 
-    def log_mem_artifact(self, path: str, artifact, write_format, preserveFolder=True):
+    def _log_artifact(self, local_path, artifact_path=""):
+        mlflow.log_artifact(local_path, artifact_path)
+        path = os.path.join(artifact_path, local_path.rsplit(os.sep, 1)[1])
+        return path
+
+    def _log_mem_artifact(self, path: str, artifact, write_format, preserveFolder=True):
         tmp_path = store_tmp_artifact(path, artifact, write_format=write_format)
         if preserveFolder:
             artifact_path = ""
             splits = path.rsplit(os.sep, 1)
             if len(splits) > 1:
                 artifact_path = splits[0]
-            return self.log_artifact(tmp_path, artifact_path=artifact_path)
-        return self.log_artifact(tmp_path)
-
-    def log_metric(self, name, metric, step):
-        return mlflow.log_metric(name, metric, step)
-
-    def log_parameter(self, name, parameter):
-        return mlflow.log_param(name, parameter)
-
-    def set_tag(self, key, value):
-        return mlflow.set_tag(key, value)
+            return self._log_artifact(tmp_path, artifact_path=artifact_path)
+        return self._log_artifact(tmp_path)
 
     def set_experiment_tag(self, experiment_id, key, value):
         return self.mlf.set_experiment_tag(experiment_id, key, value)
+
+    def log(self, obj: IdBasedEntry):
+        """
+        :param obj: Entry object to be logged
+        :return:
+        """
+        rt = obj.storage_type
+        if rt == ResultType.metric:
+            obj: MetricMetaModel
+            stored_meta = self.log_json(obj, obj.typed_id())
+            mlflow.log_metric(obj.name, obj.data)
+            return stored_meta
+
+        elif rt == ResultType.parameter:
+            obj: ParameterMetaModel
+            stored_meta = self.log_json(obj, obj.typed_id())
+            mlflow.log_param(obj.name, obj.data)
+            return stored_meta
+
+        elif rt == ResultType.artifact:
+            obj: ArtifactMetaModel
+            path = self._log_mem_artifact(path=obj.data, artifact=obj.content(), write_format=obj.file_format)
+            # Todo maybe don't store filesize because of performance (querying for file after storing takes time)
+            for file_info in self.list_files(run_id=get_run_id(), path=os.path.dirname(path)):
+                if file_info.path == os.path.basename(path):
+                    obj.file_size = file_info.file_size
+                    break
+            obj.data = path
+            stored_meta = self.log_json(obj, obj.typed_id())
+            return stored_meta
+
+        elif rt == ResultType.tag:
+            obj: TagMetaModel
+            stored_meta = self.log_json(obj, obj.typed_id())
+            mlflow.set_tag(obj.name, obj.data)
+            return stored_meta
+
+        else:
+            return self.log_json(obj, obj.typed_id())
+
+    def log_json(self, obj, uid=None):
+        """
+        Log a metadata object
+        :param obj: Object to store as json
+        :param uid: uid or path for storage
+        :return:
+        """
+        if uid is None:
+            uid = obj.uid
+        return self._log_mem_artifact(self._to_meta_name(uid, obj.storage_type), obj.json(by_alias=True),
+                                      write_format=FileFormats.json)
+
+    def get(self, run_id, uid, storage_type: Union[ResultType, str]):
+        json_data = self.get_json(run_id=run_id, uid=self._to_meta_name(uid, storage_type))
+        if storage_type == ResultType.artifact:
+            return ArtifactTO(**dict(json_data))
+        else:
+            return json_data
+
+    def get_json(self, run_id, uid):
+        """
+        Get json stored for a certain run.
+        :param run_id: Id of the run
+        :param uid: uid - for local storage this is the relative path
+        :return:
+        """
+        return self.load_artifact_data(run_id=run_id, path=uid)
 
 
 class LocalMlFlowBackend(MLFlowBackend):
@@ -216,12 +285,73 @@ class RemoteMlFlowBackend(MLFlowBackend):
         super().__init__(uri, pypads)
 
 
+class MongoSupportMixin(BackendInterface, SuperStop):
+    def __init__(self, *args, **kwargs):
+        self._mongo_client = MongoClient(os.environ['MONGO_URL'], username=os.environ['MONGO_USER'],
+                                         password=os.environ['MONGO_PW'], authSource=os.environ['MONGO_DB'])
+        self._db = self._mongo_client[os.environ['MONGO_DB']]
+        super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def _path_to_id(path, run_id=None):
+        from pypads.app.pypads import get_current_pads
+        if run_id is None:
+            run = get_current_pads().api.active_run()
+            run_id = run.info.run_id
+            experiment_name = mlflow.get_experiment(mlflow.active_run().info.experiment_id).name
+        else:
+            experiment_name = mlflow.get_experiment(mlflow.active_run().info.experiment_id).name
+        return os.path.sep.join([experiment_name, run_id, path])
+
+    def log_json(self, entry, uid=None):
+        obj = entry.dict(by_alias=True)
+        obj["_id"] = uid
+        if "storage_type" not in obj:
+            logger.error(
+                f"Tried to log an invalid entry. Json logged data has to define a storage_type. For entry {obj}")
+            return None
+        try:
+            self._db[obj["storage_type"].value].insert_one(jsonable_encoder(obj))
+        except Exception as e:
+            print(e)
+        return obj["_id"]
+
+    def get_json(self, run_id, uid):
+        return self._db[ResultType.artifact.value].find_one({"_id": uid, "run_id": run_id})
+
+    def list(self, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None):
+        search_dict = {}
+        if experiment_name:
+            search_dict["experiment_name"] = experiment_name
+        if experiment_id:
+            search_dict["experiment_id"] = experiment_id
+        if run_id:
+            search_dict["run_id"] = run_id
+        return self._db[storage_type.value].find(search_dict)
+
+
+class MongoSupportedLocalMlFlowBackend(MongoSupportMixin, RemoteMlFlowBackend):
+    def __init__(self, uri, pypads):
+        super().__init__(uri, pypads)
+
+
+class MongoSupportedRemoteMlFlowBackend(MongoSupportMixin, RemoteMlFlowBackend):
+    def __init__(self, uri, pypads):
+        super().__init__(uri, pypads)
+
+
 class MLFlowBackendFactory:
 
     @staticmethod
     def make(uri) -> MLFlowBackend:
-        from pypads.app.pypads import get_current_pads
+        from pypads.app.pypads import get_current_pads, get_current_config
         if uri.startswith("git://") or uri.startswith("/"):
-            return LocalMlFlowBackend(uri=uri, pypads=get_current_pads())
+            if get_current_config()["mongo_db"]:
+                return MongoSupportedLocalMlFlowBackend(uri=uri, pypads=get_current_pads())
+            else:
+                return LocalMlFlowBackend(uri=uri, pypads=get_current_pads())
         else:
-            return RemoteMlFlowBackend(uri=uri, pypads=get_current_pads())
+            if get_current_config()["mongo_db"]:
+                return MongoSupportedRemoteMlFlowBackend(uri=uri, pypads=get_current_pads())
+            else:
+                return RemoteMlFlowBackend(uri=uri, pypads=get_current_pads())

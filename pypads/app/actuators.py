@@ -5,7 +5,8 @@ from typing import Type
 from pydantic import BaseModel
 
 from pypads.app.env import LoggerEnv
-from pypads.app.injections.base_logger import SimpleLogger, LoggerCall
+from pypads.app.injections.base_logger import SimpleLogger
+from pypads.app.injections.tracked_object import LoggerCall
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
 from pypads.model.logger_model import LoggerModel
 from pypads.utils.util import inheritors, get_experiment_id, get_run_id
