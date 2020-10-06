@@ -217,7 +217,7 @@ class PyPadsApi(IApi):
         json containing some meta information.
         :return:
         """
-        meta_model = MetricMetaModel(name=key, step=step, description=description, additional_data=meta)
+        meta_model = MetricMetaModel(name=key, step=step or 0, description=description, additional_data=meta)
         self.pypads.backend.log_metric(name=key, metric=value, step=step)
         return self._log_metric_meta(key, meta_model)
 
