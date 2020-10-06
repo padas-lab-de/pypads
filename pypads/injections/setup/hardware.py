@@ -62,6 +62,7 @@ class ISystemRSF(RunSetup):
         system_info.add_tag("pypads.system.machine", uname.machine, description="Operating system machine")
         system_info.add_tag("pypads.system.processor", uname.processor, description="Processor technology")
         _logger_output.system_info = system_info.store()
+        _logger_output.dict()
 
 
 class ICpuRSF(RunSetup):

@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABCMeta
 from typing import Type, Union
 
 from pydantic import BaseModel
@@ -15,14 +15,14 @@ from pypads.model.models import ResultType, Entry
 from pypads.utils.logging_util import FileFormats
 
 
-class FallibleMixin(ModelObject, ABC, SuperStop):
+class FallibleMixin(ModelObject, SuperStop):
     """
     Something which might be broken / incomplete but still logged due to an error
     """
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         self._failed = None
+        super().__init__(*args, **kwargs)
 
     def set_failure_state(self, e: Exception):
         self._failed(f"Logger Output might be inaccurate/corrupt due to exception in execution: '{str(e)}'")
@@ -45,7 +45,7 @@ class LoggerCall(FallibleMixin, ProvenanceMixin):
         super().__init__(*args, output=output, **kwargs)
         self.creator = creator
         self.creator_type = creator.storage_type
-        self.created_by = creator.uid
+        self.created_by = self.creator.typed_id()
         self._logging_env = logging_env
 
     def store(self):
@@ -53,7 +53,7 @@ class LoggerCall(FallibleMixin, ProvenanceMixin):
         get_current_pads().backend.log(self)
 
 
-class ProducedMixin(ModelObject, ABC, SuperStop):
+class ProducedMixin(ModelObject, SuperStop, metaclass=ABCMeta):
     """
     Object being produced by some logger.
     """
@@ -68,7 +68,7 @@ class ProducedMixin(ModelObject, ABC, SuperStop):
 
     @property
     def produced_by(self: Union['ProducedMixin', ProducedModel]):
-        return self._producer.uid
+        return self._producer.typed_id()
 
     @property
     def producer_type(self: Union['ProducedMixin', ProducedModel]):
@@ -80,7 +80,7 @@ class ProducedMixin(ModelObject, ABC, SuperStop):
         return pads.backend.log(self)
 
 
-class ResultHolderMixin(ProducedMixin, ProvenanceMixin, ABC, SuperStop):
+class ResultHolderMixin(ProducedMixin, ProvenanceMixin, SuperStop, metaclass=ABCMeta):
     """
     Object holding some results.
     """
@@ -96,23 +96,25 @@ class ResultHolderMixin(ProducedMixin, ProvenanceMixin, ABC, SuperStop):
 
     @property
     def artifacts(self):
-        return [a.uid for a in self._results[ResultType.artifact]] if ResultType.artifact in self._results else []
+        return [a.typed_id() for a in
+                self._results[ResultType.artifact]] if ResultType.artifact in self._results else []
 
     @property
     def parameters(self):
-        return [a.uid for a in self._results[ResultType.parameter]] if ResultType.parameter in self._results else []
+        return [a.typed_id() for a in
+                self._results[ResultType.parameter]] if ResultType.parameter in self._results else []
 
     @property
     def tags(self):
-        return [a.uid for a in self._results[ResultType.tag]] if ResultType.tag in self._results else []
+        return [a.typed_id() for a in self._results[ResultType.tag]] if ResultType.tag in self._results else []
 
     @property
     def metrics(self):
-        return [a.uid for a in self._results[ResultType.metric]] if ResultType.metric in self._results else []
+        return [a.typed_id() for a in self._results[ResultType.metric]] if ResultType.metric in self._results else []
 
     @property
     def tracked_objects(self):
-        return [a.uid for a in
+        return [a.typed_id() for a in
                 self._results[ResultType.tracked_object]] if ResultType.tracked_object in self._results else []
 
     def store_metric(self: Union['ResultHolderMixin', ResultHolderModel], key, value, description="", step=None,
@@ -157,11 +159,6 @@ class ResultHolderMixin(ProducedMixin, ProvenanceMixin, ABC, SuperStop):
                                 additional_data=additional_data,
                                 holder=self)
 
-    def store(self: Union['ResultHolderMixin', Entry]):
-        from pypads.app.pypads import get_current_pads
-        pads = get_current_pads()
-        return pads.backend.log(self)
-
 
 class LoggerOutput(FallibleMixin, ResultHolderMixin):
     """
@@ -188,7 +185,7 @@ class LoggerOutput(FallibleMixin, ResultHolderMixin):
         return OutputModel
 
 
-class ChildResultMixin(ABC):
+class ChildResultMixin(ProducedMixin, SuperStop, metaclass=ABCMeta):
 
     def __init__(self, *args, parent: Union[OutputModel, 'TrackedObject'], **kwargs):
         self._parent = parent
@@ -206,20 +203,18 @@ class ChildResultMixin(ABC):
     def parent_type(self: Union['ChildResultMixin', ResultModel]):
         return self.parent.storage_type
 
+    def store(self: Union['ChildResultMixin', Entry]):
+        self.parent.add_result(self)
+        return super().store()
 
-class ChildResultHolderMixin(ChildResultMixin, ResultHolderMixin, ABC, SuperStop):
+
+class ChildResultHolderMixin(ChildResultMixin, ResultHolderMixin, SuperStop, metaclass=ABCMeta):
     """
     Object holding some results and being itself a result object
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-    def store(self: Union['ChildResultHolderMixin', Entry]):
-        from pypads.app.pypads import get_current_pads
-        pads = get_current_pads()
-        self.parent.add_result(self)
-        return pads.backend.log(self)
 
 
 class TrackedObject(ChildResultHolderMixin):
@@ -235,7 +230,7 @@ class TrackedObject(ChildResultHolderMixin):
         return TrackedObjectModel
 
 
-class MetricTO(ChildResultMixin, ProducedMixin, ProvenanceMixin, ABC, SuperStop):
+class MetricTO(ChildResultMixin, ProvenanceMixin, SuperStop):
     """
     Metric Tracking Object to be stored in MongoDB itself. The data value is mirrored into mlflow.
     """
@@ -248,7 +243,7 @@ class MetricTO(ChildResultMixin, ProducedMixin, ProvenanceMixin, ABC, SuperStop)
         return MetricMetaModel
 
 
-class ParameterTO(ChildResultMixin, ProducedMixin, ProvenanceMixin, ABC, SuperStop):
+class ParameterTO(ChildResultMixin, ProvenanceMixin, SuperStop):
     """
     Parameter Tracking Object to be stored in MongoDB itself. The data value is mirrored into mlflow.
     """
@@ -261,7 +256,7 @@ class ParameterTO(ChildResultMixin, ProducedMixin, ProvenanceMixin, ABC, SuperSt
         return ParameterMetaModel
 
 
-class ArtifactTO(ChildResultMixin, ProducedMixin, ProvenanceMixin, ABC, SuperStop):
+class ArtifactTO(ChildResultMixin, ProvenanceMixin, SuperStop):
     """
     Artifact to be stored into MongoDB the content is just a path reference to the artifact in mlflow.
     """
@@ -282,7 +277,7 @@ class ArtifactTO(ChildResultMixin, ProducedMixin, ProvenanceMixin, ABC, SuperSto
         return pads.backend.load_artifact_data(self.run_id, self.data)
 
 
-class TagTO(ChildResultMixin, ProducedMixin, ProvenanceMixin, ABC, SuperStop):
+class TagTO(ChildResultMixin, ProvenanceMixin, SuperStop):
     """
     Tag to be stored in MongoDB the content is generally the tag value store in mlflow.
     """

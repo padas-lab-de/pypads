@@ -31,4 +31,15 @@ class Entry(BaseModel):
 
 
 class IdBasedEntry(Entry):
-    uid: uuid.UUID = Field(default_factory=uuid.uuid4, alias="_id")
+    uid: uuid.UUID = Field(default_factory=uuid.uuid4)
+
+    @staticmethod
+    def typed_id(obj):
+        # This function will generally not be used
+        fragments = []
+        if hasattr(obj, "uid"):
+            fragments.append(str(obj.uid))
+        if hasattr(obj, "storage_type"):
+            fragments.append(
+                str(obj.storage_type.value) if isinstance(obj.storage_type, ResultType) else obj.storage_type)
+        return ".".join(fragments)

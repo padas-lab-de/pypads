@@ -1,6 +1,5 @@
 import os
 import sys
-from abc import ABC
 from typing import List, Union
 
 import mlflow
@@ -115,13 +114,13 @@ class MLFlowBackend(BackendInterface):
         rt = obj.storage_type
         if rt == ResultType.metric:
             obj: MetricMetaModel
-            stored_meta = self.log_json(obj, self._to_meta_name(obj.uid, obj.storage_type))
+            stored_meta = self.log_json(obj, obj.typed_id())
             mlflow.log_metric(obj.name, obj.data)
             return stored_meta
 
         elif rt == ResultType.parameter:
             obj: ParameterMetaModel
-            stored_meta = self.log_json(obj, self._to_meta_name(obj.uid, obj.storage_type))
+            stored_meta = self.log_json(obj, obj.typed_id())
             mlflow.log_param(obj.name, obj.data)
             return stored_meta
 
@@ -134,21 +133,17 @@ class MLFlowBackend(BackendInterface):
                     obj.file_size = file_info.file_size
                     break
             obj.data = path
-            stored_meta = self.log_json(obj, self._to_meta_name(obj.uid, obj.storage_type))
+            stored_meta = self.log_json(obj, obj.typed_id())
             return stored_meta
 
         elif rt == ResultType.tag:
             obj: TagMetaModel
-            stored_meta = self.log_json(obj, self._to_meta_name(obj.uid, obj.storage_type))
+            stored_meta = self.log_json(obj, obj.typed_id())
             mlflow.set_tag(obj.name, obj.data)
             return stored_meta
 
         else:
-            return self.log_json(obj, self._to_meta_name(obj.uid, obj.storage_type))
-
-    @staticmethod
-    def _to_meta_name(name, rt: Union[str, ResultType]):
-        return ".".join([str(name), rt.value, "meta"])
+            return self.log_json(obj, obj.typed_id())
 
     def log_json(self, obj, uid=None):
         """
@@ -290,7 +285,7 @@ class RemoteMlFlowBackend(MLFlowBackend):
         super().__init__(uri, pypads)
 
 
-class MongoSupportMixin(BackendInterface, ABC, SuperStop):
+class MongoSupportMixin(BackendInterface, SuperStop):
     def __init__(self, *args, **kwargs):
         self._mongo_client = MongoClient(os.environ['MONGO_URL'], username=os.environ['MONGO_USER'],
                                          password=os.environ['MONGO_PW'], authSource=os.environ['MONGO_DB'])
@@ -308,15 +303,17 @@ class MongoSupportMixin(BackendInterface, ABC, SuperStop):
             experiment_name = mlflow.get_experiment(mlflow.active_run().info.experiment_id).name
         return os.path.sep.join([experiment_name, run_id, path])
 
-    def log_json(self, obj, uid=None):
-        obj = obj.dict(by_alias=True)
-        if obj["_id"] is None:
-            obj["_id"] = uid
+    def log_json(self, entry, uid=None):
+        obj = entry.dict(by_alias=True)
+        obj["_id"] = uid
         if "storage_type" not in obj:
             logger.error(
                 f"Tried to log an invalid entry. Json logged data has to define a storage_type. For entry {obj}")
             return None
-        self._db[obj["storage_type"].value].insert_one(jsonable_encoder(obj))
+        try:
+            self._db[obj["storage_type"].value].insert_one(jsonable_encoder(obj))
+        except Exception as e:
+            print(e)
         return obj["_id"]
 
     def get_json(self, run_id, uid):

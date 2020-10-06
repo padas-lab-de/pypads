@@ -6,7 +6,7 @@ from pydantic import validate_model, BaseModel, ValidationError
 
 from pypads.app.misc.inheritance import SuperStop
 from pypads.model.domain import RunObjectModel
-from pypads.model.models import ResultType
+from pypads.model.models import ResultType, IdBasedEntry
 from pypads.utils.logging_util import jsonable_encoder
 from pypads.utils.util import has_direct_attr, persistent_hash
 
@@ -63,15 +63,19 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
         for key in fields:
             if not has_direct_attr(self, key) and self.get_model_fields():
                 setattr(self, key, self.get_model_fields()[key].get_default())
-        # if issubclass(self.get_model_cls(), RunObjectModel) and (
-        #         not hasattr(self, "uri") or getattr(self, "uri") is None):
-        #     setattr(self, "uri", "{}#{}".format(getattr(self, 'category'), getattr(self, 'uid')))
 
     def model(self):
         return self.get_model_cls().from_orm(self)
 
     def validate(self):
         validate_model(self.get_model_cls(), self.model().__dict__)
+
+    def typed_id(self):
+        cls = self.get_model_cls()
+        if issubclass(cls, IdBasedEntry):
+            return cls.typed_id(self)
+        else:
+            raise Exception(f"Can't extracted typed id: Model {str(cls)} is not an IdBasedEntry.")
 
     @classmethod
     def schema(cls):
