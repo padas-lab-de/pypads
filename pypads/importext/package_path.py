@@ -196,7 +196,7 @@ class StaticMatcher(ISegmentMatcher):
 
     @staticmethod
     def yaml_representer(dumper, data):
-        return dumper.represent_scalar(StaticMatcher.TAG, "%s" % data.conent)
+        return dumper.represent_scalar(StaticMatcher.TAG, "%s" % data.content)
 
     @staticmethod
     def yaml_constructor(loader, node):
@@ -221,7 +221,7 @@ class RegexMatcher(ISegmentMatcher):
 
     @staticmethod
     def yaml_representer(dumper, data):
-        return dumper.represent_scalar(RegexMatcher.TAG, "%s" % data.conent)
+        return dumper.represent_scalar(RegexMatcher.TAG, "%s" % data.content)
 
     @staticmethod
     def yaml_constructor(loader, node):
@@ -251,6 +251,13 @@ class PackagePathMatcher(SerializableMatcher):
         :return: SegmentMatchers of the PathMatcher
         """
         return self._matchers
+
+    @property
+    def content(self):
+        """
+        :return: joined string of all the matchers
+        """
+        return ".".join([m.content for m in self._matchers])
 
     @staticmethod
     def unserialize(reference):
