@@ -165,8 +165,8 @@ class PyPadsApi(IApi):
         if not self.pypads.cache.run_exists("programmatic_output"):
             self.pypads.cache.run_add("programmatic_output",
                                       LoggerOutput(_pypads_env=self.create_dummy_env(), producer=dummy_logger))
-        else:
-            return self.pypads.cache.run_get("programmatic_output")
+
+        return self.pypads.cache.run_get("programmatic_output")
 
     @staticmethod
     def create_dummy_env(data=None) -> LoggerEnv:
