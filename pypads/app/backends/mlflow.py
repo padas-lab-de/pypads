@@ -1,5 +1,6 @@
 import os
 import sys
+from abc import ABCMeta
 from typing import List, Union
 
 import mlflow
@@ -18,7 +19,7 @@ from pypads.utils.logging_util import FileFormats, jsonable_encoder, store_tmp_a
 from pypads.utils.util import string_to_int, get_run_id
 
 
-class MLFlowBackend(BackendInterface):
+class MLFlowBackend(BackendInterface, metaclass=ABCMeta):
     """
     Backend pushing data to mlflow
     """
@@ -83,14 +84,14 @@ class MLFlowBackend(BackendInterface):
         return mlflow.get_artifact_uri(artifact_path=artifact_path)
 
     def log_artifact(self, meta, local_path):
-        path = self._log_artifact(local_path=local_path, artifact_path=meta.value)
+        path = self._log_artifact(local_path=local_path, artifact_path=meta.data)
         meta.value = path
         self.log_json(meta)
         return path
 
     def _log_artifact(self, local_path, artifact_path=""):
         mlflow.log_artifact(local_path, artifact_path)
-        path = os.path.join(artifact_path, local_path.rsplit(os.sep, 1)[1])
+        path = os.path.join(artifact_path if artifact_path else "", local_path.rsplit(os.sep, 1)[1])
         return path
 
     def _log_mem_artifact(self, path: str, artifact, write_format, preserveFolder=True):
@@ -106,7 +107,7 @@ class MLFlowBackend(BackendInterface):
     def set_experiment_tag(self, experiment_id, key, value):
         return self.mlf.set_experiment_tag(experiment_id, key, value)
 
-    def log(self, obj: IdBasedEntry):
+    def log(self, obj: Union[IdBasedEntry]):
         """
         :param obj: Entry object to be logged
         :return:
@@ -154,19 +155,20 @@ class MLFlowBackend(BackendInterface):
         """
         if uid is None:
             uid = obj.uid
-        return self._log_mem_artifact(self._to_meta_name(uid, obj.storage_type), obj.json(by_alias=True),
+        return self._log_mem_artifact(uid, obj.json(by_alias=True),
                                       write_format=FileFormats.json)
 
     def get(self, run_id, uid, storage_type: Union[ResultType, str]):
-        json_data = self.get_json(run_id=run_id, uid=self._to_meta_name(uid, storage_type))
+        json_data = self.get_json(run_id=run_id, uid=uid, storage_type=storage_type)
         if storage_type == ResultType.artifact:
             return ArtifactTO(**dict(json_data))
         else:
             return json_data
 
-    def get_json(self, run_id, uid):
+    def get_json(self, run_id, uid, storage_type=None):
         """
         Get json stored for a certain run.
+        :param storage_type: Storage type to look for
         :param run_id: Id of the run
         :param uid: uid - for local storage this is the relative path
         :return:
@@ -175,6 +177,11 @@ class MLFlowBackend(BackendInterface):
 
 
 class LocalMlFlowBackend(MLFlowBackend):
+
+    def list(self, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
+             search_dict=None):
+        raise NotImplementedError(
+            "List is currently not implemented for local stores. Use a MongoDB supported store for this feature.")
 
     def __init__(self, uri, pypads):
         """
@@ -276,6 +283,11 @@ class LocalMlFlowBackend(MLFlowBackend):
 
 class RemoteMlFlowBackend(MLFlowBackend):
 
+    def list(self, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
+             search_dict=None):
+        raise NotImplementedError(
+            "List is currently not implemented for mlflow stores. Use a MongoDB supported store for this feature.")
+
     def __init__(self, uri, pypads):
         """
         Remote version of an mlflow backend.
@@ -285,7 +297,7 @@ class RemoteMlFlowBackend(MLFlowBackend):
         super().__init__(uri, pypads)
 
 
-class MongoSupportMixin(BackendInterface, SuperStop):
+class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
     def __init__(self, *args, **kwargs):
         self._mongo_client = MongoClient(os.environ['MONGO_URL'], username=os.environ['MONGO_USER'],
                                          password=os.environ['MONGO_PW'], authSource=os.environ['MONGO_DB'])
@@ -304,30 +316,44 @@ class MongoSupportMixin(BackendInterface, SuperStop):
         return os.path.sep.join([experiment_name, run_id, path])
 
     def log_json(self, entry, uid=None):
-        obj = entry.dict(by_alias=True)
-        obj["_id"] = uid
-        if "storage_type" not in obj:
+        if not isinstance(entry, dict):
+            entry = entry.dict(by_alias=True)
+        if uid is None:
+            uid = entry.uid
+        entry["_id"] = uid
+        if "storage_type" not in entry:
             logger.error(
-                f"Tried to log an invalid entry. Json logged data has to define a storage_type. For entry {obj}")
+                f"Tried to log an invalid entry. Json logged data has to define a storage_type. For entry {entry}")
             return None
         try:
-            self._db[obj["storage_type"].value].insert_one(jsonable_encoder(obj))
+            self._db[entry["storage_type"].value if isinstance(entry["storage_type"], ResultType) else entry[
+                "storage_type"]].insert_one(jsonable_encoder(entry))
         except Exception as e:
-            print(e)
-        return obj["_id"]
+            logger.error(e)
+        return entry["_id"]
 
-    def get_json(self, run_id, uid):
-        return self._db[ResultType.artifact.value].find_one({"_id": uid, "run_id": run_id})
+    def get_json(self, run_id, uid, storage_type: Union[str, ResultType] = None):
+        """
+        Get json stored for a certain run.
+        :param storage_type: Storage type to look for
+        :param run_id: Id of the run
+        :param uid: uid - for local storage this is the relative path
+        :return:
+        """
+        return self._db[storage_type if isinstance(storage_type, str) else storage_type.value].find_one(
+            {"_id": uid, "run_id": run_id})
 
-    def list(self, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None):
-        search_dict = {}
+    def list(self, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
+             search_dict=None):
+        if search_dict is None:
+            search_dict = {}
         if experiment_name:
             search_dict["experiment_name"] = experiment_name
         if experiment_id:
             search_dict["experiment_id"] = experiment_id
         if run_id:
             search_dict["run_id"] = run_id
-        return self._db[storage_type.value].find(search_dict)
+        return self._db[storage_type if isinstance(storage_type, str) else storage_type.value].find(search_dict)
 
 
 class MongoSupportedLocalMlFlowBackend(MongoSupportMixin, RemoteMlFlowBackend):
@@ -338,6 +364,9 @@ class MongoSupportedLocalMlFlowBackend(MongoSupportMixin, RemoteMlFlowBackend):
 class MongoSupportedRemoteMlFlowBackend(MongoSupportMixin, RemoteMlFlowBackend):
     def __init__(self, uri, pypads):
         super().__init__(uri, pypads)
+
+
+# TODO add elastic search?
 
 
 class MLFlowBackendFactory:

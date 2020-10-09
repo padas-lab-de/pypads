@@ -6,7 +6,7 @@ from pydantic import validate_model, BaseModel, ValidationError
 
 from pypads.app.misc.inheritance import SuperStop
 from pypads.model.domain import RunObjectModel
-from pypads.model.models import ResultType, IdBasedEntry
+from pypads.model.models import IdBasedEntry
 from pypads.utils.logging_util import jsonable_encoder
 from pypads.utils.util import has_direct_attr, persistent_hash
 
@@ -97,10 +97,10 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
             schema = cls.schema()
             schema_hash = persistent_hash(str(schema))
             if not schema_repo.has_object(uid=schema_hash):
+                schema_obj = schema_repo.get_object(uid=schema_hash)
                 # TODO store schema as string for now because $ is reserved in MongoDB
-                schema["storage_type"] = ResultType.schema
-                schema_wrapper = {"_id": str(schema_hash), "schema": str(jsonable_encoder(schema))}
-                schema_repo.store(schema_wrapper)
+                schema_wrapper = {"schema": str(jsonable_encoder(schema))}
+                schema_obj.log_json(schema_wrapper)
 
             cls._schema_path = path
 

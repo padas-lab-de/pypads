@@ -1,15 +1,16 @@
 import os
-from typing import Type
+from dataclasses import dataclass
+from typing import Type, Union
 
-import mlflow
-from mlflow.utils.autologging_utils import try_mlflow_log
 from pydantic import BaseModel
 
 from pypads import logger
-from pypads.app.injections.injection import InjectionLoggerCall, MultiInjectionLogger
-from pypads.app.injections.tracked_object import TrackedObject, LoggerOutput
-from pypads.model.logger_output import OutputModel, TrackedObjectModel, ArtifactMetaModel
-from pypads.utils.logging_util import FileFormats, get_temp_folder
+from pypads.app.env import LoggerEnv
+from pypads.app.injections.injection import InjectionLoggerCall, MultiInjectionLogger, MultiInjectionLoggerCall
+from pypads.app.injections.tracked_object import TrackedObject
+from pypads.model.logger_call import InjectionLoggerCallModel
+from pypads.model.logger_output import OutputModel, TrackedObjectModel
+from pypads.utils.logging_util import get_temp_folder
 from pypads.utils.util import is_package_available
 
 
@@ -47,6 +48,83 @@ def _step_number(network, label):
     return str(network.number_of_edges()) + ": " + label
 
 
+@dataclass
+class ProcessNode:
+    process: int = ...
+
+    def __str__(self):
+        return "Process: " + str(self.process)
+
+    def __hash__(self):
+        return hash(self.process)
+
+
+@dataclass
+class ThreadNode:
+    process_node: ProcessNode = ...
+    thread: int = ...
+
+    def __str__(self):
+        return f"Thread: {str(self.thread)} - {self.process_node.__hash__()}"
+
+    def __hash__(self):
+        return hash((self.process_node.__hash__(), self.thread))
+
+
+@dataclass
+class ClassNode:
+    thread_node: ThreadNode = ...
+    clazz: str = ...
+
+    def __str__(self):
+        return f"Class: {str(self.clazz)} - {self.thread_node.__hash__()}"
+
+    def __hash__(self):
+        return hash((self.thread_node.__hash__(), self.clazz))
+
+
+@dataclass
+class InstanceNode:
+    class_node: ClassNode = ...
+    instance: int = ...
+
+    def __str__(self):
+        return f"Instance: {str(self.instance)} - {self.class_node.__hash__()}"
+
+    def __hash__(self):
+        return hash((self.class_node.__hash__(), self.instance))
+
+
+@dataclass
+class FunctionNode:
+    instance_node: InstanceNode = ...
+    function: str = ...
+
+    def __str__(self):
+        return f"Function: {str(self.function)} - {self.instance_node.__hash__()}"
+
+    def __hash__(self):
+        return hash((self.instance_node.__hash__(), self.function))
+
+
+@dataclass
+class CallNode:
+    function_node: FunctionNode = ...
+    call: int = ...
+
+    def __str__(self):
+        return f"Call: {str(self.call)} - {self.function_node.__hash__()}"
+
+    def __hash__(self):
+        return hash((self.function_node.__hash__(), self.call))
+
+
+OF_EDGE = "part_of"
+DATA_EDGE = "data_flow"
+DATA_ID_EDGE = "data_id"
+CALL_ORDER_EDGE = "call_order"
+
+
 class PipelineTO(TrackedObject):
     """
        Tracking object class for execution workflow/ computational graph.
@@ -58,7 +136,7 @@ class PipelineTO(TrackedObject):
 
         network: dict = ...
         pipeline_type: str = ...
-        last_tracked: int = ...
+        number_of_steps: int = ...
 
         class Config:
             orm_mode = True
@@ -68,9 +146,13 @@ class PipelineTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.PipelineModel
 
-    def __init__(self, *args, parent: LoggerOutput, network=None, pipeline_type="", last_tracked=None, **kwargs):
-        super().__init__(*args, parent=parent, network=network, pipeline_type=pipeline_type,
-                         last_tracked=last_tracked, **kwargs)
+    def __init__(self, *args, network=None, pipeline_type="", **kwargs):
+        self._data_flow = {}
+        self._data_id_flow = {}
+        self._last_tracked = None
+        self._number_of_steps = 0
+        self._network = network
+        super().__init__(*args, pipeline_type=pipeline_type, **kwargs)
 
     def _get_network(self):
         return self.network
@@ -78,16 +160,54 @@ class PipelineTO(TrackedObject):
     def _set_network(self, network: dict):
         self.network = network
 
-    def _get_last_tracked(self):
-        return self.last_tracked
+    @property
+    def network(self):
+        import networkx as nx
+        return nx.to_dict_of_dicts(self._network)
 
-    def _set_last_tracked(self, last_tracked):
-        self.last_tracked = last_tracked
+    @property
+    def nx_network(self):
+        return self._network
+
+    @network.setter
+    def network(self, value):
+        self._network = value
+
+    @property
+    def last_tracked(self):
+        return self._last_tracked
+
+    @last_tracked.setter
+    def last_tracked(self, value):
+        self._last_tracked = value
+
+    @property
+    def number_of_steps(self):
+        return self._number_of_steps
+
+    def increment_step(self):
+        self._number_of_steps += 1
+        return self._number_of_steps
+
+    @property
+    def data_flow(self):
+        return self._data_flow
+
+    def add_data_hash(self, hash, node):
+        self._data_flow[hash] = node
+
+    @property
+    def data_id_flow(self):
+        return self._data_id_flow
+
+    def add_data_id(self, uid, node):
+        self._data_id_flow[uid] = node
 
 
 class PipelineTrackerILF(MultiInjectionLogger):
     """
-    Injection logger that tracks multiple calls.
+    Injection logger to track the execution graph of calls themselves. The logger itself uses networkx to build a
+    call graph.
     """
     name = "Generic Pipeline Logger"
     category: str = "PipelineLogger"
@@ -96,15 +216,18 @@ class PipelineTrackerILF(MultiInjectionLogger):
 
     class PipelineTrackerILFOutput(OutputModel):
         category: str = "PipelineILF-Output"
-
-        pipeline: str = None
+        pipeline_ref: str = None
 
         class Config:
             orm_mode = True
 
-        def __init__(self, *args, pipeline, **kwargs):
-            super().__init__(*args, **kwargs)
-            self._pipeline = pipeline
+    @property
+    def pipeline(self):
+        return self._pipeline
+
+    @pipeline.setter
+    def pipeline(self, value):
+        self._pipeline = value
 
     @classmethod
     def output_schema_class(cls):
@@ -112,165 +235,212 @@ class PipelineTrackerILF(MultiInjectionLogger):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._pipeline = None
 
     @staticmethod
     def finalize_output(pads, *args, **kwargs):
         pipeline_tracker = pads.cache.run_get(pads.cache.run_get("pipeline_tracker"))
         call = pipeline_tracker.get("call")
         output = pipeline_tracker.get("output")
-        pipeline = output._pipeline
+        pipeline: PipelineTO = pads.cache.run_get("pipeline")
 
         from networkx import MultiDiGraph
-        network = MultiDiGraph(pipeline._get_network())
-        _pipeline_type = pipeline.pipeline_type
-        # global network
-        if network is not None and len(network.nodes) > 0:
-            from networkx import DiGraph
+        network: MultiDiGraph = pipeline.nx_network
+
+        base_folder = get_temp_folder()
+        path = os.path.join(base_folder, "pipeline_graph.png")
+        if not os.path.exists(base_folder):
+            os.mkdir(base_folder)
+
+        if is_package_available("agraph") and is_package_available("graphviz") and is_package_available("pygraphviz"):
             from networkx.drawing.nx_agraph import to_agraph
-            path = "pypads_pipeline"
-            pipeline.store_artifact(network,
-                                    ArtifactMetaModel(path=path, description="networkx graph",
-                                                      format=FileFormats.pickle))
-            if is_package_available("networkx"):
-                base_folder = get_temp_folder()
-                folder = base_folder + "pipeline_graph.png"
-                if not os.path.exists(base_folder):
-                    os.mkdir(base_folder)
-                if is_package_available("agraph") and is_package_available("graphviz"):
-                    try:
-                        if _pipeline_type == "simple":
-                            agraph = to_agraph(DiGraph(network))
-                        elif _pipeline_type == "grouped":
-                            copy = network.copy()
-                            edge_groups = {}
-                            for edge in copy.edges:
-                                plain = copy.get_edge_data(*edge)['plain_label']
-                                if plain not in edge_groups:
-                                    edge_groups[plain] = []
-                                edge_groups[plain].append(edge)
+            agraph = to_agraph(network)
+            agraph.layout('dot')
+            agraph.draw(path)
+            pipeline.store_artifact(path, "pipeline_graph.png",
+                                    description="A depiction of the underlying pipeline of the experiment.")
 
-                            for group, edges in edge_groups.items():
-                                label = ""
-                                suffix = ""
-                                base_edge = None
-                                for edge in edges:
-                                    splits = copy.get_edge_data(*edge)['label'].split(":")
-                                    if label == "":
-                                        label = splits[0]
-                                        suffix = splits[1]
-                                        base_edge = edge
-                                    else:
-                                        label = label + ", " + splits[0]
-                                    copy.remove_edge(*edge)
-                                label = label + ":" + suffix
-                                copy.add_edge(*base_edge, label=label)
-                            agraph = to_agraph(copy)
-                        elif _pipeline_type == "grouped_no_count":
-                            copy = network.copy()
-                            edge_groups = {}
-                            for edge in copy.edges:
-                                plain = copy.get_edge_data(*edge)['plain_label']
-                                if plain not in edge_groups:
-                                    edge_groups[plain] = edge
+        output.pipeline = pipeline.store()
 
-                            copy.remove_edges_from(network.edges())
-                            for group, edge in edge_groups.items():
-                                copy.add_edge(*edge, label=group)
-                            agraph = to_agraph(copy)
-                        else:
-                            agraph = to_agraph(network)
-                        agraph.layout('dot')
-                        agraph.draw(folder)
-                    except ValueError as e:
-                        logger.warning("Failed plotting pipeline: " + str(e))
-                elif is_package_available("matplotlib"):
-                    import matplotlib.pyplot as plt
-                    import networkx as nx
-                    pos = nx.spring_layout(network)
-                    nx.draw(network, pos)
-                    nx.draw_networkx_labels(network, pos=pos)
-                    nx.draw_networkx_edge_labels(network, pos)
-                    plt.savefig(folder)
-                if os.path.exists(folder):
-                    path = "pipeline"
-                    try_mlflow_log(mlflow.log_artifact, folder, artifact_path=path)
+        # # global network
+        # if network is not None and len(network.nodes) > 0:
+        #     from networkx import DiGraph
+        #     from networkx.drawing.nx_agraph import to_agraph
+        #     path = "pypads_pipeline"
+        #     pipeline.store_artifact(network,
+        #                             ArtifactMetaModel(path=path, description="networkx graph",
+        #                                               format=FileFormats.pickle))
+        #     if is_package_available("networkx"):
+        #         base_folder = get_temp_folder()
+        #         folder = base_folder + "pipeline_graph.png"
+        #         if not os.path.exists(base_folder):
+        #             os.mkdir(base_folder)
+        #         if is_package_available("agraph") and is_package_available("graphviz"):
+        #             try:
+        #                 if _pipeline_type == "simple":
+        #                     agraph = to_agraph(DiGraph(network))
+        #                 elif _pipeline_type == "grouped":
+        #                     copy = network.copy()
+        #                     edge_groups = {}
+        #                     for edge in copy.edges:
+        #                         plain = copy.get_edge_data(*edge)['plain_label']
+        #                         if plain not in edge_groups:
+        #                             edge_groups[plain] = []
+        #                         edge_groups[plain].append(edge)
+        #
+        #                     for group, edges in edge_groups.items():
+        #                         label = ""
+        #                         suffix = ""
+        #                         base_edge = None
+        #                         for edge in edges:
+        #                             splits = copy.get_edge_data(*edge)['label'].split(":")
+        #                             if label == "":
+        #                                 label = splits[0]
+        #                                 suffix = splits[1]
+        #                                 base_edge = edge
+        #                             else:
+        #                                 label = label + ", " + splits[0]
+        #                             copy.remove_edge(*edge)
+        #                         label = label + ":" + suffix
+        #                         copy.add_edge(*base_edge, label=label)
+        #                     agraph = to_agraph(copy)
+        #                 elif _pipeline_type == "grouped_no_count":
+        #                     copy = network.copy()
+        #                     edge_groups = {}
+        #                     for edge in copy.edges:
+        #                         plain = copy.get_edge_data(*edge)['plain_label']
+        #                         if plain not in edge_groups:
+        #                             edge_groups[plain] = edge
+        #
+        #                     copy.remove_edges_from(network.edges())
+        #                     for group, edge in edge_groups.items():
+        #                         copy.add_edge(*edge, label=group)
+        #                     agraph = to_agraph(copy)
+        #                 else:
+        #                     agraph = to_agraph(network)
+        #                 agraph.layout('dot')
+        #                 agraph.draw(folder)
+        #             except ValueError as e:
+        #                 logger.warning("Failed plotting pipeline: " + str(e))
+        #         elif is_package_available("matplotlib"):
+        #             import matplotlib.pyplot as plt
+        #             import networkx as nx
+        #             pos = nx.spring_layout(network)
+        #             nx.draw(network, pos)
+        #             nx.draw_networkx_labels(network, pos=pos)
+        #             nx.draw_networkx_edge_labels(network, pos)
+        #             plt.savefig(folder)
+        #         if os.path.exists(folder):
+        #             path = "pipeline"
+        #             try_mlflow_log(mlflow.log_artifact, folder, artifact_path=path)
+        #
+        # pipeline.store()
+        # call.output = output.store()
+        # call.store()
 
-        pipeline.store()
-        call.output = output.store()
-        call.store()
+    @staticmethod
+    def _add_to_network(node, network):
+        if not network.has_node(node):
+            network.add_node(node, label=str(node))
 
-    def __pre__(self, ctx, *args, _logger_call: InjectionLoggerCall, _pypads_pipeline_type="normal",
-                _pypads_pipeline_args=False, _logger_output,
+    @staticmethod
+    def _add_of_edge(child, parent, network):
+        if not network.has_edge(child, parent, OF_EDGE):
+            network.add_edge(child, parent, plain_label=OF_EDGE, label=OF_EDGE)
+
+    def __pre__(self, ctx, *args, _logger_call: Union[MultiInjectionLoggerCall, InjectionLoggerCallModel],
+                _pypads_pipeline_type="normal", _pypads_pipeline_args=False, _pypads_env: LoggerEnv, _logger_output,
                 **kwargs):
-        from pypads.app.pypads import get_current_pads
-        pads = get_current_pads()
+        """
+        Add entry to the pipeline network.
+        """
+
+        # Initialized the pipeline_tracker by adding itself to the cache
+        pads = _pypads_env.pypads
         pads.cache.run_add("pipeline_tracker", id(self))
 
-        if _logger_output.pipeline is None:
-            pipeline = PipelineTO(parent=_logger_output, pipeline_type=_pypads_pipeline_type)
-        else:
-            pipeline = _logger_output._pipeline
-
-        network = pipeline.network
-        last_tracked = pipeline.last_tracked
-        _pipeline_type = pipeline.pipeline_type
-
+        # Get the network from the shared logger output
         import networkx as nx
-        if network is None:
-            network = nx.MultiDiGraph()
+        if not pads.cache.run_exists("pipeline"):
+            pipeline = PipelineTO(network=nx.MultiDiGraph(), parent=_logger_output, pipeline_type=_pypads_pipeline_type)
+            pads.cache.run_add("pipeline", pipeline)
         else:
-            network = nx.MultiDiGraph(network)
+            pipeline = pads.cache.run_get("pipeline")
 
-        node_id = _to_node_id(_logger_call.original_call.call_id.wrappee, ctx)
-        label = _to_node_label(_logger_call.original_call.call_id.wrappee, ctx)
-        if not network.has_node(node_id):
-            network.add_node(node_id, label=label)
+        network = pipeline.nx_network
 
-        label = _to_edge_label(_logger_call.original_call.call_id.wrappee, _pypads_pipeline_args, args, kwargs)
-        # If the current stack holds only the call itself
-        if pads.call_tracker.call_depth() == 1:
+        # Convert current call to a nodes
+        # TODO original call references the first call of the multi_injection_logger
+        process_node = ProcessNode(process=_logger_call.call_stack[-1].call_id.process)
+        thread_node = ThreadNode(thread=_logger_call.call_stack[-1].call_id.thread, process_node=process_node)
+        class_node = ClassNode(clazz=ctx.__class__.__name__, thread_node=thread_node)
+        instance_node = InstanceNode(instance=_logger_call.call_stack[-1].call_id.instance_id, class_node=class_node)
+        function_node = FunctionNode(function=_logger_call.call_stack[-1].call_id.fn_name, instance_node=instance_node)
+        call_node = CallNode(call=_logger_call.call_stack[-1].call_id.call_number, function_node=function_node)
 
-            # If there where no nodes until now
-            if len(network.nodes) == 1:
-                network.add_node(-1, label="entry")
-                last_tracked = -1
-                pipeline._set_last_tracked(last_tracked)
-            network.add_edge(last_tracked, node_id, plain_label=label, label=_step_number(network, label))
+        # Add nodes to network
+        self._add_to_network(process_node, network)
+        self._add_to_network(thread_node, network)
+        self._add_to_network(class_node, network)
+        self._add_to_network(instance_node, network)
+        self._add_to_network(function_node, network)
+        self._add_to_network(call_node, network)
 
-        # If the tracked function was called from another tracked function
-        elif pads.call_tracker.call_depth() > 1:
+        # Interlink nodes via of_edges
+        self._add_of_edge(thread_node, process_node, network)
+        self._add_of_edge(class_node, thread_node, network)
+        self._add_of_edge(instance_node, class_node, network)
+        self._add_of_edge(function_node, instance_node, network)
+        self._add_of_edge(call_node, function_node, network)
 
-            containing_node_id = _to_node_id(pads.call_tracker.call_stack[-2].call_id.wrappee, ctx)
-            if not network.has_node(containing_node_id):
-                containing_node_label = _to_node_label(pads.call_tracker.call_stack[-2].call_id.wrappee, ctx)
-                network.add_node(containing_node_id, label=containing_node_label)
-            # Add an edge from the tracked function to the current function call
-            network.add_edge(containing_node_id, node_id, plain_label=label, label=_step_number(network, label))
+        # Add entry edge if needed
+        if len(network.nodes) == 6:
+            network.add_node(-1, label="entry")
+            network.add_edge(-1, call_node, plain_label=CALL_ORDER_EDGE,
+                             label=f"{pipeline.number_of_steps}:{CALL_ORDER_EDGE}")
 
-        pipeline._set_network(nx.to_dict_of_dicts(network))
-        _logger_output._pipeline = pipeline
-        return node_id
+        # Add order edge
+        if pipeline.last_tracked is not None:
+            network.add_edge(pipeline.last_tracked, call_node, plain_label=CALL_ORDER_EDGE,
+                             label=f"{pipeline.increment_step()}:{CALL_ORDER_EDGE}")
+
+        # Add data edges
+        for val in kwargs["_args"]:
+            self._check_data_edge(val, call_node, pipeline)
+
+        # Add data edges
+        for _, val in kwargs["_kwargs"].items():
+            self._check_data_edge(val, call_node, pipeline)
+
+        pipeline.last_tracked = call_node
+        return call_node
+
+    @staticmethod
+    def _check_data_edge(val, call_node, pipeline):
+        """
+        Add data flow edges depending on the hash of the data and the id of the data
+        """
+        network = pipeline.nx_network
+        if id(val) in pipeline.data_flow:
+            network.add_edge(pipeline.data_flow[id(val)], call_node, plain_label=DATA_ID_EDGE,
+                             label=DATA_ID_EDGE)
+            # try:
+            #     data_hash = persistent_hash(val)
+            #     if data_hash in pipeline.data_flow:
+            #         network.add_edge(pipeline.data_flow[data_hash], call_node, plain_label=DATA_EDGE,
+            #                          label=DATA_EDGE)
+            # except Exception:
+            #     pass
 
     def __post__(self, ctx, *args, _pypads_pipeline_args=False, _logger_call: InjectionLoggerCall, _logger_output,
-                 _pypads_pre_return,
-                 **kwargs):
-        from pypads.app.pypads import get_current_pads
-        pads = get_current_pads()
-
-        import networkx as nx
-        pipeline = _logger_output._pipeline
-        network = nx.MultiDiGraph(pipeline._get_network())
-
-        node_id = _pypads_pre_return
-        label = "return " + _to_edge_label(_logger_call.original_call.call_id.wrappee, _pypads_pipeline_args, args,
-                                           kwargs)
-        if pads.call_tracker.call_depth() == 1:
-            network.add_edge(node_id, -1, plain_label=label, label=_step_number(network, label))
-        elif pads.call_tracker.call_depth() > 1:
-            containing_node_id = _to_node_id(pads.call_tracker.call_stack[-2].call_id.wrappee, ctx)
-            if not network.has_node(containing_node_id):
-                containing_node_label = _to_node_label(pads.call_tracker.call_stack[-2].call_id.wrappee, ctx)
-                network.add_node(containing_node_id, label=containing_node_label)
-            network.add_edge(node_id, containing_node_id, plain_label=label, label=_step_number(network, label))
-        pipeline._set_network(nx.to_dict_of_dicts(network))
-        _logger_output._pipeline = pipeline
+                 _pypads_pre_return, _pypads_result, _pypads_env, **kwargs):
+        pads = _pypads_env.pypads
+        pipeline = pads.cache.run_get("pipeline")
+        # try:
+        #     pipeline.add_data_hash(persistent_hash(_pypads_result), _pypads_pre_return)
+        # except Exception:
+        #     pass
+        if isinstance(_pypads_result, tuple):
+            for val in _pypads_result:
+                pipeline.add_data_id(id(val), _pypads_pre_return)
+        pipeline.add_data_id(id(_pypads_result), _pypads_pre_return)

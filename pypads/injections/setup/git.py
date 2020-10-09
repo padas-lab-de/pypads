@@ -32,8 +32,8 @@ class GitTO(TrackedObject):
         self.store_tag(*args, **kwargs)
 
     def store_git_log(self, name, value, format=FileFormats.text):
-        self.git_log = self.store_artifact(name, value,
-                                           description="Commit logs for the git repository", write_format=format)
+        self.git_log = self.store_mem_artifact(name, value,
+                                               description="Commit logs for the git repository", write_format=format)
 
 
 class IGitRSF(RunSetup):

@@ -10,7 +10,7 @@ from pypads.bindings.hooks import Hook
 from pypads.importext.package_path import RegexMatcher, PackagePath, PackagePathMatcher, \
     SerializableMatcher, Package
 from pypads.importext.versioning import LibSelector
-from pypads.utils.util import find_package_version
+from pypads.utils.util import find_package_version, dict_merge
 
 default_mapping_file_paths = []
 default_mapping_file_paths.extend(glob.glob(
@@ -285,7 +285,7 @@ class SerializedMapping(MappingCollection):
 
         schema = MappingSchema(schema.fragments, schema.metadata, matcher=schema.matcher,
                                anchors=_anchors.union(schema.anchors),
-                               values={**schema.values, **_values})
+                               values=dict_merge(schema.values, _values, str_to_set=True))
 
         if len(_fragments) > 0:
             mappings = {**mappings, **self._build_mappings(node, schema)}
@@ -296,14 +296,23 @@ class SerializedMapping(MappingCollection):
                         matcher = schema.matcher + matcher
                     if not isinstance(matcher, PackagePathMatcher):
                         matcher = PackagePathMatcher(matcher)
-                    mappings = {**mappings, **self._build_mappings(v, MappingSchema(schema.fragments, schema.metadata,
-                                                                                    matcher=matcher,
-                                                                                    anchors=schema.anchors,
-                                                                                    values=schema.values))}
+                    if v is not None:
+                        mappings = {**mappings,
+                                    **self._build_mappings(v, MappingSchema(schema.fragments, schema.metadata,
+                                                                            matcher=matcher,
+                                                                            anchors=schema.anchors,
+                                                                            values=schema.values))}
+                    else:
+                        mappings = {**mappings,
+                                    **self._build_mappings({"hooks": schema.anchors, "data": schema.values},
+                                                           MappingSchema(schema.fragments, schema.metadata,
+                                                                         matcher=matcher,
+                                                                         anchors=schema.anchors,
+                                                                         values=schema.values))}
             elif schema.matcher.matchers is not None:
                 self.add_mapping(
                     Mapping(schema.matcher, self, schema.anchors,
-                            {**schema.values, "type": "www.padre-lab.eu/Injection"}))
+                            {**schema.values, "mapped_by": "http://www.padre-lab.eu/PyPadsInjection"}))
         return mappings
 
 

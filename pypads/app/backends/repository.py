@@ -1,30 +1,34 @@
 import os
+from typing import Union, Optional
+from uuid import uuid4
 
-from pymongo import MongoClient
+from pydantic import BaseModel
 
+from pypads.app.backends.mlflow import MongoSupportMixin
+from pypads.model.models import Entry
 from pypads.utils.logging_util import FileFormats
 
 
-class MongoRepository:
-
-    def __init__(self, *args, name, **kwargs):
-        self._mongo_client = MongoClient(os.environ['MONGO_URL'], username=os.environ['MONGO_USER'],
-                                         password=os.environ['MONGO_PW'], authSource=os.environ['MONGO_DB'])
-        self._db = self._mongo_client[os.environ['MONGO_DB']]
-        self._collection = self._db[name]
-
-    def has_object(self, uid):
-        return self.get_object(uid) is not None
-
-    def get_object(self, uid):
-        return self._collection.find_one({"_id": str(uid)})
-
-    def store(self, doc):
-        self._collection.insert_one(doc)
-
-    @property
-    def collection(self):
-        return self._collection
+# class MongoRepository:
+#
+#     def __init__(self, *args, name, **kwargs):
+#         self._mongo_client = MongoClient(os.environ['MONGO_URL'], username=os.environ['MONGO_USER'],
+#                                          password=os.environ['MONGO_PW'], authSource=os.environ['MONGO_DB'])
+#         self._db = self._mongo_client[os.environ['MONGO_DB']]
+#         self._collection = self._db[name]
+#
+#     def has_object(self, uid):
+#         return self.get_object(uid) is not None
+#
+#     def get_object(self, uid):
+#         return self._collection.find_one({"_id": str(uid)})
+#
+#     def store(self, doc):
+#         self._collection.insert_one(doc)
+#
+#     @property
+#     def collection(self):
+#         return self._collection
 
 
 class Repository:
@@ -61,9 +65,11 @@ class Repository:
         """
         return RepositoryObject(self, run_id, uid, name)
 
-    def has_object(self, uid=None):
-        return len(self.pads.backend.search_runs(experiment_ids=self.id,
-                                                 filter_string="tags.`pypads_unique_uid` = \"" + str(uid) + "\""))
+    def has_object(self, uid):
+        return self.pads.backend.get_json(self.id, str(uid), self.name) is not None or len(
+            self.pads.backend.search_runs(experiment_ids=self.id,
+                                          filter_string="tags.`pypads_unique_uid` = \"" + str(
+                                              uid) + "\"")) > 0
 
     def context(self, run_id=None, run_name=None):
         """
@@ -95,7 +101,7 @@ class Repository:
 
 class RepositoryObject:
 
-    def __init__(self, repository, run_id, uid, name):
+    def __init__(self, repository, run_id, uid, name=None):
         """
         This is a representation of an object in the repository. It is stored as a run into mlflow. It can be identified
         by either a run_id or by a uid.
@@ -109,25 +115,36 @@ class RepositoryObject:
         self.pads = get_current_pads()
         self._name = name
         self._run = None
+        self._uid = uid
+        self._run_id = run_id
 
-        # UID is given. Check for existence.
-        if uid:
-            runs = self.pads.backend.search_runs(experiment_ids=self.repository.id,
-                                                 filter_string="tags.`pypads_unique_uid` = \"" + str(uid) + "\"")
+    def _init_run_storage(self):
+        if self._run is None:
+            # UID is given. Check for existence.
+            if self._uid:
+                runs = self.pads.backend.search_runs(experiment_ids=self.repository.id,
+                                                     filter_string="tags.`pypads_unique_uid` = \"" + str(
+                                                         self._uid) + "\"")
 
-            # If exists set the run_id to the existing one instead
-            if len(runs) > 0:
-                # TODO is this correct? Mlflow returns a dataframe
-                self._run = self.pads.api.get_run(run_id=runs.iloc[0][0])
+                # If exists set the run_id to the existing one instead
+                if len(runs) > 0:
+                    # TODO is this correct? Mlflow returns a dataframe
+                    self._run = self.pads.api.get_run(run_id=runs.iloc[0][0])
 
-        # If no run_id was found with uid create a new run and get its id
-        if self.run is None:
-            if run_id is None:
-                # If a uid is given and the tag for the run is not set already set it
-                self._run = self.pads.backend.create_run(experiment_id=self.repository.id,
-                                                         tags={"pypads_unique_uid": str(uid)} if uid else None)
-            else:
-                self._run = self.pads.api.get_run(run_id=run_id)
+            # If no run_id was found with uid create a new run and get its id
+            if self.run is None:
+                if self._run_id is None:
+                    # If a uid is given and the tag for the run is not set already set it
+                    self._run = self.pads.backend.create_run(experiment_id=self.repository.id,
+                                                             tags={"pypads_unique_uid": str(
+                                                                 self._uid)} if self._uid else None)
+                    self._run_id = self._run.info.run_id
+                else:
+                    self._run = self.pads.api.get_run(run_id=self._run_id)
+
+    def init_context(self):
+        self._init_run_storage()
+        return self.repository.context(self.run_id, run_name=self._name)
 
     @property
     def run(self):
@@ -142,7 +159,7 @@ class RepositoryObject:
         Activates the repository context and stores an artifact from memory into it.
         :return:
         """
-        with self.repository.context(self.run_id, run_name=self._name) as ctx:
+        with self.init_context() as ctx:
             return self.get_rel_artifact_path(
                 self.pads.api.log_mem_artifact(path=path, obj=obj, write_format=write_format, description=description,
                                                additional_data=additional_data))
@@ -152,7 +169,7 @@ class RepositoryObject:
         Activates the repository context and stores an artifact into it.
         :return:
         """
-        with self.repository.context(self.run_id, run_name=self._name) as ctx:
+        with self.init_context() as ctx:
             return self.get_rel_artifact_path(
                 self.pads.api.log_artifact(local_path=local_path, description=description,
                                            additional_data=additional_data,
@@ -163,7 +180,7 @@ class RepositoryObject:
         Activates the repository context and stores an parameter into it.
         :return:
         """
-        with self.repository.context(self.run_id, run_name=self._name) as ctx:
+        with self.init_context() as ctx:
             return self.get_rel_artifact_path(self.pads.api.log_param(key, value, value_format, description, meta))
 
     def log_metric(self, key, value, description="", step=None, meta: dict = None):
@@ -171,7 +188,7 @@ class RepositoryObject:
         Activates the repository context and stores an metric into it.
         :return:
         """
-        with self.repository.context(self.run_id, run_name=self._name) as ctx:
+        with self.init_context() as ctx:
             return self.get_rel_artifact_path(self.pads.api.log_metric(self, key, value, description, step, meta))
 
     def set_tag(self, key, value, value_format="string", description="", meta: dict = None):
@@ -179,8 +196,44 @@ class RepositoryObject:
         Activates the repository context and stores an tag into it.
         :return:
         """
-        with self.repository.context(self.run_id, run_name=self._name) as ctx:
-            return self.get_rel_artifact_path(self.pads.api.set_tag(key, value, value_format, description, meta))
+        if isinstance(self.pads.backend, MongoSupportMixin):
+            return self.pads.api.set_tag(key, value, value_format, description, meta)
+        else:
+            with self.init_context() as ctx:
+                return self.get_rel_artifact_path(self.pads.api.set_tag(key, value, value_format, description, meta))
+
+    def log_json(self, obj: Union[Entry, dict]):
+        """
+        Logs a single given object as the json object representing the repository object.
+        :param obj: Object to store as json. storage_type gets set to the respective repository name value
+        :return:
+        """
+        if isinstance(obj, dict):
+            obj["storage_type"] = self.repository.name
+            obj["run_id"] = self.repository.id
+        else:
+            setattr(obj, "storage_type", self.repository.name)
+            setattr(obj, "run_id", self.repository.id)
+        if isinstance(self.pads.backend, MongoSupportMixin):
+            if self._uid is None:
+                self._uid = uuid4()
+            return self.pads.backend.log_json(obj, str(self._uid))
+        else:
+            with self.init_context() as ctx:
+                return self.pads.backend.log_json(obj, self._uid)
+
+    def get_json(self):
+        """
+        Get the representing json object.
+        :return:
+        """
+        if isinstance(self.pads.backend, MongoSupportMixin):
+            if self._uid is None:
+                self._uid = uuid4()
+            return self.pads.backend.get_json(self.repository.id, str(self._uid), self.repository.name)
+        else:
+            with self.init_context() as ctx:
+                return self.pads.backend.get_json(self.repository.id, self._uid, self.repository.name)
 
     def get_rel_base_path(self):
         return os.path.join(self.repository.id, self.run_id)
@@ -189,7 +242,7 @@ class RepositoryObject:
         return os.path.join(self.get_rel_base_path(), "artifacts", path)
 
 
-class SchemaRepository(MongoRepository):
+class SchemaRepository(Repository):
 
     def __init__(self, *args, **kwargs):
         """
@@ -200,7 +253,7 @@ class SchemaRepository(MongoRepository):
         super().__init__(*args, name="pypads_schemata", **kwargs)
 
 
-class LoggerRepository(MongoRepository):
+class LoggerRepository(Repository):
 
     def __init__(self, *args, **kwargs):
         """
@@ -209,3 +262,11 @@ class LoggerRepository(MongoRepository):
         :param kwargs:
         """
         super().__init__(*args, name="pypads_logger", **kwargs)
+
+
+class BaseRepositoryObjectModel(BaseModel):
+    """
+    Extend this class if you want to store json directly into a repository
+    """
+    storage_type: Optional[str] = None
+    run_id: Optional[str] = None

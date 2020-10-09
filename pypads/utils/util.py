@@ -33,9 +33,10 @@ def get_class_that_defined_method(meth):
     return getattr(meth, '__objclass__', None)  # handle special descriptor objects
 
 
-def dict_merge(*dicts):
+def dict_merge(*dicts, str_to_set=False):
     """
     Simple merge of dicts
+    :param str_to_set: Merge multiple strings to a set
     :param dicts:
     :return:
     """
@@ -43,9 +44,26 @@ def dict_merge(*dicts):
     for d in dicts:
         if isinstance(d, dict):
             for key, value in d.items():
-                if isinstance(value, dict):
+                if isinstance(value, str) and str_to_set:
+                    if key not in merged:
+                        merged[key] = value
+                    else:
+                        if not isinstance(merged[key], set):
+                            merged[key] = {merged[key]}
+                        merged[key] = merged[key].union({value})
+                elif isinstance(value, set):
+                    node = merged.setdefault(key, set())
+                    if not isinstance(node, set):
+                        merged[key] = {node}
+                    merged[key] = merged[key].union(value)
+                elif isinstance(value, list):
+                    node = merged.setdefault(key, [])
+                    if not isinstance(node, list):
+                        merged[key] = [node]
+                    merged[key].extend(value)
+                elif isinstance(value, dict):
                     node = merged.setdefault(key, {})
-                    merged[key] = dict_merge(node, value)
+                    merged[key] = dict_merge(node, value, str_to_set=str_to_set)
                 else:
                     merged[key] = value
     return merged
@@ -93,7 +111,7 @@ def uri_to_path(uri):
         path = urllib.parse.urlparse(uri).path
     elif uri.startswith("http:") or uri.startswith("https:"):
         from pypads.app.pypads import get_current_pads
-        pads= get_current_pads()
+        pads = get_current_pads()
         path = os.path.join(pads.folder, "tmp")
     else:
         path = uri

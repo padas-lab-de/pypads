@@ -1,5 +1,5 @@
 from pypads.app.call import Call
-from pypads.utils.util import dict_merge
+from pypads.utils.logging_util import merge_mapping_data
 
 
 class LoggerEnv:
@@ -42,7 +42,7 @@ class LoggerEnv:
 class InjectionLoggerEnv(LoggerEnv):
 
     def __init__(self, mappings, hook, callback, call: Call, parameter, experiment_id, run_id):
-        super().__init__(parameter, experiment_id, run_id, data=dict_merge(*[m.mapping.values for m in mappings]))
+        super().__init__(parameter, experiment_id, run_id, data=merge_mapping_data(mappings))
         self._call = call
         self._callback = callback
         self._hook = hook

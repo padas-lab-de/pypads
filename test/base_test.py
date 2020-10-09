@@ -68,7 +68,7 @@ class BaseTest(unittest.TestCase):
 
 
 class RanLogger(InjectionLogger):
-    """ Adds id of self to cache. """
+    """ Adds id of self to cache. This is a utility logger for testing purposes. """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

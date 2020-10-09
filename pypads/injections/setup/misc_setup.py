@@ -41,9 +41,9 @@ class DependencyTO(TrackedObject):
             if len(splits) == 2:
                 name, version = splits
                 self.dependencies.append(LibraryModel(name=name, version=version))
-        self.pip_freeze = self.store_artifact("pip_freeze", "\n".join(pip_freeze),
-                                              write_format=FileFormats.text,
-                                              description="dependency list from pip freeze")
+        self.pip_freeze = self.store_mem_artifact("pip_freeze", "\n".join(pip_freeze),
+                                                  write_format=FileFormats.text,
+                                                  description="dependency list from pip freeze")
 
     # def get_artifact_path(self, name):
     #     return os.path.join(str(id(self)), "Env", name)

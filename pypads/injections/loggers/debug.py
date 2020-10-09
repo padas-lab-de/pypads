@@ -5,7 +5,7 @@ from pypads.app.injections.injection import InjectionLogger
 
 class Log(InjectionLogger):
     """
-    Function just logging the execution into debug.
+    Logger just logging the execution into debug. No output is provided.
     """
 
     def __pre__(self, ctx, *args, _logger_call, **kwargs):

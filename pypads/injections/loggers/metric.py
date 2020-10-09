@@ -40,8 +40,8 @@ class MetricTO(TrackedObject):
                 type(
                     value)) + "' of '" + self.name + "' as artifact instead.")
             if self.as_artifact:
-                self.name = self.store_artifact(self.name, value,
-                                                description="The metric returned by {}".format(self.name))
+                self.name = self.store_mem_artifact(self.name, value,
+                                                    description="The metric returned by {}".format(self.name))
                 return True
         return False
 

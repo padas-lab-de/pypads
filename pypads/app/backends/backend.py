@@ -170,7 +170,8 @@ class BackendInterface:
     #                                    meta=self.get_artifact_meta(run_id=run_id, relative_path=a.path))
     #             for a in artifacts if not a.is_dir]
 
-    def list(self, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None):
+    def list(self, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
+             search_dict=None):
         raise NotImplementedError("The used backend doesn't support this form of querying.")
 
     @abstractmethod

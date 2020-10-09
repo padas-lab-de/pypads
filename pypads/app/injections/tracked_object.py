@@ -15,7 +15,7 @@ from pypads.model.models import ResultType, Entry
 from pypads.utils.logging_util import FileFormats
 
 
-class FallibleMixin(ModelObject, SuperStop):
+class FallibleMixin(ModelObject, SuperStop, metaclass=ABCMeta):
     """
     Something which might be broken / incomplete but still logged due to an error
     """
@@ -30,6 +30,10 @@ class FallibleMixin(ModelObject, SuperStop):
     @property
     def failed(self):
         return self._failed
+
+    @failed.setter
+    def failed(self, value):
+        self._failed = value
 
 
 class LoggerCall(FallibleMixin, ProvenanceMixin):
@@ -138,8 +142,19 @@ class ResultHolderMixin(ProducedMixin, ProvenanceMixin, SuperStop, metaclass=ABC
                                   additional_data=additional_data,
                                   holder=self)
 
-    def store_artifact(self: Union['ResultHolderMixin', ResultHolderModel], path, obj, write_format=FileFormats.text,
+    def store_artifact(self: Union['ResultHolderMixin', ResultHolderModel], local_path, artifact_path,
                        description="", additional_data: dict = None):
+        """
+        Function to store a artifact relevant to this logger.
+        """
+        from pypads.app.pypads import get_current_pads
+        return get_current_pads().api.log_artifact(local_path, artifact_path=artifact_path,
+                                                   description=description,
+                                                   additional_data=additional_data, holder=self)
+
+    def store_mem_artifact(self: Union['ResultHolderMixin', ResultHolderModel], path, obj,
+                           write_format=FileFormats.text,
+                           description="", additional_data: dict = None):
         """
         Function to store a artifact relevant to this logger.
         """

@@ -12,6 +12,12 @@ from pydantic import BaseModel
 from pydantic.json import ENCODERS_BY_TYPE
 
 from pypads import logger
+from pypads.utils.util import dict_merge
+
+
+def merge_mapping_data(matched_mappings):
+    return dict_merge(*[mm.mapping.values['data'] for mm in matched_mappings if "data" in mm.mapping.values],
+                      str_to_set=True)
 
 
 def get_artifact_dir(obj):

@@ -1,11 +1,13 @@
 from abc import ABCMeta
 from functools import wraps
+from typing import Union
 
-import jsonpath_rw_ext
 from mlflow.entities import ViewType
 
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
 from pypads.app.misc.mixins import FunctionHolderMixin
+from pypads.model.logger_output import MetricMetaModel
+from pypads.model.models import ResultType
 from pypads.utils.logging_util import read_artifact, FileFormats
 
 result_plugins = set()
@@ -84,27 +86,37 @@ class PyPadsResults(IResults):
         experiment = self.pypads.backend.get_experiment_by_name(experiment_name)
         return self.pypads.backend.list_run_infos(experiment_name=experiment.name, run_view_type=run_view_type)
 
+    @result
+    def get_metrics(self, experiment_name=None, run_id=None, **kwargs):
+        return self.list(ResultType.metric, experiment_name=experiment_name, run_id=run_id,
+                         search_dict=MetricMetaModel.construct(**kwargs).dict())
+
+    @result
+    def list(self, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
+             search_dict=None):
+        return self.pypads.backend.list(storage_type=storage_type, experiment_name=experiment_name,
+                                        experiment_id=experiment_id, run_id=run_id, search_dict=search_dict)
+
     # @result
     # def get_metrics(self, experiment_name=None, run_id=None, name: str = None, view_type=ViewType.ALL, history=False):
     #     if run_id is None:
     #         # Get all experiments
     #         if experiment_name is None:
     #             experiments = self.pypads.backend.list_experiments(view_type=view_type)
-    #             return [metric for experiment in experiments if
-    #                     not Repository.is_repository(experiment) for metric in
-    #                     self.get_metrics(experiment_name=experiment.name, name=name, view_type=view_type,
-    #                                      history=history)]
+    #             for experiment in experiments:
+    #                 if not Repository.is_repository(experiment):
+    #                     for metric in self.get_metrics(experiment_name=experiment.name, name=name, view_type=view_type, history=history):
+    #                         yield metric
     #
     #         # Get all runs
     #         run_infos = self.pypads.backend.list_run_infos(experiment_name=experiment_name, run_view_type=view_type)
-    #         return [metric for run_info in run_infos for metric in
-    #                 self.get_metrics(run_id=run_info.run_id, name=name, view_type=view_type, history=history)]
+    #         for run_info in run_infos:
+    #             for metric in self.get_metrics(run_id=run_info.run_id, name=name, view_type=view_type,
+    #                                            history=history):
+    #                 yield metric
     #     if not name:
     #         run = self.pypads.results.get_run(run_id)
-    #         return [
-    #             MetricInfo(meta=self.pypads.backend.get_metric_meta(run_id=run.info.run_id, relative_path=name),
-    #                        content=run.data.metrics[name] if not history else self.pypads.backend.get_metric_history(
-    #                            run.info.run_id, name)) for name in iter(run.data.metrics.keys())]
+    #         self.pypads.backend.get(run_id, )
     #     run = self.pypads.results.get_run(run_id)
     #     if name in run.data.metrics:
     #         return [MetricInfo(meta=self.pypads.backend.get_metric_meta(run_id=run.info.run_id, relative_path=name),
@@ -112,7 +124,7 @@ class PyPadsResults(IResults):
     #                                name] if not history else self.pypads.backend.get_metric_history(
     #                                run.info.run_id, name))]
     #     return []
-    #
+
     # @result
     # def get_parameters(self, experiment_name=None, run_id=None, name: str = None, view_type=ViewType.ALL):
     #     if run_id is None:
@@ -216,30 +228,30 @@ class PyPadsResults(IResults):
     #         # Get a certain run
     #         return self.pypads.backend.list_artifacts(run_id=run_id, path=path)
 
-    @result
-    def search_artifacts_json_path(self, experiment_name=None, run_id=None, path: str = None, view_type=ViewType.ALL,
-                                   search=""):
-        """
-        Searches in meta information of the artifacts.
-        :return:
-        """
-        return [a for a in [r.dict() for r in self.get_artifacts(experiment_name, run_id, path, view_type)] if
-                len(jsonpath_rw_ext.match(search, a.meta)) > 0]
-
-    @result
-    def get_logger_calls(self, experiment_name=None, run_id=None, path: str = None, view_type=ViewType.ALL):
-        return self.search_artifacts_json_path(experiment_name=experiment_name, run_id=run_id, path=path,
-                                               view_type=view_type, search="$[?(@.meta.type == 'Call')]")
-
-    @result
-    def get_tracked_objects(self, experiment_name=None, run_id=None, path: str = None, view_type=ViewType.ALL):
-        return self.search_artifacts_json_path(experiment_name=experiment_name, run_id=run_id, path=path,
-                                               view_type=view_type, search="$[?(@.meta.type == 'TrackedObject')]")
-
-    @result
-    def get_outputs(self, experiment_name=None, run_id=None, path: str = None, view_type=ViewType.ALL):
-        return self.search_artifacts_json_path(experiment_name=experiment_name, run_id=run_id, path=path,
-                                               view_type=view_type, search="$[?(@.meta.type == 'Outputs')]")
+    # @result
+    # def search_artifacts_json_path(self, experiment_name=None, run_id=None, path: str = None, view_type=ViewType.ALL,
+    #                                search=""):
+    #     """
+    #     Searches in meta information of the artifacts.
+    #     :return:
+    #     """
+    #     return [a for a in [r.dict() for r in self.get_artifacts(experiment_name, run_id, path, view_type)] if
+    #             len(jsonpath_rw_ext.match(search, a.meta)) > 0]
+    #
+    # @result
+    # def get_logger_calls(self, experiment_name=None, run_id=None, path: str = None, view_type=ViewType.ALL):
+    #     return self.search_artifacts_json_path(experiment_name=experiment_name, run_id=run_id, path=path,
+    #                                            view_type=view_type, search="$[?(@.meta.type == 'Call')]")
+    #
+    # @result
+    # def get_tracked_objects(self, experiment_name=None, run_id=None, path: str = None, view_type=ViewType.ALL):
+    #     return self.search_artifacts_json_path(experiment_name=experiment_name, run_id=run_id, path=path,
+    #                                            view_type=view_type, search="$[?(@.meta.type == 'TrackedObject')]")
+    #
+    # @result
+    # def get_outputs(self, experiment_name=None, run_id=None, path: str = None, view_type=ViewType.ALL):
+    #     return self.search_artifacts_json_path(experiment_name=experiment_name, run_id=run_id, path=path,
+    #                                            view_type=view_type, search="$[?(@.meta.type == 'Outputs')]")
 
 
 class ResultPluginManager(ExtendableMixin):

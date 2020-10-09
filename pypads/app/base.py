@@ -4,7 +4,7 @@ import importlib
 import os
 import pkgutil
 from os.path import expanduser
-from typing import List, Union
+from typing import List, Union, Callable
 
 import mlflow
 
@@ -105,6 +105,8 @@ class PyPads:
         from pypads.app.pypads import set_current_pads
         set_current_pads(self)
 
+        self._instance_modifiers = []
+
         if disable_plugins is None:
             disable_plugins = []
         for name, plugin in discovered_plugins.items():
@@ -187,6 +189,10 @@ class PyPads:
 
         self._schema_repository = SchemaRepository()
         self._logger_repository = LoggerRepository()
+
+        # Execute instance modification functions given by a plugin
+        for fn in self._instance_modifiers:
+            fn(self)
 
         # Activate tracking by punching the import lib
         if autostart:
@@ -298,6 +304,14 @@ class PyPads:
     @property
     def logger_repository(self) -> LoggerRepository:
         return self._logger_repository
+
+    def add_instance_modifier(self, fn: Callable):
+        """
+        This function allows plugins to modify the pypads instance on __init__ shortly after the base initialisation.
+        :param fn:
+        :return:
+        """
+        self._instance_modifiers.append(fn)
 
     @property
     def cache(self) -> PypadsCache:

@@ -133,7 +133,7 @@ class PyPadsApi(IApi):
             # For all events we want to hook to
             mapping = Mapping(PackagePathMatcher(ctx_path + "." + fn.__name__), make_run_time_mapping_collection(lib),
                               _anchors,
-                              {**additional_data, **{"category": "CustomTrack", "concept": fn.__name__}})
+                              {**additional_data, **{"mapped_by": "http://www.padre-lab.eu/onto/PyPadsApi"}})
 
         # Wrap the function of given context and return it
         return self.pypads.wrap_manager.wrap(fn, ctx=ctx, matched_mappings={MatchedMapping(mapping, PackagePath(
@@ -185,7 +185,7 @@ class PyPadsApi(IApi):
         """
         Function to log an artifact on local disk. This artifact is transferred into the context of mlflow.
         The context might be a local repository, sftp etc.
-        :param output_model: Output model to which this artifact is to be added. For direct calls this can be None.
+        :param holder: Output model to which to add the artifact
         :param description: Description of the artifact.
         :param artifact_path: Path where to store the artifact
         :param local_path: Path of the artifact to log
@@ -195,9 +195,11 @@ class PyPadsApi(IApi):
         """
         if holder is None:
             holder = self.get_programmatic_output()
-        return self.pypads.backend.log_artifact(
-            ArtifactTO(value=artifact_path, description=description, file_format=find_file_format(local_path),
-                       additional_data=additional_data, parent=holder), local_path)
+        ato = ArtifactTO(value=artifact_path, description=description, file_format=find_file_format(local_path),
+                         additional_data=additional_data, parent=holder)
+        out = self.pypads.backend.log_artifact(ato, local_path)
+        holder.add_result(ato)
+        return out
 
     @cmd
     def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", additional_data=None,
@@ -383,7 +385,7 @@ class PyPadsApi(IApi):
         Register a new cleanup function to do simple cleanup tasks after a run. This is not considered an own logger.
         """
         self.register_setup(name,
-                            pre_fn=SimpleRunFunction(fn=fn, message=error_message, order=order),
+                            pre_fn=SimpleRunFunction(fn=fn, error_message=error_message, order=order),
                             silent_duplicate=silent_duplicate)
 
     @cmd
@@ -456,7 +458,7 @@ class PyPadsApi(IApi):
 
         TmpRunTeardownFunction.__doc__ = description
         self.register_teardown(name,
-                               post_fn=TmpRunTeardownFunction(fn=fn, message=error_message, nested=nested,
+                               post_fn=TmpRunTeardownFunction(fn=fn, error_message=error_message, nested=nested,
                                                               intermediate=intermediate, order=order),
                                silent_duplicate=silent_duplicate)
 
@@ -467,7 +469,7 @@ class PyPadsApi(IApi):
         Register a new cleanup function to do simple cleanup tasks after a run. This is not considered an own logger.
         """
         self.register_teardown(name,
-                               post_fn=SimpleRunFunction(fn=fn, message=error_message, order=order),
+                               post_fn=SimpleRunFunction(fn=fn, error_message=error_message, order=order),
                                silent_duplicate=silent_duplicate)
 
     @cmd
