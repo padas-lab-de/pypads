@@ -1,5 +1,5 @@
 import uuid
-from typing import Type, List, Union
+from typing import Type, Union
 
 from pydantic.main import BaseModel
 
@@ -19,7 +19,6 @@ class HardwareTO(TrackedObject):
         category: str = "HardwareInformation"
         name: str = "Hardware Info"
         description = "Information about the hardware used to execute the experiment."
-        tags: List[str] = []
 
         class Config:
             orm_mode = True
@@ -32,7 +31,6 @@ class HardwareTO(TrackedObject):
         super().__init__(*args, parent=parent, name=name, **kwargs)
 
     def add_tag(self, key, value, description):
-        self.tags.append(key)
         self.store_tag(key, value, description=description)
 
 
@@ -62,7 +60,6 @@ class ISystemRSF(RunSetup):
         system_info.add_tag("pypads.system.machine", uname.machine, description="Operating system machine")
         system_info.add_tag("pypads.system.processor", uname.processor, description="Processor technology")
         _logger_output.system_info = system_info.store()
-        _logger_output.dict()
 
 
 class ICpuRSF(RunSetup):

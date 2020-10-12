@@ -5,7 +5,7 @@ from pydantic import BaseModel, root_validator
 
 from pypads.model.domain import RunObjectModel
 from pypads.model.logger_output import FallibleModel
-from pypads.model.models import IdBasedEntry, Entry, ResultType
+from pypads.model.models import IdBasedEntry, Entry, ResultType, ProvenanceModel
 
 
 class ContextModel(Entry):
@@ -67,7 +67,7 @@ class CallModel(IdBasedEntry):
         orm_mode = True
 
 
-class LoggerCallModel(IdBasedEntry, RunObjectModel, FallibleModel):
+class LoggerCallModel(ProvenanceModel, IdBasedEntry, RunObjectModel, FallibleModel):
     """
     Holds meta data about a logger execution. This can be by api, setup, teardown or by injection/mapping file.
     """
@@ -78,6 +78,7 @@ class LoggerCallModel(IdBasedEntry, RunObjectModel, FallibleModel):
     created_by: Union[uuid.UUID, str] = ...  # reference to LoggerModel
     output: Optional[Union[uuid.UUID, str]] = ...  # reference to OutputModel of the logger
     name: str = "Call"
+    finished: bool = False
 
     class Config:
         orm_mode = True

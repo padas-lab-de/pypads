@@ -12,7 +12,7 @@ from pypads import logger
 from pypads.app.actuators import ActuatorPluginManager, PyPadsActuators
 from pypads.app.api import ApiPluginManager, PyPadsApi
 from pypads.app.backends.mlflow import MLFlowBackendFactory
-from pypads.app.backends.repository import SchemaRepository, LoggerRepository
+from pypads.app.backends.repository import SchemaRepository, LoggerRepository, LibraryRepository
 from pypads.app.decorators import DecoratorPluginManager, PyPadsDecorators
 from pypads.app.misc.caches import PypadsCache
 from pypads.app.results import ResultPluginManager, results, PyPadsResults
@@ -26,7 +26,7 @@ from pypads.injections.analysis.call_tracker import CallTracker
 from pypads.injections.setup.git import IGitRSF
 from pypads.injections.setup.hardware import ISystemRSF, IRamRSF, ICpuRSF, IDiskRSF, IPidRSF, ISocketInfoRSF, \
     IMacAddressRSF
-from pypads.injections.setup.misc_setup import DependencyRSF, LoguruRSF
+from pypads.injections.setup.misc_setup import DependencyRSF, LoguruRSF, StdOutRSF
 
 tracking_active = None
 
@@ -70,7 +70,8 @@ DEFAULT_CONFIG = {
     "mongo_db": True  # Use a mongo_db endpoint
 }
 
-DEFAULT_SETUP_FNS = {DependencyRSF(), LoguruRSF(), IGitRSF(_pypads_timeout=3), ISystemRSF(), IRamRSF(), ICpuRSF(),
+DEFAULT_SETUP_FNS = {DependencyRSF(), LoguruRSF(), StdOutRSF(), IGitRSF(_pypads_timeout=3), ISystemRSF(), IRamRSF(),
+                     ICpuRSF(),
                      IDiskRSF(), IPidRSF(), ISocketInfoRSF(), IMacAddressRSF()}
 
 # Tag name to save the config to in mlflow context.
@@ -189,6 +190,7 @@ class PyPads:
 
         self._schema_repository = SchemaRepository()
         self._logger_repository = LoggerRepository()
+        self._library_repository = LibraryRepository()
 
         # Execute instance modification functions given by a plugin
         for fn in self._instance_modifiers:
@@ -304,6 +306,10 @@ class PyPads:
     @property
     def logger_repository(self) -> LoggerRepository:
         return self._logger_repository
+
+    @property
+    def library_repository(self) -> LibraryRepository:
+        return self._library_repository
 
     def add_instance_modifier(self, fn: Callable):
         """

@@ -6,11 +6,12 @@ from pydantic import BaseModel
 
 from pypads import logger
 from pypads.app.env import LoggerEnv
+from pypads.app.injections.injection import DelayedResultsMixing
 from pypads.app.injections.run_loggers import RunSetup
 from pypads.app.injections.tracked_object import TrackedObject
 from pypads.model.domain import LibraryModel
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
-from pypads.utils.logging_util import FileFormats, get_artifact_dir
+from pypads.utils.logging_util import FileFormats, get_artifact_dir, get_temp_folder
 
 
 class DependencyTO(TrackedObject):
@@ -112,8 +113,25 @@ class LogTO(TrackedObject):
         self.path = os.path.join(get_artifact_dir(self), "logs.log")
 
 
-class LoguruRSF(RunSetup):
+class LoguruRSF(DelayedResultsMixing, RunSetup):
     """Store all logs of the current run into a file."""
+
+    @staticmethod
+    def finalize_output(pads, logger_call, output, *args, **kwargs):
+        logs = pads.cache.run_get("loguru_logger")
+        lid = pads.cache.run_get("loguru_logger_lid")
+        folder = get_temp_folder()
+        try:
+            from pypads.pads_loguru import logger_manager
+            logger_manager.remove(lid)
+        except Exception:
+            pass
+
+        import glob
+        for file in glob.glob(os.path.join(folder, "run_*.log")):
+            pads.api.log_artifact(file, description="Logs of the current run", artifact_path=logs.path)
+
+        output.logs = logs.store()
 
     name = "Loguru Run Setup Logger"
     category: str = "LoguruRunLogger"
@@ -134,30 +152,91 @@ class LoguruRSF(RunSetup):
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         pads = _pypads_env.pypads
 
-        from pypads.app.api import PyPadsApi
-        _api: PyPadsApi = pads.api
+        if not pads.cache.run_exists("loguru_logger"):
+            std_out_logger = LogTO(parent=_logger_output)
+            pads.cache.run_add("loguru_logger", std_out_logger)
 
-        from pypads.utils.logging_util import get_temp_folder
-        folder = get_temp_folder()
+            from pypads.utils.logging_util import get_temp_folder
+            folder = get_temp_folder()
+            from pypads.pads_loguru import logger_manager
+            lid = logger_manager.add(os.path.join(folder, "run_" + pads.api.active_run().info.run_id + ".log"),
+                                     rotation="50 MB",
+                                     enqueue=True)
+            pads.cache.run_add("loguru_logger_lid", lid)
+        else:
+            logger.warning("LoguruRSF already registered")
 
-        logs = LogTO(parent=_logger_output)
 
-        # TODO loguru has problems with multiprocessing / make rotation configurable etc
-        from pypads.pads_loguru import logger_manager
-        lid = logger_manager.add(os.path.join(folder, "run_" + _api.active_run().info.run_id + ".log"),
-                                 rotation="50 MB",
-                                 enqueue=True)
+class StdOutRSF(DelayedResultsMixing, RunSetup):
+    """Store all stdout output of the current run into a file."""
 
-        import glob
+    @staticmethod
+    def finalize_output(pads, logger_call, output, *args, **kwargs):
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
 
-        def remove_logger(pads, *args, **kwargs):
-            try:
-                from pypads.pads_loguru import logger_manager
-                logger_manager.remove(lid)
-            except Exception:
+        log_to: LogTO = pads.cache.run_get("std_out_logger")
+        path = os.path.join(get_temp_folder(), "logfile.log")
+        if os.path.isfile(path):
+            log_to.path = pads.api.log_artifact(path, description="StdOut log of the current run",
+                                                artifact_path=log_to.path)
+        output.logs = log_to.store()
+        output.store()
+
+        import sys
+        if hasattr(sys.stdout, 'terminal'):
+            sys.stdout = sys.stdout.terminal
+
+    name = "StdOut Run Setup Logger"
+    category: str = "StdOutRunLogger"
+
+    _dependencies = {}
+
+    class StdOutRSFOutput(OutputModel):
+        category: str = "StdOutRSF-Output"
+        logs: Union[uuid.UUID, str] = ...
+
+    @classmethod
+    def output_schema_class(cls) -> Type[OutputModel]:
+        return cls.StdOutRSFOutput
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+
+        if not pads.cache.run_exists("std_out_logger"):
+            std_out_logger = LogTO(parent=_logger_output, path="logfile.log")
+            pads.cache.run_add("std_out_logger", std_out_logger)
+        else:
+            logger.warning("StdOutRSF already registered")
+            return
+
+        import sys
+
+        class Logger(object):
+            def __init__(self):
+                self._terminal = sys.stdout
+                temp_folder = get_temp_folder()
+                if not os.path.isdir(temp_folder):
+                    os.mkdir(temp_folder)
+                # TODO close file?
+                self.log = open(os.path.join(temp_folder, "logfile.log"), "a")
+
+            @property
+            def terminal(self):
+                return self._terminal
+
+            def write(self, message):
+                self._terminal.write(message)
+                self.log.write(message)
+
+            def flush(self):
+                # this flush method is needed for python 3 compatibility.
+                # this handles the flush command by doing nothing.
+                # you might want to specify some extra behavior here.
                 pass
-            for file in glob.glob(os.path.join(folder, "run_*.log")):
-                pads.api.log_artifact(file, description="Logs of the current run", artifact_path=logs.path)
 
-        _logger_output.logs = logs.store()
-        _api.register_teardown_utility("logger_" + str(lid), remove_logger)
+        sys.stdout = Logger()

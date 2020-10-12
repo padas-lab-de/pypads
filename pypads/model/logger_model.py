@@ -1,14 +1,15 @@
 from typing import List, Union
 
 from pypads.model.domain import LibSelectorModel
-from pypads.model.models import IdBasedEntry, ResultType
+from pypads.model.models import IdBasedEntry, ResultType, ProvenanceModel
 
 
-class LoggerModel(IdBasedEntry):
+class LoggerModel(ProvenanceModel, IdBasedEntry):
     """
     A reference object for a logger.
     """
     name: str = "Generic Tracking Function"
+    schema_location: str = ...
     uid: str = ...
     category: str = "Logger"
     dependencies: List[LibSelectorModel] = {}

@@ -1,7 +1,7 @@
 import time
 from typing import Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, root_validator
 
 from pypads.model.models import IdBasedEntry, ResultType
 from pypads.utils.util import get_experiment_id, get_run_id, get_experiment_name
@@ -16,6 +16,11 @@ class LibraryModel(IdBasedEntry):
     version: str = ...
     extracted: bool = False
     storage_type: Union[str, ResultType] = ResultType.library
+
+    @root_validator
+    def set_default(cls, values):
+        values['_id'] = ".".join([values["name"], values["version"]])
+        return values
 
 
 class LibSelectorModel(BaseModel):

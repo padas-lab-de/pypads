@@ -274,11 +274,10 @@ class PyPadsApi(IApi):
         """
         if holder is None:
             holder = self.get_programmatic_output()
-        return self.pypads.backend.log(
-            TagTO(name=key, value_format=value_format or str(type(value)),
-                  description=description, additional_data=additional_data,
-                  data=value,
-                  parent=holder))
+        return TagTO(name=key, value_format=value_format or str(type(value)),
+                     description=description, additional_data=additional_data,
+                     data=value,
+                     parent=holder).store()
 
     @cmd
     def artifact(self, name):

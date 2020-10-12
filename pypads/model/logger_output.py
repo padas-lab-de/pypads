@@ -5,7 +5,7 @@ from typing import Optional, Union, List
 from pydantic import BaseModel
 
 from pypads.model.domain import RunObjectModel
-from pypads.model.models import IdBasedEntry, ResultType
+from pypads.model.models import IdBasedEntry, ResultType, ProvenanceModel
 from pypads.utils.logging_util import FileFormats
 
 
@@ -16,7 +16,7 @@ class FallibleModel(BaseModel):
     failed: Optional[str] = ...
 
 
-class ProducedModel(BaseModel):
+class ProducedModel(IdBasedEntry):
     """
     Model object used for results produced by a call
     """
@@ -38,7 +38,7 @@ class ResultHolderModel(ProducedModel):
         Union[uuid.UUID, str]] = []  # Id references to other tracked objects produced in scope of the holder
 
 
-class ResultModel(IdBasedEntry, ProducedModel, RunObjectModel):
+class ResultModel(ProducedModel, RunObjectModel):
     """
     This represents a result being stored in a holder
     """
@@ -46,7 +46,7 @@ class ResultModel(IdBasedEntry, ProducedModel, RunObjectModel):
     parent_type: Union[ResultType, str] = ...  # type reference to the result holder
 
 
-class OutputModel(IdBasedEntry, ResultHolderModel, RunObjectModel, FallibleModel):
+class OutputModel(ResultHolderModel, ProvenanceModel, RunObjectModel, FallibleModel):
     """
     This model represents the output of a singular logger. A logger might be able to produce multiple complex outputs.
     """
@@ -68,7 +68,7 @@ class MetadataModel(ResultModel):
         Optional[dict] = {}  # Additional data should hold all persistent additional data (Defined by _persistent)
 
 
-class TrackedObjectModel(MetadataModel, ResultHolderModel):
+class TrackedObjectModel(MetadataModel, ProvenanceModel, ResultHolderModel):
     """
     This object represents a single concept being part of an output of a logger. Here multiple artifacts can be
     combined to represent a more complex concept.

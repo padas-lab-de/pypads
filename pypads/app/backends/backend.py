@@ -1,12 +1,13 @@
 import os
 from abc import abstractmethod
-from typing import List, Union
+from typing import List, Union, Iterable, Any
 
 from mlflow.entities import ViewType
 from mlflow.tracking.fluent import SEARCH_MAX_RESULTS_PANDAS
 
-from pypads.model.logger_output import FileInfo
-from pypads.model.models import IdBasedEntry, ResultType
+from pypads.model.logger_output import FileInfo, ArtifactMetaModel, ParameterMetaModel, MetricMetaModel, TagMetaModel, \
+    TrackedObjectModel, OutputModel, ResultHolderModel
+from pypads.model.models import IdBasedEntry, ResultType, unwrap_typed_id
 from pypads.utils.logging_util import get_temp_folder, read_artifact
 
 
@@ -39,16 +40,6 @@ class BackendInterface:
         Log some entry to backend.
         :param obj: Entry object to be logged
         :param payload: Payload if an memory artifact is to be stored.
-        :return:
-        """
-        raise NotImplementedError("")
-
-    def get(self, run_id, uid, storage_type: Union[ResultType, str]):
-        """
-        Get an entry.
-        :param run_id: Run to get the object from
-        :param uid: Uid or path for getting
-        :param storage_type: Type of the entity
         :return:
         """
         raise NotImplementedError("")
@@ -148,31 +139,24 @@ class BackendInterface:
         """
         raise NotImplementedError("")
 
-    # def list_non_meta_files(self, run_id, path=None) -> List[FileInfo]:
-    #     """
-    #     This lists only artifacts which are not metadata files.
-    #     :param run_id:
-    #     :param path:
-    #     :return:
-    #     """
-    #     return [a for a in self.list_files(run_id, path=path) if
-    #             not str(a.path).endswith("meta." + FileFormats.json.value)]
-    #
-    # def list_artifacts(self, run_id, path=None) -> List[ArtifactInfo]:
-    #     """
-    #     This lists artifacts including their meta information.
-    #     :param run_id:
-    #     :param path:
-    #     :return:
-    #     """
-    #     artifacts = self.list_non_meta_files(run_id, path=path)
-    #     return [ArtifactInfo.construct(file_size=a.file_size,
-    #                                    meta=self.get_artifact_meta(run_id=run_id, relative_path=a.path))
-    #             for a in artifacts if not a.is_dir]
-
     def list(self, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
              search_dict=None):
         raise NotImplementedError("The used backend doesn't support this form of querying.")
+
+    def get(self, uid, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
+            search_dict=None):
+        raise NotImplementedError("The used backend doesn't support this form of querying.")
+
+    def _get_entry_generator(self, out):
+        """
+        Tries to build a known model from given dict.
+        :param out: Return values
+        :return:
+        """
+        if not isinstance(out, Iterable):
+            yield self._construct_model(out)
+        for entry in out:
+            yield self._construct_model(entry)
 
     @abstractmethod
     def get_artifact_uri(self, artifact_path=None):
@@ -192,3 +176,107 @@ class BackendInterface:
                  URI of the form ``s3://<bucket_name>/path/to/artifact/root``.
         """
         raise NotImplementedError("")
+
+    @staticmethod
+    def _construct_model(out: dict):
+        if "storage_type" in out:
+            result_type = out["storage_type"]
+        else:
+            return out
+
+        if result_type == ResultType.artifact.value:
+            return ArtifactDataLoader(**out)
+        elif result_type == ResultType.parameter.value:
+            return ParameterMetaModel(**out)
+        elif result_type == ResultType.metric.value:
+            return MetricMetaModel(**out)
+        elif result_type == ResultType.tag.value:
+            return TagMetaModel(**out)
+        elif result_type == ResultType.tracked_object.value:
+            return ExtendedTrackedObjectModel(**out)
+        elif result_type == ResultType.output.value:
+            return ExtendedOutputModel(**out)
+        else:
+            return out
+
+
+class ArtifactDataLoader(ArtifactMetaModel):
+
+    def __init__(self, **data: Any):
+        super().__init__(**data)
+        self._content = {}
+
+    def content(self):
+        if self._content:
+            return self._content
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+        return pads.backend.load_artifact_data(self.run_id, self.data)
+
+
+class LoadedResultHolder(ResultHolderModel):
+
+    def __init__(self, **data: Any):
+        super().__init__(**data)
+        self._results = {}
+
+    @property
+    def artifact_data(self):
+        if ResultType.artifact not in self._results:
+            from pypads.app.pypads import get_current_pads
+            pads = get_current_pads()
+            self._results[ResultType.artifact] = [pads.backend.get(**unwrap_typed_id(o)) for o in self.artifacts]
+        return self._results[ResultType.artifact]
+
+    @property
+    def metric_data(self):
+        if ResultType.metric not in self._results:
+            from pypads.app.pypads import get_current_pads
+            pads = get_current_pads()
+            self._results[ResultType.metric] = [pads.backend.get(**unwrap_typed_id(o)) for o in self.metrics]
+        return self._results[ResultType.metric]
+
+    @property
+    def tag_data(self):
+        if ResultType.tag not in self._results:
+            from pypads.app.pypads import get_current_pads
+            pads = get_current_pads()
+            self._results[ResultType.tag] = [pads.backend.get(**unwrap_typed_id(o)) for o in self.tags]
+        return self._results[ResultType.tag]
+
+    @property
+    def parameter_data(self):
+        if ResultType.parameter not in self._results:
+            from pypads.app.pypads import get_current_pads
+            pads = get_current_pads()
+            self._results[ResultType.parameter] = [pads.backend.get(**unwrap_typed_id(o)) for o in self.parameters]
+        return self._results[ResultType.parameter]
+
+    @property
+    def tracked_object_data(self):
+        if ResultType.tracked_object not in self._results:
+            from pypads.app.pypads import get_current_pads
+            pads = get_current_pads()
+            self._results[ResultType.tracked_object] = [pads.backend.get(**unwrap_typed_id(o)) for o in
+                                                        self.tracked_objects]
+        return self._results[ResultType.tracked_object]
+
+    def _get_kwargs(self):
+        """
+        Get kwargs for querying the backend
+        :return:
+        """
+        if self.storage_type == ResultType.output:
+            return {"output_id": self.uid}
+        elif self.storage_type == ResultType.tracked_object:
+            return {"tracked_object_id": self.uid}
+
+
+class ExtendedTrackedObjectModel(LoadedResultHolder, TrackedObjectModel):
+    class Config:
+        extra = 'allow'
+
+
+class ExtendedOutputModel(LoadedResultHolder, OutputModel):
+    class Config:
+        extra = 'allow'

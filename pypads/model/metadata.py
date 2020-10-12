@@ -6,7 +6,7 @@ from pydantic import validate_model, BaseModel, ValidationError
 
 from pypads.app.misc.inheritance import SuperStop
 from pypads.model.domain import RunObjectModel
-from pypads.model.models import IdBasedEntry
+from pypads.model.models import IdBasedEntry, get_typed_id
 from pypads.utils.logging_util import jsonable_encoder
 from pypads.utils.util import has_direct_attr, persistent_hash
 
@@ -73,7 +73,7 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
     def typed_id(self):
         cls = self.get_model_cls()
         if issubclass(cls, IdBasedEntry):
-            return cls.typed_id(self)
+            return get_typed_id(self)
         else:
             raise Exception(f"Can't extracted typed id: Model {str(cls)} is not an IdBasedEntry.")
 
@@ -87,9 +87,8 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
         return schema
 
     @classmethod
-    def store_schema(cls, path=None):
+    def store_schema(cls):
         if not cls._schema_path:
-            path = path or ""
             from pypads.app.pypads import get_current_pads
             pads = get_current_pads()
             schema_repo = pads.schema_repository
@@ -101,8 +100,10 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
                 # TODO store schema as string for now because $ is reserved in MongoDB
                 schema_wrapper = {"schema": str(jsonable_encoder(schema))}
                 schema_obj.log_json(schema_wrapper)
-
-            cls._schema_path = path
+            else:
+                schema_obj = schema_repo.get_object(uid=schema_hash)
+            cls._schema_path = schema_obj.uid
+        return cls._schema_path
 
     def json(self, *args, **kwargs):
         return self.model().json(*args, **kwargs)

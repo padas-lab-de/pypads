@@ -130,7 +130,6 @@ class CallTracker:
 
     def finish(self, call):
         if call in self._call_stack:
-            call.finish()
             self._call_stack.remove(call)
             # TODO clear memory in call_objects?
         else:
@@ -147,4 +146,4 @@ def add_call(accessor):
 def finish_call(call):
     from pypads.app.pypads import get_current_pads
     pads = get_current_pads()
-    return pads.call_tracker.finish(call)
+    pads.call_tracker.finish(call)

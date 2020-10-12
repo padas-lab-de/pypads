@@ -18,7 +18,7 @@ from pypads.importext.versioning import all_libs
 from pypads.model.logger_model import LoggerModel
 from pypads.model.logger_output import OutputModel
 from pypads.model.metadata import ModelObject
-from pypads.model.mixins import ProvenanceMixin
+from pypads.model.mixins import ProvenanceMixin, get_library_descriptor
 from pypads.utils.logging_util import jsonable_encoder
 from pypads.utils.util import persistent_hash
 
@@ -120,6 +120,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
         super().__init__(*args, **kwargs)
         self._cleanup_fns = {}
         self.uid = self._persistent_hash()
+        self.schema_location = None
         self.identity = self.__class__.__name__
 
     @classmethod
@@ -133,7 +134,8 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
             class OutputModelHolder(LoggerOutput):
 
                 def __init__(self, _pypads_env, *args, _logger_call=None, **kwargs):
-                    super().__init__(_pypads_env, _logger_call=_logger_call, *args, **kwargs)
+                    super().__init__(_pypads_env, _logger_call=_logger_call,
+                                     lib_model=get_library_descriptor(self.get_model_cls()), **kwargs)
 
                 @classmethod
                 def get_model_cls(cls) -> Type[BaseModel]:
@@ -172,14 +174,14 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
             self._cleanup_fns[call] = []
         self._cleanup_fns[call].append(fn)
 
-    def store(self, path=""):
-        self.store_schema()
+    def store(self):
+        self.store_lib()
+        self.schema_location = self.store_schema()
 
         if not self.__class__._pypads_stored:
             from pypads.app.pypads import get_current_pads
             pads = get_current_pads()
             logger_repo = pads.logger_repository
-            # TODO get hash uid for logger
             if not logger_repo.has_object(uid=self.uid):
                 logger_obj = logger_repo.get_object(uid=self.uid)
                 logger_obj.log_json(jsonable_encoder(self.dict(by_alias=True)))
@@ -190,6 +192,12 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
 
     def get_reference_path(self):
         return self.__class__._pypads_stored
+
+    def _store_results(self, output, logger_call):
+        if output:
+            logger_call.output = output.store()
+        logger_call.finish()
+        logger_call.store()
 
     @classmethod
     def _persistent_hash(cls):
@@ -252,9 +260,7 @@ class SimpleLogger(Logger):
         finally:
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
-            if output:
-                logger_call.output = output.store()
-            logger_call.store()
+            self._store_results(output, logger_call)
         return _return
 
     @abstractmethod

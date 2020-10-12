@@ -108,9 +108,7 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
         finally:
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
-            if output:
-                logger_call.output = output.store()
-            logger_call.store()
+            self._store_results(output, logger_call)
         return self._get_return_value(_return, _post_result)
 
     def _get_logger_call(self, _pypads_env) -> Union[InjectionLoggerCall, FallibleMixin]:
@@ -181,6 +179,31 @@ class OutputModifyingMixin(InjectionLogger, SuperStop, metaclass=ABCMeta):
         return pypads_return
 
 
+class DelayedResultsMixing(Logger, SuperStop, metaclass=ABCMeta):
+
+    @staticmethod
+    @abstractmethod
+    def finalize_output(pads, logger_call, output, *args, **kwargs):
+        raise NotImplementedError("Called delayed results logger without implemented finalize_output.")
+
+    def _store_results(self, output, logger_call):
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+        pads.cache.run_add(id(self), {'id': id(self), 'logger_call': logger_call, 'output': output})
+
+        def finalize(pads, *args, **kwargs):
+            data = pads.cache.run_get(id(self))
+            logger_call = data.get('logger_call')
+            output = data.get('output')
+            self.finalize_output(pads, *args, logger_call=logger_call, output=output, **kwargs)
+            logger_call.finish()
+            logger_call.store()
+
+        pads.api.register_teardown_utility('{}_clean_up'.format(self.__class__.__name__), finalize,
+                                           error_message="Couldn't finalize output of logger {},"
+                                                         "because of exception: {} \nTrace:\n{}")
+
+
 class MultiInjectionLoggerCall(LoggerCall):
 
     @classmethod
@@ -199,7 +222,7 @@ class MultiInjectionLoggerCall(LoggerCall):
         self.call_stack.append(call)
 
 
-class MultiInjectionLogger(InjectionLogger, SuperStop, metaclass=ABCMeta):
+class MultiInjectionLogger(DelayedResultsMixing, InjectionLogger, SuperStop, metaclass=ABCMeta):
     """
     This logger gets called on function calls. It is expected to run multiple times for each experiment.
     """
@@ -207,7 +230,7 @@ class MultiInjectionLogger(InjectionLogger, SuperStop, metaclass=ABCMeta):
     def _get_logger_call(self, _pypads_env: InjectionLoggerEnv):
         pads = _pypads_env.pypads
         if pads.cache.run_exists(id(self)):
-            logger_call = pads.cache.run_get(id(self)).get('call')
+            logger_call = pads.cache.run_get(id(self)).get('logger_call')
             logger_call.add_call(_pypads_env.call)
             return logger_call
         else:
@@ -223,11 +246,6 @@ class MultiInjectionLogger(InjectionLogger, SuperStop, metaclass=ABCMeta):
             return logger_output
         else:
             return super().build_output(_pypads_env, _logger_call)
-
-    @staticmethod
-    @abstractmethod
-    def finalize_output(pads, *args, **kwargs):
-        raise NotImplementedError("Called multi injection logger without implemented finalize_output.")
 
     def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, **kwargs):
         _pypads_hook_params = _pypads_env.parameter
@@ -267,12 +285,7 @@ class MultiInjectionLogger(InjectionLogger, SuperStop, metaclass=ABCMeta):
         finally:
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
-            from pypads.app.pypads import get_current_pads
-            pads = get_current_pads()
-            pads.cache.run_add(id(self), {'call': logger_call, 'output': output})
-            pads.api.register_teardown_utility('{}_clean_up'.format(self.__class__.__name__), self.finalize_output,
-                                               error_message="Couldn't finalize output of logger "
-                                                             f"{self.__class__.__name__}")
+            self._store_results(output, logger_call)
         return self._get_return_value(_return, _post_result)
 
 

@@ -5,30 +5,8 @@ from uuid import uuid4
 from pydantic import BaseModel
 
 from pypads.app.backends.mlflow import MongoSupportMixin
-from pypads.model.models import Entry
+from pypads.model.models import Entry, join_typed_id
 from pypads.utils.logging_util import FileFormats
-
-
-# class MongoRepository:
-#
-#     def __init__(self, *args, name, **kwargs):
-#         self._mongo_client = MongoClient(os.environ['MONGO_URL'], username=os.environ['MONGO_USER'],
-#                                          password=os.environ['MONGO_PW'], authSource=os.environ['MONGO_DB'])
-#         self._db = self._mongo_client[os.environ['MONGO_DB']]
-#         self._collection = self._db[name]
-#
-#     def has_object(self, uid):
-#         return self.get_object(uid) is not None
-#
-#     def get_object(self, uid):
-#         return self._collection.find_one({"_id": str(uid)})
-#
-#     def store(self, doc):
-#         self._collection.insert_one(doc)
-#
-#     @property
-#     def collection(self):
-#         return self._collection
 
 
 class Repository:
@@ -115,8 +93,12 @@ class RepositoryObject:
         self.pads = get_current_pads()
         self._name = name
         self._run = None
-        self._uid = uid
+        self._uid = join_typed_id([uid, self.repository.name])
         self._run_id = run_id
+
+    @property
+    def uid(self):
+        return self._uid
 
     def _init_run_storage(self):
         if self._run is None:
@@ -216,7 +198,7 @@ class RepositoryObject:
             setattr(obj, "run_id", self.repository.id)
         if isinstance(self.pads.backend, MongoSupportMixin):
             if self._uid is None:
-                self._uid = uuid4()
+                self._uid = join_typed_id([uuid4(), self.repository.name])
             return self.pads.backend.log_json(obj, str(self._uid))
         else:
             with self.init_context() as ctx:
@@ -229,7 +211,7 @@ class RepositoryObject:
         """
         if isinstance(self.pads.backend, MongoSupportMixin):
             if self._uid is None:
-                self._uid = uuid4()
+                self._uid = join_typed_id([uuid4(), self.repository.name])
             return self.pads.backend.get_json(self.repository.id, str(self._uid), self.repository.name)
         else:
             with self.init_context() as ctx:
@@ -262,6 +244,17 @@ class LoggerRepository(Repository):
         :param kwargs:
         """
         super().__init__(*args, name="pypads_logger", **kwargs)
+
+
+class LibraryRepository(Repository):
+
+    def __init__(self, *args, **kwargs):
+        """
+        Repository holding all the relevant logger information
+        :param args:
+        :param kwargs:
+        """
+        super().__init__(*args, name="pypads_libraries", **kwargs)
 
 
 class BaseRepositoryObjectModel(BaseModel):

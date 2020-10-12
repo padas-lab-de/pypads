@@ -65,7 +65,7 @@ class ThreadNode:
     thread: int = ...
 
     def __str__(self):
-        return f"Thread: {str(self.thread)} - {self.process_node.__hash__()}"
+        return f"Thread: {str(self.thread)}, {self.process_node.__hash__()}"
 
     def __hash__(self):
         return hash((self.process_node.__hash__(), self.thread))
@@ -77,7 +77,7 @@ class ClassNode:
     clazz: str = ...
 
     def __str__(self):
-        return f"Class: {str(self.clazz)} - {self.thread_node.__hash__()}"
+        return f"Class: {str(self.clazz)}, {self.thread_node.__hash__()}"
 
     def __hash__(self):
         return hash((self.thread_node.__hash__(), self.clazz))
@@ -89,7 +89,7 @@ class InstanceNode:
     instance: int = ...
 
     def __str__(self):
-        return f"Instance: {str(self.instance)} - {self.class_node.__hash__()}"
+        return f"Instance: {str(self.instance)}, {self.class_node.__hash__()}"
 
     def __hash__(self):
         return hash((self.class_node.__hash__(), self.instance))
@@ -101,7 +101,7 @@ class FunctionNode:
     function: str = ...
 
     def __str__(self):
-        return f"Function: {str(self.function)} - {self.instance_node.__hash__()}"
+        return f"Function: {str(self.function)}, {self.instance_node.__hash__()}"
 
     def __hash__(self):
         return hash((self.instance_node.__hash__(), self.function))
@@ -113,7 +113,7 @@ class CallNode:
     call: int = ...
 
     def __str__(self):
-        return f"Call: {str(self.call)} - {self.function_node.__hash__()}"
+        return f"Call: {str(self.call)}, {self.function_node.__hash__()}"
 
     def __hash__(self):
         return hash((self.function_node.__hash__(), self.call))
@@ -163,7 +163,23 @@ class PipelineTO(TrackedObject):
     @property
     def network(self):
         import networkx as nx
-        return nx.to_dict_of_dicts(self._network)
+        return self._convert_nodes_to_str(nx.to_dict_of_dicts(self._network))
+
+    def _convert_nodes_to_str(self, network_dict):
+        out = {}
+        for k, v in network_dict.items():
+            if isinstance(v, dict):
+                out[self._convert_node_to_str(k)] = self._convert_nodes_to_str(v)
+            else:
+                out[self._convert_node_to_str(k)] = v
+        return out
+
+    @staticmethod
+    def _convert_node_to_str(node):
+        if isinstance(node, str):
+            return node
+        else:
+            return str(node)
 
     @property
     def nx_network(self):
@@ -238,10 +254,7 @@ class PipelineTrackerILF(MultiInjectionLogger):
         self._pipeline = None
 
     @staticmethod
-    def finalize_output(pads, *args, **kwargs):
-        pipeline_tracker = pads.cache.run_get(pads.cache.run_get("pipeline_tracker"))
-        call = pipeline_tracker.get("call")
-        output = pipeline_tracker.get("output")
+    def finalize_output(pads, logger_call, output, *args, **kwargs):
         pipeline: PipelineTO = pads.cache.run_get("pipeline")
 
         from networkx import MultiDiGraph
@@ -357,7 +370,6 @@ class PipelineTrackerILF(MultiInjectionLogger):
 
         # Initialized the pipeline_tracker by adding itself to the cache
         pads = _pypads_env.pypads
-        pads.cache.run_add("pipeline_tracker", id(self))
 
         # Get the network from the shared logger output
         import networkx as nx

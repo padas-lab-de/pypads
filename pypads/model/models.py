@@ -32,14 +32,39 @@ class Entry(BaseModel):
 
 class IdBasedEntry(Entry):
     uid: uuid.UUID = Field(default_factory=uuid.uuid4)
+    _id: str = None
 
-    @staticmethod
-    def typed_id(obj):
-        # This function will generally not be used
-        fragments = []
-        if hasattr(obj, "uid"):
-            fragments.append(str(obj.uid))
-        if hasattr(obj, "storage_type"):
-            fragments.append(
-                str(obj.storage_type.value) if isinstance(obj.storage_type, ResultType) else obj.storage_type)
-        return ".".join(fragments)
+    def typed_id(self):
+        return get_typed_id(self)
+
+    @root_validator
+    def set_default(cls, values):
+        if '_id' not in values or values['_id'] is None:
+            values['_id'] = join_typed_id([str(values['uid']),
+                                           values['storage_type'].value if isinstance(values['storage_type'],
+                                                                                      ResultType) else values[
+                                               'storage_type']])
+        return values
+
+
+class ProvenanceModel(Entry):
+    defined_in: str = ...
+
+
+def get_typed_id(obj):
+    fragments = []
+    if hasattr(obj, "uid"):
+        fragments.append(str(obj.uid))
+    if hasattr(obj, "storage_type"):
+        fragments.append(
+            str(obj.storage_type.value) if isinstance(obj.storage_type, ResultType) else obj.storage_type)
+    return join_typed_id(fragments)
+
+
+def unwrap_typed_id(uid):
+    id_splits = uid.split(".")
+    return {"uid": id_splits[0], "storage_type": id_splits[1]}
+
+
+def join_typed_id(fragments):
+    return ".".join([str(f) for f in fragments])

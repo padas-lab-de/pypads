@@ -114,8 +114,6 @@ class FunctionWrapper(BaseWrapper):
             yield call
         finally:
             if call and not current_call == call:
-                # print("c:" + str(call))
-                # print("cc:" + str(current_call))
                 finish_call(call)
 
     def wrap_method_helper(self, fn_reference: FunctionReference, hooks, mappings: Set[MatchedMapping]):

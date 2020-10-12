@@ -2,6 +2,7 @@ import os
 import sys
 from abc import ABCMeta
 from typing import List, Union
+from uuid import uuid4
 
 import mlflow
 from mlflow.entities import ViewType
@@ -14,7 +15,7 @@ from pypads.app.backends.backend import BackendInterface
 from pypads.app.injections.tracked_object import ArtifactTO
 from pypads.app.misc.inheritance import SuperStop
 from pypads.model.logger_output import FileInfo, MetricMetaModel, ParameterMetaModel, ArtifactMetaModel, TagMetaModel
-from pypads.model.models import ResultType, IdBasedEntry
+from pypads.model.models import ResultType, IdBasedEntry, join_typed_id
 from pypads.utils.logging_util import FileFormats, jsonable_encoder, store_tmp_artifact
 from pypads.utils.util import string_to_int, get_run_id
 
@@ -85,8 +86,12 @@ class MLFlowBackend(BackendInterface, metaclass=ABCMeta):
 
     def log_artifact(self, meta, local_path):
         path = self._log_artifact(local_path=local_path, artifact_path=meta.data)
-        meta.value = path
-        self.log_json(meta)
+        meta.data = path
+        for file_info in self.list_files(run_id=get_run_id(), path=os.path.dirname(path)):
+            if file_info.path == os.path.basename(path):
+                meta.file_size = file_info.file_size
+                break
+        self.log_json(meta, uuid4())
         return path
 
     def _log_artifact(self, local_path, artifact_path=""):
@@ -158,7 +163,18 @@ class MLFlowBackend(BackendInterface, metaclass=ABCMeta):
         return self._log_mem_artifact(uid, obj.json(by_alias=True),
                                       write_format=FileFormats.json)
 
-    def get(self, run_id, uid, storage_type: Union[ResultType, str]):
+    def get(self, uid, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
+            search_dict=None):
+        """
+        Get result entry with given type and uid.
+        :param uid:
+        :param search_dict:
+        :param experiment_id:
+        :param experiment_name:
+        :param run_id:
+        :param storage_type:
+        :return:
+        """
         json_data = self.get_json(run_id=run_id, uid=uid, storage_type=storage_type)
         if storage_type == ResultType.artifact:
             return ArtifactTO(**dict(json_data))
@@ -329,7 +345,8 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
             self._db[entry["storage_type"].value if isinstance(entry["storage_type"], ResultType) else entry[
                 "storage_type"]].insert_one(jsonable_encoder(entry))
         except Exception as e:
-            logger.error(e)
+            # TODO maybe handle duplicates
+            raise e
         return entry["_id"]
 
     def get_json(self, run_id, uid, storage_type: Union[str, ResultType] = None):
@@ -341,7 +358,7 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
         :return:
         """
         return self._db[storage_type if isinstance(storage_type, str) else storage_type.value].find_one(
-            {"_id": uid, "run_id": run_id})
+            {"_id": join_typed_id([uid, storage_type]), "run_id": run_id})
 
     def list(self, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
              search_dict=None):
@@ -353,7 +370,21 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
             search_dict["experiment_id"] = experiment_id
         if run_id:
             search_dict["run_id"] = run_id
-        return self._db[storage_type if isinstance(storage_type, str) else storage_type.value].find(search_dict)
+        return self._get_entry_generator(
+            self._db[storage_type if isinstance(storage_type, str) else storage_type.value].find(search_dict))
+
+    def get(self, uid, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
+            search_dict=None):
+        if search_dict is None:
+            search_dict = {}
+        if experiment_name:
+            search_dict["experiment_name"] = experiment_name
+        if experiment_id:
+            search_dict["experiment_id"] = experiment_id
+        if run_id:
+            search_dict["run_id"] = run_id
+        search_dict["_id"] = IdBasedEntry.construct(uid=uid, storage_type=storage_type).typed_id()
+        return self._db[storage_type if isinstance(storage_type, str) else storage_type.value].find_one(search_dict)
 
 
 class MongoSupportedLocalMlFlowBackend(MongoSupportMixin, RemoteMlFlowBackend):
