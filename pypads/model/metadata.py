@@ -98,7 +98,7 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
             if not schema_repo.has_object(uid=schema_hash):
                 schema_obj = schema_repo.get_object(uid=schema_hash)
                 # TODO store schema as string for now because $ is reserved in MongoDB
-                schema_wrapper = {"schema": str(jsonable_encoder(schema))}
+                schema_wrapper = {"category": "LoggerOutputSchema", "schema": str(jsonable_encoder(schema))}
                 schema_obj.log_json(schema_wrapper)
             else:
                 schema_obj = schema_repo.get_object(uid=schema_hash)

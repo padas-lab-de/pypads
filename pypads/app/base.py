@@ -11,7 +11,6 @@ import mlflow
 from pypads import logger
 from pypads.app.actuators import ActuatorPluginManager, PyPadsActuators
 from pypads.app.api import ApiPluginManager, PyPadsApi
-from pypads.app.backends.mlflow import MLFlowBackendFactory
 from pypads.app.backends.repository import SchemaRepository, LoggerRepository, LibraryRepository
 from pypads.app.decorators import DecoratorPluginManager, PyPadsDecorators
 from pypads.app.misc.caches import PypadsCache
@@ -154,6 +153,7 @@ class PyPads:
         from pypads.app.misc.managed_git import ManagedGitFactory
         self._managed_git_factory = ManagedGitFactory(self)
 
+        from pypads.app.backends.mlflow import MLFlowBackendFactory
         self._backend = MLFlowBackendFactory.make(self.uri)
 
         # Store config into cache

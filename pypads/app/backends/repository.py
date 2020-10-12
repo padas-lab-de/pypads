@@ -2,10 +2,10 @@ import os
 from typing import Union, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
 
 from pypads.app.backends.mlflow import MongoSupportMixin
-from pypads.model.models import Entry, join_typed_id
+from pypads.model.models import Entry, join_typed_id, IdBasedEntry
 from pypads.utils.logging_util import FileFormats
 
 
@@ -44,10 +44,10 @@ class Repository:
         return RepositoryObject(self, run_id, uid, name)
 
     def has_object(self, uid):
-        return self.pads.backend.get_json(self.id, str(uid), self.name) is not None or len(
+        return self.pads.backend.get_json(self.id, uid, self.name) is not None or len(
             self.pads.backend.search_runs(experiment_ids=self.id,
-                                          filter_string="tags.`pypads_unique_uid` = \"" + str(
-                                              uid) + "\"")) > 0
+                                          filter_string="tags.`pypads_unique_uid` = \"" + join_typed_id(
+                                              [uid, self.name]) + "\"")) > 0
 
     def context(self, run_id=None, run_name=None):
         """
@@ -93,20 +93,24 @@ class RepositoryObject:
         self.pads = get_current_pads()
         self._name = name
         self._run = None
-        self._uid = join_typed_id([uid, self.repository.name])
+        self._uid = uid
         self._run_id = run_id
 
     @property
     def uid(self):
         return self._uid
 
+    @property
+    def joined_uid(self):
+        return join_typed_id([self.uid, self.repository.name])
+
     def _init_run_storage(self):
         if self._run is None:
             # UID is given. Check for existence.
-            if self._uid:
+            if self.uid:
                 runs = self.pads.backend.search_runs(experiment_ids=self.repository.id,
-                                                     filter_string="tags.`pypads_unique_uid` = \"" + str(
-                                                         self._uid) + "\"")
+                                                     filter_string="tags.`pypads_unique_uid` = \"" + self.joined_uid
+                                                                   + "\"")
 
                 # If exists set the run_id to the existing one instead
                 if len(runs) > 0:
@@ -117,9 +121,10 @@ class RepositoryObject:
             if self.run is None:
                 if self._run_id is None:
                     # If a uid is given and the tag for the run is not set already set it
-                    self._run = self.pads.backend.create_run(experiment_id=self.repository.id,
-                                                             tags={"pypads_unique_uid": str(
-                                                                 self._uid)} if self._uid else None)
+                    self._run = self.pads.backend \
+                        .create_run(experiment_id=self.repository.id,
+                                    tags={"pypads_unique_uid": str(
+                                        self.joined_uid)} if self.uid else None)
                     self._run_id = self._run.info.run_id
                 else:
                     self._run = self.pads.api.get_run(run_id=self._run_id)
@@ -191,18 +196,18 @@ class RepositoryObject:
         :return:
         """
         if isinstance(obj, dict):
-            obj["storage_type"] = self.repository.name
-            obj["run_id"] = self.repository.id
+            obj = ExtendedIdBasedEntry(**{**obj,
+                                          **{"uid": str(self.uid), "storage_type": self.repository.name,
+                                             "run_id": self.repository.id}})
         else:
-            setattr(obj, "storage_type", self.repository.name)
-            setattr(obj, "run_id", self.repository.id)
+            obj = ExtendedIdBasedEntry(
+                **{**obj.dict(by_alias=True),
+                   **{"uid": str(self.uid), "storage_type": self.repository.name, "run_id": self.repository.id}})
         if isinstance(self.pads.backend, MongoSupportMixin):
-            if self._uid is None:
-                self._uid = join_typed_id([uuid4(), self.repository.name])
-            return self.pads.backend.log_json(obj, str(self._uid))
+            return self.pads.backend.log(obj)
         else:
             with self.init_context() as ctx:
-                return self.pads.backend.log_json(obj, self._uid)
+                return self.pads.backend.log(obj)
 
     def get_json(self):
         """
@@ -210,18 +215,23 @@ class RepositoryObject:
         :return:
         """
         if isinstance(self.pads.backend, MongoSupportMixin):
-            if self._uid is None:
-                self._uid = join_typed_id([uuid4(), self.repository.name])
-            return self.pads.backend.get_json(self.repository.id, str(self._uid), self.repository.name)
+            if self.uid is None:
+                self._uid = uuid4()
+            return self.pads.backend.get_json(self.repository.id, self.uid, self.repository.name)
         else:
             with self.init_context() as ctx:
-                return self.pads.backend.get_json(self.repository.id, self._uid, self.repository.name)
+                return self.pads.backend.get_json(self.repository.id, self.uid, self.repository.name)
 
     def get_rel_base_path(self):
         return os.path.join(self.repository.id, self.run_id)
 
     def get_rel_artifact_path(self, path):
         return os.path.join(self.get_rel_base_path(), "artifacts", path)
+
+
+class ExtendedIdBasedEntry(IdBasedEntry):
+    class Config:
+        extra = Extra.allow
 
 
 class SchemaRepository(Repository):

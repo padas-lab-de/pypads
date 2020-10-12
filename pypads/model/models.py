@@ -2,6 +2,7 @@ import uuid
 from enum import Enum
 from typing import Union
 
+import pydantic
 from pydantic import BaseModel, Field, root_validator
 
 
@@ -31,20 +32,17 @@ class Entry(BaseModel):
 
 
 class IdBasedEntry(Entry):
-    uid: uuid.UUID = Field(default_factory=uuid.uuid4)
-    _id: str = None
+    uid: Union[str, uuid.UUID] = Field(default_factory=uuid.uuid4)
+    id: str = Field(alias="_id", default=None)
 
     def typed_id(self):
         return get_typed_id(self)
 
-    @root_validator
-    def set_default(cls, values):
-        if '_id' not in values or values['_id'] is None:
-            values['_id'] = join_typed_id([str(values['uid']),
-                                           values['storage_type'].value if isinstance(values['storage_type'],
-                                                                                      ResultType) else values[
-                                               'storage_type']])
-        return values
+    @pydantic.validator('id', pre=True, always=True)
+    def default_ts_modified(cls, v, *, values, **kwargs):
+        return v or join_typed_id(
+            [str(values['uid']), values['storage_type'].value if isinstance(values['storage_type'],
+                                                                            ResultType) else values['storage_type']])
 
 
 class ProvenanceModel(Entry):

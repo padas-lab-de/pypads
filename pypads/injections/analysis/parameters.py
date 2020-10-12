@@ -29,6 +29,7 @@ class ParametersTO(TrackedObject):
         category: str = "ModelHyperParameter"
         description = "The parameters of the experiment."
         ml_model: ContextModel = ...
+        estimator: str = ...
         hyper_parameters: List[Union[uuid.UUID, str]] = []
 
     def __init__(self, *args, parent: Union[OutputModel, 'TrackedObject'], **kwargs):
@@ -40,7 +41,7 @@ class ParametersTO(TrackedObject):
         return cls.HyperParameterModel
 
     def persist_parameter(self: Union['ParametersTO', HyperParameterModel], key, value, param_type=None,
-                          description=None):
+                          description=None, additional_data=None):
         """
         Persist a new parameter to the tracking object.
         :param key: Name of the parameter
@@ -48,11 +49,13 @@ class ParametersTO(TrackedObject):
         :param param_type: Type of the parameter. This should store the real type of the parameter. It could be used
         to load the data in the right format from the stored string.
         :param description: A description of the parameter to be stored.
+        :param additional_data: Additional data to store about the parameter.
         :return:
         """
         name = self.ml_model.reference + "." + key
         description = description or "Parameter {} of context {}".format(name, self.ml_model)
-        self.hyper_parameters.append(self.store_param(name, value, param_type=param_type, description=description))
+        self.hyper_parameters.append(self.store_param(name, value, param_type=param_type, description=description,
+                                                      additional_data=additional_data))
 
 
 class ParametersILF(InjectionLogger):
@@ -109,15 +112,25 @@ class ParametersILF(InjectionLogger):
                 ctx.__class__) + ". Trying to log parameters without schema definition programmatically.")
             for key, value in ctx.get_params().items():
                 hyper_params.persist_parameter(key, value)
+            hyper_params.estimator = ctx.__class__.__name__
         else:
+            if 'name' in mapping_data['estimator']:
+                if isinstance(mapping_data['estimator']['name'], set):
+                    hyper_params.estimator = next(iter(mapping_data['estimator']['name']))
+                else:
+                    hyper_params.estimator = mapping_data['estimator']['name']
+            else:
+                hyper_params.estimator = ctx.__class__.__name__
+
             for parameter_type, parameters in mapping_data['estimator']['parameters'].items():
                 for parameter in parameters:
-                    key = parameter["name"]
+                    key = parameter["path"]
                     if "path" in parameter and hasattr(ctx, parameter["path"]):
                         value = getattr(ctx, parameter["path"])
                         description = parameter.get('description', None)
                         parameter_type = parameter.get('kind_of_value', parameter_type)
-                        hyper_params.persist_parameter(key, value, parameter_type, description)
+                        hyper_params.persist_parameter(key, value, parameter_type, description,
+                                                       additional_data=parameter)
                     else:
                         logger.warning(
                             "Couldn't access im mapping file defined parameter " + key + " on " + str(ctx.__class__))
