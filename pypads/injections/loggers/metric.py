@@ -28,9 +28,9 @@ class MetricTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.MetricModel
 
-    def store_value(self, value, step):
+    def store_value(self, value, step, name=""):
         self.name = self.producer.original_call.call_id.context.container.__name__ + "." + \
-                    self.producer.original_call.call_id.wrappee.__name__
+                    self.producer.original_call.call_id.wrappee.__name__ + "." + name
 
         if isinstance(value, float):
             self.store_metric(self.name, value, description="The metric returned by {}".format(self.name), step=step)
