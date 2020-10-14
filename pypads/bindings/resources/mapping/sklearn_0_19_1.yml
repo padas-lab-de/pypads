@@ -89,7 +89,7 @@ mappings:
             - default_value: '3'
               description: Determines the cross-validation splitting strategy.
               kind_of_value: '{integer, object (cross-validation generator),  iterable
-                yielding train and test splits, None, ''prefit'''
+                yielding train and tests splits, None, ''prefit'''
               name: cross_validation
               optional: 'True'
               path: cv
@@ -3451,7 +3451,7 @@ mappings:
                 \ algorithm. base_estimator must support calculation of class probabilities.\
                 \ If \u2018SAMME\u2019 then use the SAMME discrete boosting algorithm.\
                 \ The SAMME.R algorithm typically converges faster than SAMME, achieving\
-                \ a lower test error with fewer boosting iterations."
+                \ a lower tests error with fewer boosting iterations."
               kind_of_value: ' {''SAMME'', ''SAMME.R''}'
               name: boosting_algorithm
               optional: 'True'
@@ -3585,7 +3585,7 @@ mappings:
             - default_value: None
               description: Determines the cross-validation splitting strategy.
               kind_of_value: '{integer, object (cross-validation generator),  iterable
-                yielding train and test splits, None'
+                yielding train and tests splits, None'
               name: cross_validation
               optional: 'True'
               path: cv
@@ -6777,7 +6777,7 @@ mappings:
             - default_value: None
               description: Determines the cross-validation splitting strategy.
               kind_of_value: '{integer, object (cross-validation generator),  iterable
-                yielding train and test splits, None'
+                yielding train and tests splits, None'
               name: cross_validation
               optional: 'True'
               path: cv

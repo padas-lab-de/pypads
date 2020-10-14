@@ -83,7 +83,7 @@ class PyPadsResults(IResults):
     @result
     def list_run_infos(self, experiment_name, run_view_type: ViewType = ViewType.ALL):
         experiment = self.pypads.backend.get_experiment_by_name(experiment_name)
-        return self.pypads.backend.list_run_infos(experiment_name=experiment.name, run_view_type=run_view_type)
+        return self.pypads.backend.list_run_infos(experiment_id=experiment.experiment_id, run_view_type=run_view_type)
 
     @result
     def get_metrics(self, experiment_name=None, run_id=None, logger_id=None, output_id=None, tracked_object_id=None,

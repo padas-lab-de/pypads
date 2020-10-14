@@ -1,4 +1,4 @@
-from test.base_test import TEST_FOLDER, BaseTest, mac_os_disabled
+from tests.base_test import TEST_FOLDER, BaseTest, mac_os_disabled
 
 result_list = []
 
@@ -48,7 +48,7 @@ def parallel_tracking(min_samples_leaf=1):
     # Activate tracking of pypads
     from pypads.app.base import PyPads
     tracker = PyPads(uri=TEST_FOLDER, autostart=True)
-    from test.test_sklearn.base_sklearn_test import sklearn_simple_decision_tree_experiment
+    from tests.test_sklearn.base_sklearn_test import sklearn_simple_decision_tree_experiment
     sklearn_simple_decision_tree_experiment(min_samples_leaf=min_samples_leaf)
     tracker.deactivate_tracking(run_atexits=True, reload_modules=False)
     return min_samples_leaf
@@ -56,7 +56,7 @@ def parallel_tracking(min_samples_leaf=1):
 
 def parallel_no_tracking(min_samples_leaf=1, dummy=None):
     # --------------------------- setup of the tracking ---------------------------
-    from test.test_sklearn.base_sklearn_test import sklearn_simple_decision_tree_experiment
+    from tests.test_sklearn.base_sklearn_test import sklearn_simple_decision_tree_experiment
     assert hasattr(dummy, "_pypads_mapping___init__")
     sklearn_simple_decision_tree_experiment(min_samples_leaf=min_samples_leaf)
     return min_samples_leaf

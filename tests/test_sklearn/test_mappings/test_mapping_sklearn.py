@@ -3,8 +3,8 @@ import os
 import mlflow
 
 from pypads.importext.mappings import MappingFile
-from test.base_test import TEST_FOLDER, BaseTest
-from test.test_sklearn.base_sklearn_test import sklearn_pipeline_experiment, sklearn_simple_decision_tree_experiment
+from tests.base_test import TEST_FOLDER, BaseTest
+from tests.test_sklearn.base_sklearn_test import sklearn_pipeline_experiment, sklearn_simple_decision_tree_experiment
 
 minimal = MappingFile(os.path.join(os.path.dirname(__file__), "sklearn_minimal.yml"))
 regex = MappingFile(os.path.join(os.path.dirname(__file__), "sklearn_regex.yml"))

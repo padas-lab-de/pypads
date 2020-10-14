@@ -1,4 +1,4 @@
-from test.base_test import BaseTest, TEST_FOLDER
+from tests.base_test import BaseTest, TEST_FOLDER
 
 
 class PypadsImportOrder(BaseTest):

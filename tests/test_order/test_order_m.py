@@ -1,7 +1,7 @@
 import sys
 
-from test.base_test import BaseTest, TEST_FOLDER
-from test.test_order.test_order import First, Second, Third, experiment
+from tests.base_test import BaseTest, TEST_FOLDER
+from tests.test_order.test_order import First, Second, Third, experiment
 
 events = {
     "ordered_loggers": [First(order=1), Second(order=2), Third(order=3)]
