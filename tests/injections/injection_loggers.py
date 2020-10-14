@@ -49,7 +49,7 @@ hooks = {
 config = {
     "recursion_identity": False,
     "recursion_depth": -1,
-    "mongo_db" : True}
+    "mongo_db" : False}
 
 
 # Disable all setup functions
@@ -155,14 +155,14 @@ class PypadsInjectionLoggers(BaseTest):
         t = timeit.Timer(experiment)
         print(t.timeit(5))
         # --------------------------- asserts ---------------------------
-        self.assertEqual(test.i, 4)
+        self.assertEqual(test.i, 5)
         self.assertTrue(tracker.cache.run_exists(id(test)))
 
-        data = tracker.cache.run_get(id(self))
+        data = tracker.cache.run_get(id(test))
         logger_call = data.get('logger_call')
         output = data.get('output')
         self.assertEqual(len(logger_call.call_stack), 5)
-        self.assertEqual(output.var, 4)
+        self.assertEqual(output.var, 5)
         # !-------------------------- asserts ---------------------------
 
     def test_output_modifying_logger(self):
@@ -217,10 +217,11 @@ class PypadsInjectionLoggers(BaseTest):
         from pypads.app.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
 
-        @tracker.decorators.track(event="pypads_log")
         def failing_function():
             print("I'm a failing function")
             raise Exception("Planed failure")
+
+        failing_function = tracker.api.track(failing_function, anchors=["pypads_log"])
 
         # --------------------------- asserts ---------------------------
         with self.assertRaises(Exception):
@@ -239,7 +240,6 @@ class PypadsInjectionLoggers(BaseTest):
 
         i = 0
 
-        @tracker.decorators.track(event="pypads_log")
         def experiment():
             print("I'm an function level experiment")
             nonlocal i
@@ -248,6 +248,8 @@ class PypadsInjectionLoggers(BaseTest):
                 raise Exception("Planed failure")
             else:
                 return "I'm a retried return value."
+
+        experiment = tracker.api.track(experiment, anchors=["pypads_log"])
 
         import timeit
         t = timeit.Timer(experiment)
