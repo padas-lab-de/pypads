@@ -1,5 +1,5 @@
-from test.base_test import TEST_FOLDER
-from test.test_sklearn.base_sklearn_test import BaseSklearnTest
+from tests.base_test import TEST_FOLDER
+from tests.test_sklearn.base_sklearn_test import BaseSklearnTest
 
 
 def autosklearn_digits():
@@ -20,7 +20,7 @@ class AutoSklearnTest(BaseSklearnTest):
     def test_pipeline(self):
         """
         This example will track an autosklearn experiment. This will most likely take very long and contain a lot of
-        information about tested models with autosklearn. TODO Shouldn't really be a test and more like an example
+        information about tested models with autosklearn. TODO Shouldn't really be a tests and more like an example
         :return:
         """
         # --------------------------- setup of the tracking ---------------------------

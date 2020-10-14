@@ -358,7 +358,7 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
         :return:
         """
         return self._db[storage_type if isinstance(storage_type, str) else storage_type.value].find_one(
-            {"_id": join_typed_id([uid, storage_type]), "run_id": run_id})
+            {"_id": join_typed_id([uid, storage_type]), "experiment_id": run_id})
 
     def list(self, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
              search_dict=None):

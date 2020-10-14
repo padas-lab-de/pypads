@@ -1,6 +1,6 @@
 # ---- Experiments ----
 
-from test.base_test import BaseTest
+from tests.base_test import BaseTest
 
 
 def sklearn_simple_decision_tree_experiment(min_samples_leaf=1):
@@ -56,5 +56,5 @@ def sklearn_pipeline_experiment():
 class BaseSklearnTest(BaseTest):
 
     def setUp(self):
-        print("Starting sklearn test...")
+        print("Starting sklearn tests...")
         super().setUp()

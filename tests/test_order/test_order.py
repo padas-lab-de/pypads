@@ -2,7 +2,7 @@ import sys
 
 from pypads.app.env import InjectionLoggerEnv
 from pypads.app.injections.injection import InjectionLogger
-from test.base_test import BaseTest, TEST_FOLDER
+from tests.base_test import BaseTest, TEST_FOLDER
 
 
 def experiment():

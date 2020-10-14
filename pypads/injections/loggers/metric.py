@@ -55,7 +55,7 @@ class MetricILF(InjectionLogger):
 
     class MetricILFOutput(OutputModel):
         # Add additional context information to
-        # TODO context: dict = {**{"test": "testVal"}, **OntologyEntry.__field_defaults__["context"]}
+        # TODO context: dict = {**{"tests": "testVal"}, **OntologyEntry.__field_defaults__["context"]}
         category: str = "MetricILF-Output"
         metric: Optional[Union[UUID, str]] = None
 
