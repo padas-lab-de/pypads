@@ -5,7 +5,7 @@ from pypads.app.injections.injection import InjectionLogger
 from pypads.importext.versioning import LibSelector
 from pypads.injections.loggers.debug import Log
 from pypads.utils.util import dict_merge
-from test.base_test import TEST_FOLDER, BaseTest
+from tests.base_test import TEST_FOLDER, BaseTest
 
 
 def keras_simple_sequential_experiment():

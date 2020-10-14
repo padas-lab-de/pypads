@@ -1,5 +1,5 @@
-from test.base_test import TEST_FOLDER
-from test.test_sklearn.base_sklearn_test import BaseSklearnTest, sklearn_simple_decision_tree_experiment
+from tests.base_test import TEST_FOLDER
+from tests.test_sklearn.base_sklearn_test import BaseSklearnTest, sklearn_simple_decision_tree_experiment
 
 
 class ConfigSklearnTest(BaseSklearnTest):

@@ -1,6 +1,6 @@
 from pypads.model.logger_output import MetricMetaModel, ParameterMetaModel, ArtifactMetaModel
 from pypads.utils.logging_util import FileFormats
-from test.base_test import BaseTest, TEST_FOLDER
+from tests.base_test import BaseTest, TEST_FOLDER
 
 
 class PypadsHookTest(BaseTest):

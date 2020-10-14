@@ -4,7 +4,6 @@ import os
 import unittest
 from os.path import expanduser
 
-from pypads.app.injections.injection import InjectionLogger
 from pypads.app.pypads import logger
 
 if "loguru" in str(logger):
@@ -26,6 +25,8 @@ if "loguru" in str(logger):
 TEST_FOLDER = os.path.join(expanduser("~"), ".pypads-test_" + str(os.getpid()))
 
 
+
+
 def cleanup():
     import shutil
     if os.path.isdir(TEST_FOLDER):
@@ -38,7 +39,7 @@ atexit.register(cleanup)
 
 def mac_os_disabled(f):
     """
-    Function to disable a test when mac os is used
+    Function to disable a tests when mac os is used
     :param f:
     :return:
     """
@@ -66,19 +67,3 @@ class BaseTest(unittest.TestCase):
             # noinspection PyTypeChecker
             set_current_pads(None)
 
-
-class RanLogger(InjectionLogger):
-    """ Adds id of self to cache. This is a utility logger for testing purposes. """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._run_count = 0
-
-    def __pre__(self, ctx, *args, _logger_call, _args, _kwargs, **kwargs):
-        from pypads.app.pypads import get_current_pads
-        pads = get_current_pads()
-        self._run_count += 1
-        pads.cache.run_add(id(self), self._run_count)
-
-    def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
-        pass
