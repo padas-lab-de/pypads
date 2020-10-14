@@ -11,7 +11,7 @@ import mlflow
 from pypads import logger
 from pypads.app.actuators import ActuatorPluginManager, PyPadsActuators
 from pypads.app.api import ApiPluginManager, PyPadsApi
-from pypads.app.backends.repository import SchemaRepository, LoggerRepository, LibraryRepository
+from pypads.app.backends.repository import SchemaRepository, LoggerRepository, LibraryRepository, MappingRepository
 from pypads.app.decorators import DecoratorPluginManager, PyPadsDecorators
 from pypads.app.misc.caches import PypadsCache
 from pypads.app.results import ResultPluginManager, results, PyPadsResults
@@ -165,7 +165,8 @@ class PyPads:
         # Store function registry into cache
         self._cache.add("events", events)
 
-        # Init mapping registry
+        # Init mapping registry and repository
+        self._mapping_repository = MappingRepository()
         self._mapping_registry = MappingRegistry.from_params(self, mappings)
 
         # Init hook registry
@@ -310,6 +311,10 @@ class PyPads:
     @property
     def library_repository(self) -> LibraryRepository:
         return self._library_repository
+
+    @property
+    def mapping_repository(self) -> MappingRepository:
+        return self._mapping_repository
 
     def add_instance_modifier(self, fn: Callable):
         """
