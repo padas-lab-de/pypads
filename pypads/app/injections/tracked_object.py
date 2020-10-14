@@ -297,7 +297,7 @@ class ArtifactTO(ChildResultMixin, ModelObject, SuperStop):
         return ArtifactMetaModel
 
     def content(self: Union['ArtifactTO', ArtifactMetaModel]):
-        if self._content:
+        if self._content is not None:
             return self._content
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()

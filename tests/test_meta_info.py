@@ -74,6 +74,37 @@ class PypadsHookTest(BaseTest):
         from pypads.app.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER, autostart=True)
 
+        path = 'some_artifact'
+        description = 'Storing test array as an artifact'
+
+        obj = object()
+        import numpy as np
+        obj = np.random.random(size=(3, 3))
+
+        holder = tracker.api.get_programmatic_output()
+
+        tracker.api.log_mem_artifact(path="some_artifact", obj=obj, write_format=FileFormats.pickle,
+                                     additional_data=None, holder=None)
+
+        meta = ArtifactMetaModel(value_format='str', file_format=FileFormats.pickle,
+                                 description=description,file_size=229,
+                                 data=str(obj),
+                                 parent=holder, parent_type=holder.storage_type,
+                                 produced_by=holder.produced_by, producer_type=holder.producer_type,
+                                 part_of=holder.typed_id())
+
+        artifacts = [x for x in tracker.results.get_artifacts(run_id=meta.run_id)]
+
+        # --------------------------- asserts ---------------------------
+        assert tracker.results.load_artifact("some_artifact.pickle", read_format=FileFormats.pickle) is not None
+        # !-------------------------- asserts ---------------------------
+
+    def test_track_artifact(self):
+        # --------------------------- setup of the tracking ---------------------------
+        # Activate tracking of pypads
+        from pypads.app.base import PyPads
+        tracker = PyPads(uri=TEST_FOLDER, autostart=True)
+
         obj = object()
         tracker.api.log_mem_artifact(path="some_artifact", obj=obj, write_format=FileFormats.pickle,
                                      additional_data=None, holder=None)
