@@ -101,7 +101,7 @@ class PyPads:
 
     def __init__(self, uri=None, folder=None, mappings: List[MappingCollection] = None, hooks=None,
                  events=None, setup_fns=None, config=None, pre_initialized_cache: PypadsCache = None,
-                 disable_plugins=None, autostart=None):
+                 disable_plugins=None, autostart=None, *args, **kwargs):
         from pypads.app.pypads import set_current_pads
         set_current_pads(self)
 
@@ -111,7 +111,7 @@ class PyPads:
             disable_plugins = []
         for name, plugin in discovered_plugins.items():
             if name not in disable_plugins:
-                plugin.activate(self)
+                plugin.activate(self, *args, **kwargs)
 
         # Init variable to filled later in this constructor
         self._atexit_fns = []
