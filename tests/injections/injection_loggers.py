@@ -2,6 +2,7 @@ from typing import Optional, Type, Any
 
 from pypads.app.injections.injection import InjectionLogger, MultiInjectionLogger, OutputModifyingMixin
 from pypads.model.logger_output import OutputModel
+from pypads.app import base
 from tests.base_test import BaseTest, TEST_FOLDER
 
 
@@ -47,7 +48,12 @@ hooks = {
 
 config = {
     "recursion_identity": False,
-    "recursion_depth": -1}
+    "recursion_depth": -1,
+    "mongo_db" : True}
+
+
+# Disable all setup functions
+base.DEFAULT_SETUP_FNS = {}
 
 
 class PypadsInjectionLoggers(BaseTest):
