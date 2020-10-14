@@ -166,7 +166,7 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
                     return out
             else:
 
-                # Original function was not accessiblete
+                # Original function was not accessible
                 raise Exception("Couldn't fall back to original function for " + str(
                     _pypads_env.logger_call.call_id.context.original_name(_pypads_env.callback)) + " on " + str(
                     _pypads_env.logger_call.call_id.context) + ". Can't recover from " + str(error))
