@@ -9,18 +9,60 @@ fragments:
     !!python/rSeg '(fit_transform|transform)$':
       hooks: pypads_transform
 mappings:
-  !!python/pPath 'sklearn':
-    !!python/pPath 'base.BaseEstimator':
-      ;default_model: null
+  !!python/pPath sklearn:
+    data:
+      "@rdf":
+        "produced_by": "http://www.padre-lab.eu/DecisionTree"
+        mapped_by: "http://www.padre-lab.eu/PyPadsInjection"
+        defined_in: "http://www.padre-lab.eu/onto/Sklearn#0.19.1"
+    !!python/pPath base.BaseEstimator:
+      ;default_model: ~
+      __init__:
+        hooks: "pypads_estimator"
       data:
-        concepts:
-        - algorithm
-    !!python/pPath 'metrics.classification':
-      !!python/rSeg '.*':
+        "@rdf":
+          in_context: "http://www.padre-lab.eu/onto/Estimator"
+    !!python/rSeg (RegressorMixin|ClassifierMixin|DensityMixin):
+      !!python/pPath score:
+        hooks: "pypads_metric"
+    !!python/pPath metrics.classification:
+      !!python/rSeg .*:
+        hooks: "pypads_metric"
         data:
-          concepts:
-          - Sklearn provided metric
-        hooks: pypads_metric
+          "@rdf":
+            in_context: "http://www.padre-lab.eu/onto/Metric"
+    !!python/pPath datasets.base:
+      !!python/rSeg (?!^load_data$)load_.*:
+        hooks: "pypads_dataset"
+        data:
+          "@rdf":
+            in_context: "http://www.padre-lab.eu/onto/Dataset"
+    !!python/pPath model_selection:
+      !!python/pPath _search.BaseSearchCV:
+        !!python/pPath fit:
+          hooks: ["pypads_param_search", "pypads_fit"]
+          data:
+            "@rdf":
+              in_context: "http://www.padre-lab.eu/onto/ParameterSearch"
+        !!python/pPath predict:
+          hooks: "pypads_predict"
+      !!python/pPath _validation._fit_and_score:
+        hooks: ["pypads_param_search_exec"]
+        data:
+          "@rdf":
+            in_context: "http://www.padre-lab.eu/onto/ParameterSearchExecution"
+    !!python/pPath model_selection._split:
+      !!python/pPath BaseCrossValidator:
+        !!python/pPath split:
+          hooks: ["pypads_split"]
+          data:
+            "@rdf":
+              in_context: "http://www.padre-lab.eu/onto/Splitting"
+      !!python/pPath BaseShuffleSplit.split:
+        hooks: ["pypads_split"]
+        data:
+          "@rdf":
+            in_context: "http://www.padre-lab.eu/onto/Splitting"
     :calibration.CalibratedClassifierCV:
       ;default_model: null
       data:

@@ -1,12 +1,14 @@
 import os
 from abc import abstractmethod
-from typing import List, Union, Iterable, Any
+from typing import List, Union, Iterable, Any, Type
 
 from mlflow.entities import ViewType
 from mlflow.tracking.fluent import SEARCH_MAX_RESULTS_PANDAS
+from pydantic import BaseModel
 
 from pypads.model.logger_output import FileInfo, ArtifactMetaModel, ParameterMetaModel, MetricMetaModel, TagMetaModel, \
     TrackedObjectModel, OutputModel, ResultHolderModel
+from pypads.model.metadata import ModelObject
 from pypads.model.models import IdBasedEntry, ResultType, unwrap_typed_id
 from pypads.utils.logging_util import get_temp_folder, read_artifact
 
@@ -200,13 +202,17 @@ class BackendInterface:
             return out
 
 
-class ArtifactDataLoader(ArtifactMetaModel):
+class ArtifactDataLoader(ModelObject):
 
     def __init__(self, **data: Any):
         super().__init__(**data)
-        self._content = {}
+        self._content = None
 
-    def content(self):
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return ArtifactMetaModel
+
+    def content(self: Union['ArtifactDataLoader', ArtifactMetaModel]):
         if self._content:
             return self._content
         from pypads.app.pypads import get_current_pads
