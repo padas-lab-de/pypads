@@ -39,18 +39,33 @@ class PypadsHookTest(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
+
+        name = "some_metric"
+        description = 'Some description'
+        value = 1
+        step = 0
+        keys = ['experiment_id', 'run_id', 'category', 'storage_type', 'description', 'name', 'data']
+
         tracker = PyPads(uri=TEST_FOLDER)
         tracker.activate_tracking()
         tracker.start_track(experiment_name='TEST CASE EXPERIMENT')
         # meta = MetricMetaModel(url='https://some.metric.url', name='some_metric', description='some description',
         #                        step=0)
-        tracker.api.log_metric("some_metric", 1)
-        tracker.results.get_metrics(name='some_metric')
-        artifacts = tracker.results.list_run_infos(experiment_name='TEST CASE EXPERIMENT')
-        for artifact in artifacts:
-            print(artifact)
+        tracker.api.log_metric(name, value=value, description=description, step=step)
+
+        holder = tracker.api.get_programmatic_output()
+        meta = MetricMetaModel(name=name, value_format='str', data=str(value), step=step,
+                               description=description, parent=holder, parent_type=holder.storage_type,
+                               produced_by=holder.produced_by, producer_type=holder.producer_type,
+                               part_of=holder.typed_id())
+
+        artifacts = [x for x in tracker.results.get_metrics(experiment_name='TEST CASE EXPERIMENT',
+                                                            name=name, step=step, run_id=meta.run_id)]
         # --------------------------- asserts ---------------------------
-        # assert tracker.api.metric_meta("some_metric") == meta.dict()
+        assert len(artifacts) == 1
+        for key in keys:
+            assert artifacts[0].dict().get(key) == meta.dict().get(key)
+
         # !-------------------------- asserts ---------------------------
 
     def test_track_mem_artifact(self):
