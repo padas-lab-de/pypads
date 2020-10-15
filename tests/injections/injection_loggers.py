@@ -49,7 +49,7 @@ hooks = {
 config = {
     "recursion_identity": False,
     "recursion_depth": -1,
-    "mongo_db" : False}
+    "mongo_db" : True}
 
 
 # Disable all setup functions

@@ -120,7 +120,7 @@ class MappingCollection(ModelObject):
         self._author = author
         self._version = version
         self._lib = LibSelector.from_dict(library)
-        self.uid = persistent_hash((self._name, self._version, hash(self._lib)))
+        self._hash = persistent_hash((self._name, self._version, hash(self._lib)))
         super().__init__()
 
     @classmethod
@@ -263,8 +263,6 @@ class SerializedMapping(MappingCollection):
                                set(), {})
         super().__init__(key, schema.metadata["version"], schema.metadata["library"], schema.metadata["author"])
 
-        # computing the hash of the mapping file
-        self.uid = persistent_hash(str(yml))
         self._build_mappings(yml["mappings"], schema)
 
     def _build_mappings(self, node, schema: MappingSchema):
@@ -344,6 +342,9 @@ class MappingFile(SerializedMapping):
         self.path = path
         super().__init__(name, data)
 
+        # computing the hash of the mapping file
+        self._hash = persistent_hash(data)
+
 
 class MappingRegistry:
     """
@@ -420,7 +421,7 @@ class MappingRegistry:
                 "Couldn't add mapping " + str(mapping) + " to the pypads mapping registry. Lib or key are undefined.")
         else:
             mapping_repo = self._pypads.mapping_repository
-            mapping_hash = mapping.uid
+            mapping_hash = mapping._hash
             if not mapping_repo.has_object(uid=mapping_hash):
                 mapping_object = mapping_repo.get_object(uid=mapping_hash)
                 if isinstance(mapping, MappingFile):
