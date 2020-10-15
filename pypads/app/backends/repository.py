@@ -129,7 +129,7 @@ class RepositoryObject:
                                     self.joined_uid)} if self.uid else None)
                 self._run_id = self._run.info.run_id
             else:
-                self._run = self.pads.api.get_run(run_id=self._run_id)
+                self._run = self.pads.results.get_run(run_id=self._run_id)
 
     def init_context(self):
         self._init_run_storage()
