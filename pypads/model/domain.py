@@ -39,6 +39,28 @@ class LibSelectorModel(BaseModel):
         orm_mode = True
 
 
+class MappingModel(IdBasedEntry):
+    """
+    Representation of a mapping of a library
+    """
+    category: str = "SoftwareMapping"
+    name: str = ...
+    author: Optional[str] = ...
+    version: str = ...
+    lib: LibSelectorModel = ...
+    mapping_file: Optional[str] = ...  # reference to the mapping file artifact
+    storage_type: Union[str, ResultType] = ResultType.mapping
+
+    @root_validator
+    def set_default(cls, values):
+        values['_id'] = ".".join(
+            [values["author"], values["version"], values["lib"].name, values["lib"].constraint])
+        return values
+
+    class Config:
+        orm_mode = True
+
+
 # class ExperimentModel(OntologyEntry):  # TODO
 #     """
 #     Model of the Experiment

@@ -18,6 +18,7 @@ class ResultType(Enum):
     logger = 'logger'
     schema = 'schema'
     library = 'library'
+    mapping = 'mapping'
 
 
 class Entry(BaseModel):

@@ -87,7 +87,7 @@ class PypadsKerasTest(BaseTest):
         class Predictions(InjectionLogger):
 
             def __init__(self, *args, **kwargs):
-                super().__init__(*args, uid="predictions", **kwargs)
+                super().__init__(*args,  **kwargs)
 
             def __pre__(self, ctx, *args, _logger_call, _args, _kwargs, **kwargs):
                 # Fallback logging function
@@ -101,7 +101,8 @@ class PypadsKerasTest(BaseTest):
         class KerasPredictions(InjectionLogger):
 
             def __init__(self, *args, **kwargs):
-                super().__init__(*args, uid="predictions", **kwargs)
+                super().__init__(*args,  **kwargs)
+                self.identity = Predictions.__name__
 
             supported_libraries = {LibSelector(name="keras", constraint="*", specificity=1),
                                    LibSelector(name="tensorflow", constraint="*", specificity=1)}
@@ -118,7 +119,8 @@ class PypadsKerasTest(BaseTest):
         class Keras231Predictions(InjectionLogger):
 
             def __init__(self, *args, **kwargs):
-                super().__init__(*args, uid="predictions", **kwargs)
+                super().__init__(*args, **kwargs)
+                self.identity = Predictions.__name__
 
             supported_libraries = {LibSelector(name="keras", constraint="2.3.1", specificity=2),
                                    LibSelector(name="tensorflow", constraint="2.3.0rc0", specificity=2)}
@@ -138,11 +140,12 @@ class PypadsKerasTest(BaseTest):
             "predictions": {"on": ["pypads_predict"]}
         }
 
+        config = {'mongo_db': False}
         # Activate tracking of pypads
         from pypads.app.base import PyPads
         from pypads.bindings.hooks import DEFAULT_HOOK_MAPPING
         from pypads.bindings.events import DEFAULT_LOGGING_FNS
-        PyPads(uri=TEST_FOLDER, hooks=dict_merge(DEFAULT_HOOK_MAPPING, keras_hooks),
+        PyPads(uri=TEST_FOLDER, config=config,hooks=dict_merge(DEFAULT_HOOK_MAPPING, keras_hooks),
                events=dict_merge(DEFAULT_LOGGING_FNS, keras_events), autostart=True)
 
         import timeit

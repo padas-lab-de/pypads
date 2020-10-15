@@ -266,11 +266,22 @@ class LibraryRepository(Repository):
 
     def __init__(self, *args, **kwargs):
         """
-        Repository holding all the relevant logger information
+        Repository holding all the relevant tracked library information
         :param args:
         :param kwargs:
         """
         super().__init__(*args, name="pypads_libraries", **kwargs)
+
+
+class MappingRepository(Repository):
+
+    def __init__(self, *args, **kwargs):
+        """
+        Repository holding all the relevant mapping information
+        :param args:
+        :param kwargs:
+        """
+        super().__init__(*args, name="pypads_mappings", **kwargs)
 
 
 class BaseRepositoryObjectModel(Entry):

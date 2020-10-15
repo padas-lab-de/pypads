@@ -160,7 +160,7 @@ class MLFlowBackend(BackendInterface, metaclass=ABCMeta):
         """
         if uid is None:
             uid = obj.uid
-        return self._log_mem_artifact(uid, obj.json(by_alias=True),
+        return self._log_mem_artifact(str(uid), obj.json(by_alias=True),
                                       write_format=FileFormats.json)
 
     def get(self, uid, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
