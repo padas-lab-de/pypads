@@ -349,16 +349,16 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
             raise e
         return entry["_id"]
 
-    def get_json(self, run_id, uid, storage_type: Union[str, ResultType] = None):
+    def get_json(self, experiment_id, uid, storage_type: Union[str, ResultType] = None):
         """
         Get json stored for a certain run.
         :param storage_type: Storage type to look for
-        :param run_id: Id of the run
+        :param experiment_id: Id of the experiment
         :param uid: uid - for local storage this is the relative path
         :return:
         """
         return self._db[storage_type if isinstance(storage_type, str) else storage_type.value].find_one(
-            {"_id": join_typed_id([uid, storage_type]), "experiment_id": run_id})
+            {"_id": join_typed_id([uid, storage_type]), "experiment_id": experiment_id})
 
     def list(self, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
              search_dict=None):

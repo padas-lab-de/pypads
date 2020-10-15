@@ -11,6 +11,7 @@ class ResultType(Enum):
     parameter = 'parameter'
     metric = 'metric'
     tag = 'tag'
+    repository_entry = 'repository_entry'
     tracked_object = 'tracked_object'
     output = 'output'
     logger_call = 'loggerCall'

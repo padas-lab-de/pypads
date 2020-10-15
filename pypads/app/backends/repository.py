@@ -2,10 +2,10 @@ import os
 from typing import Union, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, Extra
+from pydantic import Extra
 
 from pypads.app.backends.mlflow import MongoSupportMixin
-from pypads.model.models import Entry, join_typed_id, IdBasedEntry
+from pypads.model.models import Entry, join_typed_id, IdBasedEntry, ResultType
 from pypads.utils.logging_util import FileFormats
 
 
@@ -117,7 +117,7 @@ class RepositoryObject:
             # If exists set the run_id to the existing one instead
             if len(runs) > 0:
                 # TODO is this correct? Mlflow returns a dataframe
-                self._run = self.pads.api.get_run(run_id=runs.iloc[0][0])
+                self._run = self.pads.results.get_run(run_id=runs.iloc[0][0])
 
         # If no run_id was found with uid create a new run and get its id
         if self.run is None:
@@ -129,7 +129,7 @@ class RepositoryObject:
                                     self.joined_uid)} if self.uid else None)
                 self._run_id = self._run.info.run_id
             else:
-                self._run = self.pads.api.get_run(run_id=self._run_id)
+                self._run = self.pads.results.get_run(run_id=self._run_id)
 
     def init_context(self):
         self._init_run_storage()
@@ -199,13 +199,15 @@ class RepositoryObject:
         """
         with self.init_context() as ctx:
             if isinstance(obj, dict):
-                obj = ExtendedIdBasedEntry(**{**obj,
-                                              **{"uid": str(self.uid), "storage_type": self.repository.name,
+                obj = ExtendedIdBasedEntry(**{**{"category": self.repository.name}, **obj,
+                                              **{"uid": str(self.uid),
+                                                 "storage_type": self.repository.name,
                                                  "run_id": self.run_id, "experiment_id": self.repository.id}})
             else:
                 obj = ExtendedIdBasedEntry(
-                    **{**obj.dict(by_alias=True),
-                       **{"uid": str(self.uid), "storage_type": self.repository.name, "run_id": self.run_id,
+                    **{**{"category": self.repository.name}, **obj.dict(by_alias=True),
+                       **{"uid": str(self.uid), "storage_type": self.repository.name,
+                          "run_id": self.run_id,
                           "experiment_id": self.repository.id}})
             # if isinstance(self.pads.backend, MongoSupportMixin):
             #     return self.pads.backend.log(obj)
@@ -271,9 +273,12 @@ class LibraryRepository(Repository):
         super().__init__(*args, name="pypads_libraries", **kwargs)
 
 
-class BaseRepositoryObjectModel(BaseModel):
+class BaseRepositoryObjectModel(Entry):
     """
     Extend this class if you want to store json directly into a repository
     """
-    storage_type: Optional[str] = None
+    storage_type: Optional[str] = ResultType.repository_entry
     run_id: Optional[str] = None
+    category: str = ...
+    description: str = ...
+    additional_data: Optional[dict] = {}

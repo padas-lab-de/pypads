@@ -20,6 +20,31 @@ def merge_mapping_data(matched_mappings):
                       str_to_set=True)
 
 
+def data_str(data, *path, default=None, warning=None):
+    entry = data_path(data, *path, default=default, warning=warning)
+    if entry == default:
+        return default
+    if isinstance(entry, set):
+        if len(entry) > 0:
+            return iter(entry).__next__()
+        else:
+            return ""
+    else:
+        return entry
+
+
+def data_path(data, *path, default=None, warning=None):
+    cur = data
+    for p in path:
+        if p in data:
+            cur = cur[p]
+        else:
+            if warning is not None:
+                logger.warning(warning)
+            return default
+    return cur
+
+
 def get_artifact_dir(obj):
     """
     Get a path to a given entry object.

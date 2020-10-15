@@ -9,6 +9,7 @@ from pypads.app.injections.injection import InjectionLogger
 from pypads.app.injections.tracked_object import TrackedObject, LoggerOutput
 from pypads.model.logger_call import ContextModel
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
+from pypads.utils.logging_util import data_str, data_path
 
 
 class ParametersILFOutput(OutputModel):
@@ -114,25 +115,22 @@ class ParametersILF(InjectionLogger):
                 hyper_params.persist_parameter(key, value)
             hyper_params.estimator = ctx.__class__.__name__
         else:
-            if 'name' in mapping_data['estimator']:
-                if isinstance(mapping_data['estimator']['name'], set):
-                    hyper_params.estimator = next(iter(mapping_data['estimator']['name']))
-                else:
-                    hyper_params.estimator = mapping_data['estimator']['name']
-            else:
-                hyper_params.estimator = ctx.__class__.__name__
+            hyper_params.estimator = data_str(mapping_data, "estimator", "@schema", "rdfs:label",
+                                              default=ctx.__class__.__name__)
 
-            for parameter_type, parameters in mapping_data['estimator']['parameters'].items():
+            for parameter_type, parameters in data_path(mapping_data, "estimator", "parameter", default={}).items():
                 for parameter in parameters:
-                    key = parameter["path"]
-                    if "path" in parameter and hasattr(ctx, parameter["path"]):
-                        value = getattr(ctx, parameter["path"])
-                        description = parameter.get('description', None)
-                        parameter_type = parameter.get('kind_of_value', parameter_type)
+                    parameter = data_path(parameter, "@schema")
+                    key = data_path(parameter, "padre:value_type")
+                    if key is not None and hasattr(ctx, key):
+                        value = getattr(ctx, key)
+                        description = data_path(parameter, "rdfs:description",
+                                                default="No description in mapping file.")
+                        parameter_type = data_path(parameter, "padre:value_type", default=str(type(value)))
                         hyper_params.persist_parameter(key, value, parameter_type, description,
                                                        additional_data=parameter)
                     else:
                         logger.warning(
-                            "Couldn't access im mapping file defined parameter " + key + " on " + str(ctx.__class__))
+                            f"Couldn't access im mapping file defined parameter {parameter} on {ctx.__class__}")
 
         _logger_output.hyper_parameter_to = hyper_params.store()
