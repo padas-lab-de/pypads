@@ -77,17 +77,19 @@ class PypadsHookTest(BaseTest):
         path = 'some_artifact'
         description = 'Storing test array as an artifact'
 
-        obj = object()
+        keys = ['experiment_id', 'run_id', 'category', 'storage_type', 'description', 'name', 'description',
+                'produced_by']
+
         import numpy as np
         obj = np.random.random(size=(3, 3))
 
         holder = tracker.api.get_programmatic_output()
 
-        tracker.api.log_mem_artifact(path="some_artifact", obj=obj, write_format=FileFormats.pickle,
+        tracker.api.log_mem_artifact(path=path, obj=obj, write_format=FileFormats.pickle, description=description,
                                      additional_data=None, holder=None)
 
         meta = ArtifactMetaModel(value_format='str', file_format=FileFormats.pickle,
-                                 description=description,file_size=229,
+                                 description=description, file_size=229,
                                  data=str(obj),
                                  parent=holder, parent_type=holder.storage_type,
                                  produced_by=holder.produced_by, producer_type=holder.producer_type,
@@ -96,7 +98,10 @@ class PypadsHookTest(BaseTest):
         artifacts = [x for x in tracker.results.get_artifacts(run_id=meta.run_id)]
 
         # --------------------------- asserts ---------------------------
-        assert tracker.results.load_artifact("some_artifact.pickle", read_format=FileFormats.pickle) is not None
+        assert len(artifacts) == 1
+        artifacts = artifacts[0]
+        for key in keys:
+            assert meta.dict().get(key) == artifacts.dict().get(key)
         # !-------------------------- asserts ---------------------------
 
     def test_track_artifact(self):
@@ -105,10 +110,43 @@ class PypadsHookTest(BaseTest):
         from pypads.app.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER, autostart=True)
 
-        obj = object()
-        tracker.api.log_mem_artifact(path="some_artifact", obj=obj, write_format=FileFormats.pickle,
-                                     additional_data=None, holder=None)
+        import os
+        import pickle as pkl
+        import numpy as np
+
+        name = 'some_artifact.pickle'
+        path = os.path.join(os.getcwd(), name)
+        description = 'logging an artifact from a local path'
+        obj = np.random.random(size=(3, 3))
+
+        keys = ['experiment_id', 'run_id', 'category', 'storage_type', 'description', 'name', 'description',
+                'produced_by']
+
+        with open(path, 'wb') as f:
+            pkl.dump(obj, f)
+
+        tracker.api.log_artifact(local_path=path, additional_data=None, holder=None, description=description)
+        os.remove(path=path)
+
+        holder = tracker.api.get_programmatic_output()
+        meta = ArtifactMetaModel(value_format='str', file_format=FileFormats.pickle,
+                                 description=description, file_size=229,
+                                 data=str(obj),
+                                 parent=holder, parent_type=holder.storage_type,
+                                 produced_by=holder.produced_by, producer_type=holder.producer_type,
+                                 part_of=holder.typed_id())
+
+        # Load the artifacts
+        artifacts = [x for x in tracker.results.get_artifacts(run_id=meta.run_id)]
+
+        # Load the data from the pypads path
+        loaded_data = tracker.results.load_artifact(name, read_format=FileFormats.pickle)
 
         # --------------------------- asserts ---------------------------
-        assert tracker.results.load_artifact("some_artifact.pickle", read_format=FileFormats.pickle) is not None
+        assert bool((loaded_data == obj).all()) is True
+        assert len(artifacts) == 1
+
+        artifacts = artifacts[0]
+        for key in keys:
+            assert meta.dict().get(key) == artifacts.dict().get(key)
         # !-------------------------- asserts ---------------------------
