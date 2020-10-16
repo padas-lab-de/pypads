@@ -14,7 +14,6 @@ mappings:
       '@rdf':
         defined_in: http://www.padre-lab.eu/onto/Sklearn#0.19.1
         mapped_by: http://www.padre-lab.eu/PyPadsInjection
-        produced_by: http://www.padre-lab.eu/DecisionTree
     !!python/pPath 'base.BaseEstimator':
       ;default_model: null
       __init__:
