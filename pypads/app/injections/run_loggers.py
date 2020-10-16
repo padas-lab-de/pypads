@@ -13,7 +13,7 @@ from pypads.utils.util import inheritors
 
 
 class RunLogger(SimpleLogger, OrderMixin, metaclass=ABCMeta):
-    category: str = "RunKLogger"
+    category: str = "RunLogger"
 
     def build_call_object(self, _pypads_env, **kwargs):
         return LoggerCall(logging_env=_pypads_env, category="RunLoggerCall", **kwargs)

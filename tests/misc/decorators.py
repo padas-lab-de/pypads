@@ -1,7 +1,7 @@
 from tests.base_test import BaseTest, TEST_FOLDER
-from tests.injections.injection_loggers import RanLogger
+from tests.injections.injection_loggers import RunLogger
 
-logger = RanLogger()
+logger = RunLogger()
 
 events = {
     "ran_logger": logger

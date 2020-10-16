@@ -2,11 +2,11 @@ from typing import Optional, Type, Any
 
 from pypads.app.injections.injection import InjectionLogger, MultiInjectionLogger, OutputModifyingMixin
 from pypads.model.logger_output import OutputModel
-from pypads.app import base
-from tests.base_test import BaseTest, TEST_FOLDER
+# from pypads.app import base
+from tests.base_test import BaseTest, TEST_FOLDER, config
 
 
-class RanLogger(InjectionLogger):
+class RunLogger(InjectionLogger):
     """ Adds id of self to cache. This is a utility logger for testing purposes. """
 
     def __init__(self, *args, **kwargs):
@@ -36,24 +36,15 @@ class dummy_output(OutputModel):
 
 
 # default config
-logger = RanLogger()
+logger = RunLogger()
 
 events = {
-    "ran_logger": logger
+    "logger": logger
 }
 
 hooks = {
-    "ran_logger": {"on": ["pypads_log"]},
+    "logger": {"on": ["pypads_log"]},
 }
-
-config = {
-    "recursion_identity": False,
-    "recursion_depth": -1,
-    "mongo_db" : True}
-
-
-# Disable all setup functions
-base.DEFAULT_SETUP_FNS = {}
 
 
 class PypadsInjectionLoggers(BaseTest):

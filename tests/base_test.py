@@ -4,7 +4,17 @@ import os
 import unittest
 from os.path import expanduser
 
+from pypads.app import base
 from pypads.app.pypads import logger
+
+# Disable all setup functions
+base.DEFAULT_SETUP_FNS = {}
+
+# Default test config
+config = {
+    "recursion_identity": False,
+    "recursion_depth": -1,
+    "mongo_db" : False}
 
 if "loguru" in str(logger):
     import pytest
@@ -25,16 +35,12 @@ if "loguru" in str(logger):
 TEST_FOLDER = os.path.join(expanduser("~"), ".pypads-test_" + str(os.getpid()))
 
 
-
-
+# TODO Is sometimes not run?
+@atexit.register
 def cleanup():
     import shutil
     if os.path.isdir(TEST_FOLDER):
         shutil.rmtree(TEST_FOLDER)
-
-
-# TODO Is sometimes not run?
-atexit.register(cleanup)
 
 
 def mac_os_disabled(f):
@@ -66,4 +72,5 @@ class BaseTest(unittest.TestCase):
             current_pads.deactivate_tracking(run_atexits=True, reload_modules=False)
             # noinspection PyTypeChecker
             set_current_pads(None)
+        cleanup()
 

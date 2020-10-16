@@ -1,7 +1,7 @@
 import sys
 
 from tests.base_test import BaseTest, TEST_FOLDER
-from tests.injections.injection_loggers import RanLogger
+from tests.injections.injection_loggers import RunLogger
 
 
 def more_experiment(i):
@@ -24,7 +24,7 @@ def experiment():
     return "I'm a return value."
 
 
-logger = RanLogger()
+logger = RunLogger()
 
 events = {
     "ran_logger": logger
