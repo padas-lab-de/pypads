@@ -27,7 +27,9 @@ class CommonSklearnTest(BaseSklearnTest):
         # --------------------------- asserts ---------------------------
         run = mlflow.active_run()
         assert tracker.api.active_run().info.run_id == run.info.run_id
-        assert len(tracker.mlf.list_artifacts(run.info.run_id)) > 0
+
+        artifacts = [x for x in tracker.results.get_artifacts(run_id=run.info.run_id)]
+        assert len(artifacts) > 0
         # !-------------------------- asserts ---------------------------
 
     def test_default_tracking(self):
@@ -98,7 +100,7 @@ class CommonSklearnTest(BaseSklearnTest):
 
         # assert len(tracker.mlf.list_artifacts(run.info.run_id)) == 0
 
-        parameters = tracker.mlf.list_artifacts(run.info.run_id, path='../params')
+        parameters = [x for x in tracker.results.get_parameters(run_id=run.info.run_id)]
         assert len(parameters) != 0
 
     def test_experiment_configuration(self):
