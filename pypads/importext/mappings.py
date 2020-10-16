@@ -26,7 +26,7 @@ class Mapping:
     Mapping for an algorithm defined by a pypads mapping file
     """
 
-    def __init__(self, matcher: PackagePathMatcher, in_collection, anchors, values, inherited=False):
+    def __init__(self, matcher: PackagePathMatcher, in_collection, anchors, values, inherited=None):
         self._in_collection = in_collection
         self._values = values
         self._hooks = set()
