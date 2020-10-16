@@ -95,7 +95,7 @@ class PypadsHookTest(BaseTest):
                                  produced_by=holder.produced_by, producer_type=holder.producer_type,
                                  part_of=holder.typed_id())
 
-        artifacts = [x for x in tracker.results.get_artifacts(run_id=meta.run_id)]
+        artifacts = [x for x in tracker.results.get_artifacts(run_id=meta.run_id) if x.data == path+'.pickle']
 
         # --------------------------- asserts ---------------------------
         assert len(artifacts) == 1
@@ -137,7 +137,7 @@ class PypadsHookTest(BaseTest):
                                  part_of=holder.typed_id())
 
         # Load the artifacts
-        artifacts = [x for x in tracker.results.get_artifacts(run_id=meta.run_id)]
+        artifacts = [x for x in tracker.results.get_artifacts(run_id=meta.run_id) if x.data == name]
 
         # Load the data from the pypads path
         loaded_data = tracker.results.load_artifact(name, read_format=FileFormats.pickle)
