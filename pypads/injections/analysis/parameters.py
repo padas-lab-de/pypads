@@ -118,7 +118,7 @@ class ParametersILF(InjectionLogger):
             hyper_params.estimator = data_str(mapping_data, "estimator", "@schema", "rdfs:label",
                                               default=ctx.__class__.__name__)
 
-            for parameter_type, parameters in data_path(mapping_data, "estimator", "parameter", default={}).items():
+            for parameter_type, parameters in data_path(mapping_data, "estimator", "parameters", default={}).items():
                 for parameter in parameters:
                     parameter = data_path(parameter, "@schema")
                     key = data_path(parameter, "padre:value_type")

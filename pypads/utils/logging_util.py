@@ -36,7 +36,7 @@ def data_str(data, *path, default=None, warning=None):
 def data_path(data, *path, default=None, warning=None):
     cur = data
     for p in path:
-        if p in data:
+        if p in cur:
             cur = cur[p]
         else:
             if warning is not None:
