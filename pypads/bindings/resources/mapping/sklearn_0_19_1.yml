@@ -12,8 +12,8 @@ mappings:
   !!python/pPath 'sklearn':
     data:
       '@rdf':
-        defined_in: http://www.padre-lab.eu/onto/Sklearn#0.19.1
         mapped_by: http://www.padre-lab.eu/PyPadsInjection
+        produced_by: http://www.padre-lab.eu/DecisionTree
     !!python/pPath 'base.BaseEstimator':
       ;default_model: null
       __init__:
@@ -70,10 +70,6 @@ mappings:
     :calibration.CalibratedClassifierCV:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.calibration.CalibratedClassifierCV
@@ -146,11 +142,6 @@ mappings:
     :cluster.affinity_propagation_.AffinityPropagation:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.cluster.affinity_propagation_.AffinityPropagation
@@ -294,11 +285,6 @@ mappings:
     :cluster.bicluster.SpectralBiclustering:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.cluster.bicluster.SpectralBiclustering
@@ -507,11 +493,6 @@ mappings:
     :cluster.bicluster.SpectralCoclustering:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.cluster.bicluster.SpectralCoclustering
@@ -670,10 +651,6 @@ mappings:
     :cluster.birch.Birch:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.cluster.birch.Birch
@@ -786,11 +763,6 @@ mappings:
     :cluster.dbscan_.DBSCAN:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.cluster.dbscan_.DBSCAN
@@ -957,10 +929,6 @@ mappings:
     :cluster.hierarchical.AgglomerativeClustering:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.cluster.hierarchical.AgglomerativeClustering
@@ -1111,10 +1079,6 @@ mappings:
     :cluster.hierarchical.FeatureAgglomeration:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.cluster.hierarchical.FeatureAgglomeration
@@ -1265,11 +1229,6 @@ mappings:
     :cluster.k_means_.KMeans:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.cluster.k_means_.KMeans
@@ -1485,11 +1444,6 @@ mappings:
     :cluster.k_means_.MiniBatchKMeans:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.cluster.k_means_.MiniBatchKMeans
@@ -1723,11 +1677,6 @@ mappings:
     :cluster.mean_shift_.MeanShift:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.cluster.mean_shift_.MeanShift
@@ -1855,11 +1804,6 @@ mappings:
     :cluster.spectral.SpectralClustering:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.cluster.spectral.SpectralClustering
@@ -2086,10 +2030,6 @@ mappings:
     :covariance.outlier_detection.EllipticEnvelope:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.covariance.outlier_detection.EllipticEnvelope
@@ -2205,11 +2145,6 @@ mappings:
     :cross_decomposition.cca_.CCA:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.cross_decomposition.cca_.CCA
@@ -2315,11 +2250,6 @@ mappings:
     :cross_decomposition.pls_.PLSCanonical:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.cross_decomposition.pls_.PLSCanonical
@@ -2441,11 +2371,6 @@ mappings:
     :cross_decomposition.pls_.PLSRegression:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.cross_decomposition.pls_.PLSRegression
@@ -2551,10 +2476,6 @@ mappings:
     :cross_decomposition.pls_.PLSSVD:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.cross_decomposition.pls_.PLSSVD
@@ -2627,11 +2548,6 @@ mappings:
     :decomposition.SparseCoder:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.decomposition.SparseCoder
@@ -2756,11 +2672,6 @@ mappings:
     :decomposition.dict_learning.DictionaryLearning:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.decomposition.dict_learning.DictionaryLearning
@@ -3016,11 +2927,6 @@ mappings:
     :decomposition.dict_learning.MiniBatchDictionaryLearning:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.decomposition.dict_learning.MiniBatchDictionaryLearning
@@ -3276,11 +3182,6 @@ mappings:
     :decomposition.factor_analysis.FactorAnalysis:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.decomposition.factor_analysis.FactorAnalysis
@@ -3422,11 +3323,6 @@ mappings:
     :decomposition.fastica_.FastICA:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.decomposition.fastica_.FastICA
@@ -3602,10 +3498,6 @@ mappings:
     :decomposition.incremental_pca.IncrementalPCA:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.decomposition.incremental_pca.IncrementalPCA
@@ -3701,11 +3593,6 @@ mappings:
     :decomposition.kernel_pca.KernelPCA:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.decomposition.kernel_pca.KernelPCA
@@ -3985,11 +3872,6 @@ mappings:
     :decomposition.nmf.NMF:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.decomposition.nmf.NMF
@@ -4183,11 +4065,6 @@ mappings:
     :decomposition.online_lda.LatentDirichletAllocation:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.decomposition.online_lda.LatentDirichletAllocation
@@ -4492,10 +4369,6 @@ mappings:
     :decomposition.pca.PCA:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.decomposition.pca.PCA
@@ -4645,11 +4518,6 @@ mappings:
     :decomposition.sparse_pca.MiniBatchSparsePCA:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.decomposition.sparse_pca.MiniBatchSparsePCA
@@ -4856,11 +4724,6 @@ mappings:
     :decomposition.sparse_pca.SparsePCA:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.decomposition.sparse_pca.SparsePCA
@@ -5068,11 +4931,6 @@ mappings:
     :decomposition.truncated_svd.TruncatedSVD:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.decomposition.truncated_svd.TruncatedSVD
@@ -5182,10 +5040,6 @@ mappings:
     :discriminant_analysis.LinearDiscriminantAnalysis:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.discriminant_analysis.LinearDiscriminantAnalysis
@@ -5311,10 +5165,6 @@ mappings:
     :discriminant_analysis.QuadraticDiscriminantAnalysis:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.discriminant_analysis.QuadraticDiscriminantAnalysis
@@ -5402,11 +5252,6 @@ mappings:
     :ensemble.VotingClassifier:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.ensemble.VotingClassifier
@@ -5517,11 +5362,6 @@ mappings:
     :ensemble.bagging.BaggingClassifier:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.ensemble.bagging.BaggingClassifier
@@ -5731,11 +5571,6 @@ mappings:
     :ensemble.bagging.BaggingRegressor:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.ensemble.bagging.BaggingRegressor
@@ -5945,11 +5780,6 @@ mappings:
     :ensemble.forest.ExtraTreesClassifier:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.ensemble.forest.ExtraTreesClassifier
@@ -6243,11 +6073,6 @@ mappings:
     :ensemble.forest.ExtraTreesRegressor:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.ensemble.forest.ExtraTreesRegressor
@@ -6525,11 +6350,6 @@ mappings:
     :ensemble.forest.RandomForestClassifier:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.ensemble.forest.RandomForestClassifier
@@ -6823,11 +6643,6 @@ mappings:
     :ensemble.forest.RandomForestRegressor:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.ensemble.forest.RandomForestRegressor
@@ -7105,11 +6920,6 @@ mappings:
     :ensemble.forest.RandomTreesEmbedding:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.ensemble.forest.RandomTreesEmbedding
@@ -7354,11 +7164,6 @@ mappings:
     :ensemble.gradient_boosting.GradientBoostingClassifier:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.ensemble.gradient_boosting.GradientBoostingClassifier
@@ -7674,11 +7479,6 @@ mappings:
     :ensemble.gradient_boosting.GradientBoostingRegressor:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.ensemble.gradient_boosting.GradientBoostingRegressor
@@ -8011,11 +7811,6 @@ mappings:
     :ensemble.iforest.IsolationForest:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.ensemble.iforest.IsolationForest
@@ -8176,10 +7971,6 @@ mappings:
     :ensemble.weight_boosting.AdaBoostClassifier:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.ensemble.weight_boosting.AdaBoostClassifier
@@ -8294,10 +8085,6 @@ mappings:
     :ensemble.weight_boosting.AdaBoostRegressor:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.ensemble.weight_boosting.AdaBoostRegressor
@@ -8407,10 +8194,6 @@ mappings:
     :feature_selection.RFE:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.feature_selection.RFE
@@ -8503,11 +8286,6 @@ mappings:
     :feature_selection.RFECV:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.feature_selection.RFECV
@@ -8640,10 +8418,6 @@ mappings:
     :feature_selection.SelectFromModel:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.feature_selection.SelectFromModel
@@ -8734,10 +8508,6 @@ mappings:
     :feature_selection.univariate_selection.GenericUnivariateSelect:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.feature_selection.univariate_selection.GenericUnivariateSelect
@@ -8810,10 +8580,6 @@ mappings:
     :feature_selection.univariate_selection.SelectFdr:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.feature_selection.univariate_selection.SelectFdr
@@ -8870,10 +8636,6 @@ mappings:
     :feature_selection.univariate_selection.SelectFpr:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.feature_selection.univariate_selection.SelectFpr
@@ -8930,10 +8692,6 @@ mappings:
     :feature_selection.univariate_selection.SelectFwe:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.feature_selection.univariate_selection.SelectFwe
@@ -8990,10 +8748,6 @@ mappings:
     :feature_selection.univariate_selection.SelectKBest:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.feature_selection.univariate_selection.SelectKBest
@@ -9049,10 +8803,6 @@ mappings:
     :feature_selection.univariate_selection.SelectPercentile:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.feature_selection.univariate_selection.SelectPercentile
@@ -9108,10 +8858,6 @@ mappings:
     :feature_selection.variance_threshold.VarianceThreshold:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.feature_selection.variance_threshold.VarianceThreshold
@@ -9151,11 +8897,6 @@ mappings:
     :gaussian_process.gpc.GaussianProcessClassifier:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.gaussian_process.gpc.GaussianProcessClassifier
@@ -9342,10 +9083,6 @@ mappings:
     :gaussian_process.gpr.GaussianProcessRegressor:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.gaussian_process.gpr.GaussianProcessRegressor
@@ -9507,10 +9244,6 @@ mappings:
     :isotonic.IsotonicRegression:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.isotonic.IsotonicRegression
@@ -9605,10 +9338,6 @@ mappings:
     :kernel_ridge.KernelRidge:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.kernel_ridge.KernelRidge
@@ -9738,11 +9467,6 @@ mappings:
     :linear_model.base.LinearRegression:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.base.LinearRegression
@@ -9831,11 +9555,6 @@ mappings:
     :linear_model.bayes.ARDRegression:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.bayes.ARDRegression
@@ -10058,11 +9777,6 @@ mappings:
     :linear_model.bayes.BayesianRidge:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.bayes.BayesianRidge
@@ -10268,11 +9982,6 @@ mappings:
     :linear_model.coordinate_descent.ElasticNet:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.coordinate_descent.ElasticNet
@@ -10503,11 +10212,6 @@ mappings:
     :linear_model.coordinate_descent.Lasso:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.coordinate_descent.Lasso
@@ -10719,11 +10423,6 @@ mappings:
     :linear_model.coordinate_descent.MultiTaskElasticNet:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.coordinate_descent.MultiTaskElasticNet
@@ -10920,11 +10619,6 @@ mappings:
     :linear_model.coordinate_descent.MultiTaskLasso:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.coordinate_descent.MultiTaskLasso
@@ -11102,11 +10796,6 @@ mappings:
     :linear_model.huber.HuberRegressor:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.huber.HuberRegressor
@@ -11230,11 +10919,6 @@ mappings:
     :linear_model.least_angle.Lars:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.least_angle.Lars
@@ -11393,11 +11077,6 @@ mappings:
     :linear_model.least_angle.LassoLars:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.least_angle.LassoLars
@@ -11588,11 +11267,6 @@ mappings:
     :linear_model.logistic.LogisticRegression:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.logistic.LogisticRegression
@@ -11858,11 +11532,6 @@ mappings:
     :linear_model.omp.OrthogonalMatchingPursuit:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.omp.OrthogonalMatchingPursuit
@@ -11968,11 +11637,6 @@ mappings:
     :linear_model.orthogonal_mp:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.orthogonal_mp
@@ -12124,11 +11788,6 @@ mappings:
     :linear_model.passive_aggressive.PassiveAggressiveClassifier:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.passive_aggressive.PassiveAggressiveClassifier
@@ -12356,11 +12015,6 @@ mappings:
     :linear_model.passive_aggressive.PassiveAggressiveRegressor:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.passive_aggressive.PassiveAggressiveRegressor
@@ -12573,11 +12227,6 @@ mappings:
     :linear_model.perceptron.Perceptron:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.perceptron.Perceptron
@@ -12799,11 +12448,6 @@ mappings:
     :linear_model.ransac.RANSACRegressor:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.ransac.RANSACRegressor
@@ -13041,11 +12685,6 @@ mappings:
     :linear_model.ridge.Ridge:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.ridge.Ridge
@@ -13204,11 +12843,6 @@ mappings:
     :linear_model.stochastic_gradient.SGDClassifier:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.stochastic_gradient.SGDClassifier
@@ -13571,11 +13205,6 @@ mappings:
     :linear_model.stochastic_gradient.SGDRegressor:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.stochastic_gradient.SGDRegressor
@@ -13872,11 +13501,6 @@ mappings:
     :linear_model.theil_sen.TheilSenRegressor:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.linear_model.theil_sen.TheilSenRegressor
@@ -14055,11 +13679,6 @@ mappings:
     :manifold.isomap.Isomap:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.manifold.isomap.Isomap
@@ -14216,11 +13835,6 @@ mappings:
     :manifold.locally_linear.LocallyLinearEmbedding:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.manifold.locally_linear.LocallyLinearEmbedding
@@ -14444,11 +14058,6 @@ mappings:
     :manifold.locally_linear_embedding:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.manifold.locally_linear_embedding
@@ -14672,11 +14281,6 @@ mappings:
     :manifold.mds.MDS:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.manifold.mds.MDS
@@ -14854,10 +14458,6 @@ mappings:
     :manifold.spectral_embedding:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.manifold.spectral_embedding
@@ -14981,11 +14581,6 @@ mappings:
     :manifold.spectral_embedding_.SpectralEmbedding:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.manifold.spectral_embedding_.SpectralEmbedding
@@ -15109,11 +14704,6 @@ mappings:
     :manifold.t_sne.TSNE:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.manifold.t_sne.TSNE
@@ -15381,11 +14971,6 @@ mappings:
     :mixture.bayesian_mixture.BayesianGaussianMixture:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.mixture.bayesian_mixture.BayesianGaussianMixture
@@ -15705,11 +15290,6 @@ mappings:
     :mixture.gaussian_mixture.GaussianMixture:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.mixture.gaussian_mixture.GaussianMixture
@@ -15974,11 +15554,6 @@ mappings:
     :multiclass.OneVsOneClassifier:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.multiclass.OneVsOneClassifier
@@ -16035,11 +15610,6 @@ mappings:
     :multiclass.OneVsRestClassifier:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.multiclass.OneVsRestClassifier
@@ -16096,11 +15666,6 @@ mappings:
     :multiclass.OutputCodeClassifier:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.multiclass.OutputCodeClassifier
@@ -16196,10 +15761,6 @@ mappings:
     :multioutput.ClassifierChain:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.multioutput.ClassifierChain
@@ -16293,11 +15854,6 @@ mappings:
     :multioutput.MultiOutputRegressor:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.multioutput.MultiOutputRegressor
@@ -16353,10 +15909,6 @@ mappings:
     :naive_bayes.BernoulliNB:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.naive_bayes.BernoulliNB
@@ -16446,10 +15998,6 @@ mappings:
     :naive_bayes.GaussianNB:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.naive_bayes.GaussianNB
@@ -16489,10 +16037,6 @@ mappings:
     :naive_bayes.MultinomialNB:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.naive_bayes.MultinomialNB
@@ -16565,11 +16109,6 @@ mappings:
     :neighbors.BallTree:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.neighbors.BallTree
@@ -16649,11 +16188,6 @@ mappings:
     :neighbors.KDTree:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.neighbors.KDTree
@@ -16729,11 +16263,6 @@ mappings:
     :neighbors.classification.KNeighborsClassifier:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.neighbors.classification.KNeighborsClassifier
@@ -16896,10 +16425,6 @@ mappings:
     :neighbors.classification.RadiusNeighborsClassifier:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.neighbors.classification.RadiusNeighborsClassifier
@@ -17063,10 +16588,6 @@ mappings:
     :neighbors.kde.KernelDensity:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.neighbors.kde.KernelDensity
@@ -17247,11 +16768,6 @@ mappings:
     :neighbors.lof.LocalOutlierFactor:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.neighbors.lof.LocalOutlierFactor
@@ -17419,10 +16935,6 @@ mappings:
     :neighbors.nearest_centroid.NearestCentroid:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.neighbors.nearest_centroid.NearestCentroid
@@ -17483,11 +16995,6 @@ mappings:
     :neighbors.regression.KNeighborsRegressor:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.neighbors.regression.KNeighborsRegressor
@@ -17650,10 +17157,6 @@ mappings:
     :neighbors.regression.RadiusNeighborsRegressor:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.neighbors.regression.RadiusNeighborsRegressor
@@ -17799,11 +17302,6 @@ mappings:
     :neighbors.unsupervised.NearestNeighbors:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.neighbors.unsupervised.NearestNeighbors
@@ -17966,11 +17464,6 @@ mappings:
     :neural_network.multilayer_perceptron.MLPClassifier:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.neural_network.multilayer_perceptron.MLPClassifier
@@ -18345,11 +17838,6 @@ mappings:
     :neural_network.multilayer_perceptron.MLPRegressor:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.neural_network.multilayer_perceptron.MLPRegressor
@@ -18724,11 +18212,6 @@ mappings:
     :neural_network.rbm.BernoulliRBM:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.neural_network.rbm.BernoulliRBM
@@ -18851,11 +18334,6 @@ mappings:
     :semi_supervised.label_propagation.LabelPropagation:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.semi_supervised.label_propagation.LabelPropagation
@@ -18978,11 +18456,6 @@ mappings:
     :semi_supervised.label_propagation.LabelSpreading:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.semi_supervised.label_propagation.LabelSpreading
@@ -19124,11 +18597,6 @@ mappings:
     :svm.classes.LinearSVC:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.svm.classes.LinearSVC
@@ -19358,11 +18826,6 @@ mappings:
     :svm.classes.LinearSVR:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.svm.classes.LinearSVR
@@ -19559,11 +19022,6 @@ mappings:
     :svm.classes.NuSVC:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.svm.classes.NuSVC
@@ -19828,11 +19286,6 @@ mappings:
     :svm.classes.NuSVR:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.svm.classes.NuSVR
@@ -20037,11 +19490,6 @@ mappings:
     :svm.classes.OneClassSVM:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.svm.classes.OneClassSVM
@@ -20250,11 +19698,6 @@ mappings:
     :svm.classes.SVC:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.svm.classes.SVC
@@ -20517,11 +19960,6 @@ mappings:
     :svm.classes.SVR:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.svm.classes.SVR
@@ -20727,11 +20165,6 @@ mappings:
     !!python/pPath 'tree.tree.DecisionTreeClassifier':
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.tree.tree.DecisionTreeClassifier
@@ -20957,11 +20390,6 @@ mappings:
     :tree.tree.DecisionTreeRegressor:
       ;default_model: null
       data:
-        '@json-ld':
-        - estimator.@schema
-        - estimator.alogorithm.@schema
-        - parameters.model_parameters.algorithm.@schema
-        - parameters.optimisation_parameters.algorithm.@schema
         estimator:
           '@schema':
             '@id': padre:sklearn.tree.tree.DecisionTreeRegressor
