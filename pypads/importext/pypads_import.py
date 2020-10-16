@@ -39,7 +39,7 @@ def _add_inherited_mapping(clazz, super_class):
                                                matched_mapping.mapping.matcher.matchers[
                                                len(matched_mapping.package_path.segments):]])]))),
                     matched_mapping.mapping.in_collection, {h.anchor for h in matched_mapping.mapping.hooks},
-                    matched_mapping.mapping.values)
+                    matched_mapping.mapping.values, inherited=True)
                 found_mappings.add(found_mapping)
     return found_mappings
 

@@ -71,25 +71,40 @@ class ParametersILF(InjectionLogger):
             and fitting.
         Mapping_File:
             data:
-                estimator:
-                    parameters:
-                        model_parameters:
-                        - name: split_quality
-                          kind_of_value: "{'gini', 'entropy'}"
-                          optional: 'True'
-                          description: The function to measure the quality of a split.
-                          default_value: "'gini'"
-                          path: criterion
-                          ...
-                      optimisation_parameters:
-                        - name: presort
-                          kind_of_value: "{boolean, 'auto'}"
-                          optional: 'True'
-                          description: Whether to presort the data to speed up the finding of best splits
-                            in fitting.
-                          default_value: "'auto'"
-                          path: presort
-                      execution_parameters: []
+        '@json-ld':
+        - estimator.@schema
+        - estimator.alogorithm.@schema
+        - parameters.model_parameters.algorithm.@schema
+        estimator:
+          '@schema':
+            '@id': padre:sklearn.tree.tree.DecisionTreeClassifier
+            '@type': padre:Estimator
+            padre:documentation: TBD
+            padre:implements: padre:DecisionTreeClassifier
+            rdfs:description: ''
+            rdfs:label: decision tree classifier
+          algorithm:
+            '@schema':
+              '@id': padre:DecisionTreeClassifier
+              '@type': padre:Algorithm
+              padre:documentation: TBD
+              rdfs:description: ''
+              rdfs:label: decision tree classifier
+          parameters:
+            optimisation_parameters: []
+            execution_parameters: []
+            model_parameters:
+            - '@schema':
+                '@id': padre:sklearn.tree.tree.DecisionTreeClassifier/split_quality
+                '@type': padre:ModelParameters
+                padre:configures: padre:sklearn.tree.tree.DecisionTreeClassifier/split_quality
+                padre:implements: padre:DecisionTreeClassifier/split_quality
+                padre:optional: 'True'
+                padre:path: criterion
+                padre:value_default: '''gini'''
+                padre:value_type: '{''gini'', ''entropy''}'
+                rdfs:description: The function to measure the quality of a split.
+                rdfs:label: split_quality
     """
 
     name = "Parameter Logger"

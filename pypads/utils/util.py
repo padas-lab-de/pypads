@@ -60,7 +60,7 @@ def dict_merge(*dicts, str_to_set=False):
                     node = merged.setdefault(key, [])
                     if not isinstance(node, list):
                         merged[key] = [node]
-                    merged[key].extend(value)
+                    merged[key].extend([e for e in value if e not in merged[key]])
                 elif isinstance(value, dict):
                     node = merged.setdefault(key, {})
                     merged[key] = dict_merge(node, value, str_to_set=str_to_set)

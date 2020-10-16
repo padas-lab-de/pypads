@@ -1,12 +1,9 @@
 import glob
 import os
-from typing import List, Set, Tuple, Generator, Iterable, Type, Union
+from typing import List, Set, Tuple, Generator, Iterable, Type
 
 import yaml
 from pydantic import BaseModel
-
-from pypads.model.domain import MappingModel
-from pypads.model.metadata import ModelObject
 
 from pypads import logger
 from pypads.bindings.anchors import Anchor, get_anchor
@@ -14,6 +11,8 @@ from pypads.bindings.hooks import Hook
 from pypads.importext.package_path import RegexMatcher, PackagePath, PackagePathMatcher, \
     SerializableMatcher, Package
 from pypads.importext.versioning import LibSelector
+from pypads.model.domain import MappingModel
+from pypads.model.metadata import ModelObject
 from pypads.utils.util import find_package_version, dict_merge, persistent_hash
 
 default_mapping_file_paths = []
@@ -27,7 +26,7 @@ class Mapping:
     Mapping for an algorithm defined by a pypads mapping file
     """
 
-    def __init__(self, matcher: PackagePathMatcher, in_collection, anchors, values):
+    def __init__(self, matcher: PackagePathMatcher, in_collection, anchors, values, inherited=False):
         self._in_collection = in_collection
         self._values = values
         self._hooks = set()
@@ -35,6 +34,7 @@ class Mapping:
         for a in anchors:
             self._hooks.add(Hook(a, self))
         self._matcher = matcher
+        self._inherited = inherited
 
     def is_applicable(self, ctx, obj):
         """
