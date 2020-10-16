@@ -4,7 +4,7 @@ from typing import Optional, Union
 from pydantic import BaseModel, Field, root_validator
 
 from pypads.model.models import IdBasedEntry, ResultType
-from pypads.utils.util import get_experiment_id, get_run_id, get_experiment_name
+from pypads.utils.util import get_experiment_id, get_run_id, get_experiment_name, get_backend_uri
 
 
 class LibraryModel(IdBasedEntry):
@@ -80,6 +80,7 @@ class RunObjectModel(BaseModel):
     Base object for tracked objects that manage metadata. A MetadataEntity manages and id and a dict of metadata.
     The metadata should contain all necessary non-binary data to describe an entity.
     """
+    backend_uri: Optional[str] = Field(default_factory=get_backend_uri)
     experiment_id: Optional[str] = Field(default_factory=get_experiment_id)
     experiment_name: Optional[str] = Field(default_factory=get_experiment_name)
     run_id: Optional[str] = Field(default_factory=get_run_id)
