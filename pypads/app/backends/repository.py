@@ -7,6 +7,7 @@ from pydantic import Extra
 from pypads.app.backends.mlflow import MongoSupportMixin
 from pypads.model.models import Entry, join_typed_id, IdBasedEntry, ResultType
 from pypads.utils.logging_util import FileFormats
+from pypads.utils.util import persistent_hash
 
 
 class Repository:
@@ -41,15 +42,18 @@ class Repository:
         :param run_id: Optional run_id of object. This is the id of the run in which the object should be stored.
         :return:
         """
-        return RepositoryObject(self, run_id, uid, name)
+        return RepositoryObject(self, run_id, self._extend_uid(uid), name)
 
     def has_object(self, uid):
         if isinstance(self.pads.backend, MongoSupportMixin):
-            return self.pads.backend.get_json(self.id, uid, self.name) is not None
+            return self.pads.backend.get_json(self.id, self._extend_uid(uid), self.name) is not None
         else:
             return len(self.pads.backend.search_runs(experiment_ids=self.id,
                                                      filter_string="tags.`pypads_unique_uid` = \"" + join_typed_id(
-                                                         [uid, self.name]) + "\"")) > 0
+                                                         [self._extend_uid(uid), self.name]) + "\"")) > 0
+
+    def _extend_uid(self, uid):
+        return ".".join([str(uid), str(persistent_hash(self.pads.uri))])
 
     def context(self, run_id=None, run_name=None):
         """
@@ -151,7 +155,7 @@ class RepositoryObject:
         with self.init_context() as ctx:
             return self.get_rel_artifact_path(
                 self.pads.api.log_mem_artifact(path=path, obj=obj, write_format=write_format, description=description,
-                                               additional_data=additional_data))
+                                               additional_data=self._extend_meta(additional_data)))
 
     def log_artifact(self, local_path, description="", additional_data=None, artifact_path=None):
         """
@@ -161,7 +165,7 @@ class RepositoryObject:
         with self.init_context() as ctx:
             return self.get_rel_artifact_path(
                 self.pads.api.log_artifact(local_path=local_path, description=description,
-                                           additional_data=additional_data,
+                                           additional_data=self._extend_meta(additional_data),
                                            artifact_path=artifact_path))
 
     def log_param(self, key, value, value_format=None, description="", meta: dict = None):
@@ -170,7 +174,8 @@ class RepositoryObject:
         :return:
         """
         with self.init_context() as ctx:
-            return self.get_rel_artifact_path(self.pads.api.log_param(key, value, value_format, description, meta))
+            return self.get_rel_artifact_path(
+                self.pads.api.log_param(key, value, value_format, description, self._extend_meta(meta)))
 
     def log_metric(self, key, value, description="", step=None, meta: dict = None):
         """
@@ -178,7 +183,8 @@ class RepositoryObject:
         :return:
         """
         with self.init_context() as ctx:
-            return self.get_rel_artifact_path(self.pads.api.log_metric(self, key, value, description, step, meta))
+            return self.get_rel_artifact_path(
+                self.pads.api.log_metric(self, key, value, description, step, self._extend_meta(meta)))
 
     def set_tag(self, key, value, value_format="string", description="", meta: dict = None):
         """
@@ -189,7 +195,8 @@ class RepositoryObject:
             return self.pads.api.set_tag(key, value, value_format, description, meta)
         else:
             with self.init_context() as ctx:
-                return self.get_rel_artifact_path(self.pads.api.set_tag(key, value, value_format, description, meta))
+                return self.get_rel_artifact_path(
+                    self.pads.api.set_tag(key, value, value_format, description, self._extend_meta(meta)))
 
     def log_json(self, obj: Union[Entry, dict]):
         """
@@ -199,16 +206,17 @@ class RepositoryObject:
         """
         with self.init_context() as ctx:
             if isinstance(obj, dict):
-                obj = ExtendedIdBasedEntry(**{**{"category": self.repository.name}, **obj,
-                                              **{"uid": str(self.uid),
-                                                 "storage_type": self.repository.name,
-                                                 "run_id": self.run_id, "experiment_id": self.repository.id}})
+                obj = ExtendedIdBasedEntry(**self._extend_meta({**{"category": self.repository.name}, **obj,
+                                                                **{"uid": str(self.uid),
+                                                                   "storage_type": self.repository.name,
+                                                                   "run_id": self.run_id,
+                                                                   "experiment_id": self.repository.id}}))
             else:
                 obj = ExtendedIdBasedEntry(
-                    **{**{"category": self.repository.name}, **obj.dict(by_alias=True),
-                       **{"uid": str(self.uid), "storage_type": self.repository.name,
-                          "run_id": self.run_id,
-                          "experiment_id": self.repository.id}})
+                    **self._extend_meta({**{"category": self.repository.name}, **obj.dict(by_alias=True),
+                                         **{"uid": str(self.uid), "storage_type": self.repository.name,
+                                            "run_id": self.run_id,
+                                            "experiment_id": self.repository.id}}))
             # if isinstance(self.pads.backend, MongoSupportMixin):
             #     return self.pads.backend.log(obj)
             # else:
@@ -227,6 +235,13 @@ class RepositoryObject:
         else:
             with self.init_context() as ctx:
                 return self.pads.backend.get_json(self.run_id, self.uid, self.repository.name)
+
+    def _extend_meta(self, meta=None):
+
+        if meta is None:
+            meta = {}
+
+        return {**meta, "backend_uri": self.pads.uri}
 
     def get_rel_base_path(self):
         return os.path.join(self.repository.id, self.run_id)

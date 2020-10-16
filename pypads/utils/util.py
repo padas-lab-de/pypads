@@ -247,6 +247,14 @@ def has_direct_attr(obj, name):
         return False
 
 
+def get_backend_uri():
+    from pypads.app.pypads import get_current_pads
+    pads = get_current_pads()
+    if pads:
+        return pads.uri
+    return None
+
+
 def get_experiment_id():
     if mlflow.active_run():
         return mlflow.active_run().info.experiment_id
