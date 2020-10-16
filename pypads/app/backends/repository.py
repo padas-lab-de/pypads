@@ -147,7 +147,8 @@ class RepositoryObject:
     def run_id(self):
         return self.run.info.run_id
 
-    def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", additional_data=None):
+    def log_mem_artifact(self, path, obj, write_format=FileFormats.text, description="", additional_data=None,
+                         holder=None):
         """
         Activates the repository context and stores an artifact from memory into it.
         :return:
@@ -155,9 +156,9 @@ class RepositoryObject:
         with self.init_context() as ctx:
             return self.get_rel_artifact_path(
                 self.pads.api.log_mem_artifact(path=path, obj=obj, write_format=write_format, description=description,
-                                               additional_data=self._extend_meta(additional_data)))
+                                               additional_data=self._extend_meta(additional_data), holder=holder))
 
-    def log_artifact(self, local_path, description="", additional_data=None, artifact_path=None):
+    def log_artifact(self, local_path, description="", additional_data=None, artifact_path=None, holder=None):
         """
         Activates the repository context and stores an artifact into it.
         :return:
@@ -166,27 +167,27 @@ class RepositoryObject:
             return self.get_rel_artifact_path(
                 self.pads.api.log_artifact(local_path=local_path, description=description,
                                            additional_data=self._extend_meta(additional_data),
-                                           artifact_path=artifact_path))
+                                           artifact_path=artifact_path, holder=holder))
 
-    def log_param(self, key, value, value_format=None, description="", meta: dict = None):
+    def log_param(self, key, value, value_format=None, description="", meta: dict = None, holder=None):
         """
         Activates the repository context and stores an parameter into it.
         :return:
         """
         with self.init_context() as ctx:
             return self.get_rel_artifact_path(
-                self.pads.api.log_param(key, value, value_format, description, self._extend_meta(meta)))
+                self.pads.api.log_param(key, value, value_format, description, self._extend_meta(meta), holder=holder))
 
-    def log_metric(self, key, value, description="", step=None, meta: dict = None):
+    def log_metric(self, key, value, description="", step=None, meta: dict = None, holder=None):
         """
         Activates the repository context and stores an metric into it.
         :return:
         """
         with self.init_context() as ctx:
             return self.get_rel_artifact_path(
-                self.pads.api.log_metric(self, key, value, description, step, self._extend_meta(meta)))
+                self.pads.api.log_metric(self, key, value, description, step, self._extend_meta(meta), holder=holder))
 
-    def set_tag(self, key, value, value_format="string", description="", meta: dict = None):
+    def set_tag(self, key, value, value_format="string", description="", meta: dict = None, holder=None):
         """
         Activates the repository context and stores an tag into it.
         :return:
@@ -196,7 +197,8 @@ class RepositoryObject:
         else:
             with self.init_context() as ctx:
                 return self.get_rel_artifact_path(
-                    self.pads.api.set_tag(key, value, value_format, description, self._extend_meta(meta)))
+                    self.pads.api.set_tag(key, value, value_format, description, self._extend_meta(meta),
+                                          holder=holder))
 
     def log_json(self, obj: Union[Entry, dict]):
         """

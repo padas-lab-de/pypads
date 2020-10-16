@@ -27,17 +27,17 @@ class ConfigSklearnTest(BaseSklearnTest):
         n_outputs = 1 + 1  # number of outputs of fit and predict
         assert len(tracker.mlf.list_artifacts(run.info.run_id)) > 0
 
-        parameters = tracker.mlf.list_artifacts(run.info.run_id, path='../params')
+        parameters = [x for x in tracker.results.get_parameters(run_id=run.info.run_id)]
         assert len(parameters) != 0
-        assert 'split_quality' in ''.join([p.path for p in parameters])
+        assert 'sklearn.tree._classes.DecisionTreeClassifier.max_depth' in ''.join([p.name for p in parameters])
 
-        metrics = tracker.mlf.list_artifacts(run.info.run_id, path='../metrics')
+        metrics = [x for x in tracker.results.get_metrics()]
         assert len(metrics) != 0
 
-        assert 'f1_score' in ''.join([m.path for m in metrics])
+        assert 'sklearn.metrics.classification.f1_score.' in ''.join([m.name for m in metrics])
 
-        tags = tracker.mlf.list_artifacts(run.info.run_id, path='../tags')
-        assert 'pypads.system.processor' in ''.join([m.path for m in tags])
+        tags = [x for x in tracker.results.get_tags(run_id=run.info.run_id)]
+        assert 'pypads.system.processor' in ''.join([m.name for m in tags])
 
         # !-------------------------- asserts ---------------------------
         # End the mlflow run opened by PyPads

@@ -30,7 +30,8 @@ class MappingSklearnTest(BaseTest):
         # --------------------------- asserts ---------------------------
         run = mlflow.active_run()
         assert tracker.api.active_run().info.run_id == run.info.run_id
-        assert len(tracker.mlf.list_artifacts(run.info.run_id)) > 0
+        artifacts = [x for x in tracker.results.get_artifacts(run_id=run.info.run_id)]
+        assert len(artifacts) > 0
         # !-------------------------- asserts ---------------------------
 
     # noinspection DuplicatedCode
@@ -47,5 +48,6 @@ class MappingSklearnTest(BaseTest):
         # --------------------------- asserts ---------------------------
         run = mlflow.active_run()
         assert tracker.api.active_run().info.run_id == run.info.run_id
-        assert len(tracker.mlf.list_artifacts(run.info.run_id)) > 0
+        artifacts = [x for x in tracker.results.get_artifacts(run_id=run.info.run_id)]
+        assert len(artifacts) > 0
         # !-------------------------- asserts ---------------------------
