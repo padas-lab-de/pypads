@@ -59,6 +59,22 @@ class PyPadsDecorators(IDecorators):
         from pypads.app.pypads import get_current_pads
         return get_current_pads()
 
+    # @decorator
+    # def project(self, clazz):
+    #     """
+    #     Used to annotate a data class as a project representation. The data class should define following structure:
+    #
+    #     @project
+    #     class Project:
+    #         name = "My project"
+    #         description = "We hope to solve something difficult."
+    #         hypothesis = "This hypothesis is difficult."
+    #     :return:
+    #     """
+    #     # TODO Write to pypads
+    #     self.pypads.api.log_artifact()
+    #     return dataclass(clazz)
+
     @decorator
     def track(self, event="pypads_log", mapping: Mapping = None):
         def track_decorator(fn):

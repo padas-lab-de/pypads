@@ -58,6 +58,7 @@ def get_typed_id(obj):
     if hasattr(obj, "storage_type"):
         fragments.append(
             str(obj.storage_type.value) if isinstance(obj.storage_type, ResultType) else obj.storage_type)
+    # TODO add backend URI
     return join_typed_id(fragments)
 
 

@@ -12,7 +12,6 @@ mappings:
   !!python/pPath sklearn:
     data:
       "@rdf":
-        "produced_by": "http://www.padre-lab.eu/DecisionTree"
         mapped_by: "http://www.padre-lab.eu/PyPadsInjection"
         defined_in: "http://www.padre-lab.eu/onto/Sklearn#0.19.1"
     !!python/pPath base.BaseEstimator:
