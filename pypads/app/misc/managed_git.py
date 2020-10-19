@@ -21,7 +21,7 @@ class ManagedGitFactory(DefensiveCallableMixin, DependencyMixin):
     _dependencies = {"git"}
 
     def __real_call__(self, path, *args, **kwargs):
-        return ManagedGit(path, pads=self.pads, source=kwargs.get('source',True))
+        return ManagedGit(path, pads=self.pads, source=kwargs.get('source', True))
 
 
 class ManagedGit:
@@ -47,13 +47,36 @@ class ManagedGit:
         from git import InvalidGitRepositoryError
         try:
             self.repo = git.Repo(path, search_parent_directories=True)
+            self.tracked_branch = self.repo.active_branch.name
+            self.tracked_hash = self.repo.git.stash('rev-parse', self.tracked_branch)
             if source:
                 self.preserve_changes(message="Tracking changes while preserving them in your current branch.")
         except InvalidGitRepositoryError:
             logger.warning("No existing git repository was found on {0}, initializing a new one...".format(path))
             self._init_git_repo(path, source=source)
+            self.tracked_branch = self.repo.active_branch.name
+            self.tracked_hash = self.repo.git.stash('rev-parse', self.tracked_branch)
 
-    def _verify_path(self,path, pads=None, source=True):
+        self.pads.api.set_tag('pypads_tracked_branch', self.tracked_branch)
+        self.pads.api.set_tag('pypads_git_hash', self.tracked_hash)
+
+    @property
+    def tracked_branch(self):
+        return self._tracked_hash
+
+    @tracked_branch.setter
+    def tracked_branch(self, value):
+        self._tracked_branch = value
+
+    @property
+    def tracked_hash(self):
+        return self._tracked_hash
+
+    @tracked_hash.setter
+    def tracked_hash(self, value):
+        self._tracked_hash = value
+
+    def _verify_path(self, path, pads=None, source=True):
         # Fix: when using PyPads within a IPython Notebook.
         if path != os.getcwd() and source:
             path = os.getcwd()
@@ -130,23 +153,29 @@ class ManagedGit:
 
     def create_tracking_branch(self, message):
         orig_branch = self.repo.active_branch.name
+        orig_hash = self.repo.git.stash('rev-parse', orig_branch)
         run = self.pads.api.active_run()
         logger.warning("Stashing, branching out, "
                        "committing, reverting back and unstashing...")
-        # push untracked changes to the stash
+        # push untracked changes to the stash)
         self.repo.git.stash('push', '--include-untracked')
 
         # branch out, apply the stashed changes and commit
-        branch_name = "PyPads/{}".format(run.info.run_id)
-        branch = self.repo.git.checkout(orig_branch, b=branch_name)
-        self.repo.git.stash('apply')
-        self.commit_changes(message=message)
+        branch_name = f"PyPads/{orig_branch}.run_id-{run.info.run_id}"
+        self.repo.git.stash('branch', branch_name, '--track')
+        self.repo.git.stash('pop')
+        tracked_hash = self.repo.git.stash('rev-parse', branch_name)
+        self.pads.api.set_tag('pypads_from_branch', orig_branch)
+        self.tracked_branch = branch_name
+        self.tracked_hash = tracked_hash
 
         # create the tag with the hash of git diff for this branch
         diff_raw = self.repo.git.diff('master', '--raw')
         diff = self.repo.git.diff('master')
         diff_raw = persistent_hash(diff_raw)
         self.repo.create_tag(path=branch_name, message=diff_raw)
+        self.repo.create_tag(path='original_branch', message=orig_branch)
+        self.repo.create_tag(path='original_hash', message=orig_hash)
         return branch_name, diff
 
     def commit_changes(self, message=""):
