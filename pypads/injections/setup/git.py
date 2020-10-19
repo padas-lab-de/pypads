@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from pypads.app.env import LoggerEnv
 from pypads.app.injections.run_loggers import RunSetup
 from pypads.app.injections.tracked_object import TrackedObject, LoggerOutput
-from pypads.app.misc.managed_git import ManagedGit
+from pypads.app.misc.managed_git import ManagedGit, PYPADS_SOURCE_COMMIT_HASH
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.utils.logging_util import FileFormats
 
@@ -80,4 +80,4 @@ class IGitRSF(RunSetup):
                 except Exception as e:
                     _logger_output.set_failure_state(e)
                 finally:
-                    git_info.store(_logger_output, "git_info")
+                    _logger_output.git_info = git_info.store()

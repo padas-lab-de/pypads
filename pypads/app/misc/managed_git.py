@@ -4,6 +4,10 @@ from pypads import logger
 from pypads.app.misc.mixins import DefensiveCallableMixin, DependencyMixin
 from pypads.utils.util import persistent_hash
 
+PYPADS_SOURCE_COMMIT_HASH = "pypads.source.git.commit_hash"
+PYPADS_GIT_BRANCH = "pypads.git.branch"
+PYPADS_GIT_DIFF = "pypads.git.diff"
+
 
 class ManagedGitFactory(DefensiveCallableMixin, DependencyMixin):
     """
@@ -103,8 +107,8 @@ class ManagedGit:
                 branch = orig_branch
                 diff = None
 
-            self.pads.api.set_tag("pypads.git.branch", str(branch))
-            self.pads.api.set_tag("pypads.git.diff", str(diff))
+            self.pads.api.set_tag(PYPADS_GIT_BRANCH, str(branch))
+            self.pads.api.set_tag(PYPADS_GIT_DIFF, str(diff))
         except Exception as e:
             raise Exception("Preserving commit failed due to %s" % str(e))
 
@@ -158,8 +162,8 @@ class ManagedGit:
 
     def _commit(self, message=""):
         self.repo.git.commit(message=message)
-        self.pads.api.set_tag("pypads.source.git.commit", self.repo.head.object.hexsha)
-        self.pads.api.set_tag("pypads.git.branch", self.repo.active_branch.name)
+        self.pads.api.set_tag(PYPADS_SOURCE_COMMIT_HASH, self.repo.head.object.hexsha)
+        self.pads.api.set_tag(PYPADS_GIT_BRANCH, self.repo.active_branch.name)
 
     def add_untracked_files(self):
         untracked_files = self.repo.untracked_files
