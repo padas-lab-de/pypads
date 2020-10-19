@@ -13,6 +13,7 @@ from pypads.model.metadata import ModelObject
 from pypads.model.mixins import ProvenanceMixin
 from pypads.model.models import ResultType, Entry
 from pypads.utils.logging_util import FileFormats
+from pypads.utils.util import dict_merge
 
 
 class FallibleMixin(ModelObject, SuperStop, metaclass=ABCMeta):
@@ -185,8 +186,8 @@ class LoggerOutput(FallibleMixin, ProvenanceMixin, ResultHolderMixin):
     """
 
     def __init__(self, _pypads_env, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         self._envs = [_pypads_env]
+        super().__init__(*args, **kwargs)
 
     def add_call_env(self, _pypads_env: LoggerEnv):
         self._envs.append(_pypads_env)
@@ -198,6 +199,10 @@ class LoggerOutput(FallibleMixin, ProvenanceMixin, ResultHolderMixin):
         :return:
         """
         return self._envs
+
+    @property
+    def additional_data(self):
+        return dict_merge(*[e.data for e in self.envs])
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:

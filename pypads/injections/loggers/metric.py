@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from pypads import logger
+from pypads.app.env import InjectionLoggerEnv
 from pypads.app.injections.injection import InjectionLogger
 from pypads.app.injections.tracked_object import TrackedObject
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
@@ -66,7 +67,8 @@ class MetricILF(InjectionLogger):
     def output_schema_class(cls) -> Type[OutputModel]:
         return cls.MetricILFOutput
 
-    def __post__(self, ctx, *args, _pypads_artifact_fallback=False, _logger_call, _logger_output, _pypads_result, **kwargs):
+    def __post__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, _pypads_artifact_fallback=False, _logger_call,
+                 _logger_output, _pypads_result, **kwargs):
         """
 
         :param ctx:
@@ -79,7 +81,7 @@ class MetricILF(InjectionLogger):
 
         result = _pypads_result
         metric = MetricTO(parent=_logger_output,
-                          as_artifact=_pypads_artifact_fallback)
+                          as_artifact=_pypads_artifact_fallback, additional_data=_pypads_env.data)
 
         storable = metric.store_value(result, step=_logger_call.original_call.call_id.call_number)
 

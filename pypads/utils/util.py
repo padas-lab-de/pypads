@@ -248,10 +248,13 @@ def has_direct_attr(obj, name):
 
 
 def get_backend_uri():
-    from pypads.app.pypads import get_current_pads
-    pads = get_current_pads()
-    if pads:
-        return pads.uri
+    try:
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+        if pads:
+            return pads.uri
+    except ImportError:
+        pass  # PyPads is not available here the backend uri is not set. Backend_uri has to be provided later on
     return None
 
 

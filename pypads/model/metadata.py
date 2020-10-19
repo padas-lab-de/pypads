@@ -61,7 +61,8 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
 
         # Add defaults which are not given
         for key in fields:
-            if not has_direct_attr(self, key) and self.get_model_fields():
+            if not has_direct_attr(self, key) and self.get_model_fields() and (
+                    not hasattr(self.__class__, key) or not isinstance(getattr(self.__class__, key), property)):
                 setattr(self, key, self.get_model_fields()[key].get_default())
 
     def model(self):
