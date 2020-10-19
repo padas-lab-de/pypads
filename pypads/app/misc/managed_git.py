@@ -1,4 +1,5 @@
 import os
+import pathlib
 
 from pypads import logger
 from pypads.app.misc.mixins import DefensiveCallableMixin, DependencyMixin
@@ -46,14 +47,57 @@ class ManagedGit:
         path = self._verify_path(path, source=source)
         from git import InvalidGitRepositoryError
         try:
+            if not os.path.exists(path):
+                pathlib.Path(path).mkdir(parents=True)
             self.repo = git.Repo(path, search_parent_directories=True)
-            if source:
-                self.preserve_changes(message="Tracking changes while preserving them in your current branch.")
         except InvalidGitRepositoryError:
             logger.warning("No existing git repository was found on {0}, initializing a new one...".format(path))
             self._init_git_repo(path, source=source)
 
+    @property
+    def commit_hash(self):
+        return self.repo.git.execute(["git", "rev-parse"])
+
+    @property
+    def branch(self):
+        return self.repo.active_branch.name
+
+    def has_changes(self):
+        return len(self.repo.index.diff('HEAD')) > 0 or len(
+            self.repo.index.diff(None)) > 0 or self.repo.untracked_files
+
+    def create_patch(self):
+        """
+        Creates a patch without changing anything on the state of the current repository
+        :return: patch, a name for the patch and it's hash
+        """
+        orig_branch = self.repo.active_branch.name
+
+        # push untracked changes to the stash)
+        files = [item.a_path for item in self.repo.index.diff(None)]
+        try:
+            for f in files:
+                self.repo.git.add(f)
+            self.repo.git.stash('push', '--keep-index')
+
+            # branch out, apply the stashed changes and commit
+            patch = self.repo.git.stash('show', '-p')
+            diff_hash = persistent_hash(patch)
+        finally:
+            self.repo.git.checkout(orig_branch)
+            # Remove temporary tracked files
+            for f in files:
+                self.repo.git.reset(f)
+        return patch, diff_hash
+
     def _verify_path(self, path, pads=None, source=True):
+        """
+        Verifies if given path is the correct git repository path.
+        :param path:
+        :param pads:
+        :param source:
+        :return:
+        """
         # Fix: when using PyPads within a IPython Notebook.
         if path != os.getcwd() and source:
             path = os.getcwd()
@@ -63,6 +107,12 @@ class ManagedGit:
         return path
 
     def _init_git_repo(self, path, source=True):
+        """
+        Initializes a new git repo if none is found.
+        :param path:
+        :param source:
+        :return:
+        """
         import git
         from git import InvalidGitRepositoryError, GitCommandError, GitError
         try:
@@ -75,81 +125,6 @@ class ManagedGit:
             raise Exception(
                 "No repository was present and git could not initialize a repository in this directory"
                 " {0} because of exception: {1}".format(path, e))
-
-    def preserve_changes(self, message=""):
-        try:
-            orig_branch = self.repo.active_branch.name
-            if len(self.repo.index.diff('HEAD')) > 0 or len(
-                    self.repo.index.diff(None)) > 0 or self.repo.untracked_files:
-                logger.warning("There are uncommitted changes in your git!")
-
-                # check if the changes were already tracked by PyPads
-                branch, diff = self.search_tracking_branch(ref=orig_branch)
-
-                if branch is None:
-                    branch, diff = self.create_tracking_branch(message)
-                    logger.info("Created branch " + branch)
-                    # Log the commit hash, branch and diff
-                else:
-                    logger.info("Using already existing pypads branch " + branch.name)
-
-            else:
-                branch = orig_branch
-                diff = None
-
-            self.pads.api.set_tag("pypads.git.branch", str(branch))
-            self.pads.api.set_tag("pypads.git.diff", str(diff))
-            self.pads.api.set_tag("pypads.git.hash", str(self.repo.git.execute(['git', 'rev-parse', branch])))
-        except Exception as e:
-            raise Exception("Preserving commit failed due to %s" % str(e))
-
-    def search_tracking_branch(self, ref='HEAD'):
-        """
-        Compares the current untracked changes to all existing pypads managed branches.
-        Returns the branch if we tracked the changes already in it, otherwise None.
-        :return:
-        """
-        # get the branches created by PyPads
-        branches = {b.name: b for b in self.repo.branches if "PyPads" in b.name}
-        # get the tags saved by PyPads
-        tags = [t.tag for t in self.repo.tags if 'PyPads' in t.path]
-        try:
-            for tag in tags:
-                diff = self.repo.git.diff(ref, tag.tag, '--raw')
-                if persistent_hash(diff) == tag.message:
-                    return branches.get(tag.tag), self.repo.git.diff(ref, tag.tag)
-        except Exception as e:
-            logger.warning("Checking existing branches failed due to %s" % str(e))
-            return None, None
-        return None, None
-
-    def create_tracking_branch(self, message):
-        orig_branch = self.repo.active_branch.name
-        orig_hash = self.repo.git.execute(['git', 'rev-parse', orig_branch])
-        run = self.pads.api.active_run()
-        logger.warning("Stashing and branching out, ...")
-        # push untracked changes to the stash)
-        files = [item.a_path for item in self.repo.index.diff(None)]
-        for f in files:
-            self.repo.git.add(f)
-        self.repo.git.stash('push', '--keep-index')
-
-        # branch out, apply the stashed changes and commit
-        branch_name = f"PyPads/{orig_branch}.run_id-{run.info.run_id}"
-        self.repo.git.stash('branch', branch_name)
-
-        # Remove temporary tracked files
-        for f in files:
-            self.repo.git.reset(f)
-
-        # create the tag with the hash of git diff for this branch
-        diff_raw = self.repo.git.diff('master', '--raw')
-        diff = self.repo.git.diff('master')
-        diff_raw = persistent_hash(diff_raw)
-        self.repo.create_tag(path=branch_name, message=diff_raw)
-        self.repo.create_tag(path='pypads.original_branch', message=orig_branch)
-        self.repo.create_tag(path='pypads.original_hash', message=orig_hash)
-        return branch_name, diff
 
     def commit_changes(self, message=""):
         try:
