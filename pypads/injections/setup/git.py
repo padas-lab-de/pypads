@@ -1,4 +1,4 @@
-from typing import Type
+from typing import Type, Optional
 
 from pydantic import BaseModel
 
@@ -17,6 +17,7 @@ class GitTO(TrackedObject):
         source: str = ...
         version: str = ...
         git_log: str = ...  # reference to the log file
+        patch: Optional[str] = ...
 
         class Config:
             orm_mode = True
@@ -64,9 +65,21 @@ class IGitRSF(RunSetup):
                 repo = managed_git.repo
                 git_info = GitTO(parent=_logger_output, source=source_name or repo.working_dir,
                                  version=repo.head.commit.hexsha)
+
+                # Persist local changes into a patch file
+                if managed_git.has_changes():
+                    patch, patch_hash = managed_git.create_patch()
+                    git_info.add_tag("pypads.git.uncommitted_changes", patch_hash,
+                                     description="A hash of the patch including uncommitted changes.")
+                    git_info.patch = git_info.store_mem_artifact("git_stash", patch, write_format="patch",
+                                                                 description="A patch file including uncommitted "
+                                                                             "changes")
+
                 # Disable pager for returns
                 repo.git.set_persistent_git_options(no_pager=True)
                 try:
+                    git_info.add_tag("pypads.source.git.commit", managed_git.commit_hash)
+                    git_info.add_tag("pypads.git.branch", managed_git.branch)
                     git_info.add_tag("pypads.git.description", repo.description, description="Repository description")
                     git_info.add_tag("pypads.git.describe", repo.git.describe("--all"), description="")
                     git_info.store_git_log("pypads.git.log", repo.git.log(kill_after_timeout=_pypads_timeout))

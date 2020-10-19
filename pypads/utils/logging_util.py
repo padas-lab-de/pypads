@@ -119,6 +119,12 @@ def find_file_format(file_name):
     return FileFormats.unknown
 
 
+def write_unknown(p, o):
+    with open(p, "w+") as fd:
+        fd.write(str(o))
+        return fd.name
+
+
 def write_text(p, o):
     with open(p + ".txt", "w+") as fd:
         fd.write(str(o))
@@ -244,11 +250,11 @@ def store_tmp_artifact(file_name, obj, write_format: FileFormats):
 
     # Write to disk
     if isinstance(write_format, str):
-        if FileFormats[write_format]:
+        if write_format in FileFormats:
             write_format = FileFormats[write_format]
         else:
-            logger.warning("Configured write format " + write_format + " not supported! ")
-            return
+            logger.warning("Configured write format " + write_format + " not directly supported!")
+            return write_unknown(f"{path}.{write_format}", obj)
 
     return writers[write_format](path, obj)
 
