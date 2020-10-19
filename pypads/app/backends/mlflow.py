@@ -387,7 +387,7 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
         return self._db[storage_type if isinstance(storage_type, str) else storage_type.value].find_one(search_dict)
 
 
-class MongoSupportedLocalMlFlowBackend(MongoSupportMixin, RemoteMlFlowBackend):
+class MongoSupportedLocalMlFlowBackend(MongoSupportMixin, LocalMlFlowBackend):
     def __init__(self, uri, pypads):
         super().__init__(uri, pypads)
 

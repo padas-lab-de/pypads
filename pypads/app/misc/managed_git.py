@@ -99,7 +99,7 @@ class ManagedGit:
 
             self.pads.api.set_tag("pypads.git.branch", str(branch))
             self.pads.api.set_tag("pypads.git.diff", str(diff))
-            self.pads.api.set_tag("pypads.git.hash", str(self.repo.git('rev-parse', branch)))
+            self.pads.api.set_tag("pypads.git.hash", str(self.repo.git.execute(['git', 'rev-parse', branch])))
         except Exception as e:
             raise Exception("Preserving commit failed due to %s" % str(e))
 
@@ -125,7 +125,7 @@ class ManagedGit:
 
     def create_tracking_branch(self, message):
         orig_branch = self.repo.active_branch.name
-        orig_hash = self.repo.git('rev-parse', orig_branch)
+        orig_hash = self.repo.git.execute(['git', 'rev-parse', orig_branch])
         run = self.pads.api.active_run()
         logger.warning("Stashing and branching out, ...")
         # push untracked changes to the stash)
@@ -136,7 +136,7 @@ class ManagedGit:
 
         # branch out, apply the stashed changes and commit
         branch_name = f"PyPads/{orig_branch}.run_id-{run.info.run_id}"
-        self.repo.git.stash('branch', branch_name, '--track')
+        self.repo.git.stash('branch', branch_name)
 
         # Remove temporary tracked files
         for f in files:

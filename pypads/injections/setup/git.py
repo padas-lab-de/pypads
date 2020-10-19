@@ -80,4 +80,4 @@ class IGitRSF(RunSetup):
                 except Exception as e:
                     _logger_output.set_failure_state(e)
                 finally:
-                    git_info.store(_logger_output, "git_info")
+                    _logger_output.git_info = git_info.store()
