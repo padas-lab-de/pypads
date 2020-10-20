@@ -195,16 +195,15 @@ class ICpuRSF(RunSetup):
 
             def track_cpu_usage(to: CpuUsageTO):
                 to.add_cpu_usage()
+                to.store()
 
+            _logger_output.cpu_usage = cpu_usage_info.store()
             thread = PeriodicThread(target=track_cpu_usage, sleep=_pypads_period, args=(cpu_usage_info,))
             thread.start()
 
             # stop thread store disk_usage object
             def cleanup_thread(*args, **kwargs):
-                # TODO store results live into db instead only at the end!
                 thread.join()
-                _logger_output.cpu_usage = cpu_usage_info.store()
-                _logger_output.store()
 
             _pypads_env.pypads.api.register_teardown_utility(_logger_call, fn=cleanup_thread)
 
