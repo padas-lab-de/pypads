@@ -250,7 +250,7 @@ def store_tmp_artifact(file_name, obj, write_format: FileFormats):
 
     # Write to disk
     if isinstance(write_format, str):
-        if write_format in FileFormats:
+        if write_format in FileFormats.__members__:
             write_format = FileFormats[write_format]
         else:
             logger.warning("Configured write format " + write_format + " not directly supported!")
