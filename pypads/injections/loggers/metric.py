@@ -78,7 +78,6 @@ class MetricILF(InjectionLogger):
         :param kwargs:
         :return:
         """
-
         result = _pypads_result
         metric = MetricTO(tracked_by=_logger_call,
                           to_artifact=_pypads_artifact_fallback)
