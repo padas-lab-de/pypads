@@ -21,7 +21,11 @@ class MappingSklearnTest(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, mappings=[minimal], autostart=True)
+
+        from pypads.injections.setup.misc_setup import DependencyRSF
+        set_up_fns = {DependencyRSF()}
+
+        tracker = PyPads(uri=TEST_FOLDER, config=config, mappings=[minimal], autostart=True, setup_fns=set_up_fns)
 
         import timeit
         t = timeit.Timer(sklearn_pipeline_experiment)
@@ -38,8 +42,10 @@ class MappingSklearnTest(BaseTest):
     def test_regex_mapping(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
+        from pypads.injections.setup.misc_setup import DependencyRSF
+        set_up_fns = {DependencyRSF()}
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, mappings=[minimal], autostart=True)
+        tracker = PyPads(uri=TEST_FOLDER, config=config, mappings=[minimal], autostart=True, setup_fns=set_up_fns)
 
         import timeit
         t = timeit.Timer(sklearn_simple_decision_tree_experiment)

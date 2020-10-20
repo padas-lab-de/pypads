@@ -68,7 +68,8 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
         """
         pass
 
-    def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, **kwargs):
+    def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, _pypads_input_results,
+                      _pypads_cached_results, **kwargs):
         _pypads_hook_params = _pypads_env.parameter
 
         self.store()
@@ -81,6 +82,8 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
             _pre_result, pre_time = self._pre(ctx, _pypads_env=_pypads_env,
                                               _logger_output=output,
                                               _logger_call=logger_call,
+                                              _pypads_input_results=_pypads_input_results,
+                                              _pypads_cached_results=_pypads_cached_results,
                                               _args=args,
                                               _kwargs=kwargs, **{**self.static_parameters, **_pypads_hook_params})
             logger_call.pre_time = pre_time
@@ -97,6 +100,8 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
                                                  _pypads_pre_return=_pre_result,
                                                  _pypads_result=_return,
                                                  _logger_call=logger_call,
+                                                 _pypads_input_results=_pypads_input_results,
+                                                 _pypads_cached_results=_pypads_cached_results,
                                                  _args=args,
                                                  _kwargs=kwargs, **{**self.static_parameters, **_pypads_hook_params})
             logger_call.post_time = post_time
@@ -179,7 +184,7 @@ class OutputModifyingMixin(InjectionLogger, SuperStop, metaclass=ABCMeta):
         return pypads_return
 
 
-class DelayedResultsMixing(Logger, SuperStop, metaclass=ABCMeta):
+class DelayedResultsMixin(Logger, SuperStop, metaclass=ABCMeta):
 
     @staticmethod
     @abstractmethod
@@ -222,7 +227,7 @@ class MultiInjectionLoggerCall(LoggerCall):
         self.call_stack.append(call)
 
 
-class MultiInjectionLogger(DelayedResultsMixing, InjectionLogger, SuperStop, metaclass=ABCMeta):
+class MultiInjectionLogger(DelayedResultsMixin, InjectionLogger, SuperStop, metaclass=ABCMeta):
     """
     This logger gets called on function calls. It is expected to run multiple times for each experiment.
     """
@@ -247,7 +252,8 @@ class MultiInjectionLogger(DelayedResultsMixing, InjectionLogger, SuperStop, met
         else:
             return super().build_output(_pypads_env, _logger_call)
 
-    def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, **kwargs):
+    def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, _pypads_input_results,
+                      _pypads_cached_results, **kwargs):
         _pypads_hook_params = _pypads_env.parameter
 
         logger_call: Union[MultiInjectionLoggerCall, InjectionLoggerCallModel, FallibleMixin] = self._get_logger_call(
@@ -259,6 +265,8 @@ class MultiInjectionLogger(DelayedResultsMixing, InjectionLogger, SuperStop, met
             _pre_result, pre_time = self._pre(ctx, _pypads_env=_pypads_env,
                                               _logger_output=output,
                                               _logger_call=logger_call,
+                                              _pypads_input_results=_pypads_input_results,
+                                              _pypads_cached_results=_pypads_cached_results,
                                               _args=args,
                                               _kwargs=kwargs, **{**self.static_parameters, **_pypads_hook_params})
             logger_call.pre_time += pre_time
@@ -274,6 +282,8 @@ class MultiInjectionLogger(DelayedResultsMixing, InjectionLogger, SuperStop, met
                                                  _pypads_pre_return=_pre_result,
                                                  _pypads_result=_return,
                                                  _logger_call=logger_call,
+                                                 _pypads_input_results=_pypads_input_results,
+                                                 _pypads_cached_results=_pypads_cached_results,
                                                  _args=args,
                                                  _kwargs=kwargs, **{**self.static_parameters, **_pypads_hook_params})
             logger_call.post_time += post_time
