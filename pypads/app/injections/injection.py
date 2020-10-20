@@ -1,15 +1,18 @@
 import traceback
 from abc import ABCMeta, abstractmethod
-from typing import Type
+from typing import Type, Union
 
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 
-from pypads.app.env import InjectionLoggerEnv
 from pypads import logger
 from pypads.app.call import Call
-from pypads.app.injections.base_logger import LoggerCall, Logger, LoggerExecutor, OriginalExecutor
+from pypads.app.env import InjectionLoggerEnv
+from pypads.app.injections.base_logger import Logger, LoggerExecutor, OriginalExecutor
+from pypads.app.injections.tracked_object import LoggerCall, FallibleMixin
+from pypads.app.misc.inheritance import SuperStop
 from pypads.app.misc.mixins import OrderMixin, NoCallAllowedError
-from pypads.model.models import InjectionLoggerCallModel, InjectionLoggerModel, MultiInjectionLoggerCallModel
+from pypads.model.logger_call import InjectionLoggerCallModel, MultiInjectionLoggerCallModel
+from pypads.model.logger_model import InjectionLoggerModel
 from pypads.utils.util import inheritors
 
 
@@ -23,8 +26,12 @@ class InjectionLoggerCall(LoggerCall):
         super().__init__(*args, original_call=logging_env.call, logging_env=logging_env, **kwargs)
 
 
-class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/injection-logger"
+class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
+    """
+    This is a logger which should be injected via a mapping file. It can also be injected by wrapping functions
+    manually.
+    """
+    category: str = "InjectionLogger"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -37,9 +44,6 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
         return InjectionLoggerModel
-
-    def _base_path(self):
-        return "InjectionLoggers/{}/".format(self.__class__.__name__)
 
     def __pre__(self, ctx, *args,
                 _logger_call, _logger_output, _args, _kwargs, **kwargs):
@@ -64,25 +68,30 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
         """
         pass
 
-    def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, **kwargs):
-        self.store_schema(self._base_path())
-
+    def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, _pypads_input_results,
+                      _pypads_cached_results, **kwargs):
         _pypads_hook_params = _pypads_env.parameter
 
-        logger_call = InjectionLoggerCall(logging_env=_pypads_env, created_by=self.store_schema())
-        output = self.build_output()
+        self.store()
+
+        logger_call: Union[InjectionLoggerCall, FallibleMixin] = self._get_logger_call(_pypads_env)
+        output = self.build_output(_pypads_env, logger_call)
 
         try:
             # Trigger pre run functions
             _pre_result, pre_time = self._pre(ctx, _pypads_env=_pypads_env,
                                               _logger_output=output,
                                               _logger_call=logger_call,
+                                              _pypads_input_results=_pypads_input_results,
+                                              _pypads_cached_results=_pypads_cached_results,
                                               _args=args,
                                               _kwargs=kwargs, **{**self.static_parameters, **_pypads_hook_params})
             logger_call.pre_time = pre_time
 
             # Trigger function itself
-            _return, time = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs)
+            _return, time = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _logger_call=logger_call,
+                                                  _logger_output=output, _args=args,
+                                                  _kwargs=kwargs)
             logger_call.child_time = time
 
             # Trigger post run functions
@@ -91,21 +100,31 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
                                                  _pypads_pre_return=_pre_result,
                                                  _pypads_result=_return,
                                                  _logger_call=logger_call,
+                                                 _pypads_input_results=_pypads_input_results,
+                                                 _pypads_cached_results=_pypads_cached_results,
                                                  _args=args,
                                                  _kwargs=kwargs, **{**self.static_parameters, **_pypads_hook_params})
             logger_call.post_time = post_time
         except Exception as e:
             logger_call.failed = str(e)
-            output.set_failure_state(e)
+            if output:
+                output.set_failure_state(e)
             raise e
         finally:
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
-            logger_call.output = output.store(self._base_path())
-            logger_call.store()
-        return _return
+            self._store_results(output, logger_call)
+        return self._get_return_value(_return, _post_result)
 
-    def __call_wrapped__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, _args, _kwargs):
+    def _get_logger_call(self, _pypads_env) -> Union[InjectionLoggerCall, FallibleMixin]:
+        return InjectionLoggerCall(logging_env=_pypads_env, creator=self)
+
+    @staticmethod
+    def _get_return_value(original_return, pypads_return):
+        return original_return
+
+    def __call_wrapped__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, _logger_call, _logger_output, _args,
+                         _kwargs):
         """
         The real call of the wrapped function. Be carefull when you change this.
         Exceptions here will not be catched automatically and might break your workflow. The returned value will be passed on to __post__ function.
@@ -152,10 +171,42 @@ class InjectionLogger(Logger, OrderMixin, metaclass=ABCMeta):
                     return out
             else:
 
-                # Original function was not accessiblete
+                # Original function was not accessible
                 raise Exception("Couldn't fall back to original function for " + str(
-                    _pypads_env.call.call_id.context.original_name(_pypads_env.callback)) + " on " + str(
-                    _pypads_env.call.call_id.context) + ". Can't recover from " + str(error))
+                    _pypads_env.logger_call.call_id.context.original_name(_pypads_env.callback)) + " on " + str(
+                    _pypads_env.logger_call.call_id.context) + ". Can't recover from " + str(error))
+
+
+class OutputModifyingMixin(InjectionLogger, SuperStop, metaclass=ABCMeta):
+
+    @staticmethod
+    def _get_return_value(original_return, pypads_return):
+        return pypads_return
+
+
+class DelayedResultsMixin(Logger, SuperStop, metaclass=ABCMeta):
+
+    @staticmethod
+    @abstractmethod
+    def finalize_output(pads, logger_call, output, *args, **kwargs):
+        raise NotImplementedError("Called delayed results logger without implemented finalize_output.")
+
+    def _store_results(self, output, logger_call):
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+        pads.cache.run_add(id(self), {'id': id(self), 'logger_call': logger_call, 'output': output})
+
+        def finalize(pads, *args, **kwargs):
+            data = pads.cache.run_get(id(self))
+            logger_call = data.get('logger_call')
+            output = data.get('output')
+            self.finalize_output(pads, *args, logger_call=logger_call, output=output, **kwargs)
+            logger_call.finish()
+            logger_call.store()
+
+        pads.api.register_teardown_utility('{}_clean_up'.format(self.__class__.__name__), finalize,
+                                           error_message="Couldn't finalize output of logger {},"
+                                                         "because of exception: {} \nTrace:\n{}")
 
 
 class MultiInjectionLoggerCall(LoggerCall):
@@ -168,66 +219,61 @@ class MultiInjectionLoggerCall(LoggerCall):
         super().__init__(*args, original_call=logging_env.call, logging_env=logging_env, **kwargs)
         self.call_stack = [logging_env.call]
 
+    @property
+    def last_call(self):
+        return self.call_stack[-1]
+
     def add_call(self, call: Call):
         self.call_stack.append(call)
 
 
-class MultiInjectionLogger(InjectionLogger):
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/multi-injection-logger"
+class MultiInjectionLogger(DelayedResultsMixin, InjectionLogger, SuperStop, metaclass=ABCMeta):
+    """
+    This logger gets called on function calls. It is expected to run multiple times for each experiment.
+    """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # TODO teardown fn for output storage
-
-    @classmethod
-    def get_model_cls(cls) -> Type[BaseModel]:
-        return MultiInjectionLoggerCallModel
-
-    def _base_path(self):
-        return "InjectionLoggers/{}/".format(self.__class__.__name__)
-
-    def _get_call(self, logging_env: InjectionLoggerEnv):
-        from pypads.app.pypads import get_current_pads
-        pads = get_current_pads()
+    def _get_logger_call(self, _pypads_env: InjectionLoggerEnv):
+        pads = _pypads_env.pypads
         if pads.cache.run_exists(id(self)):
-            logger_call = pads.cache.run_get(id(self)).get('call')
-            logger_call.add_call(logging_env.call)
+            logger_call = pads.cache.run_get(id(self)).get('logger_call')
+            logger_call.add_call(_pypads_env.call)
             return logger_call
         else:
-            self.store_schema(self._base_path())
-            return MultiInjectionLoggerCall(logging_env=logging_env, created_by=self.store_schema())
+            self.store()
+            return MultiInjectionLoggerCall(logging_env=_pypads_env, creator=self)
 
-    def _get_output(self, ):
+    def build_output(self, _pypads_env: InjectionLoggerEnv, _logger_call, **kwargs):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         if pads.cache.run_exists(id(self)):
             logger_output = pads.cache.run_get(id(self)).get('output')
+            logger_output.add_call_env(_pypads_env)
             return logger_output
         else:
-            return self.build_output()
+            return super().build_output(_pypads_env, _logger_call)
 
-    @staticmethod
-    @abstractmethod
-    def store(pads, *args, **kwargs):
-        pass
-
-    def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, **kwargs):
+    def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, _pypads_input_results,
+                      _pypads_cached_results, **kwargs):
         _pypads_hook_params = _pypads_env.parameter
 
-        logger_call = self._get_call(_pypads_env)
-        output = self._get_output()
+        logger_call: Union[MultiInjectionLoggerCall, InjectionLoggerCallModel, FallibleMixin] = self._get_logger_call(
+            _pypads_env)
+        output = self.build_output(_pypads_env, logger_call)
 
         try:
             # Trigger pre run functions
             _pre_result, pre_time = self._pre(ctx, _pypads_env=_pypads_env,
                                               _logger_output=output,
                                               _logger_call=logger_call,
+                                              _pypads_input_results=_pypads_input_results,
+                                              _pypads_cached_results=_pypads_cached_results,
                                               _args=args,
                                               _kwargs=kwargs, **{**self.static_parameters, **_pypads_hook_params})
             logger_call.pre_time += pre_time
 
             # Trigger function itself
-            _return, time = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs)
+            _return, time = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _logger_call=logger_call,
+                                                  _logger_output=output, _args=args, _kwargs=kwargs)
             logger_call.child_time += time
 
             # Trigger post run functions
@@ -236,21 +282,21 @@ class MultiInjectionLogger(InjectionLogger):
                                                  _pypads_pre_return=_pre_result,
                                                  _pypads_result=_return,
                                                  _logger_call=logger_call,
+                                                 _pypads_input_results=_pypads_input_results,
+                                                 _pypads_cached_results=_pypads_cached_results,
                                                  _args=args,
                                                  _kwargs=kwargs, **{**self.static_parameters, **_pypads_hook_params})
             logger_call.post_time += post_time
         except Exception as e:
             logger_call.failed = str(e)
-            output.set_failure_state(e)
+            if output:
+                output.set_failure_state(e)
             raise e
         finally:
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
-            from pypads.app.pypads import get_current_pads
-            pads = get_current_pads()
-            pads.cache.run_add(id(self), {'call': logger_call, 'output': output, 'base_path': self._base_path()})
-            pads.api.register_teardown_fn('{}_clean_up'.format(self.__class__.__name__), self.store)
-        return _return
+            self._store_results(output, logger_call)
+        return self._get_return_value(_return, _post_result)
 
 
 def logging_functions():
@@ -258,4 +304,4 @@ def logging_functions():
     Find all injection functions defined in our imported context.
     :return:
     """
-    return inheritors(InjectionLogger) + inheritors(MultiInjectionLogger)
+    return inheritors(InjectionLogger)

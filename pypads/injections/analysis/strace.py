@@ -3,8 +3,8 @@ import signal
 import subprocess
 from sys import platform
 
-from pypads.app.env import LoggerEnv
 from pypads import logger
+from pypads.app.env import LoggerEnv
 from pypads.app.injections.run_loggers import RunSetup, RunTeardown
 from pypads.utils.logging_util import get_temp_folder
 
@@ -65,6 +65,6 @@ class STraceStop(RunTeardown):
             os.killpg(os.getpgid(self._proc.pid), signal.SIGTERM)
             self._proc.terminate()
         try:
-            pads.api.log_artifact(self._trace_file)
+            pads.api._log_artifact(self._trace_file, description="Strace of the experiment process.")
         except Exception as e:
             pass

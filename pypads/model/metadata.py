@@ -5,8 +5,10 @@ from typing import Type, List
 from pydantic import validate_model, BaseModel, ValidationError
 
 from pypads.app.misc.inheritance import SuperStop
-from pypads.model.models import RunObjectModel
-from pypads.utils.util import has_direct_attr
+from pypads.model.domain import RunObjectModel
+from pypads.model.models import IdBasedEntry, get_typed_id
+from pypads.utils.logging_util import jsonable_encoder
+from pypads.utils.util import has_direct_attr, persistent_hash
 
 
 class ModelInterface(SuperStop):
@@ -25,7 +27,7 @@ class ModelInterface(SuperStop):
         raise NotImplementedError("A function how to access the schema of the class has to be defined.")
 
     @abstractmethod
-    def json(self):
+    def json(self, *args, **kwargs):
         raise NotImplementedError("A function how to convert a class to its json representation has to be defined.")
 
     @abstractmethod
@@ -44,6 +46,7 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
     """
     An object building the model from itself on the fly.
     """
+    _schema_path = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -58,17 +61,22 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
 
         # Add defaults which are not given
         for key in fields:
-            if not has_direct_attr(self, key) and self.get_model_fields():
+            if not has_direct_attr(self, key) and self.get_model_fields() and (
+                    not hasattr(self.__class__, key) or not isinstance(getattr(self.__class__, key), property)):
                 setattr(self, key, self.get_model_fields()[key].get_default())
-        if issubclass(self.get_model_cls(), RunObjectModel) and (
-                not hasattr(self, "uri") or getattr(self, "uri") is None):
-            setattr(self, "uri", "{}#{}".format(getattr(self, 'is_a'), getattr(self, 'uid')))
 
     def model(self):
         return self.get_model_cls().from_orm(self)
 
     def validate(self):
         validate_model(self.get_model_cls(), self.model().__dict__)
+
+    def typed_id(self):
+        cls = self.get_model_cls()
+        if issubclass(cls, IdBasedEntry):
+            return get_typed_id(self)
+        else:
+            raise Exception(f"Can't extracted typed id: Model {str(cls)} is not an IdBasedEntry.")
 
     @classmethod
     def schema(cls):
@@ -79,8 +87,30 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
             schema["description"] = cls.__doc__
         return schema
 
+    @classmethod
+    def store_schema(cls):
+        if not cls._schema_path:
+            from pypads.app.pypads import get_current_pads
+            pads = get_current_pads()
+            schema_repo = pads.schema_repository
+
+            schema = cls.schema()
+            schema_hash = persistent_hash(str(schema))
+            if not schema_repo.has_object(uid=schema_hash):
+                schema_obj = schema_repo.get_object(uid=schema_hash)
+                # TODO store schema as string for now because $ is reserved in MongoDB
+                schema_wrapper = {"category": "LoggerOutputSchema", "schema": str(jsonable_encoder(schema))}
+                schema_obj.log_json(schema_wrapper)
+            else:
+                schema_obj = schema_repo.get_object(uid=schema_hash)
+            cls._schema_path = schema_obj.uid
+        return cls._schema_path
+
     def json(self, *args, **kwargs):
         return self.model().json(*args, **kwargs)
+
+    def dict(self, *args, **kwargs):
+        return self.model().dict(*args, **kwargs)
 
 
 class ModelHolder(ModelInterface, metaclass=ABCMeta):
@@ -113,8 +143,8 @@ class ModelHolder(ModelInterface, metaclass=ABCMeta):
     def schema(self):
         return self._model.schema()
 
-    def json(self):
-        return self._model.json()
+    def json(self, *args, **kwargs):
+        return self._model.json(*args, **kwargs)
 
 
 class ModelErrorHandler:

@@ -1,17 +1,16 @@
 import os
-import sys
 from abc import abstractmethod
-from typing import Union
+from typing import List, Union, Iterable, Any, Type
 
-import mlflow
-from mlflow.tracking import MlflowClient
-from mlflow.utils.autologging_utils import try_mlflow_log
+from mlflow.entities import ViewType
+from mlflow.tracking.fluent import SEARCH_MAX_RESULTS_PANDAS
+from pydantic import BaseModel
 
-from pypads import logger
-from pypads.app.injections.base_logger import TrackedObject, LoggerOutput
-from pypads.model.models import ArtifactMetaModel, MetricMetaModel, ParameterMetaModel, TagMetaModel, MetadataModel
-from pypads.utils.logging_util import try_write_artifact, WriteFormats
-from pypads.utils.util import string_to_int
+from pypads.model.logger_output import FileInfo, ArtifactMetaModel, ParameterMetaModel, MetricMetaModel, TagMetaModel, \
+    TrackedObjectModel, OutputModel, ResultHolderModel
+from pypads.model.metadata import ModelObject
+from pypads.model.models import IdBasedEntry, ResultType, unwrap_typed_id
+from pypads.utils.logging_util import get_temp_folder, read_artifact
 
 
 class BackendInterface:
@@ -19,35 +18,6 @@ class BackendInterface:
     def __init__(self, uri, pypads):
         self._uri = uri
         self._pypads = pypads
-        self._managed_result_git = None
-
-        manage_results = self._uri.startswith("git://")
-
-        # If the results should be git managed
-        if manage_results:
-            result_path = self._uri[5:]
-            self._uri = os.path.join(self._uri[5:], "r_" + str(string_to_int(uri)), "experiments")
-            self.manage_results(result_path)
-            pypads.cache.add('uri', self._uri)
-
-    @abstractmethod
-    def manage_results(self, result_path):
-        """
-        If we should push results for the user use a managed git.
-        :param result_path: Path where the result git should be.
-        :return:
-        """
-        raise NotImplementedError("")
-
-    @abstractmethod
-    def add_result_remote(self, remote, uri):
-        """
-        Add a remote to track the results.
-        :param remote: Remote name to be added
-        :param uri: Remote address to be added
-        :return:
-        """
-        raise NotImplementedError("")
 
     @property
     def uri(self):
@@ -57,136 +27,262 @@ class BackendInterface:
     def pypads(self):
         return self._pypads
 
-    @property
-    def managed_result_git(self):
-        return self._managed_result_git
-
     @abstractmethod
-    def store_tracked_object(self, to):
-        raise NotImplementedError("")
-
-    @abstractmethod
-    def store_logger_output(self, lo):
-        raise NotImplementedError("")
-
-    @abstractmethod
-    def load_tracked_object(self, path):
-        raise NotImplementedError("")
-
-    @abstractmethod
-    def log_artifact(self, local_path, meta: ArtifactMetaModel, artifact_path=None):
-        raise NotImplementedError("")
-
-    @abstractmethod
-    def log_mem_artifact(self, artifact, meta: ArtifactMetaModel):
-        raise NotImplementedError("")
-
-    @abstractmethod
-    def log_metric(self, metric, meta: MetricMetaModel):
-        raise NotImplementedError("")
-
-    @abstractmethod
-    def log_parameter(self, parameter, meta: ParameterMetaModel):
-        raise NotImplementedError("")
-
-    @abstractmethod
-    def set_tag(self, tag, meta: TagMetaModel):
-        raise NotImplementedError("")
-
-
-class MLFlowBackend(BackendInterface):
-    """
-    Backend pushing data to mlflow
-    """
-
-    def __init__(self, uri, pypads):
+    def log_artifact(self, meta, local_path) -> str:
         """
-        :param uri: Location in which we want to write results.
-        :param pypads: Owning pypads instance
+        Logs an artifact from disk.
+        :param meta: ArtifactTracking object holding meta information
+        :param local_path: Path from which to take the artifact
+        :return: Returns a relative path to the artifact including name and file extension.
+        """
+        raise NotImplementedError("")
+
+    def log(self, obj: IdBasedEntry):
+        """
+        Log some entry to backend.
+        :param obj: Entry object to be logged
+        :param payload: Payload if an memory artifact is to be stored.
         :return:
         """
-        super().__init__(uri, pypads)
-        # Set the tracking uri
-        mlflow.set_tracking_uri(self._uri)
+        raise NotImplementedError("")
 
-    def manage_results(self, result_path):
-        self._managed_result_git = self.pypads.managed_git_factory(result_path)
+    @abstractmethod
+    def set_experiment_tag(self, experiment_id, key, value):
+        raise NotImplementedError("")
 
-        def commit(pads, *args, **kwargs):
-            message = "Added results for run " + pads.api.active_run().info.run_id
-            pads.managed_result_git.commit_changes(message=message)
+    @abstractmethod
+    def get_metric_history(self, run_id, key):
+        raise NotImplementedError("")
 
-            repo = pads.managed_result_git.repo
-            remotes = repo.remotes
+    @abstractmethod
+    def list_experiments(self, view_type):
+        raise NotImplementedError("")
 
-            if not remotes:
-                logger.warning(
-                    "Your results don't have any remote repository set. Set a remote repository for"
-                    "to enable automatic pushing.")
-            else:
-                for remote in remotes:
-                    name, url = remote.name, list(remote.urls)[0]
-                    try:
-                        # check if remote repo is bare and if it is initialize it with a temporary local repo
-                        pads.managed_result_git.is_remote_empty(remote=name,
-                                                                remote_url=url,
-                                                                init=True)
-                        # stash current state
-                        repo.git.stash('push', '--include-untracked')
-                        # Force pull
-                        repo.git.pull(name, 'master', '--allow-unrelated-histories')
-                        # Push merged changes
-                        repo.git.push(name, 'master')
-                        logger.info("Pushed your results automatically to " + name + " @:" + url)
-                        # pop the stash
-                        repo.git.stash('pop')
-                    except Exception as e:
-                        logger.error("pushing logs to remote failed due to this error '{}'".format(str(e)))
+    @abstractmethod
+    def list_run_infos(self, experiment_id, run_view_type=None):
+        raise NotImplementedError("")
 
-        self.pypads.api.register_teardown_fn("commit", commit, nested=False, intermediate=False,
-                                             error_message="A problem executing the result management function was detected."
-                                                           " Check if you have to commit / push results manually."
-                                                           " Following exception caused the problem: {0}",
-                                             order=sys.maxsize - 1)
+    @abstractmethod
+    def get_run(self, run_id):
+        raise NotImplementedError("")
 
-    def add_result_remote(self, remote, uri):
-        if self.managed_result_git is None:
-            raise Exception("Can only add remotes to the result directory if it is managed by pypads git.")
-        try:
-            self.managed_result_git.remote = remote
-            self.managed_result_git.remote_uri = uri
-            self.managed_result_git.repo.create_remote(remote, uri)
-        except Exception as e:
-            logger.warning("Failed to add remote due to exception: " + str(e))
+    @abstractmethod
+    def get_experiment(self, experiment_id):
+        raise NotImplementedError("")
+
+    @abstractmethod
+    def get_experiment_by_name(self, name):
+        raise NotImplementedError("")
+
+    @abstractmethod
+    def delete_experiment(self, experiment_id):
+        raise NotImplementedError("")
+
+    @abstractmethod
+    def search_runs(self, experiment_ids, filter_string="", run_view_type=ViewType.ACTIVE_ONLY,
+                    max_results=SEARCH_MAX_RESULTS_PANDAS, order_by=None):
+        raise NotImplementedError("")
+
+    @abstractmethod
+    def create_run(self, experiment_id, start_time=None, tags=None):
+        raise NotImplementedError("")
+
+    @abstractmethod
+    def create_experiment(self, name, artifact_location=None):
+        """Create an experiment.
+
+        :param name: The experiment name. Must be unique.
+        :param artifact_location: The location to store run artifacts.
+                                  If not provided, the server picks an appropriate default.
+        :return: Integer ID of the created experiment.
+        """
+        raise NotImplementedError("")
+
+    @abstractmethod
+    def delete_run(self, run_id):
+        """
+        Deletes a run with the given ID.
+        """
+        raise NotImplementedError("")
+
+    @abstractmethod
+    def download_artifacts(self, run_id, relative_path, dst_path=None):
+        """
+        Downloads the artifacts at relative_path to given destination folder.
+        :param dst_path:
+        :param run_id:
+        :param relative_path:
+        :return:
+        """
+        raise NotImplementedError("")
+
+    def load_artifact_data(self, run_id, path):
+        return read_artifact(self.download_tmp_artifacts(run_id, path))
+
+    def download_tmp_artifacts(self, run_id, relative_path):
+        """
+        Downloads the artifact at relative_path to a local temporary folder.
+        :param run_id:
+        :param relative_path:
+        :return:
+        """
+        local_path = get_temp_folder(self.get_run(run_id))
+        if not os.path.exists(os.path.dirname(local_path)):
+            os.makedirs(os.path.dirname(local_path))
+        return self.download_artifacts(run_id=run_id, relative_path=relative_path, dst_path=local_path)
+
+    @abstractmethod
+    def list_files(self, run_id, path=None) -> List[FileInfo]:
+        """
+        This lists all available artifact files.
+        :param run_id:
+        :param path:
+        :return:
+        """
+        raise NotImplementedError("")
+
+    def list(self, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
+             search_dict=None):
+        raise NotImplementedError("The used backend doesn't support this form of querying.")
+
+    def get(self, uid, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
+            search_dict=None):
+        raise NotImplementedError("The used backend doesn't support this form of querying.")
+
+    def _get_entry_generator(self, out):
+        """
+        Tries to build a known model from given dict.
+        :param out: Return values
+        :return:
+        """
+        if not isinstance(out, Iterable):
+            yield self._construct_model(out)
+        for entry in out:
+            yield self._construct_model(entry)
+
+    @abstractmethod
+    def get_artifact_uri(self, artifact_path=None):
+        """
+        Get the absolute URI of the specified artifact in the currently active run.
+        If `path` is not specified, the artifact root URI of the currently active
+        run will be returned.
+
+        :param artifact_path: The run-relative artifact path for which to obtain an absolute URI.
+                              For example, "path/to/artifact". If unspecified, the artifact root URI
+                              for the currently active run will be returned.
+        :return: An *absolute* URI referring to the specified artifact or the currently active run's
+                 artifact root. For example, if an artifact path is provided and the currently active
+                 run uses an S3-backed store, this may be a uri of the form
+                 ``s3://<bucket_name>/path/to/artifact/root/path/to/artifact``. If an artifact path
+                 is not provided and the currently active run uses an S3-backed store, this may be a
+                 URI of the form ``s3://<bucket_name>/path/to/artifact/root``.
+        """
+        raise NotImplementedError("")
+
+    @staticmethod
+    def _construct_model(out: dict):
+        if "storage_type" in out:
+            result_type = out["storage_type"]
+        else:
+            return out
+
+        if result_type == ResultType.artifact.value:
+            return ArtifactDataLoader(**out)
+        elif result_type == ResultType.parameter.value:
+            return ParameterMetaModel(**out)
+        elif result_type == ResultType.metric.value:
+            return MetricMetaModel(**out)
+        elif result_type == ResultType.tag.value:
+            return TagMetaModel(**out)
+        elif result_type == ResultType.tracked_object.value:
+            return ExtendedTrackedObjectModel(**out)
+        elif result_type == ResultType.output.value:
+            return ExtendedOutputModel(**out)
+        else:
+            return out
+
+
+class ArtifactDataLoader(ModelObject):
+
+    def __init__(self, **data: Any):
+        super().__init__(**data)
+        self._content = None
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return ArtifactMetaModel
+
+    def content(self: Union['ArtifactDataLoader', ArtifactMetaModel]):
+        if self._content is not None:
+            return self._content
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+        return pads.backend.load_artifact_data(self.run_id, self.data)
+
+
+class LoadedResultHolder(ResultHolderModel):
+
+    def __init__(self, **data: Any):
+        super().__init__(**data)
+        self._results = {}
 
     @property
-    def mlf(self) -> MlflowClient:
-        return MlflowClient(self.uri)
+    def artifact_data(self):
+        if ResultType.artifact not in self._results:
+            from pypads.app.pypads import get_current_pads
+            pads = get_current_pads()
+            self._results[ResultType.artifact] = [pads.backend.get(**unwrap_typed_id(o)) for o in self.artifacts]
+        return self._results[ResultType.artifact]
 
-    def store_tracked_object(self, to: TrackedObject, path=""):
-        path += "{}#{}".format(to.__class__.__name__, id(to))
-        try_write_artifact(path, to.json(), write_format=WriteFormats.json)
-        return path
+    @property
+    def metric_data(self):
+        if ResultType.metric not in self._results:
+            from pypads.app.pypads import get_current_pads
+            pads = get_current_pads()
+            self._results[ResultType.metric] = [pads.backend.get(**unwrap_typed_id(o)) for o in self.metrics]
+        return self._results[ResultType.metric]
 
-    def store_logger_output(self, lo: LoggerOutput, path=""):
-        path += "{}/{}".format("Output", id(lo))
-        try_write_artifact(path, lo.json(), write_format=WriteFormats.json)
-        return path
+    @property
+    def tag_data(self):
+        if ResultType.tag not in self._results:
+            from pypads.app.pypads import get_current_pads
+            pads = get_current_pads()
+            self._results[ResultType.tag] = [pads.backend.get(**unwrap_typed_id(o)) for o in self.tags]
+        return self._results[ResultType.tag]
 
-    def log_artifact(self, local_path, meta: ArtifactMetaModel, artifact_path=None):
-        if artifact_path is None:
-            if meta:
-                artifact_path = meta.path
-        try_mlflow_log(mlflow.log_artifact, local_path, artifact_path)
+    @property
+    def parameter_data(self):
+        if ResultType.parameter not in self._results:
+            from pypads.app.pypads import get_current_pads
+            pads = get_current_pads()
+            self._results[ResultType.parameter] = [pads.backend.get(**unwrap_typed_id(o)) for o in self.parameters]
+        return self._results[ResultType.parameter]
 
-    def log_mem_artifact(self, artifact, meta: Union[MetadataModel, ArtifactMetaModel], preserve_folder=True):
-        try_write_artifact(meta.path, artifact, write_format=meta.format, preserve_folder=preserve_folder)
+    @property
+    def tracked_object_data(self):
+        if ResultType.tracked_object not in self._results:
+            from pypads.app.pypads import get_current_pads
+            pads = get_current_pads()
+            self._results[ResultType.tracked_object] = [pads.backend.get(**unwrap_typed_id(o)) for o in
+                                                        self.tracked_objects]
+        return self._results[ResultType.tracked_object]
 
-    def log_metric(self, metric, meta: MetricMetaModel):
-        mlflow.log_metric(meta.name, metric, meta.step)
+    def _get_kwargs(self):
+        """
+        Get kwargs for querying the backend
+        :return:
+        """
+        if self.storage_type == ResultType.output:
+            return {"output_id": self.uid}
+        elif self.storage_type == ResultType.tracked_object:
+            return {"tracked_object_id": self.uid}
 
-    def log_parameter(self, parameter, meta: ParameterMetaModel):
-        mlflow.log_param(meta.name, parameter)
 
-    def set_tag(self, tag, meta: TagMetaModel):
-        mlflow.set_tag(meta.name, tag)
+class ExtendedTrackedObjectModel(LoadedResultHolder, TrackedObjectModel):
+    class Config:
+        extra = 'allow'
+
+
+class ExtendedOutputModel(LoadedResultHolder, OutputModel):
+    class Config:
+        extra = 'allow'

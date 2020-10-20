@@ -1,14 +1,26 @@
 from pypads.app.call import Call
+from pypads.utils.logging_util import merge_mapping_data
 
 
 class LoggerEnv:
 
-    def __init__(self, parameter, experiment_id, run_id):
+    def __init__(self, parameter, experiment_id, run_id, data=None):
+        """
+        :param parameter: Parameters given to the triggered logging env. Ex. defined on hooks.
+        :param experiment_id: The id of the experiment.
+        :param run_id: The id of the run.
+        :param data: Additional data for the logger env.
+        """
+        self._data = data or {}
         self._parameter = parameter
         self._experiment_id = experiment_id
         self._run_id = run_id
         from pypads.app.pypads import get_current_pads
         self._pypads = get_current_pads()
+
+    @property
+    def data(self):
+        return self._data
 
     @property
     def experiment_id(self):
@@ -30,7 +42,7 @@ class LoggerEnv:
 class InjectionLoggerEnv(LoggerEnv):
 
     def __init__(self, mappings, hook, callback, call: Call, parameter, experiment_id, run_id):
-        super().__init__(parameter, experiment_id, run_id)
+        super().__init__(parameter, experiment_id, run_id, data=merge_mapping_data(mappings))
         self._call = call
         self._callback = callback
         self._hook = hook

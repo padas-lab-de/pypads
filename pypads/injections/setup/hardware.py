@@ -1,225 +1,338 @@
-from pydantic.main import BaseModel
-from pydantic.networks import HttpUrl
-from typing import List, Type
+import uuid
+from typing import Type, Union, Optional, List
+
+from pydantic import BaseModel
 
 from pypads.app.env import LoggerEnv
-from pypads.app.injections.base_logger import TrackedObject, LoggerCall
 from pypads.app.injections.run_loggers import RunSetup
-from pypads.model.models import TagMetaModel, TrackedObjectModel, OutputModel
-from pypads.utils.util import sizeof_fmt, local_uri_to_path
+from pypads.app.injections.tracked_object import TrackedObject
+from pypads.app.misc.mixins import DEFAULT_ORDER
+from pypads.model.logger_output import OutputModel, TrackedObjectModel
+from pypads.utils.util import sizeof_fmt, uri_to_path, PeriodicThread
 
 
-class HardwareTO(TrackedObject):
+class ComputerTO(TrackedObject):
     """
-    Tracking object class for System info, i.e: cpu, os, memory, disk
+    Tracked object to represent a single computing node.
     """
 
-    class HardwareModel(TrackedObjectModel):
-        uri: HttpUrl = "https://www.padre-lab.eu/onto/env/hardware-information"
-        name: str = "Hardware Info"
-        report: List[TagMetaModel] = []
-
-        class Config:
-            orm_mode = True
+    class ComputerTOModel(TrackedObjectModel):
+        """
+        Model class containing references to the real hardware information and a mac address
+        """
+        category: str = "Computer"
+        description: str = "Information about the in the experiment used computer."
+        mac_address: str = ...
+        cpu: Optional[str] = ...  # CPU TrackedObject
+        memory: Optional[str] = ...  # Memory TrackedObject
+        disk: Optional[str] = ...  # Disk TrackedObject
+        system: Optional[str] = ...  # System TrackedObject
+        process: Optional[str] = ...  # Process TrackedObject
+        network: Optional[str] = ...  # Network TrackedObject
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
-        return cls.HardwareModel
+        return cls.ComputerTOModel
 
-    def __init__(self, *args, tracked_by: LoggerCall, name: str, uri: str, **kwargs):
-        super().__init__(*args, tracked_by=tracked_by, name=name, uri=uri, **kwargs)
 
-    def add_tag(self, name, value, description):
-        meta = TagMetaModel(name=name, description=description)
-        self.report.append(meta)
+class IMacAddressRSF(RunSetup):
+    """
+    Run setup function to create the ComputerTO and store it for further additions into the cache.
+    """
+    name = "Generic MacAddress Run Setup Logger"
+    category: str = "MacAddressRunLogger"
 
-        self._store_tag(value, meta)
+    def __init__(self, *args, order=None, **kwargs):
+        super().__init__(*args, order=order if order is not None else DEFAULT_ORDER, **kwargs)
+
+    def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
+        import re, uuid
+        cto = ComputerTO(mac_address=':'.join(re.findall('..', '%012x' % uuid.getnode())),
+                         parent=_logger_output)
+        _pypads_env.pypads.cache.run_add(ComputerTO.__name__, cto)
+        cto.store()
+
+
+class SystemTO(TrackedObject):
+    class SystemTOModel(TrackedObjectModel):
+        category: str = "SystemInformation"
+        description: str = "Information about the in the experiment used system."
+        system: str = ...
+        node: str = ...
+        release: str = ...
+        version: str = ...
+        machine: str = ...
+        processor: str = ...
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return cls.SystemTOModel
 
 
 class ISystemRSF(RunSetup):
+    """
+    System run setup function running after IMacAddressRSF (see order) and updating the ComputerTO (see _needed_cached)
+    """
     _dependencies = {"psutil"}
+    _needed_cached = ComputerTO.__name__
+    name = "Generic System Run Setup Logger"
+    category: str = "SystemRumLogger"
 
-    name = "System Run Setup Logger"
-    uri = "https://www.padre-lab.eu/onto/system-run-logger"
+    def __init__(self, *args, order=None, **kwargs):
+        super().__init__(*args, order=order if order is not None else DEFAULT_ORDER + 1, **kwargs)
 
-    class ISystemRSFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/ISystemRSF-Output"
-        system_info: HardwareTO.get_model_cls() = ...
+    def _call(self, *args, _pypads_env: LoggerEnv, _pypads_cached_results=None, _logger_call, _logger_output, **kwargs):
+        import platform
+        system = platform.uname()
+        computer_to: ComputerTO = _pypads_cached_results[0]
+        system_info = SystemTO(system=system.system, node=system.node, release=system.release, version=system.version,
+                               machine=system.machine, processor=system.processor, parent=_logger_output)
+
+        # Update computer to
+        computer_to.system = system_info.store()
+        computer_to.store()
+
+
+class CpuTO(TrackedObject):
+    class CpuTOModel(TrackedObjectModel):
+        category: str = "CpuInformation"
+        description: str = "Information about the in the experiment used cpu."
+        physical_cores: int = ...
+        total_cores: int = ...
+        max_freq: str = ...
+        min_freq: str = ...
 
     @classmethod
-    def output_schema_class(cls) -> Type[OutputModel]:
-        return cls.ISystemRSFOutput
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return cls.CpuTOModel
 
-    def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
-        import platform
-        uname = platform.uname()
-        system_info = HardwareTO(name="System Info", tracked_by=_logger_call,
-                                 uri="https://www.padre-lab.eu/onto/env/system-information")
 
-        system_info.add_tag("pypads.system", uname.system, description="Operating system")
-        system_info.add_tag("pypads.system.node", uname.node, description="Operating system node")
-        system_info.add_tag("pypads.system.release", uname.release, description="Operating system release")
-        system_info.add_tag("pypads.system.version", uname.version, description="Operating system version")
-        system_info.add_tag("pypads.system.machine", uname.machine, description="Operating system machine")
-        system_info.add_tag("pypads.system.processor", uname.processor, description="Processor technology")
-        system_info.store(_logger_output, "system_info")
+class CpuUsageTO(TrackedObject):
+    """
+    Tracked object to be updated live on the cpu usage.
+    """
+
+    class CpuUsageTOModel(TrackedObjectModel):
+        category: str = "CpuUsage"
+        description: str = "Timeline about the usage of the in the experiment used cpu."
+
+        class CpuCoreModel(BaseModel):
+            index: int = ...
+            usage: List[float] = ...
+
+            class Config:
+                orm_mode = True
+
+        cpu_cores: List[CpuCoreModel] = []
+        total_usage: List[str] = []
+        period: float = ...
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return cls.CpuUsageTOModel
+
+    def add_cpu_usage(self: Union['CpuUsageTO', CpuUsageTOModel]):
+        cores = _get_cpu_usage()
+        for idx, usage in enumerate(cores[:-1]):
+            if idx >= len(self.cpu_cores):
+                self.cpu_cores.append(self.__class__.CpuUsageTOModel.CpuCoreModel(index=idx, usage=[usage]))
+            else:
+                core = self.cpu_cores[idx]
+                core.usage.append(usage)
+        self.total_usage.append(cores[-1])
+
+
+def _get_cpu_usage():
+    import psutil
+    """
+    cpu_usage = "CPU usage for cores:"
+    for i, percentage in enumerate(psutil.cpu_percent(percpu=True)):
+        cpu_usage += f"\nCore {i}: {percentage}%"
+    cpu_usage += f"\nTotal CPU usage: {psutil.cpu_percent()}%"
+    """
+    cpu_usage = []
+    for i, percentage in enumerate(psutil.cpu_percent(percpu=True)):
+        cpu_usage.append(percentage)
+    cpu_usage.append(psutil.cpu_percent())
+    return cpu_usage
 
 
 class ICpuRSF(RunSetup):
     _dependencies = {"psutil"}
-    name = "CPU Run Setup Logger"
-    uri = "https://www.padre-lab.eu/onto/cpu-run-logger"
+    _needed_cached = ComputerTO.__name__
+    name = "Generic CPU Run Setup Logger"
+    category: str = "CPURunLogger"
+
+    def __init__(self, *args, order=None, **kwargs):
+        super().__init__(*args, order=order if order is not None else DEFAULT_ORDER + 1, **kwargs)
 
     class ICpuRSFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/ICpuRSF-Output"
-        cpu_info: HardwareTO.get_model_cls() = ...
+        category: str = "ISystemRSF-Output"
+        cpu: Union[uuid.UUID, str] = ...  # CpuTO
+        cpu_usage: Optional[Union[uuid.UUID, str]] = ...  # CpuUsageTO
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
         return cls.ICpuRSFOutput
 
-    def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
+    def _call(self, *args, _pypads_period=1.0, _pypads_env: LoggerEnv, _logger_call, _logger_output,
+              _pypads_cached_results=None, **kwargs):
         import psutil
-        cpu_info = HardwareTO(name="Cpu Info", tracked_by=_logger_call,
-                              uri="https://www.padre-lab.eu/onto/env/cpu-information")
-        cpu_info.add_tag("pypads.system.cpu.physical_cores", psutil.cpu_count(logical=False),
-                         description="Number of physical cores")
-        cpu_info.add_tag("pypads.system.cpu.total_cores", psutil.cpu_count(logical=True),
-                         description="Number of total cores")
         freq = psutil.cpu_freq()
-        cpu_info.add_tag("pypads.system.cpu.max_freq", f"{freq.max:2f}Mhz",
-                         description="Maximum processor frequency in (Mhz)")
-        cpu_info.add_tag("pypads.system.cpu.min_freq", f"{freq.min:2f}Mhz",
-                         description="Minimum processor frequencyin (Mhz)")
-        cpu_info.store(_logger_output, "cpu_info")
+        computer_to: ComputerTO = _pypads_cached_results[0]
+        cpu_info = CpuTO(physical_cores=psutil.cpu_count(logical=False), total_cores=psutil.cpu_count(logical=True),
+                         max_freq=f"{freq.max:2f}Mhz", min_freq=f"{freq.min:2f}Mhz", parent=_logger_output)
+
+        # Update computer to
+        cpu_ref = cpu_info.store()
+        _logger_output.cpu = cpu_ref
+        computer_to.cpu = cpu_ref
+        computer_to.store()
+
+        if _pypads_period > 0:
+            cpu_usage_info = CpuUsageTO(parent=_logger_output)
+            cpu_usage_info.period = _pypads_period
+
+            def track_cpu_usage(to: CpuUsageTO):
+                to.add_cpu_usage()
+                to.store()
+
+            _logger_output.cpu_usage = cpu_usage_info.store()
+            thread = PeriodicThread(target=track_cpu_usage, sleep=_pypads_period, args=(cpu_usage_info,))
+            thread.start()
+
+            # stop thread store disk_usage object
+            def cleanup_thread(*args, **kwargs):
+                thread.join()
+
+            _pypads_env.pypads.api.register_teardown_utility(_logger_call, fn=cleanup_thread)
+
+
+class RamTO(TrackedObject):
+    class RamTOModel(TrackedObjectModel):
+        category: str = "RamInformation"
+        description: str = "Information about the in the experiment used ram."
+        total_memory: str = ...
+        total_swap: str = ...
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return cls.RamTOModel
 
 
 class IRamRSF(RunSetup):
     _dependencies = {"psutil"}
-    name = "Ram Run Setup Logger"
-    uri = "https://www.padre-lab.eu/onto/Ram-run-logger"
+    _needed_cached = ComputerTO.__name__
+    name = "Generic Ram Run Setup Logger"
+    category: str = "RamRunLogger"
 
-    class IRamRSFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/IRamRSF-Output"
-        memory_info: HardwareTO.get_model_cls() = ...
+    def __init__(self, *args, order=None, **kwargs):
+        super().__init__(*args, order=order if order is not None else DEFAULT_ORDER + 1, **kwargs)
 
-    @classmethod
-    def output_schema_class(cls) -> Type[OutputModel]:
-        return cls.IRamRSFOutput
-
-    def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
-        memory_info = HardwareTO(name="Memory Info", tracked_by=_logger_call,
-                                 uri="https://www.padre-lab.eu/onto/env/memory-information")
+    def _call(self, *args, _pypads_period=1.0, _pypads_env: LoggerEnv, _logger_call, _logger_output,
+              _pypads_cached_results=None, **kwargs):
         import psutil
         memory = psutil.virtual_memory()
-        memory_info.add_tag("pypads.system.memory.total", sizeof_fmt(memory.total),
-                            description="Total virtual memory RAM")
         swap = psutil.swap_memory()
-        memory_info.add_tag("pypads.system.swap.total", sizeof_fmt(swap.total), description="Total swap memory")
-        memory_info.store(_logger_output, "memory_info")
+        computer_to: ComputerTO = _pypads_cached_results[0]
+        memory_info = RamTO(total_memory=sizeof_fmt(memory.total), total_swap=sizeof_fmt(swap.total),
+                            parent=_logger_output)
+
+        computer_to.memory = memory_info.store()
+        computer_to.store()
+
+
+class DiskTO(TrackedObject):
+    class DiskTOModel(TrackedObjectModel):
+        category: str = "DiskInformation"
+        description: str = "Information about the in the experiment used disk."
+        total_size: str = ...
+        free: str = ...
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return cls.DiskTOModel
 
 
 class IDiskRSF(RunSetup):
     _dependencies = {"psutil"}
+    _needed_cached = ComputerTO.__name__
     name = "Disk Run Setup Logger"
-    uri = "https://www.padre-lab.eu/onto/disk-run-logger"
+    category: str = "DiskRunLogger"
 
-    class IDiskRSFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/IDiskRSF-Output"
-        disk_info: HardwareTO.get_model_cls() = ...
+    def __init__(self, *args, order=None, **kwargs):
+        super().__init__(*args, order=order if order is not None else DEFAULT_ORDER + 1, **kwargs)
+
+    def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, _pypads_cached_results=None, **kwargs):
+        import psutil
+        pads = _logger_call._logging_env.pypads
+        path = uri_to_path(pads.backend.uri)
+        disk_usage = psutil.disk_usage(path)
+        computer_to: ComputerTO = _pypads_cached_results[0]
+        disk_info = DiskTO(total_size=disk_usage.total, free=disk_usage.free, parent=_logger_output)
+
+        computer_to.disk = disk_info.store()
+        computer_to.store()
+
+
+class ProcessTO(TrackedObject):
+    class ProcessTOModel(TrackedObjectModel):
+        category: str = "ProcessInformation"
+        description: str = "Information about the in the experiment used main process."
+        id: str = ...
+        cwd: str = ...
 
     @classmethod
-    def output_schema_class(cls) -> Type[OutputModel]:
-        return cls.IDiskRSFOutput
-
-    def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
-        disk_info = HardwareTO(name="Disk Info", tracked_by=_logger_call,
-                               uri="https://www.padre-lab.eu/onto/env/disk-information")
-        import psutil
-        # see https://www.thepythoncode.com/article/get-hardware-system-information-python
-        pads = _logger_call._logging_env.pypads
-        path = local_uri_to_path(pads.backend.uri)
-        disk_usage = psutil.disk_usage(path)
-        disk_info.add_tag("pypads.system.disk.total", sizeof_fmt(disk_usage.total), description="Total disk usage")
-        disk_info.store(_logger_output, "disk_info")
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return cls.ProcessTOModel
 
 
 class IPidRSF(RunSetup):
     _dependencies = {"psutil"}
+    _needed_cached = ComputerTO.__name__
     name = "Process Run Setup Logger"
-    uri = "https://www.padre-lab.eu/onto/process-run-logger"
+    category: str = "ProcessRunLogger"
 
-    class IPidRSFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/IPidRSF-Output"
-        process_info: HardwareTO.get_model_cls() = ...
+    def __init__(self, *args, order=None, **kwargs):
+        super().__init__(*args, order=order if order is not None else DEFAULT_ORDER + 1, **kwargs)
 
-    @classmethod
-    def output_schema_class(cls) -> Type[OutputModel]:
-        return cls.IPidRSFOutput
-
-    def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
-        process_info = HardwareTO(name="Process Info", tracked_by=_logger_call,
-                                  uri="https://www.padre-lab.eu/onto/env/process-information")
+    def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, _pypads_cached_results=None, **kwargs):
         import psutil
         import os
         pid = os.getpid()
         process = psutil.Process(pid=pid)
-        process_info.add_tag("pypads.system.process.id", pid, description="Process ID (PID)")
-        process_info.add_tag("pypads.system.process.cwd", process.cwd(),
-                             description="Process current working directory")
-        process_info.add_tag("pypads.system.process.cpu_usage", str(process.cpu_percent()) + "%",
-                             description="Process cpu usage")
-        process_info.add_tag("pypads.system.process.memory_usage", str(process.memory_percent()) + "%",
-                             description="Process memroy usage")
-        process_info.store(_logger_output, "process_info")
+        computer_to: ComputerTO = _pypads_cached_results[0]
+        process_info = ProcessTO(id=pid, cwd=process.cwd(), parent=_logger_output)
+
+        computer_to.process = process_info.store()
+        computer_to.store()
+
+
+class SocketTO(TrackedObject):
+    class SocketTOModel(TrackedObjectModel):
+        category: str = "ProcessInformation"
+        description: str = "Information about the in the experiment used main process."
+        hostname: str = ...
+        ip: str = ...
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return cls.SocketTOModel
 
 
 class ISocketInfoRSF(RunSetup):
     name = "Socket Run Setup Logger"
-    uri = "https://www.padre-lab.eu/onto/socket-run-logger"
+    category: str = "SockerRunLogger"
+    _needed_cached = ComputerTO.__name__
 
-    @classmethod
-    def output_schema_class(cls) -> Type[OutputModel]:
-        return cls.ISocketInfoRSFOutput
+    def __init__(self, *args, order=None, **kwargs):
+        super().__init__(*args, order=order if order is not None else DEFAULT_ORDER + 1, **kwargs)
 
-    class ISocketInfoRSFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/ISocketInfoRSF-Output"
-        socket_info: HardwareTO.get_model_cls() = ...
-
-    def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
-        socket_info = HardwareTO(name="Socket Info", tracked_by=_logger_call,
-                                 uri="https://www.padre-lab.eu/onto/env/socker-information")
+    def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, _pypads_cached_results=None, **kwargs):
+        computer_to: ComputerTO = _pypads_cached_results[0]
         import socket
-        socket_info.add_tag("pypads.system.hostname", socket.gethostname(), description="Hostname of open socket")
-        socket_info.add_tag("pypads.system.ip-address", socket.gethostbyname(socket.gethostname()),
-                            description="Ip address of open socket")
-        socket_info.store(_logger_output, "socket_info")
+        socket_info = SocketTO(hostname=socket.gethostname(), ip=socket.gethostbyname(socket.gethostname()),
+                               parent=_logger_output)
 
-
-class IMacAddressRSF(RunSetup):
-    name = "MacAddress Run Setup Logger"
-    uri = "https://www.padre-lab.eu/onto/macaddress-run-logger"
-
-    class IMacAddressRSFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/IMacAddressRSF-Output"
-        mac_address: HardwareTO.get_model_cls() = ...
-
-    @classmethod
-    def output_schema_class(cls) -> Type[OutputModel]:
-        return cls.IMacAddressRSFOutput
-
-    def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
-        mac_address = HardwareTO(name="Mac Address", tracked_by=_logger_call,
-                                 uri="https://www.padre-lab.eu/onto/env/mac-address-information")
-        import re, uuid
-        mac_address.add_tag("pypads.system.macaddress", ':'.join(re.findall('..', '%012x' % uuid.getnode())),
-                            description="Mac Address")
-        mac_address.store(_logger_output, "mac_address")
-
-# def inetw(pads):
-#     if is_package_available("psutil"):
-#         import psutil
-#         # get net stats
-#
-#     else:
-#         logger.warning("To track network usage you need to install psutil.")
+        computer_to.network = socket_info.store()
+        computer_to.store()

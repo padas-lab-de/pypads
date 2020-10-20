@@ -2,35 +2,34 @@ from abc import ABCMeta
 from functools import wraps
 from typing import Type
 
-from pydantic import HttpUrl, BaseModel
+from pydantic import BaseModel
 
-from pypads.app.injections.base_logger import LoggerCall, SimpleLogger
+from pypads.app.env import LoggerEnv
+from pypads.app.injections.base_logger import SimpleLogger
+from pypads.app.injections.tracked_object import LoggerCall
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
-from pypads.model.models import LoggerModel
-from pypads.utils.util import inheritors
+from pypads.model.logger_model import LoggerModel
+from pypads.utils.util import inheritors, get_experiment_id, get_run_id
 
 actuator_plugins = set()
 
 
 class Actuator(SimpleLogger, metaclass=ABCMeta):
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/actuator"
+    category: str = "Actuator"
 
     def build_call_object(self, _pypads_env, **kwargs):
         return LoggerCall(logging_env=_pypads_env,
-                          is_a="https://www.padre-lab.eu/onto/ActuatorLoggerCall", **kwargs)
+                          category="ActuatorLoggerCall", **kwargs)
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
         return LoggerModel
 
-    def _base_path(self):
-        return "Actuators/{}/".format(self.__class__.__name__)
-
 
 class IActuators(Plugin):
 
-    def __init__(self):
-        super().__init__(type=Actuator)
+    def __init__(self, *args, **kwargs):
+        super().__init__(type=Actuator, *args, **kwargs)
         actuator_plugins.add(self)
 
     def _get_meta(self):
@@ -51,7 +50,8 @@ def actuator(f):
     @wraps(f)
     def wrapper(self, *args, **kwargs):
         # self is an instance of the class
-        return Actuator(fn=f)(self, *args, **kwargs)
+        return Actuator(fn=f)(self, *args, _pypads_env=LoggerEnv(parameter=dict(), experiment_id=get_experiment_id(),
+                                                                 run_id=get_run_id()), **kwargs)
 
     return wrapper
 
@@ -66,7 +66,7 @@ class PyPadsActuators(IActuators):
         return get_current_pads()
 
     @actuator
-    def set_random_seed(self, seed=None):
+    def set_random_seed(self, _pypads_env=None, _logger_call=None, _logger_output=None, _pypads_params=None, seed=None):
         # Set seed if needed
         if seed is None:
             import random

@@ -1,24 +1,29 @@
-import os
+from typing import Type, Optional
 
-from pydantic import HttpUrl, BaseModel
-from typing import List, Type
+from pydantic import BaseModel
 
 from pypads.app.env import LoggerEnv
-from pypads.app.injections.base_logger import TrackedObject
 from pypads.app.injections.run_loggers import RunSetup
+from pypads.app.injections.tracked_object import TrackedObject, LoggerOutput
 from pypads.app.misc.managed_git import ManagedGit
-from pypads.model.models import TrackedObjectModel, TagMetaModel, ArtifactMetaModel, OutputModel
-from pypads.utils.logging_util import WriteFormats
+from pypads.model.logger_output import OutputModel, TrackedObjectModel
+from pypads.utils.logging_util import FileFormats
+
+PYPADS_SOURCE_COMMIT_HASH = "pypads.source.git.commit_hash"
+PYPADS_GIT_BRANCH = "pypads.git.branch"
+PYPADS_GIT_UNCOMMITTED_CHANGES = "pypads.git.uncommitted_changes"
+PYPADS_GIT_DESC = "pypads.git.description"
+PYPADS_GIT_REMOTES = "pypads.git.remotes"
 
 
 class GitTO(TrackedObject):
     class GitModel(TrackedObjectModel):
-        uri: HttpUrl = "https://www.padre-lab.eu/onto/SourceCode-Management"
-
+        category: str = "SourceCode-Management"
+        description = "Information about the git repository in which the experiment is located.."
         source: str = ...
         version: str = ...
-        tags: List[TagMetaModel] = []
-        git_log: ArtifactMetaModel = ...
+        git_log: str = ...  # reference to the log file
+        patch: Optional[str] = ...
 
         class Config:
             orm_mode = True
@@ -27,36 +32,28 @@ class GitTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.GitModel
 
-    def __init__(self, *args, source, tracked_by, **kwargs):
-        super().__init__(*args, source=source, tracked_by=tracked_by, **kwargs)
+    def __init__(self, *args, source, parent, **kwargs):
+        super().__init__(*args, source=source, parent=parent, **kwargs)
 
-    def add_tag(self, name, value, description):
-        meta = TagMetaModel(name=name, description=description)
-        self.tags.append(meta)
+    def add_tag(self, *args, **kwargs):
+        self.store_tag(*args, **kwargs)
 
-        self._store_tag(value, meta)
-
-    def store_git_log(self, name, value, format=WriteFormats.text):
-        path = os.path.join(self._base_path(), self._get_artifact_path(name))
-        self.git_log = ArtifactMetaModel(path=path, description="Commit logs for the git repository", format=format)
-
-        self._store_artifact(value, self.git_log)
-
-    def _get_artifact_path(self, name):
-        return os.path.join(str(id(self)), name)
+    def store_git_log(self, name, value, format=FileFormats.text):
+        self.git_log = self.store_mem_artifact(name, value,
+                                               description="Commit logs for the git repository", write_format=format)
 
 
 class IGitRSF(RunSetup):
     """
     Function tracking the source code via git.
     """
-    name = "Git Run Setup Logger"
-    uri: HttpUrl = "https://www.padre-lab.eu/onto/git-run-logger"
+    name = "Generic Git Run Setup Logger"
+    category: str = "GitRunLogger"
     _dependencies = {"git"}
 
     class IGitRSFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/IGitRSF-Output"
-        git_info: GitTO.get_model_cls() = None
+        category: str = "IGitRSF-Output"
+        git_info: str = None
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
@@ -68,24 +65,38 @@ class IGitRSF(RunSetup):
         run = pads.api.active_run()
         tags = run.data.tags
         source_name = tags.get("mlflow.source.name", None)
-        managed_git: ManagedGit = pads.managed_git_factory(source_name)
-        if managed_git:
-            repo = managed_git.repo
-            git_info = GitTO(tracked_by=_logger_call, source=source_name or repo.working_dir, version=repo.head.commit.hexsha)
-            # Disable pager for returns
-            repo.git.set_persistent_git_options(no_pager=True)
-            try:
-                git_info.add_tag("pypads.git.description", repo.description, description="Repository description")
-                git_info.add_tag("pypads.git.describe", repo.git.describe("--all"), description="")
-                git_info.store_git_log("pypads.git.log", repo.git.log(kill_after_timeout=_pypads_timeout))
-                remotes = repo.remotes
-                remote_out = "No remotes existing"
-                if len(remotes) > 0:
-                    remote_out = ""
-                    for remote in remotes:
-                        remote_out += remote.name + ": " + remote.url + "\n"
-                git_info.add_tag("pypads.git.remotes", remote_out, description="Remotes of the repositories")
-            except Exception as e:
-                _logger_output.set_failure_state(e)
-            finally:
-                git_info.store(_logger_output,"git_info")
+        if "unittest" not in source_name:
+            managed_git: ManagedGit = pads.managed_git_factory(source_name)
+            if managed_git:
+                repo = managed_git.repo
+                git_info = GitTO(parent=_logger_output, source=source_name or repo.working_dir,
+                                 version=repo.head.commit.hexsha)
+
+                # Persist local changes into a patch file
+                if managed_git.has_changes():
+                    patch, patch_hash = managed_git.create_patch()
+                    git_info.add_tag(PYPADS_GIT_UNCOMMITTED_CHANGES, patch_hash,
+                                     description="A hash of the patch including uncommitted changes.")
+                    git_info.patch = git_info.store_mem_artifact("git_stash", patch, write_format="patch",
+                                                                 description="A patch file including uncommitted "
+                                                                             "changes")
+
+                # Disable pager for returns
+                repo.git.set_persistent_git_options(no_pager=True)
+                try:
+                    git_info.add_tag(PYPADS_SOURCE_COMMIT_HASH, managed_git.commit_hash)
+                    git_info.add_tag(PYPADS_GIT_BRANCH, managed_git.branch)
+                    git_info.add_tag(PYPADS_GIT_DESC, repo.description, description="Repository description")
+                    git_info.add_tag("pypads.git.describe", repo.git.describe("--all"), description="")
+                    git_info.store_git_log(PYPADS_GIT_REMOTES, repo.git.log(kill_after_timeout=_pypads_timeout))
+                    remotes = repo.remotes
+                    remote_out = "No remotes existing"
+                    if len(remotes) > 0:
+                        remote_out = ""
+                        for remote in remotes:
+                            remote_out += remote.name + ": " + remote.url + "\n"
+                    git_info.add_tag(PYPADS_GIT_REMOTES, remote_out, description="Remotes of the repositories")
+                except Exception as e:
+                    _logger_output.set_failure_state(e)
+                finally:
+                    _logger_output.git_info = git_info.store()

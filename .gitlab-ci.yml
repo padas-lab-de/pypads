@@ -30,7 +30,7 @@ stages:
   stage: tests
   coverage: '/TOTAL.*\s(\d+\.\d+\%)/'
   script:
-    - poetry run pytest test/
+    - poetry run pytest tests/
   artifacts:
     paths:
       - tests/logs
@@ -39,13 +39,13 @@ stages:
 
 # Test with different python versions
 # Fails currently because of dependencies in pyproject.toml
-#test-python-3.5:
-#  <<: *test
+#tests-python-3.5:
+#  <<: *tests
 #  image: python:3.5
 
 # Tensorflow 2.2.0 not available
-#test-python-3.6:
-#  <<: *test
+#tests-python-3.6:
+#  <<: *tests
 #  image: python:3.6
 
 test-python-3.7:
@@ -53,8 +53,8 @@ test-python-3.7:
   image: python:3.7
 
 # Numpy currently not supported
-#test-python-3.8:
-#  <<: *test
+#tests-python-3.8:
+#  <<: *tests
 #  image: python:3.8
 
 # Deploy jobs

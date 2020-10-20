@@ -2,36 +2,40 @@ from abc import ABCMeta
 from functools import wraps
 from typing import Type
 
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 
-from pypads.app.injections.base_logger import LoggerCall, SimpleLogger
+from pypads.app.env import LoggerEnv
+from pypads.app.injections.base_logger import SimpleLogger
+from pypads.app.injections.tracked_object import LoggerCall
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
 from pypads.injections.analysis.determinism import check_determinism
-from pypads.model.models import LoggerModel
-from pypads.utils.util import inheritors
+from pypads.model.logger_model import LoggerModel
+from pypads.utils.util import get_run_id, get_experiment_id
 
 validator_plugins = set()
+validator_set = set()
 
 
 class Validator(SimpleLogger, metaclass=ABCMeta):
-    is_a: HttpUrl = "https://www.padre-lab.eu/onto/validator"
+    category: str = "Validator"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        validator_set.add(self)
 
     def build_call_object(self, _pypads_env, **kwargs):
         return LoggerCall(logging_env=_pypads_env,
-                          is_a="https://www.padre-lab.eu/onto/ValidatorLoggerCall", **kwargs)
+                          category="ValidatorLoggerCall", **kwargs)
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
         return LoggerModel
 
-    def _base_path(self):
-        return "Validators/{}/".format(self.__class__.__name__)
-
 
 class IValidators(Plugin):
 
-    def __init__(self):
-        super().__init__(type=Validator)
+    def __init__(self, *args, **kwargs):
+        super().__init__(type=Validator, *args, **kwargs)
         validator_plugins.add(self)
 
     def _get_meta(self):
@@ -52,7 +56,8 @@ def validator(f):
     @wraps(f)
     def wrapper(self, *args, **kwargs):
         # self is an instance of the class
-        return Validator(fn=f)(self, *args, **kwargs)
+        return Validator(fn=f)(self, *args, _pypads_env=LoggerEnv(parameter=dict(), experiment_id=get_experiment_id(),
+                                                                  run_id=get_run_id()), **kwargs)
 
     return wrapper
 
@@ -85,4 +90,6 @@ def validators():
     Returns classes of
     :return:
     """
-    return inheritors(Validator)
+    command_list = list(validator_set)
+    command_list.sort(key=lambda a: str(a))
+    return command_list

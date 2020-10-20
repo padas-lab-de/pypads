@@ -1,7 +1,11 @@
+import functools
+import hashlib
 import inspect
 import operator
+import os
 import threading
 from functools import reduce
+from typing import Tuple
 
 import mlflow
 import pkg_resources
@@ -29,9 +33,10 @@ def get_class_that_defined_method(meth):
     return getattr(meth, '__objclass__', None)  # handle special descriptor objects
 
 
-def dict_merge(*dicts):
+def dict_merge(*dicts, str_to_set=False):
     """
     Simple merge of dicts
+    :param str_to_set: Merge multiple strings to a set
     :param dicts:
     :return:
     """
@@ -39,12 +44,45 @@ def dict_merge(*dicts):
     for d in dicts:
         if isinstance(d, dict):
             for key, value in d.items():
-                if isinstance(value, dict):
+                if isinstance(value, str) and str_to_set:
+                    if key not in merged:
+                        merged[key] = value
+                    else:
+                        if not isinstance(merged[key], set):
+                            merged[key] = {merged[key]}
+                        merged[key] = merged[key].union({value})
+                elif isinstance(value, set):
+                    node = merged.setdefault(key, set())
+                    if not isinstance(node, set):
+                        merged[key] = {node}
+                    merged[key] = merged[key].union(value)
+                elif isinstance(value, list):
+                    node = merged.setdefault(key, [])
+                    if not isinstance(node, list):
+                        merged[key] = [node]
+                    merged[key].extend([e for e in value if e not in merged[key]])
+                elif isinstance(value, dict):
                     node = merged.setdefault(key, {})
-                    merged[key] = dict_merge(node, value)
+                    merged[key] = dict_merge(node, value, str_to_set=str_to_set)
                 else:
                     merged[key] = value
     return merged
+
+
+def persistent_hash(to_hash, algorithm=hashlib.md5):
+    """
+    Produces a hash which is independant of the current runtime (No salt) unlike __hash__()
+    :param to_hash:
+    :param algorithm:
+    :return:
+    """
+
+    def add_str(a, b):
+        return operator.add(str(persistent_hash(str(a), algorithm)), str(persistent_hash(str(b), algorithm)))
+
+    if isinstance(to_hash, Tuple):
+        to_hash = functools.reduce(add_str, to_hash)
+    return int(algorithm(to_hash.encode("utf-8")).hexdigest(), 16)
 
 
 def sizeof_fmt(num, suffix='B'):
@@ -64,12 +102,19 @@ def sizeof_fmt(num, suffix='B'):
     return '{:3.1f}{}{}'.format(val, ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z'][magnitude], suffix)
 
 
-def local_uri_to_path(uri):
+def uri_to_path(uri):
     """
     Convert URI to local filesystem path.
     """
     from six.moves import urllib
-    path = urllib.parse.urlparse(uri).path if uri.startswith("file:") else uri
+    if uri.startswith("file:"):
+        path = urllib.parse.urlparse(uri).path
+    elif uri.startswith("http:") or uri.startswith("https:"):
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+        path = os.path.join(pads.folder, "tmp")
+    else:
+        path = uri
     return urllib.request.url2pathname(path)
 
 
@@ -202,9 +247,26 @@ def has_direct_attr(obj, name):
         return False
 
 
+def get_backend_uri():
+    try:
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+        if pads:
+            return pads.uri
+    except ImportError:
+        pass  # PyPads is not available here the backend uri is not set. Backend_uri has to be provided later on
+    return None
+
+
 def get_experiment_id():
     if mlflow.active_run():
         return mlflow.active_run().info.experiment_id
+    return None
+
+
+def get_experiment_name():
+    if mlflow.active_run():
+        return mlflow.get_experiment(mlflow.active_run().info.experiment_id).name
     return None
 
 

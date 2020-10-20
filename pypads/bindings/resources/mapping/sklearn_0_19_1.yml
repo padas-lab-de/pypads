@@ -20606,7 +20606,7 @@ mappings:
                     '@type': padre:OptimisationParameters
                     padre:configures: padre:DecisionTreeRegressor
 metadata:
-  author: "Thomas Weissgerber"
+  author: "Thomas Wei\xDFgerber"
   library:
     name: sklearn
     version: '>= 0.19.1'

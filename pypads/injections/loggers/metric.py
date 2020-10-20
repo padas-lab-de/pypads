@@ -1,13 +1,13 @@
-import os
-from typing import Union, Type, Optional
+from typing import Type, Optional, Union
+from uuid import UUID
 
-from pydantic import HttpUrl, BaseModel
+from pydantic import BaseModel
 
 from pypads import logger
-from pypads.app.injections.base_logger import TrackedObject
+from pypads.app.env import InjectionLoggerEnv
 from pypads.app.injections.injection import InjectionLogger
-from pypads.model.models import TrackedObjectModel, ArtifactMetaModel, MetricMetaModel, OutputModel
-from pypads.utils.logging_util import WriteFormats
+from pypads.app.injections.tracked_object import TrackedObject
+from pypads.model.logger_output import OutputModel, TrackedObjectModel
 
 
 class MetricTO(TrackedObject):
@@ -16,11 +16,11 @@ class MetricTO(TrackedObject):
     """
 
     class MetricModel(TrackedObjectModel):
-        uri: HttpUrl = "https://www.padre-lab.eu/onto/Metric"
+        category: str = "Metric"
+        description = "A tracked metric of the experiment."
 
         name: str = ...  # Metric name
-        to_artifact: bool = False
-        value: Union[MetricMetaModel, ArtifactMetaModel] = ...
+        as_artifact: bool = False
 
         class Config:
             orm_mode = True
@@ -29,23 +29,20 @@ class MetricTO(TrackedObject):
     def get_model_cls(cls) -> Type[BaseModel]:
         return cls.MetricModel
 
-    def store_value(self, value, step):
-        self.name = self.tracked_by.original_call.call_id.context.container.__name__ + "." + \
-                    self.tracked_by.original_call.call_id.wrappee.__name__
+    def store_value(self, value, step, name=""):
+        self.name = self.producer.original_call.call_id.context.container.__name__ + "." + \
+                    self.producer.original_call.call_id.wrappee.__name__ + "." + name
 
         if isinstance(value, float):
-            self.value = MetricMetaModel(name=self.name, step=step,
-                                         description="The metric returned by {}".format(self.name))
-            self._store_metric(value, self.value)
+            self.store_metric(self.name, value, description="The metric returned by {}".format(self.name), step=step)
             return True
         else:
             logger.warning("Mlflow metrics have to be doubles. Could log the return value of type '" + str(
                 type(
                     value)) + "' of '" + self.name + "' as artifact instead.")
-            if self.to_artifact:
-                path = os.path.join(self._base_path(), self._get_artifact_path(self.name))
-                self.value = ArtifactMetaModel(path=path, description="", format=WriteFormats.text)
-                self._store_artifact(value, self.value)
+            if self.as_artifact:
+                self.name = self.store_mem_artifact(self.name, value,
+                                                    description="The metric returned by {}".format(self.name))
                 return True
         return False
 
@@ -55,11 +52,13 @@ class MetricILF(InjectionLogger):
     Function logging the wrapped metric function
     """
     name = "Metric Injection Logger"
-    uri = "https://www.padre-lab.eu/onto/metric-logger"
+    category: str = "MetricLogger"
 
     class MetricILFOutput(OutputModel):
-        is_a: HttpUrl = "https://www.padre-lab.eu/onto/MetricILF-Output"
-        metric: Optional[MetricTO.MetricModel] = None
+        # Add additional context information to
+        # TODO context: dict = {**{"tests": "testVal"}, **OntologyEntry.__field_defaults__["context"]}
+        category: str = "MetricILF-Output"
+        metric: Optional[Union[UUID, str]] = None
 
         class Config:
             orm_mode = True
@@ -68,7 +67,8 @@ class MetricILF(InjectionLogger):
     def output_schema_class(cls) -> Type[OutputModel]:
         return cls.MetricILFOutput
 
-    def __post__(self, ctx, *args, _pypads_artifact_fallback=False, _logger_call, _logger_output, _pypads_result, **kwargs):
+    def __post__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, _pypads_artifact_fallback=False, _logger_call,
+                 _logger_output, _pypads_result, **kwargs):
         """
 
         :param ctx:
@@ -79,10 +79,10 @@ class MetricILF(InjectionLogger):
         :return:
         """
         result = _pypads_result
-        metric = MetricTO(tracked_by=_logger_call,
-                          to_artifact=_pypads_artifact_fallback)
+        metric = MetricTO(parent=_logger_output,
+                          as_artifact=_pypads_artifact_fallback, additional_data=_pypads_env.data)
 
         storable = metric.store_value(result, step=_logger_call.original_call.call_id.call_number)
 
         if storable:
-            metric.store(_logger_output, key="metric")
+            _logger_output.metric = metric.store()

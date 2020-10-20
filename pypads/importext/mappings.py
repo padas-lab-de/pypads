@@ -1,8 +1,9 @@
 import glob
 import os
-from typing import List, Set, Tuple, Generator, Iterable
+from typing import List, Set, Tuple, Generator, Iterable, Type
 
 import yaml
+from pydantic import BaseModel
 
 from pypads import logger
 from pypads.bindings.anchors import Anchor, get_anchor
@@ -10,7 +11,9 @@ from pypads.bindings.hooks import Hook
 from pypads.importext.package_path import RegexMatcher, PackagePath, PackagePathMatcher, \
     SerializableMatcher, Package
 from pypads.importext.versioning import LibSelector
-from pypads.utils.util import find_package_version
+from pypads.model.domain import MappingModel
+from pypads.model.metadata import ModelObject
+from pypads.utils.util import find_package_version, dict_merge, persistent_hash
 
 default_mapping_file_paths = []
 default_mapping_file_paths.extend(glob.glob(
@@ -19,11 +22,11 @@ default_mapping_file_paths.extend(glob.glob(
 
 
 class Mapping:
-    """
+    """default_mapping_file_paths
     Mapping for an algorithm defined by a pypads mapping file
     """
 
-    def __init__(self, matcher: PackagePathMatcher, in_collection, anchors, values):
+    def __init__(self, matcher: PackagePathMatcher, in_collection, anchors, values, inherited=None):
         self._in_collection = in_collection
         self._values = values
         self._hooks = set()
@@ -31,6 +34,7 @@ class Mapping:
         for a in anchors:
             self._hooks.add(Hook(a, self))
         self._matcher = matcher
+        self._inherited = inherited
 
     def is_applicable(self, ctx, obj):
         """
@@ -102,8 +106,9 @@ class Mapping:
         return hash((self.reference, "|".join([str(h) for h in self.hooks]), str(self.values)))
 
 
-class MappingCollection:
-    def __init__(self, key, version, library):
+class MappingCollection(ModelObject):
+
+    def __init__(self, key, version, library, author=None, **kwargs):
         """
         Object holding a set of mappings related to a library
         :param key: Name / key of the collection
@@ -112,8 +117,15 @@ class MappingCollection:
         """
         self._mappings = {}
         self._name = key
+        self._author = author
         self._version = version
         self._lib = LibSelector.from_dict(library)
+        self._hash = persistent_hash((self._name, self._version, hash(self._lib)))
+        super().__init__()
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return MappingModel
 
     @property
     def version(self):
@@ -126,6 +138,10 @@ class MappingCollection:
     @property
     def name(self):
         return self._name
+
+    @property
+    def author(self):
+        return self._author
 
     @property
     def mappings(self):
@@ -245,7 +261,8 @@ class SerializedMapping(MappingCollection):
         yml = yaml.load(content, Loader=yaml.SafeLoader)
         schema = MappingSchema(yml["fragments"] if "fragments" in yml else [], yml["metadata"], PackagePathMatcher(""),
                                set(), {})
-        super().__init__(key, schema.metadata["version"], schema.metadata["library"])
+        super().__init__(key, schema.metadata["version"], schema.metadata["library"], schema.metadata["author"])
+
         self._build_mappings(yml["mappings"], schema)
 
     def _build_mappings(self, node, schema: MappingSchema):
@@ -259,7 +276,6 @@ class SerializedMapping(MappingCollection):
         _children = []
         _anchors = set()
         _values = {}
-        mappings = {}
 
         # replace fragments
         for k, v in node.items():
@@ -285,10 +301,10 @@ class SerializedMapping(MappingCollection):
 
         schema = MappingSchema(schema.fragments, schema.metadata, matcher=schema.matcher,
                                anchors=_anchors.union(schema.anchors),
-                               values={**schema.values, **_values})
+                               values=dict_merge(schema.values, _values, str_to_set=True))
 
         if len(_fragments) > 0:
-            mappings = {**mappings, **self._build_mappings(node, schema)}
+            self._build_mappings(node, schema)
         else:
             if len(_children) > 0:
                 for matcher, v in _children:
@@ -296,14 +312,21 @@ class SerializedMapping(MappingCollection):
                         matcher = schema.matcher + matcher
                     if not isinstance(matcher, PackagePathMatcher):
                         matcher = PackagePathMatcher(matcher)
-                    mappings = {**mappings, **self._build_mappings(v, MappingSchema(schema.fragments, schema.metadata,
-                                                                                    matcher=matcher,
-                                                                                    anchors=schema.anchors,
-                                                                                    values=schema.values))}
+                    if v is not None:
+                        self._build_mappings(v, MappingSchema(schema.fragments, schema.metadata,
+                                                              matcher=matcher,
+                                                              anchors=schema.anchors,
+                                                              values=schema.values))
+                    else:
+                        self._build_mappings({"hooks": schema.anchors, "data": schema.values},
+                                             MappingSchema(schema.fragments, schema.metadata,
+                                                           matcher=matcher,
+                                                           anchors=schema.anchors,
+                                                           values=schema.values))
             elif schema.matcher.matchers is not None:
                 self.add_mapping(
-                    Mapping(schema.matcher, self, schema.anchors, schema.values))
-        return mappings
+                    Mapping(schema.matcher, self, schema.anchors,
+                            {**schema.values, "mapped_by": "http://www.padre-lab.eu/PyPadsInjection"}))
 
 
 class MappingFile(SerializedMapping):
@@ -316,7 +339,11 @@ class MappingFile(SerializedMapping):
             if name is None:
                 name = os.path.basename(f.name)
             data = f.read()
+        self.path = path
         super().__init__(name, data)
+
+        # computing the hash of the mapping file
+        self._hash = persistent_hash(data)
 
 
 class MappingRegistry:
@@ -393,6 +420,14 @@ class MappingRegistry:
             logger.error(
                 "Couldn't add mapping " + str(mapping) + " to the pypads mapping registry. Lib or key are undefined.")
         else:
+            mapping_repo = self._pypads.mapping_repository
+            mapping_hash = mapping._hash
+            if not mapping_repo.has_object(uid=mapping_hash):
+                mapping_object = mapping_repo.get_object(uid=mapping_hash)
+                if isinstance(mapping, MappingFile):
+                    mapping.mapping_file = mapping_object.log_artifact(local_path=mapping.path,
+                                                                       description="A copy of the mapping file used.")
+                mapping_object.log_json(mapping.dict(by_alias=True))
             self._mappings[key] = mapping
 
     def load_mapping(self, path):

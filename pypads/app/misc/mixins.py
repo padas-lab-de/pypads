@@ -1,3 +1,4 @@
+import time
 import traceback
 from abc import abstractmethod, ABCMeta
 from typing import List, Union, Tuple, Set
@@ -5,8 +6,7 @@ from typing import List, Union, Tuple, Set
 from pypads import logger
 from pypads.app.misc.inheritance import SuperStop
 from pypads.importext.versioning import LibSelector, VersionNotFoundException
-from pypads.model.metadata import ModelObject
-from pypads.model.models import LibraryModel
+from pypads.utils.util import get_experiment_name, get_run_id
 
 DEFAULT_ORDER = 1
 
@@ -31,7 +31,7 @@ class MissingDependencyError(NoCallAllowedError):
 
 class OrderMixin(SuperStop):
     """
-    Object defining an order attribute to denote its priority.
+    Object defining an order attribute to denote its priority. Smallest to largest!
     """
     __metaclass__ = ABCMeta
 
@@ -124,6 +124,76 @@ class DependencyMixin(CallableMixin):
         return super().__call__(*args, **kwargs)
 
 
+class CacheDependentMixin(CallableMixin, metaclass=ABCMeta):
+    """
+    Overwrite this to provide your result cache names.
+    :return:
+    """
+    _needed_cached: List[str] = []
+
+    @property
+    def needed_cached(self) -> List:
+        return self._needed_cached
+
+    def __call__(self, *args, **kwargs):
+        cached = self._check_cache_dependencies()
+        return super().__call__(*args, _pypads_cached_results=cached, **kwargs)
+
+    def _check_cache_dependencies(self):
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+
+        missing = []
+        tracking_objects = []
+        needed_cached = [self.needed_cached] if isinstance(self.needed_cached, str) else self.needed_cached
+        for dependency in needed_cached:
+            to = pads.cache.run_get(dependency)
+            if to is None:
+                missing.append(dependency)
+            else:
+                tracking_objects.append(to)
+        if len(missing) > 0:
+            raise MissingDependencyError(
+                "Can't log " + str(self) + ". Missing cached results of other loggers: " + ", ".join(
+                    [str(d) for d in missing]))
+        return tracking_objects
+
+
+class ResultDependentMixin(CallableMixin, metaclass=ABCMeta):
+    """
+    Overwrite this to provide your result search dict.
+    :return:
+    """
+    _needed_results: List[dict] = []
+
+    @property
+    def result_dependencies(self) -> List:
+        return self._needed_results
+
+    def __call__(self, *args, **kwargs):
+        tracking_objects = self._check_result_dependencies()
+        return super().__call__(*args, _pypads_input_results=tracking_objects, **kwargs)
+
+    def _check_result_dependencies(self):
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+
+        missing = []
+        tracking_objects = []
+        for dependency in self.result_dependencies:
+            to = pads.results.get_tracked_objects(experiment_name=get_experiment_name(), run_id=get_run_id(),
+                                                  **dependency)
+            if len(to) == 0:
+                missing.append(dependency)
+            else:
+                tracking_objects.append(to)
+        if len(missing) > 0:
+            raise MissingDependencyError(
+                "Can't log " + str(self) + ". Missing results of other loggers: " + ", ".join(
+                    [str(d) for d in missing]))
+        return tracking_objects
+
+
 class IntermediateCallableMixin(CallableMixin):
     """
     Callable being able to be disable / enabled on nested / intermediate runs.
@@ -153,6 +223,13 @@ class IntermediateCallableMixin(CallableMixin):
         return self._intermediate
 
 
+def timed(f):
+    start = time.time()
+    ret = f()
+    elapsed = time.time() - start
+    return ret, elapsed
+
+
 class TimedCallableMixin(CallableMixin):
     __metaclass__ = ABCMeta
     """
@@ -165,7 +242,6 @@ class TimedCallableMixin(CallableMixin):
 
     def __call__(self, *args, **kwargs):
         c = super().__call__
-        from pypads.injections.analysis.time_keeper import timed
         _return, time = timed(lambda: c(*args, **kwargs))
         return _return, time
 
@@ -186,6 +262,9 @@ class DefensiveCallableMixin(CallableMixin):
         except KeyboardInterrupt:
             return self._handle_error(*args, ctx=ctx, _pypads_env=_pypads_env, error=Exception("KeyboardInterrupt"),
                                       **kwargs)
+        except NoCallAllowedError:
+            # Ignore for now
+            pass
         except Exception as e:
             import traceback
             logger.debug(traceback.format_exc())
@@ -254,35 +333,8 @@ class FunctionHolderMixin(CallableMixin):
     def __real_call__(self, *args, **kwargs):
         return self._fn(*args, **kwargs)
 
-
-class ProvenanceMixin(ModelObject, metaclass=ABCMeta):
-    """
-    Class extracting its library reference automatically if possible.
-    """
-
-    def __init__(self, *args, lib_model: LibraryModel = None, **kwargs):
-        super().__init__(*args, **kwargs)
-        if lib_model is None:
-            setattr(self, "defined_in", self._get_library_descriptor())
-        else:
-            setattr(self, "defined_in", lib_model)
-
-        if not hasattr(self, "uri") or getattr(self, "uri") is None:
-            setattr(self, "uri", "{}#{}".format(getattr(self, "is_a"), self.uid))
-
-    def _get_library_descriptor(self) -> LibraryModel:
-        """
-        Try to extract the defining package of this class.
-        :return:
-        """
-        # TODO extract reference to self package
-        try:
-            name = self.__module__.split(".")[0]
-            from pypads.utils.util import find_package_version
-            version = find_package_version(name)
-            return LibraryModel(name=name, version=version, extracted=True)
-        except Exception:
-            return LibraryModel(name="__unkown__", version="0.0", extracted=True)
+    def __str__(self):
+        return self._fn.__name__
 
 
 class BaseDefensiveCallableMixin(DefensiveCallableMixin):
@@ -297,5 +349,7 @@ class BaseDefensiveCallableMixin(DefensiveCallableMixin):
         super().__init__(*args, **kwargs)
 
     def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
-        logger.warning(self._message.format("{}.{}".format(self.__class__.__name__, self.__name__), str(error),
+        logger.warning(self._message.format("{}.{}".format(self.__class__.__name__, self.__name__)
+                                            if hasattr(self, "__name__") else self.__class__.__name__,
+                                            str(error),
                                             traceback.format_exc()))

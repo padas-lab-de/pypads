@@ -2,10 +2,11 @@ from abc import ABCMeta
 from functools import wraps
 from typing import List
 
+from pypads.app.env import LoggerEnv
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
 from pypads.app.misc.mixins import FunctionHolderMixin
 from pypads.importext.mappings import Mapping
-from pypads.utils.util import inheritors, get_class_that_defined_method
+from pypads.utils.util import inheritors, get_class_that_defined_method, get_experiment_id, get_run_id
 
 decorator_plugins = set()
 
@@ -21,8 +22,8 @@ class Decorator(FunctionHolderMixin, metaclass=ABCMeta):
 
 class IDecorators(Plugin):
 
-    def __init__(self):
-        super().__init__(type=Decorator)
+    def __init__(self, *args, **kwargs):
+        super().__init__(type=Decorator, *args, **kwargs)
         decorator_plugins.add(self)
 
     def _get_meta(self):
@@ -43,7 +44,8 @@ def decorator(f):
     @wraps(f)
     def wrapper(self, *args, **kwargs):
         # self is an instance of the class
-        return Decorator(fn=f)(self, *args, **kwargs)
+        return Decorator(fn=f)(self, *args, _pypads_env=LoggerEnv(parameter=dict(), experiment_id=get_experiment_id(),
+                                                                  run_id=get_run_id()), **kwargs)
 
     return wrapper
 
@@ -56,6 +58,22 @@ class PyPadsDecorators(IDecorators):
     def pypads(self):
         from pypads.app.pypads import get_current_pads
         return get_current_pads()
+
+    # @decorator
+    # def project(self, clazz):
+    #     """
+    #     Used to annotate a data class as a project representation. The data class should define following structure:
+    #
+    #     @project
+    #     class Project:
+    #         name = "My project"
+    #         description = "We hope to solve something difficult."
+    #         hypothesis = "This hypothesis is difficult."
+    #     :return:
+    #     """
+    #     # TODO Write to pypads
+    #     self.pypads.api.log_artifact()
+    #     return dataclass(clazz)
 
     @decorator
     def track(self, event="pypads_log", mapping: Mapping = None):

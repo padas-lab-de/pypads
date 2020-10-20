@@ -4,25 +4,22 @@ from pypads.bindings.event_types import EventType
 from pypads.bindings.hooks import Hook
 from pypads.importext.versioning import LibSelector
 from pypads.injections.analysis.parameters import ParametersILF
-from pypads.injections.loggers.data_flow import OutputILF, InputILF
 from pypads.injections.loggers.debug import Log, LogInit
-from pypads.injections.loggers.hardware import CpuILF, RamILF, DiskILF
 from pypads.injections.loggers.metric import MetricILF
-from pypads.injections.loggers.mlflow.mlflow_autolog import MlflowAutologger
-from pypads.injections.loggers.pipeline_detection import PipelineTrackerILF
-from pypads.utils.logging_util import WriteFormats
-
+from pypads.injections.loggers.mlflow.mlflow_autolog import MlFlowAutoLogger
 # maps events to loggers
 # Default event mappings. We allow to log parameters, output defor input
+from pypads.injections.loggers.pipeline_detection import PipelineTrackerILF
+
 DEFAULT_LOGGING_FNS = {
     "parameters": ParametersILF(),
-    "output": OutputILF(_pypads_write_format=WriteFormats.text),
-    "input": InputILF(_pypads_write_format=WriteFormats.text),
-    "hardware": [CpuILF(_pypads_write_format=WriteFormats.text), RamILF(_pypads_write_format=WriteFormats.text),
-                 DiskILF(_pypads_write_format=WriteFormats.text)],
+    # "output": OutputILF(_pypads_write_format=FileFormats.text),
+    # "input": InputILF(_pypads_write_format=FileFormats.text),
+    # "hardware": [CpuILF(_pypads_write_format=FileFormats.text), RamILF(_pypads_write_format=FileFormats.text),
+    #             DiskILF(_pypads_write_format=FileFormats.text)],
     "metric": MetricILF(),
-    "autolog": MlflowAutologger(),
-    "pipeline": PipelineTrackerILF(_pypads_pipeline_type="normal", _pypads_pipeline_args=False),
+    "autolog": MlFlowAutoLogger(),
+    "pipeline": PipelineTrackerILF(),
     "log": Log(),
     "init": LogInit()
 }
@@ -114,18 +111,18 @@ class FunctionRegistry:
         identities = {}
         filtered_fns = set()
         for spec, fn in fitting_fns:
-            if fn.uid is None:
+            if not hasattr(fn, "identity") or fn.identity is None:
                 filtered_fns.add(fn)
-            elif fn.uid in identities:
+            elif fn.identity in identities:
                 # If we are more specific and have the same identity remove old fn
-                if identities[fn.uid][0] <= spec:
-                    if identities[fn.uid][0] < spec:
-                        if fn.uid in identities:
-                            filtered_fns.remove(identities[fn.uid][1])
+                if identities[fn.identity][0] <= spec:
+                    if identities[fn.identity][0] < spec:
+                        if fn.identity in identities:
+                            filtered_fns.remove(identities[fn.identity][1])
                     filtered_fns.add(fn)
-                    identities[fn.uid] = (spec, fn)
+                    identities[fn.identity] = (spec, fn)
             else:
                 # If not seen add it
                 filtered_fns.add(fn)
-                identities[fn.uid] = (spec, fn)
+                identities[fn.identity] = (spec, fn)
         return filtered_fns

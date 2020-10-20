@@ -45,10 +45,12 @@ def init_anchors():
         raise Exception("There seems to be an issues with adding the anchors")
 
 
-def get_anchor(name):
-    if name not in anchors:
+def get_anchor(anchor):
+    if isinstance(anchor, Anchor):
+        return anchor
+    if anchor not in anchors.keys():
         return None
-    return anchors.get(name)
+    return anchors.get(anchor)
 
 
 # TODO maybe change to enum
