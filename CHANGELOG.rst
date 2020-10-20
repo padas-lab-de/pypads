@@ -2,6 +2,40 @@ Changelog
 =========
 
 
+0.4.0 (2020-10-20)
+------------------
+
+New
+~~~
+- Reduced intrusiveness of git change preserving. [Thomas Weißgerber]
+- Run loggers unit test. wip! [Mehdi Ben Amor]
+- Tests for injection loggers. [Mehdi Ben Amor]
+- Updated pipeline tracker, removed unneeded PoC loggers. [Thomas
+  Weißgerber]
+- Added references between tracked objects, logger outputs and logger
+  calls as well as parameters etc. [Thomas Weißgerber]
+- Added mongoDB support! [Thomas Weißgerber]
+- Added register_setup/teardown_utility. This allows for registering
+  functions before/after executing a run which are themselves not stored
+  as a logger. [Thomas Weißgerber]
+
+Changes
+~~~~~~~
+- Reworked storage of Hardware details. [Thomas Weißgerber]
+- Removed branching for now. We now just store the current changes as a
+  patch. [Thomas Weißgerber]
+
+Fix
+~~~
+- Fixed tests. [christofer]
+- Updated tests for current API. [christofer]
+- Updated tests for new api. [christofer]
+
+Other
+~~~~~
+- Bump version: 0.3.2 → 0.4.0. [Thomas Weißgerber]
+
+
 0.3.2 (2020-09-14)
 ------------------
 - Bump version: 0.3.1 → 0.3.2. [Mehdi Ben Amor]
