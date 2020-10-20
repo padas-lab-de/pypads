@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from pypads import logger
 from pypads.app.env import LoggerEnv
-from pypads.app.injections.injection import DelayedResultsMixing
+from pypads.app.injections.injection import DelayedResultsMixin
 from pypads.app.injections.run_loggers import RunSetup
 from pypads.app.injections.tracked_object import TrackedObject
 from pypads.model.domain import LibraryModel
@@ -113,7 +113,7 @@ class LogTO(TrackedObject):
         self.path = os.path.join(get_artifact_dir(self), "logs.log")
 
 
-class LoguruRSF(DelayedResultsMixing, RunSetup):
+class LoguruRSF(DelayedResultsMixin, RunSetup):
     """Store all logs of the current run into a file."""
 
     @staticmethod
@@ -167,7 +167,7 @@ class LoguruRSF(DelayedResultsMixing, RunSetup):
             logger.warning("LoguruRSF already registered")
 
 
-class StdOutRSF(DelayedResultsMixing, RunSetup):
+class StdOutRSF(DelayedResultsMixin, RunSetup):
     """Store all stdout output of the current run into a file."""
 
     @staticmethod

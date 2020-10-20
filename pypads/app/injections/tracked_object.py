@@ -26,7 +26,7 @@ class FallibleMixin(ModelObject, SuperStop, metaclass=ABCMeta):
         super().__init__(*args, **kwargs)
 
     def set_failure_state(self, e: Exception):
-        self._failed(f"Logger Output might be inaccurate/corrupt due to exception in execution: '{str(e)}'")
+        self._failed = f"Logger Output might be inaccurate/corrupt due to exception in execution: '{str(e)}'"
 
     @property
     def failed(self):

@@ -9,6 +9,7 @@ from mlflow.entities import ViewType
 from mlflow.tracking import MlflowClient, artifact_utils
 from mlflow.tracking.fluent import SEARCH_MAX_RESULTS_PANDAS
 from pymongo import MongoClient
+from pymongo.errors import DuplicateKeyError
 
 from pypads import logger
 from pypads.app.backends.backend import BackendInterface
@@ -341,9 +342,13 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
             logger.error(
                 f"Tried to log an invalid entry. Json logged data has to define a storage_type. For entry {entry}")
             return None
+        storage_type = entry["storage_type"].value if isinstance(entry["storage_type"], ResultType) else entry[
+            "storage_type"]
         try:
-            self._db[entry["storage_type"].value if isinstance(entry["storage_type"], ResultType) else entry[
-                "storage_type"]].insert_one(jsonable_encoder(entry))
+            try:
+                self._db[storage_type].insert_one(jsonable_encoder(entry))
+            except DuplicateKeyError as e:
+                self._db[storage_type].replace_one({"_id": uid}, jsonable_encoder(entry))
         except Exception as e:
             # TODO maybe handle duplicates
             raise e

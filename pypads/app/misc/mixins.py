@@ -6,6 +6,7 @@ from typing import List, Union, Tuple, Set
 from pypads import logger
 from pypads.app.misc.inheritance import SuperStop
 from pypads.importext.versioning import LibSelector, VersionNotFoundException
+from pypads.utils.util import get_experiment_name, get_run_id
 
 DEFAULT_ORDER = 1
 
@@ -121,6 +122,76 @@ class DependencyMixin(CallableMixin):
     def __call__(self, *args, **kwargs):
         self._check_dependencies()
         return super().__call__(*args, **kwargs)
+
+
+class CacheDependentMixin(CallableMixin, metaclass=ABCMeta):
+    """
+    Overwrite this to provide your result cache names.
+    :return:
+    """
+    _needed_cached: List[str] = []
+
+    @property
+    def needed_cached(self) -> List:
+        return self._needed_cached
+
+    def __call__(self, *args, **kwargs):
+        cached = self._check_cache_dependencies()
+        return super().__call__(*args, _pypads_cached_results=cached, **kwargs)
+
+    def _check_cache_dependencies(self):
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+
+        missing = []
+        tracking_objects = []
+        needed_cached = [self.needed_cached] if isinstance(self.needed_cached, str) else self.needed_cached
+        for dependency in needed_cached:
+            to = pads.cache.run_get(dependency)
+            if to is None:
+                missing.append(dependency)
+            else:
+                tracking_objects.append(to)
+        if len(missing) > 0:
+            raise MissingDependencyError(
+                "Can't log " + str(self) + ". Missing cached results of other loggers: " + ", ".join(
+                    [str(d) for d in missing]))
+        return tracking_objects
+
+
+class ResultDependentMixin(CallableMixin, metaclass=ABCMeta):
+    """
+    Overwrite this to provide your result search dict.
+    :return:
+    """
+    _needed_results: List[dict] = []
+
+    @property
+    def result_dependencies(self) -> List:
+        return self._needed_results
+
+    def __call__(self, *args, **kwargs):
+        tracking_objects = self._check_result_dependencies()
+        return super().__call__(*args, _pypads_input_results=tracking_objects, **kwargs)
+
+    def _check_result_dependencies(self):
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+
+        missing = []
+        tracking_objects = []
+        for dependency in self.result_dependencies:
+            to = pads.results.get_tracked_objects(experiment_name=get_experiment_name(), run_id=get_run_id(),
+                                                  **dependency)
+            if len(to) == 0:
+                missing.append(dependency)
+            else:
+                tracking_objects.append(to)
+        if len(missing) > 0:
+            raise MissingDependencyError(
+                "Can't log " + str(self) + ". Missing results of other loggers: " + ", ".join(
+                    [str(d) for d in missing]))
+        return tracking_objects
 
 
 class IntermediateCallableMixin(CallableMixin):

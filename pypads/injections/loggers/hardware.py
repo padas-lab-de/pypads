@@ -91,7 +91,7 @@
 #             cpu_usage.store(_logger_output, key="cpu_usage")
 #
 #         self.register_cleanup_fn(_logger_call, fn=cleanup_thread)
-#
+
 #
 # class RamTO(TrackedObject):
 #     """

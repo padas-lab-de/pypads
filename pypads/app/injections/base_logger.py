@@ -13,7 +13,7 @@ from pypads.app.env import LoggerEnv
 from pypads.app.injections.tracked_object import LoggerCall, TrackedObject, LoggerOutput
 from pypads.app.misc.mixins import DependencyMixin, DefensiveCallableMixin, TimedCallableMixin, \
     IntermediateCallableMixin, NoCallAllowedError, ConfigurableCallableMixin, LibrarySpecificMixin, \
-    FunctionHolderMixin, BaseDefensiveCallableMixin
+    FunctionHolderMixin, BaseDefensiveCallableMixin, ResultDependentMixin, CacheDependentMixin
 from pypads.importext.versioning import all_libs
 from pypads.model.logger_model import LoggerModel
 from pypads.model.logger_output import OutputModel
@@ -103,7 +103,8 @@ class DummyLogger(ModelObject):
 dummy_logger = DummyLogger()
 
 
-class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMixin,
+class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, CacheDependentMixin, ResultDependentMixin,
+             DependencyMixin,
              LibrarySpecificMixin, ProvenanceMixin, ConfigurableCallableMixin, metaclass=ABCMeta):
     """
     Generic tracking function used for storing information to a backend.
@@ -146,7 +147,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, DependencyMi
 
     @classmethod
     def output_schema_class(cls) -> Optional[Type[OutputModel]]:
-        return None
+        return OutputModel
 
     @classmethod
     def output_schema(cls):
@@ -221,7 +222,8 @@ class SimpleLogger(Logger):
         else:
             return self.__class__.__name__
 
-    def _call(self, _pypads_env: LoggerEnv, _logger_call: LoggerCall, _logger_output, *args, **kwargs):
+    def _call(self, _pypads_env: LoggerEnv, _logger_call: LoggerCall, _logger_output, _pypads_input_results,
+              _pypads_cached_results, *args, **kwargs):
         """
         Function where to add you custom code to execute before starting or ending the run.
 
