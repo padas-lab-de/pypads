@@ -4,10 +4,7 @@ import pathlib
 from pypads import logger
 from pypads.app.misc.mixins import DefensiveCallableMixin, DependencyMixin
 from pypads.utils.util import persistent_hash
-
-PYPADS_SOURCE_COMMIT_HASH = "pypads.source.git.commit_hash"
-PYPADS_GIT_BRANCH = "pypads.git.branch"
-PYPADS_GIT_DIFF = "pypads.git.diff"
+from git import InvalidGitRepositoryError, GitCommandError, GitError
 
 
 class ManagedGitFactory(DefensiveCallableMixin, DependencyMixin):
@@ -49,7 +46,6 @@ class ManagedGit:
             path = os.path.dirname(path)
         # if path is not representing the source code path
         path = self._verify_path(path, source=source)
-        from git import InvalidGitRepositoryError
         try:
             if not os.path.exists(path):
                 pathlib.Path(path).mkdir(parents=True)
@@ -68,7 +64,7 @@ class ManagedGit:
 
     def has_changes(self):
         return len(self.repo.index.diff('HEAD')) > 0 or len(
-            self.repo.index.diff(None)) > 0 or self.repo.untracked_files
+            self.repo.index.diff(None)) > 0 or len(self.repo.untracked_files) > 0
 
     def create_patch(self):
         """
@@ -78,21 +74,36 @@ class ManagedGit:
         orig_branch = self.repo.active_branch.name
 
         # push untracked changes to the stash)
-        files = [item.a_path for item in self.repo.index.diff(None)]
+        files = list(
+            set([item.a_path for item in self.repo.index.diff('HEAD')]) |
+            set([item.a_path for item in self.repo.index.diff(None)]) |
+            set(self.repo.untracked_files))
+        # files = [item.a_path for item in untracked_files]
         try:
             for f in files:
                 self.repo.git.add(f)
             self.repo.git.stash('push', '--keep-index')
 
-            # branch out, apply the stashed changes and commit
+            # generate the diff patch
             patch = self.repo.git.stash('show', '-p')
             diff_hash = persistent_hash(patch)
         finally:
-            self.repo.git.checkout(orig_branch)
             # Remove temporary tracked files
             for f in files:
                 self.repo.git.reset(f)
         return patch, diff_hash
+
+    def restore_patch(self, patch):
+        """
+        Takes a pypads created patch and apply it on the current repository
+        :param patch: path to the patch file
+        :return:
+        """
+        try:
+            self.repo.git.apply([patch])
+        except (GitCommandError, GitError) as e:
+            raise Exception(
+                "Failed to restore state of the repository from patch file due to exception {}".format(str(e)))
 
     def _verify_path(self, path, pads=None, source=True):
         """
@@ -118,7 +129,6 @@ class ManagedGit:
         :return:
         """
         import git
-        from git import InvalidGitRepositoryError, GitCommandError, GitError
         try:
             self.repo = git.Repo.init(path, bare=False)
             self._add_git_ignore()
@@ -139,8 +149,6 @@ class ManagedGit:
 
     def _commit(self, message=""):
         self.repo.git.commit(message=message)
-        self.pads.api.set_tag(PYPADS_SOURCE_COMMIT_HASH, self.repo.head.object.hexsha)
-        self.pads.api.set_tag(PYPADS_GIT_BRANCH, self.repo.active_branch.name)
 
     def add_untracked_files(self):
         untracked_files = self.repo.untracked_files
