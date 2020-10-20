@@ -6,7 +6,7 @@ from typing import Type, Set, List, Callable
 import mlflow
 from pydantic import HttpUrl, BaseModel
 
-from app.env import LoggerEnv
+from pypads.app.env import LoggerEnv
 from pypads import logger
 from pypads.app.misc.mixins import DependencyMixin, DefensiveCallableMixin, TimedCallableMixin, \
     IntermediateCallableMixin, NoCallAllowedError, ConfigurableCallableMixin, LibrarySpecificMixin, \

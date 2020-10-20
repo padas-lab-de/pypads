@@ -215,6 +215,18 @@ class InjectionLoggerCallModel(LoggerCallModel):
         orm_mode = True
 
 
+class MultiInjectionLoggerCallModel(InjectionLoggerCallModel):
+    """Holds meta data about an injection logger multiple execution"""
+    call_stack: List[CallModel] = ...
+    pre_time: Optional[float] = 0.0
+    post_time: Optional[float] = 0.0
+    child_time: Optional[float] = 0.0
+    is_a : HttpUrl = "https://www.padre-lab.eu/onto/MultiInjectionLoggerCall"
+
+    class Config:
+        orm_mode = True
+
+
 class OutputModel(RunObjectModel):
     is_a: HttpUrl = "https://www.padre-lab.eu/onto/LoggerOutput"
 

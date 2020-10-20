@@ -2,7 +2,7 @@ from pydantic.main import BaseModel
 from pydantic.networks import HttpUrl
 from typing import List, Type
 
-from app.env import LoggerEnv
+from pypads.app.env import LoggerEnv
 from pypads.app.injections.base_logger import TrackedObject, LoggerCall
 from pypads.app.injections.run_loggers import RunSetup
 from pypads.model.models import TagMetaModel, TrackedObjectModel, OutputModel
