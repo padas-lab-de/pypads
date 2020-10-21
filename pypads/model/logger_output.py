@@ -101,7 +101,7 @@ class MetricMetaModel(MetadataModel):
     """
     name: str = ...
     step: int = ...
-    category: str = "MLMetric"
+    category: str = "MachineLearningMetric"
     storage_type: Union[ResultType, str] = ResultType.metric
     data: Union[float, List[float], str] = ...  # float, float history or path to artifact
 

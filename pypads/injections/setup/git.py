@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from pypads.app.env import LoggerEnv
 from pypads.app.injections.run_loggers import RunSetup
-from pypads.app.injections.tracked_object import TrackedObject, LoggerOutput
+from pypads.app.injections.tracked_object import TrackedObject
 from pypads.app.misc.managed_git import ManagedGit
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.utils.logging_util import FileFormats
@@ -18,7 +18,8 @@ PYPADS_GIT_REMOTES = "pypads.git.remotes"
 
 class GitTO(TrackedObject):
     class GitModel(TrackedObjectModel):
-        category: str = "SourceCode-Management"
+        name: str = "Git information"
+        type: str = "SourceCode-Management"
         description = "Information about the git repository in which the experiment is located.."
         source: str = ...
         version: str = ...
@@ -48,11 +49,11 @@ class IGitRSF(RunSetup):
     Function tracking the source code via git.
     """
     name = "Generic Git Run Setup Logger"
-    category: str = "GitRunLogger"
+    type: str = "GitRunLogger"
     _dependencies = {"git"}
 
     class IGitRSFOutput(OutputModel):
-        category: str = "IGitRSF-Output"
+        type: str = "IGitRSF-Output"
         git_info: str = None
 
     @classmethod

@@ -20,7 +20,7 @@ class DependencyTO(TrackedObject):
     """
 
     class DependencyModel(TrackedObjectModel):
-        category: str = "Dependencies"
+        type: str = "Dependencies"
         description = "A object holding all dependencies found in the current environment."
 
         dependencies: List[LibraryModel] = []
@@ -54,7 +54,7 @@ class DependencyRSF(RunSetup):
     """Store information about dependencies used in the experimental environment."""
 
     name = "Dependencies Run Setup Logger"
-    category: str = "DependencyRunLogger"
+    type: str = "DependencyRunLogger"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -62,7 +62,7 @@ class DependencyRSF(RunSetup):
     _dependencies = {"pip"}
 
     class DependencyRSFOutput(OutputModel):
-        category: str = "DependencyRSF-Output"
+        type: str = "DependencyRSF-Output"
         dependencies: Union[uuid.UUID, str] = None
 
     @classmethod
@@ -94,7 +94,7 @@ class LogTO(TrackedObject):
     """
 
     class LogModel(TrackedObjectModel):
-        category: str = "Log"
+        type: str = "Log"
         description = "A log file containing the log output of the run."
 
         path: Union[uuid.UUID, str] = ...
@@ -134,12 +134,12 @@ class LoguruRSF(DelayedResultsMixin, RunSetup):
         output.logs = logs.store()
 
     name = "Loguru Run Setup Logger"
-    category: str = "LoguruRunLogger"
+    type: str = "LoguruRunLogger"
 
     _dependencies = {"loguru"}
 
     class LoguruRSFOutput(OutputModel):
-        category: str = "LoguruRSF-Output"
+        type: str = "LoguruRSF-Output"
         logs: Union[uuid.UUID, str] = ...
 
     @classmethod
@@ -188,12 +188,12 @@ class StdOutRSF(DelayedResultsMixin, RunSetup):
             sys.stdout = sys.stdout.terminal
 
     name = "StdOut Run Setup Logger"
-    category: str = "StdOutRunLogger"
+    type: str = "StdOutRunLogger"
 
     _dependencies = {}
 
     class StdOutRSFOutput(OutputModel):
-        category: str = "StdOutRSF-Output"
+        type: str = "StdOutRSF-Output"
         logs: Union[uuid.UUID, str] = ...
 
     @classmethod

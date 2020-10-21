@@ -17,7 +17,7 @@ class ParametersILFOutput(OutputModel):
     Output of the logger. An output can reference multiple Tracked Objects or Values directly. In this case a own
     tracked object doesn't give a lot of benefit but enforcing a description a name and a category and could be omitted.
     """
-    category: str = "ParametersILF-Output"
+    type: str = "ParametersILF-Output"
     hyper_parameter_to: Union[uuid.UUID, str] = ...
 
 
@@ -27,7 +27,7 @@ class ParametersTO(TrackedObject):
     """
 
     class HyperParameterModel(TrackedObjectModel):
-        category: str = "ModelHyperParameter"
+        type: str = "ModelHyperParameter"
         description = "The parameters of the experiment."
         ml_model: ContextModel = ...
         estimator: str = ...
@@ -108,7 +108,7 @@ class ParametersILF(InjectionLogger):
     """
 
     name = "Parameter Logger"
-    category: str = "ParameterLogger"
+    type: str = "ParameterLogger"
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:

@@ -111,7 +111,6 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, CacheDepende
     """
 
     _pypads_stored = None
-    category: str = "TrackingFunction"
 
     # Default allow all libraries
     supported_libraries = {all_libs}

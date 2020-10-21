@@ -336,7 +336,7 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
         if not isinstance(entry, dict):
             entry = entry.dict(by_alias=True)
         if uid is None:
-            uid = entry.uid
+            uid = entry.uid if hasattr(entry, "uid") else entry["uid"]
         entry["_id"] = uid
         if "storage_type" not in entry:
             logger.error(

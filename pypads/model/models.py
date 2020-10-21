@@ -19,6 +19,7 @@ class ResultType(Enum):
     schema = 'schema'
     library = 'library'
     mapping = 'mapping'
+    embedded = 'embedded'  # This entry is not to be stored itself in an own document. It should be embedded into others
 
 
 class Entry(BaseModel):

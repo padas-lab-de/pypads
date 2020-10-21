@@ -131,7 +131,7 @@ class PipelineTO(TrackedObject):
     """
 
     class PipelineModel(TrackedObjectModel):
-        category: str = "Pipeline"
+        type: str = "Pipeline"
         description = "The Pipeline of the experiment."
 
         network: dict = ...
@@ -226,12 +226,12 @@ class PipelineTrackerILF(MultiInjectionLogger):
     call graph.
     """
     name = "Generic Pipeline Logger"
-    category: str = "PipelineLogger"
+    type: str = "PipelineLogger"
 
     _dependencies = {"networkx"}
 
     class PipelineTrackerILFOutput(OutputModel):
-        category: str = "PipelineILF-Output"
+        type: str = "PipelineILF-Output"
         pipeline_ref: str = None
 
         class Config:

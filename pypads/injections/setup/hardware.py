@@ -20,7 +20,7 @@ class ComputerTO(TrackedObject):
         """
         Model class containing references to the real hardware information and a mac address
         """
-        category: str = "Computer"
+        type: str = "Computer"
         description: str = "Information about the in the experiment used computer."
         mac_address: str = ...
         cpu: Optional[str] = ...  # CPU TrackedObject
@@ -40,7 +40,7 @@ class IMacAddressRSF(RunSetup):
     Run setup function to create the ComputerTO and store it for further additions into the cache.
     """
     name = "Generic MacAddress Run Setup Logger"
-    category: str = "MacAddressRunLogger"
+    type: str = "MacAddressRunLogger"
 
     def __init__(self, *args, order=None, **kwargs):
         super().__init__(*args, order=order if order is not None else DEFAULT_ORDER, **kwargs)
@@ -55,7 +55,7 @@ class IMacAddressRSF(RunSetup):
 
 class SystemTO(TrackedObject):
     class SystemTOModel(TrackedObjectModel):
-        category: str = "SystemInformation"
+        type: str = "SystemInformation"
         description: str = "Information about the in the experiment used system."
         system: str = ...
         node: str = ...
@@ -76,7 +76,7 @@ class ISystemRSF(RunSetup):
     _dependencies = {"psutil"}
     _needed_cached = ComputerTO.__name__
     name = "Generic System Run Setup Logger"
-    category: str = "SystemRumLogger"
+    type: str = "SystemRumLogger"
 
     def __init__(self, *args, order=None, **kwargs):
         super().__init__(*args, order=order if order is not None else DEFAULT_ORDER + 1, **kwargs)
@@ -95,7 +95,7 @@ class ISystemRSF(RunSetup):
 
 class CpuTO(TrackedObject):
     class CpuTOModel(TrackedObjectModel):
-        category: str = "CpuInformation"
+        type: str = "CpuInformation"
         description: str = "Information about the in the experiment used cpu."
         physical_cores: int = ...
         total_cores: int = ...
@@ -113,7 +113,7 @@ class CpuUsageTO(TrackedObject):
     """
 
     class CpuUsageTOModel(TrackedObjectModel):
-        category: str = "CpuUsage"
+        type: str = "CpuUsage"
         description: str = "Timeline about the usage of the in the experiment used cpu."
 
         class CpuCoreModel(BaseModel):
@@ -161,13 +161,13 @@ class ICpuRSF(RunSetup):
     _dependencies = {"psutil"}
     _needed_cached = ComputerTO.__name__
     name = "Generic CPU Run Setup Logger"
-    category: str = "CPURunLogger"
+    type: str = "CPURunLogger"
 
     def __init__(self, *args, order=None, **kwargs):
         super().__init__(*args, order=order if order is not None else DEFAULT_ORDER + 1, **kwargs)
 
     class ICpuRSFOutput(OutputModel):
-        category: str = "ISystemRSF-Output"
+        type: str = "ISystemRSF-Output"
         cpu: Union[uuid.UUID, str] = ...  # CpuTO
         cpu_usage: Optional[Union[uuid.UUID, str]] = ...  # CpuUsageTO
 
@@ -210,7 +210,7 @@ class ICpuRSF(RunSetup):
 
 class RamTO(TrackedObject):
     class RamTOModel(TrackedObjectModel):
-        category: str = "RamInformation"
+        type: str = "RamInformation"
         description: str = "Information about the in the experiment used ram."
         total_memory: str = ...
         total_swap: str = ...
@@ -224,7 +224,7 @@ class IRamRSF(RunSetup):
     _dependencies = {"psutil"}
     _needed_cached = ComputerTO.__name__
     name = "Generic Ram Run Setup Logger"
-    category: str = "RamRunLogger"
+    type: str = "RamRunLogger"
 
     def __init__(self, *args, order=None, **kwargs):
         super().__init__(*args, order=order if order is not None else DEFAULT_ORDER + 1, **kwargs)
@@ -244,7 +244,7 @@ class IRamRSF(RunSetup):
 
 class DiskTO(TrackedObject):
     class DiskTOModel(TrackedObjectModel):
-        category: str = "DiskInformation"
+        type: str = "DiskInformation"
         description: str = "Information about the in the experiment used disk."
         total_size: str = ...
         free: str = ...
@@ -258,7 +258,7 @@ class IDiskRSF(RunSetup):
     _dependencies = {"psutil"}
     _needed_cached = ComputerTO.__name__
     name = "Disk Run Setup Logger"
-    category: str = "DiskRunLogger"
+    type: str = "DiskRunLogger"
 
     def __init__(self, *args, order=None, **kwargs):
         super().__init__(*args, order=order if order is not None else DEFAULT_ORDER + 1, **kwargs)
@@ -277,7 +277,7 @@ class IDiskRSF(RunSetup):
 
 class ProcessTO(TrackedObject):
     class ProcessTOModel(TrackedObjectModel):
-        category: str = "ProcessInformation"
+        type: str = "ProcessInformation"
         description: str = "Information about the in the experiment used main process."
         id: str = ...
         cwd: str = ...
@@ -291,7 +291,7 @@ class IPidRSF(RunSetup):
     _dependencies = {"psutil"}
     _needed_cached = ComputerTO.__name__
     name = "Process Run Setup Logger"
-    category: str = "ProcessRunLogger"
+    type: str = "ProcessRunLogger"
 
     def __init__(self, *args, order=None, **kwargs):
         super().__init__(*args, order=order if order is not None else DEFAULT_ORDER + 1, **kwargs)
@@ -310,7 +310,7 @@ class IPidRSF(RunSetup):
 
 class SocketTO(TrackedObject):
     class SocketTOModel(TrackedObjectModel):
-        category: str = "ProcessInformation"
+        type: str = "ProcessInformation"
         description: str = "Information about the in the experiment used main process."
         hostname: str = ...
         ip: str = ...
@@ -322,7 +322,7 @@ class SocketTO(TrackedObject):
 
 class ISocketInfoRSF(RunSetup):
     name = "Socket Run Setup Logger"
-    category: str = "SockerRunLogger"
+    type: str = "SockerRunLogger"
     _needed_cached = ComputerTO.__name__
 
     def __init__(self, *args, order=None, **kwargs):

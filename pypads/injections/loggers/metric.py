@@ -16,7 +16,7 @@ class MetricTO(TrackedObject):
     """
 
     class MetricModel(TrackedObjectModel):
-        category: str = "Metric"
+        type: str = "Metric"
         description = "A tracked metric of the experiment."
 
         name: str = ...  # Metric name
@@ -52,12 +52,12 @@ class MetricILF(InjectionLogger):
     Function logging the wrapped metric function
     """
     name = "Metric Injection Logger"
-    category: str = "MetricLogger"
+    type: str = "MetricLogger"
 
     class MetricILFOutput(OutputModel):
         # Add additional context information to
         # TODO context: dict = {**{"tests": "testVal"}, **OntologyEntry.__field_defaults__["context"]}
-        category: str = "MetricILF-Output"
+        type: str = "MetricILF-Output"
         metric: Optional[Union[UUID, str]] = None
 
         class Config:
