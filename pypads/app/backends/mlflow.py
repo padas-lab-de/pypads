@@ -159,6 +159,10 @@ class MLFlowBackend(BackendInterface, metaclass=ABCMeta):
         :param uid: uid or path for storage
         :return:
         """
+        rt = obj.storage_type
+        if rt == ResultType.embedded:
+            # Instead of a path an embedded object should return the object itself and not be stored to our backend
+            return obj.dict(by_alias=True)
         if uid is None:
             uid = obj.uid
         return self._log_mem_artifact(str(uid), obj.json(by_alias=True),
@@ -335,6 +339,9 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
     def log_json(self, entry, uid=None):
         if not isinstance(entry, dict):
             entry = entry.dict(by_alias=True)
+        if entry['storage_type'] == ResultType.embedded:
+            # Instead of a path an embedded object should return the object itself and not be stored to our backend
+            return entry
         if uid is None:
             uid = entry.uid if hasattr(entry, "uid") else entry["uid"]
         entry["_id"] = uid
