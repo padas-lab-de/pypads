@@ -42,7 +42,6 @@ def cleanup():
     if os.path.isdir(TEST_FOLDER):
         shutil.rmtree(TEST_FOLDER)
 
-
 def mac_os_disabled(f):
     """
     Function to disable a tests when mac os is used
