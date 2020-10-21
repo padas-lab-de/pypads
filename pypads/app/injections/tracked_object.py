@@ -11,7 +11,7 @@ from pypads.model.logger_output import TrackedObjectModel, OutputModel, ResultHo
     MetricMetaModel, ParameterMetaModel, ArtifactMetaModel, TagMetaModel, ResultModel
 from pypads.model.metadata import ModelObject
 from pypads.model.mixins import ProvenanceMixin
-from pypads.model.models import ResultType, Entry
+from pypads.model.models import ResultType, EntryModel, get_reference
 from pypads.utils.logging_util import FileFormats
 from pypads.utils.util import dict_merge
 
@@ -49,8 +49,7 @@ class LoggerCall(FallibleMixin, ProvenanceMixin):
     def __init__(self, *args, logging_env: LoggerEnv, output=None, creator: LoggerModel, **kwargs):
         super().__init__(*args, output=output, **kwargs)
         self.creator = creator
-        self.creator_type = creator.storage_type
-        self.created_by = self.creator.typed_id()
+        self.created_by = get_reference(self.creator)
         self._logging_env = logging_env
 
     def finish(self):
@@ -77,13 +76,13 @@ class ProducedMixin(ModelObject, SuperStop, metaclass=ABCMeta):
 
     @property
     def produced_by(self: Union['ProducedMixin', ProducedModel]):
-        return self._producer.typed_id()
+        return get_reference(self._producer)
 
     @property
     def producer_type(self: Union['ProducedMixin', ProducedModel]):
         return self._producer.storage_type
 
-    def store(self: Union['ResultHolderMixin', Entry]):
+    def store(self: Union['ResultHolderMixin', EntryModel]):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         return pads.backend.log(self)
@@ -98,32 +97,33 @@ class ResultHolderMixin(ProducedMixin, ModelObject, SuperStop, metaclass=ABCMeta
         self._results = {}
         super().__init__(*args, **kwargs)
 
-    def add_result(self, obj: Entry):
+    def add_result(self, obj: EntryModel):
         if obj.storage_type not in self._results:
             self._results[obj.storage_type] = set()
         self._results[obj.storage_type].add(obj)
 
     @property
     def artifacts(self):
-        return [a.typed_id() for a in
+        return [a.get_reference() for a in
                 self._results[ResultType.artifact]] if ResultType.artifact in self._results else []
 
     @property
     def parameters(self):
-        return [a.typed_id() for a in
+        return [a.get_reference() for a in
                 self._results[ResultType.parameter]] if ResultType.parameter in self._results else []
 
     @property
     def tags(self):
-        return [a.typed_id() for a in self._results[ResultType.tag]] if ResultType.tag in self._results else []
+        return [a.get_reference() for a in self._results[ResultType.tag]] if ResultType.tag in self._results else []
 
     @property
     def metrics(self):
-        return [a.typed_id() for a in self._results[ResultType.metric]] if ResultType.metric in self._results else []
+        return [a.get_reference() for a in
+                self._results[ResultType.metric]] if ResultType.metric in self._results else []
 
     @property
     def tracked_objects(self):
-        return [a.typed_id() for a in
+        return [a.get_reference() for a in
                 self._results[ResultType.tracked_object]] if ResultType.tracked_object in self._results else []
 
     def store_metric(self: Union['ResultHolderMixin', ResultHolderModel], key, value, description="", step=None,
@@ -225,13 +225,13 @@ class ChildResultMixin(ProducedMixin, SuperStop, metaclass=ABCMeta):
 
     @property
     def part_of(self: Union['ChildResultMixin', ResultModel]):
-        return self.parent.typed_id()
+        return get_reference(self.parent)
 
     @property
     def parent_type(self: Union['ChildResultMixin', ResultModel]):
         return self.parent.storage_type
 
-    def store(self: Union['ChildResultMixin', Entry]):
+    def store(self: Union['ChildResultMixin', EntryModel]):
         self.parent.add_result(self)
         return super().store()
 

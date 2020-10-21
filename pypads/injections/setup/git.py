@@ -7,6 +7,7 @@ from pypads.app.injections.run_loggers import RunSetup
 from pypads.app.injections.tracked_object import TrackedObject
 from pypads.app.misc.managed_git import ManagedGit
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
+from pypads.model.models import IdReference
 from pypads.utils.logging_util import FileFormats
 
 PYPADS_SOURCE_COMMIT_HASH = "pypads.source.git.commit_hash"
@@ -23,8 +24,8 @@ class GitTO(TrackedObject):
         description = "Information about the git repository in which the experiment is located.."
         source: str = ...
         version: str = ...
-        git_log: str = ...  # reference to the log file
-        patch: Optional[str] = ...
+        git_log: IdReference = ...  # reference to the log file
+        patch: Optional[IdReference] = ...
 
         class Config:
             orm_mode = True
@@ -54,7 +55,7 @@ class IGitRSF(RunSetup):
 
     class IGitRSFOutput(OutputModel):
         type: str = "IGitRSF-Output"
-        git_info: str = None
+        git_info: IdReference = None
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:

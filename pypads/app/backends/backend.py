@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from pypads.model.logger_output import FileInfo, ArtifactMetaModel, ParameterMetaModel, MetricMetaModel, TagMetaModel, \
     TrackedObjectModel, OutputModel, ResultHolderModel
 from pypads.model.metadata import ModelObject
-from pypads.model.models import IdBasedEntry, ResultType, unwrap_typed_id
+from pypads.model.models import BaseStorageModel, ResultType, unwrap_typed_id
 from pypads.utils.logging_util import get_temp_folder, read_artifact
 
 
@@ -37,7 +37,7 @@ class BackendInterface:
         """
         raise NotImplementedError("")
 
-    def log(self, obj: IdBasedEntry):
+    def log(self, obj: BaseStorageModel):
         """
         Log some entry to backend.
         :param obj: Entry object to be logged
@@ -147,6 +147,9 @@ class BackendInterface:
 
     def get(self, uid, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
             search_dict=None):
+        raise NotImplementedError("The used backend doesn't support this form of querying.")
+
+    def get_json(self, reference):
         raise NotImplementedError("The used backend doesn't support this form of querying.")
 
     def _get_entry_generator(self, out):

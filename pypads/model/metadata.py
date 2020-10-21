@@ -5,8 +5,7 @@ from typing import Type, List
 from pydantic import validate_model, BaseModel, ValidationError
 
 from pypads.app.misc.inheritance import SuperStop
-from pypads.model.domain import RunObjectModel
-from pypads.model.models import IdBasedEntry, get_typed_id
+from pypads.model.models import BaseStorageModel, get_reference
 from pypads.utils.logging_util import jsonable_encoder
 from pypads.utils.util import has_direct_attr, persistent_hash
 
@@ -73,8 +72,8 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
 
     def typed_id(self):
         cls = self.get_model_cls()
-        if issubclass(cls, IdBasedEntry):
-            return get_typed_id(self)
+        if issubclass(cls, BaseStorageModel):
+            return get_reference(self)
         else:
             raise Exception(f"Can't extracted typed id: Model {str(cls)} is not an IdBasedEntry.")
 
@@ -118,7 +117,7 @@ class ModelHolder(ModelInterface, metaclass=ABCMeta):
     Used for objects storing their information directly into a validated base model
     """
 
-    def __init__(self, *args, model: RunObjectModel = None, **kwargs):
+    def __init__(self, *args, model: BaseStorageModel = None, **kwargs):
         super().__init__(*args, **kwargs)
         self._model = self.get_model_cls()(**kwargs) if model is None else model
 

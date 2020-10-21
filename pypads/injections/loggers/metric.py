@@ -1,5 +1,4 @@
-from typing import Type, Optional, Union
-from uuid import UUID
+from typing import Type
 
 from pydantic import BaseModel
 
@@ -8,6 +7,7 @@ from pypads.app.env import InjectionLoggerEnv
 from pypads.app.injections.injection import InjectionLogger
 from pypads.app.injections.tracked_object import TrackedObject
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
+from pypads.model.models import IdReference
 
 
 class MetricTO(TrackedObject):
@@ -58,7 +58,7 @@ class MetricILF(InjectionLogger):
         # Add additional context information to
         # TODO context: dict = {**{"tests": "testVal"}, **OntologyEntry.__field_defaults__["context"]}
         type: str = "MetricILF-Output"
-        metric: Optional[Union[UUID, str]] = None
+        metric: IdReference = None
 
         class Config:
             orm_mode = True

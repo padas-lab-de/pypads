@@ -16,7 +16,7 @@ from pypads.app.backends.backend import BackendInterface
 from pypads.app.injections.tracked_object import ArtifactTO
 from pypads.app.misc.inheritance import SuperStop
 from pypads.model.logger_output import FileInfo, MetricMetaModel, ParameterMetaModel, ArtifactMetaModel, TagMetaModel
-from pypads.model.models import ResultType, IdBasedEntry, join_typed_id
+from pypads.model.models import ResultType, BaseStorageModel, to_reference, IdReference, PathReference
 from pypads.utils.logging_util import FileFormats, jsonable_encoder, store_tmp_artifact
 from pypads.utils.util import string_to_int, get_run_id
 
@@ -113,7 +113,7 @@ class MLFlowBackend(BackendInterface, metaclass=ABCMeta):
     def set_experiment_tag(self, experiment_id, key, value):
         return self.mlf.set_experiment_tag(experiment_id, key, value)
 
-    def log(self, obj: Union[IdBasedEntry]):
+    def log(self, obj: Union[BaseStorageModel]):
         """
         :param obj: Entry object to be logged
         :return:
@@ -121,13 +121,13 @@ class MLFlowBackend(BackendInterface, metaclass=ABCMeta):
         rt = obj.storage_type
         if rt == ResultType.metric:
             obj: MetricMetaModel
-            stored_meta = self.log_json(obj, obj.typed_id())
+            stored_meta = self.log_json(obj, obj.uid)
             mlflow.log_metric(obj.name, obj.data)
             return stored_meta
 
         elif rt == ResultType.parameter:
             obj: ParameterMetaModel
-            stored_meta = self.log_json(obj, obj.typed_id())
+            stored_meta = self.log_json(obj, obj.uid)
             mlflow.log_param(obj.name, obj.data)
             return stored_meta
 
@@ -140,17 +140,17 @@ class MLFlowBackend(BackendInterface, metaclass=ABCMeta):
                     obj.file_size = file_info.file_size
                     break
             obj.data = path
-            stored_meta = self.log_json(obj, obj.typed_id())
+            stored_meta = self.log_json(obj, obj.uid)
             return stored_meta
 
         elif rt == ResultType.tag:
             obj: TagMetaModel
-            stored_meta = self.log_json(obj, obj.typed_id())
+            stored_meta = self.log_json(obj, obj.uid)
             mlflow.set_tag(obj.name, obj.data)
             return stored_meta
 
         else:
-            return self.log_json(obj, obj.typed_id())
+            return self.log_json(obj, obj.uid)
 
     def log_json(self, obj, uid=None):
         """
@@ -165,8 +165,9 @@ class MLFlowBackend(BackendInterface, metaclass=ABCMeta):
             return obj.dict(by_alias=True)
         if uid is None:
             uid = obj.uid
-        return self._log_mem_artifact(str(uid), obj.json(by_alias=True),
-                                      write_format=FileFormats.json)
+        return to_reference(
+            {**obj.dict(by_alias=True), **{"path": self._log_mem_artifact(str(uid), obj.json(by_alias=True),
+                                                                          write_format=FileFormats.json)}})
 
     def get(self, uid, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
             search_dict=None):
@@ -180,21 +181,27 @@ class MLFlowBackend(BackendInterface, metaclass=ABCMeta):
         :param storage_type:
         :return:
         """
-        json_data = self.get_json(run_id=run_id, uid=uid, storage_type=storage_type)
+        reference = IdReference(uid=uid, storage_type=storage_type, experiment_name=experiment_name,
+                                experiment_id=experiment_id, run_id=run_id,
+                                backend_uri=self.uri)
+        json_data = self.get_json(reference)
         if storage_type == ResultType.artifact:
             return ArtifactTO(**dict(json_data))
         else:
             return json_data
 
-    def get_json(self, run_id, uid, storage_type=None):
+    def get_json(self, reference: IdReference):
         """
         Get json stored for a certain run.
-        :param storage_type: Storage type to look for
-        :param run_id: Id of the run
-        :param uid: uid - for local storage this is the relative path
+        :param reference:
         :return:
         """
-        return self.load_artifact_data(run_id=run_id, path=uid)
+        # TODO search by uid instead
+        return self.load_artifact_data(run_id=reference.run_id,
+                                       path=reference.path if isinstance(reference, PathReference) else reference.id)
+
+    def get_by_path(self, run_id, path):
+        return self.load_artifact_data(run_id=run_id, path=path)
 
 
 class LocalMlFlowBackend(MLFlowBackend):
@@ -342,9 +349,11 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
         if entry['storage_type'] == ResultType.embedded:
             # Instead of a path an embedded object should return the object itself and not be stored to our backend
             return entry
-        if uid is None:
-            uid = entry.uid if hasattr(entry, "uid") else entry["uid"]
-        entry["_id"] = uid
+        if uid is not None:
+            entry["uid"] = uid
+        reference = to_reference(entry)
+        _id = reference.id
+        entry["_id"] = _id
         if "storage_type" not in entry:
             logger.error(
                 f"Tried to log an invalid entry. Json logged data has to define a storage_type. For entry {entry}")
@@ -355,22 +364,20 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
             try:
                 self._db[storage_type].insert_one(jsonable_encoder(entry))
             except DuplicateKeyError as e:
-                self._db[storage_type].replace_one({"_id": uid}, jsonable_encoder(entry))
+                self._db[storage_type].replace_one({"_id": _id}, jsonable_encoder(entry))
         except Exception as e:
             # TODO maybe handle duplicates
             raise e
-        return entry["_id"]
+        return reference
 
-    def get_json(self, experiment_id, uid, storage_type: Union[str, ResultType] = None):
+    def get_json(self, reference: IdReference):
         """
         Get json stored for a certain run.
-        :param storage_type: Storage type to look for
-        :param experiment_id: Id of the experiment
-        :param uid: uid - for local storage this is the relative path
         :return:
         """
-        return self._db[storage_type if isinstance(storage_type, str) else storage_type.value].find_one(
-            {"_id": join_typed_id([uid, storage_type])})
+        return self._db[reference.storage_type if isinstance(reference.storage_type,
+                                                             str) else reference.storage_type.value].find_one(
+            {"_id": reference.id})
 
     def list(self, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
              search_dict=None):
@@ -389,13 +396,18 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
             search_dict=None):
         if search_dict is None:
             search_dict = {}
-        if experiment_name:
+        search_dict["uid"] = uid
+        search_dict["storage_type"] = storage_type
+        if experiment_name is not None:
             search_dict["experiment_name"] = experiment_name
-        if experiment_id:
+        if experiment_id is not None:
             search_dict["experiment_id"] = experiment_id
-        if run_id:
+        if run_id is not None:
             search_dict["run_id"] = run_id
-        search_dict["_id"] = IdBasedEntry.construct(uid=uid, storage_type=storage_type).typed_id()
+        if all([a is not None for a in [experiment_id, run_id]]) is not None:
+            search_dict["_id"] = IdReference(uid=uid, storage_type=storage_type, experiment_name=experiment_name,
+                                             experiment_id=experiment_id, run_id=run_id,
+                                             backend_uri=self.uri).id
         return self._db[storage_type if isinstance(storage_type, str) else storage_type.value].find_one(search_dict)
 
 

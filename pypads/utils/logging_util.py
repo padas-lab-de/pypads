@@ -53,10 +53,10 @@ def get_artifact_dir(obj):
     """
     model_cls = obj.get_model_cls()
 
-    from pypads.model.domain import RunObjectModel
+    from pypads.model.models import RunObjectModel
     if issubclass(model_cls, RunObjectModel):
-        from pypads.model.models import Entry
-        obj: Union[RunObjectModel, Entry]
+        from pypads.model.models import EntryModel
+        obj: Union[RunObjectModel, EntryModel]
         return os.path.join(obj.experiment_id, obj.run_id, "artifacts", get_relative_artifact_dir(obj))
 
     raise Exception("Given object is not part of a run/experiment.")
@@ -69,14 +69,14 @@ def get_relative_artifact_dir(obj):
     :return:
     """
     from pypads.app.injections.tracked_object import ChildResultHolderMixin
-    from pypads.model.models import Entry
+    from pypads.model.models import EntryModel
     if isinstance(obj, ChildResultHolderMixin):
-        obj: Union[Entry, ChildResultHolderMixin]
+        obj: Union[EntryModel, ChildResultHolderMixin]
         return os.path.join(get_relative_artifact_dir(obj.parent), obj.category)
 
     from pypads.app.injections.tracked_object import ResultHolderMixin
     if isinstance(obj, ResultHolderMixin):
-        obj: Union[Entry, ResultHolderMixin]
+        obj: Union[EntryModel, ResultHolderMixin]
         return os.path.join(get_relative_artifact_dir(obj.producer), obj.category)
 
     return os.path.join(obj.category)

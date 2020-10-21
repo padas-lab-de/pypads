@@ -1,13 +1,12 @@
 import os
-from typing import Union, Optional
+from typing import Union
 from uuid import uuid4
 
 from pydantic import Extra
 
 from pypads.app.backends.mlflow import MongoSupportMixin
-from pypads.model.models import Entry, join_typed_id, IdBasedEntry, ResultType
+from pypads.model.models import EntryModel, to_reference, BaseStorageModel, ResultType, IdReference
 from pypads.utils.logging_util import FileFormats
-from pypads.utils.util import persistent_hash
 
 
 class Repository:
@@ -36,24 +35,38 @@ class Repository:
 
     def get_object(self, run_id=None, uid=None, name=None):
         """
-        Gets a persistent object to store to.
+        Gets a persistent object to store to. This is a mapping to a run and not the object itself.
         :param name: Set a name for the object.
         :param uid: Optional uid of object. This allows only for one run storing the object with uid.
         :param run_id: Optional run_id of object. This is the id of the run in which the object should be stored.
         :return:
         """
-        return RepositoryObject(self, run_id, self._extend_uid(uid), name)
+        return RepositoryObject(self, run_id, self.repo_reference(uid).id, name)
 
     def has_object(self, uid):
         if isinstance(self.pads.backend, MongoSupportMixin):
-            return self.pads.backend.get_json(self.id, self._extend_uid(uid), self.name) is not None
+            return self.pads.backend.get_json(self.repo_reference(uid)) is not None
         else:
             return len(self.pads.backend.search_runs(experiment_ids=self.id,
-                                                     filter_string="tags.`pypads_unique_uid` = \"" + join_typed_id(
-                                                         [self._extend_uid(uid), self.name]) + "\"")) > 0
+                                                     filter_string="tags.`pypads_unique_uid` = \"" +
+                                                                   self.repo_reference(uid).id + "\"")) > 0
 
-    def _extend_uid(self, uid):
-        return ".".join([str(uid), str(persistent_hash(self.pads.uri))])
+    def repo_reference(self, uid, run_id=-1):
+        """
+        Translates a uid in a uid hash with the repos meta information
+        :param run_id:
+        :param uid:
+        :return:
+        """
+        return to_reference({
+            "uid": uid,
+            "storage_type": ResultType.repository_entry,
+            "experiment_id": self.id,
+            "experiment_name": self.name,
+            "backend_uri": self.pads.backend.uri,
+            "run_id": run_id,  # The run_id is here not important,
+            "category": self.name
+        })
 
     def context(self, run_id=None, run_name=None):
         """
@@ -99,30 +112,42 @@ class RepositoryObject:
         self.pads = get_current_pads()
         self._name = name
         self._run = None
-        self._uid = uid
+        self._uid = uid if uid is not None else uuid4()
         self._run_id = run_id
+        # with self.init_context() as ctx:
+        #     self.pads.backend.log_json(self.get_reference())  # Save the Repository describing meta to the backend
+
+    def get_reference(self):
+        return to_reference({
+            "uid": self.uid,
+            "storage_type": ResultType.repository_entry,
+            "experiment_id": self.repository.id,
+            "experiment_name": self.repository.name,
+            "backend_uri": self.pads.backend.uri,
+            "run_id": self.run_id,  # The run_id is here not important,
+            "category": self.repository.name
+        })
 
     @property
     def uid(self):
         return self._uid
 
     @property
-    def joined_uid(self):
-        return join_typed_id([self.uid, self.repository.name])
+    def repo_reference(self):
+        return self.repository.repo_reference(uid=self.uid)
 
     def init_run_storage(self):
         # if self._run is None:
         # UID is given. Check for existence.
         if self._run is None:
-            if self.uid:
-                runs = self.pads.backend.search_runs(experiment_ids=self.repository.id,
-                                                     filter_string="tags.`pypads_unique_uid` = \"" + self.joined_uid
-                                                                   + "\"")
+            runs = self.pads.backend.search_runs(experiment_ids=self.repository.id,
+                                                 filter_string="tags.`pypads_unique_uid` = \"" + self.repo_reference.id
+                                                               + "\"")
 
-                # If exists set the run_id to the existing one instead
-                if len(runs) > 0:
-                    # TODO is this correct? Mlflow returns a dataframe
-                    self._run = self.pads.results.get_run(run_id=runs.iloc[0][0])
+            # If exists set the run_id to the existing one instead
+            if len(runs) > 0:
+                # TODO is this correct? Mlflow returns a dataframe
+                self._run = self.pads.results.get_run(run_id=runs.iloc[0][0])
 
             # If no run_id was found with uid create a new run and get its id
             if self._run is None:
@@ -130,8 +155,7 @@ class RepositoryObject:
                     # If a uid is given and the tag for the run is not set already set it
                     self._run = self.pads.backend \
                         .create_run(experiment_id=self.repository.id,
-                                    tags={"pypads_unique_uid": str(
-                                        self.joined_uid)} if self.uid else None)
+                                    tags={"pypads_unique_uid": self.repo_reference.id})
                     self._run_id = self._run.info.run_id
                 else:
                     self._run = self.pads.results.get_run(run_id=self._run_id)
@@ -201,24 +225,28 @@ class RepositoryObject:
                     self.pads.api.set_tag(key, value, value_format, description, self._extend_meta(meta),
                                           holder=holder))
 
-    def log_json(self, obj: Union[Entry, dict]):
+    def reference_dict(self):
+        return {
+            "uid": self.uid,
+            "repository": self.repo_reference,
+            "storage_type": self.repository.name,
+            "experiment_id": self.repository.id,
+            "experiment_name": self.repository.name,
+            "backend_uri": self.pads.backend.uri,
+            "run_id": self.run_id,  # The run_id is here not important,
+            "category": self.repository.name
+        }
+
+    def log_json(self, obj: Union[EntryModel, dict]):
         """
         Logs a single given object as the json object representing the repository object.
         :param obj: Object to store as json. storage_type gets set to the respective repository name value
         :return:
         """
         if isinstance(obj, dict):
-            obj = ExtendedIdBasedEntry(**self._extend_meta({**{"category": self.repository.name}, **obj,
-                                                            **{"uid": str(self.uid),
-                                                               "storage_type": self.repository.name,
-                                                               "run_id": self.run_id,
-                                                               "experiment_id": self.repository.id}}))
+            obj = RepositoryEntryModel(**self._extend_meta({**obj, **self.reference_dict()}))
         else:
-            obj = ExtendedIdBasedEntry(
-                **self._extend_meta({**{"category": self.repository.name}, **obj.dict(by_alias=True),
-                                     **{"uid": str(self.uid), "storage_type": self.repository.name,
-                                        "run_id": self.run_id,
-                                        "experiment_id": self.repository.id}}))
+            obj = RepositoryEntryModel(**self._extend_meta({**obj.dict(by_alias=True), **self.reference_dict()}))
         if isinstance(self.pads.backend, MongoSupportMixin):
             return self.pads.backend.log_json(obj)
         else:
@@ -231,12 +259,10 @@ class RepositoryObject:
         :return:
         """
         if isinstance(self.pads.backend, MongoSupportMixin):
-            if self.uid is None:
-                self._uid = uuid4()
-            return self.pads.backend.get_json(self.repository.id, self.uid, self.repository.name)
+            return self.pads.backend.get_json(to_reference(self.reference_dict()))
         else:
             with self.init_context() as ctx:
-                return self.pads.backend.get_json(self.run_id, self.uid, self.repository.name)
+                return self.pads.backend.get_json(to_reference(self.reference_dict()))
 
     def _extend_meta(self, meta=None):
 
@@ -252,7 +278,9 @@ class RepositoryObject:
         return os.path.join(self.get_rel_base_path(), "artifacts", path)
 
 
-class ExtendedIdBasedEntry(IdBasedEntry):
+class RepositoryEntryModel(BaseStorageModel):
+    repository: IdReference = ...
+
     class Config:
         extra = Extra.allow
 
@@ -299,14 +327,3 @@ class MappingRepository(Repository):
         :param kwargs:
         """
         super().__init__(*args, name="pypads_mappings", **kwargs)
-
-
-class BaseRepositoryObjectModel(Entry):
-    """
-    Extend this class if you want to store json directly into a repository
-    """
-    storage_type: Optional[str] = ResultType.repository_entry
-    run_id: Optional[str] = None
-    category: str = ...
-    description: str = ...
-    additional_data: Optional[dict] = {}

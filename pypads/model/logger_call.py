@@ -1,14 +1,12 @@
-import uuid
 from typing import Optional, List, Union
 
 from pydantic import BaseModel, root_validator
 
-from pypads.model.domain import RunObjectModel
 from pypads.model.logger_output import FallibleModel
-from pypads.model.models import IdBasedEntry, Entry, ResultType, ProvenanceModel
+from pypads.model.models import BaseStorageModel, EntryModel, ResultType, ProvenanceModel, IdReference
 
 
-class ContextModel(Entry):
+class ContextModel(EntryModel):
     """
     A reference to a class / model
     """
@@ -54,7 +52,7 @@ class CallIdModel(CallAccessorModel):
         orm_mode = True
 
 
-class CallModel(IdBasedEntry):
+class CallModel(BaseStorageModel):
     """
     A single call containing the call_id and a finished state to represent a function call.
     """
@@ -67,16 +65,14 @@ class CallModel(IdBasedEntry):
         orm_mode = True
 
 
-class LoggerCallModel(ProvenanceModel, IdBasedEntry, RunObjectModel, FallibleModel):
+class LoggerCallModel(ProvenanceModel, BaseStorageModel, FallibleModel):
     """
     Holds meta data about a logger execution. This can be by api, setup, teardown or by injection/mapping file.
     """
     execution_time: Optional[float] = ...
     storage_type: Union[ResultType, str] = ResultType.logger_call
-
-    creator_type: Union[ResultType, str] = ResultType.logger
-    created_by: Union[uuid.UUID, str] = ...  # reference to LoggerModel
-    output: Optional[Union[uuid.UUID, str]] = ...  # reference to OutputModel of the logger
+    created_by: IdReference = ...  # reference to LoggerModel
+    output: Optional[IdReference] = ...  # reference to OutputModel of the logger
     name: str = "Call"
     finished: bool = False
 

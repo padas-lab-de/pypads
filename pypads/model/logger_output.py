@@ -1,11 +1,9 @@
-import uuid
 from dataclasses import dataclass
 from typing import Optional, Union, List
 
 from pydantic import BaseModel
 
-from pypads.model.domain import RunObjectModel
-from pypads.model.models import IdBasedEntry, ResultType, ProvenanceModel
+from pypads.model.models import BaseStorageModel, ResultType, ProvenanceModel, IdReference
 from pypads.utils.logging_util import FileFormats
 
 
@@ -16,13 +14,11 @@ class FallibleModel(BaseModel):
     failed: Optional[str] = ...
 
 
-class ProducedModel(IdBasedEntry):
+class ProducedModel(BaseStorageModel):
     """
     Model object used for results produced by a call
     """
-    produced_by: Union[uuid.UUID, str] = ...  # id reference to the logger call, this should be the id in a collection
-    producer_type: \
-        Union[ResultType, str] = ...  # type reference to the logger call, this can be a collection
+    produced_by: IdReference = ...  # id reference to the logger call, this should be the id in a collection
 
 
 class ResultHolderModel(ProducedModel):
@@ -30,23 +26,21 @@ class ResultHolderModel(ProducedModel):
     This model holds references to artifacts, parameters, metrics and tags as well as other tracked objects defined
     under it.
     """
-    artifacts: List[Union[uuid.UUID, str]] = []  # Id references to artifacts produced in scope of the holder
-    parameters: List[Union[uuid.UUID, str]] = []  # Id references to parameters produced in scope of the holder
-    metrics: List[Union[uuid.UUID, str]] = []  # Id references to metrics produced in scope of the holder
-    tags: List[Union[uuid.UUID, str]] = []  # Id references to tags produced in scope of the holder
-    tracked_objects: List[
-        Union[uuid.UUID, str]] = []  # Id references to other tracked objects produced in scope of the holder
+    artifacts: List[IdReference] = []  # Id references to artifacts produced in scope of the holder
+    parameters: List[IdReference] = []  # Id references to parameters produced in scope of the holder
+    metrics: List[IdReference] = []  # Id references to metrics produced in scope of the holder
+    tags: List[IdReference] = []  # Id references to tags produced in scope of the holder
+    tracked_objects: List[IdReference] = []  # Id references to other tracked objects produced in scope of the holder
 
 
-class ResultModel(ProducedModel, RunObjectModel):
+class ResultModel(ProducedModel, BaseStorageModel):
     """
     This represents a result being stored in a holder
     """
-    part_of: Union[uuid.UUID, str] = ...  # id reference to the result holder holding this result value
-    parent_type: Union[ResultType, str] = ...  # type reference to the result holder
+    part_of: IdReference = ...  # id reference to the result holder holding this result value
 
 
-class OutputModel(ResultHolderModel, ProvenanceModel, RunObjectModel, FallibleModel):
+class OutputModel(ResultHolderModel, ProvenanceModel, BaseStorageModel, FallibleModel):
     """
     This model represents the output of a singular logger. A logger might be able to produce multiple complex outputs.
     """

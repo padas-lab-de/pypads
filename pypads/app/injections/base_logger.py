@@ -87,13 +87,15 @@ class LoggerExecutor(DefensiveCallableMixin, FunctionHolderMixin, TimedCallableM
             return None, 0
 
 
-class DummyLogger(ModelObject):
+class DummyLogger(ProvenanceMixin, ModelObject):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = "API Call"
         self.uid = UUID('urn:uuid:00000000-0000-0000-0000-000000000000')
-        self.supported_libraries = all_libs
+        self.supported_libraries = [all_libs]
+        self.schema_location = "Unknown"  # An api call can't store anything about it's result schema because
+        # calls currently don't define result schemata
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:

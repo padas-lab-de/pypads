@@ -2,6 +2,7 @@ from abc import ABCMeta
 
 from pypads.model.domain import LibraryModel
 from pypads.model.metadata import ModelObject
+from pypads.model.models import to_reference
 from pypads.utils.util import persistent_hash
 
 
@@ -17,6 +18,7 @@ class ProvenanceMixin(ModelObject, metaclass=ABCMeta):
             self._defined_in = get_library_descriptor(self)
         else:
             self._defined_in = lib_model
+        self.defined_in = to_reference(self._defined_in.dict())
 
     def store_lib(self):
         from pypads.app.pypads import get_current_pads
@@ -28,7 +30,7 @@ class ProvenanceMixin(ModelObject, metaclass=ABCMeta):
             logger_obj.log_json(self._defined_in.dict(by_alias=True))
         else:
             logger_obj = lib_repo.get_object(uid=lib_hash)
-        self.defined_in = logger_obj.uid
+        self.defined_in = logger_obj.get_reference()
 
 
 def get_library_descriptor(obj) -> LibraryModel:

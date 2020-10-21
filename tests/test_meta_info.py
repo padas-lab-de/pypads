@@ -23,7 +23,7 @@ class PypadsHookTest(BaseTest):
         meta = ParameterMetaModel(name=name, value_format='str', data=str(neural_network_shape),
                                   description=description, parent=holder, parent_type=holder.storage_type,
                                   produced_by=holder.produced_by, producer_type=holder.producer_type,
-                                  part_of=holder.typed_id())
+                                  part_of=holder.get_reference())
 
         # --------------------------- asserts ---------------------------
         # Number of retrieved items should be 1
@@ -57,7 +57,7 @@ class PypadsHookTest(BaseTest):
         meta = MetricMetaModel(name=name, value_format='str', data=str(value), step=step,
                                description=description, parent=holder, parent_type=holder.storage_type,
                                produced_by=holder.produced_by, producer_type=holder.producer_type,
-                               part_of=holder.typed_id())
+                               part_of=holder.get_reference())
 
         artifacts = [x for x in tracker.results.get_metrics(experiment_name='TEST CASE EXPERIMENT',
                                                             name=name, step=step, run_id=meta.run_id)]
@@ -93,7 +93,7 @@ class PypadsHookTest(BaseTest):
                                  data=str(obj),
                                  parent=holder, parent_type=holder.storage_type,
                                  produced_by=holder.produced_by, producer_type=holder.producer_type,
-                                 part_of=holder.typed_id())
+                                 part_of=holder.get_reference())
 
         artifacts = [x for x in tracker.results.get_artifacts(run_id=meta.run_id) if x.data == path+'.pickle']
 
@@ -134,7 +134,7 @@ class PypadsHookTest(BaseTest):
                                  data=str(obj),
                                  parent=holder, parent_type=holder.storage_type,
                                  produced_by=holder.produced_by, producer_type=holder.producer_type,
-                                 part_of=holder.typed_id())
+                                 part_of=holder.get_reference())
 
         # Load the artifacts
         artifacts = [x for x in tracker.results.get_artifacts(run_id=meta.run_id) if x.data == name]
