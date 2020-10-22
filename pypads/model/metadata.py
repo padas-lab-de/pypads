@@ -1,8 +1,9 @@
 from abc import abstractmethod, ABCMeta
 from collections import deque
+from copy import deepcopy
 from typing import Type, List
 
-from pydantic import validate_model, BaseModel, ValidationError
+from pydantic import validate_model, BaseModel, ValidationError, ConfigError
 
 from pypads.app.misc.inheritance import SuperStop
 from pypads.model.models import BaseStorageModel, get_reference
@@ -64,11 +65,48 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
                     not hasattr(self.__class__, key) or not isinstance(getattr(self.__class__, key), property)):
                 setattr(self, key, self.get_model_fields()[key].get_default())
 
-    def model(self):
-        return self.get_model_cls().from_orm(self)
+    def _decompose_class(self):
+        cls = self.get_model_cls()
+        if not cls.__config__.orm_mode:
+            raise ConfigError('You must have the config attribute orm_mode=True for models of a ModelObject.')
+        obj = cls._decompose_class(self)
+        return cls, obj
 
-    def validate(self):
-        validate_model(self.get_model_cls(), self.model().__dict__)
+    def model(self, force=False, validate=True, include=None):
+        if validate:
+            values, fields_set, validation_error = self.validate(include=include)
+            if validation_error and not force:
+                raise validation_error
+            cls = self.get_model_cls()
+            m = cls.__new__(cls)
+            object.__setattr__(m, '__dict__', values)
+            object.__setattr__(m, '__fields_set__', fields_set)
+            return m
+        else:
+            cls, obj = self._decompose_class()
+            return cls.construct(**obj)
+
+    def validate(self, include=None):
+        """
+        Validate the current object.
+        :param include: Only validate on given parameters
+        :return:
+        """
+        cls, obj = self._decompose_class()
+
+        # Disable validation for unneeded fields by deleting fields in a dummy class
+        if include is not None:
+            class ReducedClass(cls, BaseModel):
+                pass
+
+            cls = ReducedClass
+            cls.__fields__ = {k: v for k, v in cls.__fields__.items() if k in include}
+
+        try:
+            return validate_model(cls, {**deepcopy(cls.__field_defaults__),
+                                        **{k: obj[k] for k in obj.keys() if include is None or k in include}})
+        except KeyError as e:
+            raise e
 
     def typed_id(self):
         cls = self.get_model_cls()
@@ -105,11 +143,11 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
             cls._schema_path = schema_obj.uid
         return cls._schema_path
 
-    def json(self, *args, **kwargs):
-        return self.model().json(*args, **kwargs)
+    def json(self, force=True, validate=True, include=None, *args, **kwargs):
+        return self.model(force=force, validate=validate, include=include).json(*args, include=include, **kwargs)
 
-    def dict(self, *args, **kwargs):
-        return self.model().dict(*args, **kwargs)
+    def dict(self, force=True, validate=True, include=None, *args, **kwargs):
+        return self.model(force=force, validate=validate, include=include).dict(*args, include=include, **kwargs)
 
 
 class ModelHolder(ModelInterface, metaclass=ABCMeta):

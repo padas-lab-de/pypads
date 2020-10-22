@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Union, Optional
 
 import pydantic
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field
 
 from pypads import logger
 from pypads.utils.util import get_backend_uri, get_experiment_id, get_experiment_name, get_run_id, persistent_hash
@@ -31,11 +31,11 @@ class EntryModel(BaseModel):
     clazz: str = None  # Class of the model
     storage_type: Union[ResultType, str] = ...  # Should generally be one of ResultType
 
-    @root_validator
-    def set_default(cls, values):
-        if values['clazz'] is None:
-            values['clazz'] = str(cls)
-        return values
+    @pydantic.validator('clazz', pre=True, always=True)
+    def default_ts_modified(cls, v, *, values, **kwargs):
+        if v is None:
+            return str(cls)
+        return v
 
 
 class RunObjectModel(BaseModel):
@@ -49,19 +49,27 @@ class CreatedAtModel(BaseModel):
     created_at: float = Field(default_factory=time.time)
 
 
-class IdBasedModel(RunObjectModel, EntryModel):
+class BaseIdModel(RunObjectModel, EntryModel):
     uid: Union[str, uuid.UUID] = Field(default_factory=uuid.uuid4)
-    id: str = Field(alias="_id", default=None)
 
     def __hash__(self):
         return persistent_hash((self.clazz, self.backend_uri, self.experiment_id, self.run_id, self.uid))
+
+
+class IdBasedModel(BaseIdModel):
+    id: str = Field(alias="_id", default=None)
 
     def get_reference(self):
         return get_reference(self)
 
     @pydantic.validator('id', pre=True, always=True)
     def default_ts_modified(cls, v, *, values, **kwargs):
-        return v or str(to_reference(values).__hash__())
+        if v is not None:
+            return v
+        else:
+            reference_class = get_reference_class(values)
+            return to_reference(
+                {k: values[k] for k in values.keys() if k in reference_class.__fields__.keys()}).__hash__()
 
 
 class BaseStorageModel(CreatedAtModel, IdBasedModel):
@@ -76,10 +84,10 @@ class Reference:
         raise NotImplementedError()
 
 
-class IdReference(Reference, IdBasedModel):
+class IdReference(Reference, BaseIdModel):
     id: str = Field(alias="_id", default=None)
 
-    @pydantic.validator('id', pre=True, always=True)
+    @pydantic.validator('id', always=True)
     def default_ts_modified(cls, v, *, values, **kwargs):
         return v or str(persistent_hash(
             (values["clazz"], values["backend_uri"], values["experiment_id"], values["run_id"], values["uid"])))
@@ -115,8 +123,27 @@ class ProvenanceModel(BaseStorageModel):
     defined_in: IdReference = ...
 
 
-def get_reference(obj):
-    return to_reference(obj.__dict__)
+def get_reference_dict(obj, validate=True, reference_class=None):
+    if reference_class is None:
+        reference_class = get_reference_class(obj)
+    return obj.dict(validate=validate, force=True,
+                    include={str(k) for k in reference_class.__fields__.keys()})
+
+
+def get_reference(obj, validate=True, reference_class=None):
+    """
+    :param reference_class:
+    :param obj:
+    :param validate: Flag to indicate whether we want to validate input model
+    :return:
+    """
+    if reference_class is None:
+        reference_class = get_reference_class(obj)
+    # Get fields of the object
+    if isinstance(obj, BaseModel):
+        return reference_class.construct(**obj.dict())
+    return to_reference(get_reference_dict(obj, validate=validate, reference_class=reference_class),
+                        reference_class=reference_class)
 
 
 def unwrap_typed_id(uid):
@@ -124,8 +151,28 @@ def unwrap_typed_id(uid):
     return {"uid": id_splits[0], "storage_type": id_splits[1]}
 
 
-def to_reference(dict_obj):
-    if "path" in dict_obj:
-        return PathReference(**dict_obj)
+def to_reference(dict_obj, reference_class=None):
+    if reference_class is None:
+        reference_class = get_reference_class(dict_obj)
+    return reference_class(**dict_obj)
+
+
+def get_reference_class(dict_or_obj):
+    _in = _has_checker(dict_or_obj)
+    if _in("path"):
+        return PathReference
     else:
-        return IdReference(**dict_obj)
+        return IdReference
+
+
+def _has_checker(dict_or_obj):
+    if isinstance(dict_or_obj, dict):
+        def _in(key):
+            return key in dict_or_obj
+
+        return _in
+    else:
+        def _hasattr(key):
+            return hasattr(dict_or_obj, key)
+
+        return _hasattr

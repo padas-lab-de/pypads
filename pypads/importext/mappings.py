@@ -427,7 +427,7 @@ class MappingRegistry:
                 if isinstance(mapping, MappingFile):
                     mapping.mapping_file = mapping_object.log_artifact(local_path=mapping.path,
                                                                        description="A copy of the mapping file used.")
-                mapping_object.log_json(mapping.dict(by_alias=True))
+                mapping_object.log_json(mapping.dict(force=False, by_alias=True))
             self._mappings[key] = mapping
 
     def load_mapping(self, path):

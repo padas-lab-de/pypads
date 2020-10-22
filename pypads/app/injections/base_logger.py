@@ -186,7 +186,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, CacheDepende
             logger_repo = pads.logger_repository
             if not logger_repo.has_object(uid=self.uid):
                 logger_obj = logger_repo.get_object(uid=self.uid)
-                logger_obj.log_json(jsonable_encoder(self.dict(by_alias=True)))
+                logger_obj.log_json(jsonable_encoder(self.dict(force=False, by_alias=True)))
                 self.__class__._pypads_stored = self.uid
             else:
                 self.__class__._pypads_stored = self.uid

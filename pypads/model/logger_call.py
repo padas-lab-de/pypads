@@ -1,6 +1,7 @@
 from typing import Optional, List, Union
 
-from pydantic import BaseModel, root_validator
+import pydantic
+from pydantic import BaseModel
 
 from pypads.model.logger_output import FallibleModel
 from pypads.model.models import BaseStorageModel, EntryModel, ResultType, ProvenanceModel, IdReference
@@ -71,7 +72,7 @@ class LoggerCallModel(ProvenanceModel, BaseStorageModel, FallibleModel):
     """
     execution_time: Optional[float] = ...
     storage_type: Union[ResultType, str] = ResultType.logger_call
-    created_by: IdReference = ...  # reference to LoggerModel
+    created_by: Optional[IdReference] = ...  # reference to LoggerModel
     output: Optional[IdReference] = ...  # reference to OutputModel of the logger
     name: str = "Call"
     finished: bool = False
@@ -91,12 +92,13 @@ class InjectionLoggerCallModel(LoggerCallModel):
     category: str = "InjectionLoggerCall"
     execution_time: Optional[float] = None
 
-    @root_validator
-    def set_default_execution_time(cls, values):
-        if values['execution_time'] is None:
-            if values['pre_time'] is not None and values['post_time'] is not None:
-                values['execution_time'] = values['pre_time'] + values['post_time']
-        return values
+    @pydantic.validator('execution_time', pre=True, always=True)
+    def default_ts_modified(cls, v, *, values, **kwargs):
+        if v is None:
+            if 'pretime' in values and 'post_time' in values:
+                if values['pre_time'] is not None and values['post_time'] is not None:
+                    return values['pre_time'] + values['post_time']
+        return v
 
     class Config:
         orm_mode = True

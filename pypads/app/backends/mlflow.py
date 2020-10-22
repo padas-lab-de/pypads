@@ -16,6 +16,7 @@ from pypads.app.backends.backend import BackendInterface
 from pypads.app.injections.tracked_object import ArtifactTO
 from pypads.app.misc.inheritance import SuperStop
 from pypads.model.logger_output import FileInfo, MetricMetaModel, ParameterMetaModel, ArtifactMetaModel, TagMetaModel
+from pypads.model.metadata import ModelObject
 from pypads.model.models import ResultType, BaseStorageModel, to_reference, IdReference, PathReference
 from pypads.utils.logging_util import FileFormats, jsonable_encoder, store_tmp_artifact
 from pypads.utils.util import string_to_int, get_run_id
@@ -132,7 +133,7 @@ class MLFlowBackend(BackendInterface, metaclass=ABCMeta):
             return stored_meta
 
         elif rt == ResultType.artifact:
-            obj: ArtifactMetaModel
+            obj: Union[ArtifactTO, ArtifactMetaModel]
             path = self._log_mem_artifact(path=obj.data, artifact=obj.content(), write_format=obj.file_format)
             # Todo maybe don't store filesize because of performance (querying for file after storing takes time)
             for file_info in self.list_files(run_id=get_run_id(), path=os.path.dirname(path)):
@@ -162,12 +163,15 @@ class MLFlowBackend(BackendInterface, metaclass=ABCMeta):
         rt = obj.storage_type
         if rt == ResultType.embedded:
             # Instead of a path an embedded object should return the object itself and not be stored to our backend
-            return obj.dict(by_alias=True)
+            return obj.dict(force=False, by_alias=True)
         if uid is None:
             uid = obj.uid
         return to_reference(
-            {**obj.dict(by_alias=True), **{"path": self._log_mem_artifact(str(uid), obj.json(by_alias=True),
-                                                                          write_format=FileFormats.json)}})
+            {**obj.dict(by_alias=True),
+             **{"path": self._log_mem_artifact(str(uid),
+                                               obj.json(force=False, by_alias=True)
+                                               if isinstance(obj, ModelObject) else obj.json(by_alias=True),
+                                               write_format=FileFormats.json)}})
 
     def get(self, uid, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
             search_dict=None):
@@ -345,7 +349,7 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
 
     def log_json(self, entry, uid=None):
         if not isinstance(entry, dict):
-            entry = entry.dict(by_alias=True)
+            entry = entry.dict(force=False, by_alias=True)
         if entry['storage_type'] == ResultType.embedded:
             # Instead of a path an embedded object should return the object itself and not be stored to our backend
             return entry

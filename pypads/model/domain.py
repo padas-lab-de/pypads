@@ -3,6 +3,7 @@ from typing import Optional, Union
 from pydantic import BaseModel, root_validator
 
 from pypads.model.models import BaseStorageModel, ResultType
+from pypads.utils.util import persistent_hash
 
 
 class LibraryModel(BaseStorageModel):
@@ -51,13 +52,12 @@ class MappingModel(BaseStorageModel):
 
     @root_validator
     def set_default(cls, values):
-        values['_id'] = ".".join(
-            [values["author"], values["version"], values["lib"].name, values["lib"].constraint])
+        values['_id'] = persistent_hash(
+            (values["author"], values["version"], values["lib"].name, values["lib"].constraint))
         return values
 
     class Config:
         orm_mode = True
-
 
 # class ExperimentModel(OntologyEntry):  # TODO
 #     """
@@ -71,5 +71,3 @@ class MappingModel(BaseStorageModel):
 #     id: str = ...
 #     name: str = ...
 #     run = ...
-
-

@@ -104,26 +104,27 @@ class ResultHolderMixin(ProducedMixin, ModelObject, SuperStop, metaclass=ABCMeta
 
     @property
     def artifacts(self):
-        return [a.get_reference() for a in
+        return [get_reference(a, validate=False) for a in
                 self._results[ResultType.artifact]] if ResultType.artifact in self._results else []
 
     @property
     def parameters(self):
-        return [a.get_reference() for a in
+        return [get_reference(a, validate=False) for a in
                 self._results[ResultType.parameter]] if ResultType.parameter in self._results else []
 
     @property
     def tags(self):
-        return [a.get_reference() for a in self._results[ResultType.tag]] if ResultType.tag in self._results else []
+        return [get_reference(a, validate=False) for a in
+                self._results[ResultType.tag]] if ResultType.tag in self._results else []
 
     @property
     def metrics(self):
-        return [a.get_reference() for a in
+        return [get_reference(a, validate=False) for a in
                 self._results[ResultType.metric]] if ResultType.metric in self._results else []
 
     @property
     def tracked_objects(self):
-        return [a.get_reference() for a in
+        return [get_reference(a, validate=False) for a in
                 self._results[ResultType.tracked_object]] if ResultType.tracked_object in self._results else []
 
     def store_metric(self: Union['ResultHolderMixin', ResultHolderModel], key, value, description="", step=None,

@@ -41,6 +41,11 @@ class CommonSklearnTest(BaseSklearnTest):
         This example will track the experiment exection with the default configuration.
         :return:
         """
+        import cProfile
+
+        pr = cProfile.Profile()
+        pr.enable()
+
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
@@ -75,6 +80,9 @@ class CommonSklearnTest(BaseSklearnTest):
         # assert 'pypads.system.processor' in ''.join([m.path for m in tags])
 
         tracker.api.end_run()
+        pr.disable()
+        # after your program ends
+        pr.print_stats(sort="cumtime")
         # !-------------------------- asserts ---------------------------
 
     def test_simple_parameter_mapping(self):

@@ -66,7 +66,7 @@ class PyPadsActuators(IActuators):
         return get_current_pads()
 
     @actuator
-    def set_random_seed(self, _pypads_env=None, _logger_call=None, _logger_output=None, _pypads_params=None, seed=None):
+    def set_random_seed(self, seed=None, **kwargs):
         # Set seed if needed
         if seed is None:
             import random
