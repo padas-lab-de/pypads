@@ -480,6 +480,14 @@ class PyPadsApi(IApi):
         return mlflow.active_run()
 
     @cmd
+    def active_experiment(self):
+        run = mlflow.active_run()
+        r_id = run.info.run_id
+        if not self.pypads.cache.run_exists(f"experiment_for_run_{r_id}"):
+            self.pypads.cache.run_add(f"experiment_for_run_{r_id}", mlflow.get_experiment(run.info.experiment_id))
+        return self.pypads.cache.run_get(f"experiment_for_run_{r_id}")
+
+    @cmd
     def is_intermediate_run(self):
         """
         Check if the current run is an intermediate run.

@@ -653,6 +653,7 @@ class PyPads:
 
         # check if there is already an active run
         run = mlflow.active_run()
+        experiment = None
         if run is None:
             experiment_name = experiment_name or DEFAULT_EXPERIMENT_NAME
             # Create run if run doesn't already exist
@@ -664,8 +665,8 @@ class PyPads:
             if not disable_run_init:
                 self.api.run_setups()
 
-        experiment = self.backend.get_experiment_by_name(
-            experiment_name) if experiment_name else self.backend.get_experiment(run.info.experiment_id)
+        if experiment is None:
+            experiment = self.backend.get_experiment(run.info.experiment_id)
 
         # override active run if used
         if experiment_name and run.info.experiment_id != experiment.experiment_id:

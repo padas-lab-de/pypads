@@ -1,4 +1,5 @@
 import os
+from contextlib import contextmanager
 from typing import Union
 from uuid import uuid4
 
@@ -28,6 +29,7 @@ class Repository:
             repo = self.pads.backend.get_experiment(self.pads.backend.create_experiment(name))
             self.pads.backend.set_experiment_tag(repo.experiment_id, Repository.__class__.__name__, True)
         self._repo = repo
+        self._object_cache = {}
 
     @staticmethod
     def is_repository(experiment):
@@ -41,9 +43,16 @@ class Repository:
         :param run_id: Optional run_id of object. This is the id of the run in which the object should be stored.
         :return:
         """
-        return RepositoryObject(self, run_id, self.repo_reference(uid).id, name)
+        if uid not in self._object_cache:
+            repo_obj = RepositoryObject(self, run_id, self.repo_reference(uid).id, name)
+            self._object_cache[uid] = repo_obj
+            return repo_obj
+        else:
+            return self._object_cache[uid]
 
     def has_object(self, uid):
+        if uid in self._object_cache:
+            return True
         if isinstance(self.pads.backend, MongoSupportMixin):
             return self.pads.backend.get_json(self.repo_reference(uid)) is not None
         else:
@@ -77,6 +86,12 @@ class Repository:
         """
 
         if run_id:
+            if self.pads.api.active_run() and run_id == self.pads.api.active_run().info.run_id:
+                @contextmanager
+                def active_reference():
+                    yield self.pads.api.active_run()
+
+                return active_reference()
             return self.pads.api.intermediate_run(experiment_id=self.id, run_id=run_id, run_name=run_name,
                                                   setups=False)
         else:
@@ -114,8 +129,6 @@ class RepositoryObject:
         self._run = None
         self._uid = uid if uid is not None else uuid4()
         self._run_id = run_id
-        # with self.init_context() as ctx:
-        #     self.pads.backend.log_json(self.get_reference())  # Save the Repository describing meta to the backend
 
     def get_reference(self):
         return to_reference({
@@ -188,7 +201,7 @@ class RepositoryObject:
         Activates the repository context and stores an artifact into it.
         :return:
         """
-        with self.init_context() as ctx:
+        with self.init_context():
             return self.get_rel_artifact_path(
                 self.pads.api.log_artifact(local_path=local_path, description=description,
                                            additional_data=self._extend_meta(additional_data),

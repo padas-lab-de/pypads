@@ -266,7 +266,9 @@ def get_experiment_id():
 
 def get_experiment_name():
     if mlflow.active_run():
-        return mlflow.get_experiment(mlflow.active_run().info.experiment_id).name
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+        return pads.api.active_experiment().name
     return None
 
 

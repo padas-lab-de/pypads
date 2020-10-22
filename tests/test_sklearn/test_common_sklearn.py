@@ -46,6 +46,26 @@ class CommonSklearnTest(BaseSklearnTest):
         # pr = cProfile.Profile()
         # pr.enable()
 
+        # import mlflow
+        #
+        # from mlflow.tracking import MlflowClient
+        #
+        # def dummy(*args, **kwargs):
+        #     return []
+        #
+        # MlflowClient.list_artifacts = dummy
+        # MlflowClient.list = dummy
+        # MlflowClient.set_tag = dummy
+        # MlflowClient.log_param = dummy
+        # MlflowClient.log_metric = dummy
+        # MlflowClient.log_artifact = dummy
+        # MlflowClient.log_batch = dummy
+        # MlflowClient.log_artifacts = dummy
+        # mlflow.log_artifact = dummy
+        # mlflow.log_param = dummy
+        # mlflow.log_metric = dummy
+        # mlflow.set_tag = dummy
+
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
