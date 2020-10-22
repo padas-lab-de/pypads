@@ -349,7 +349,12 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
 
     def log_json(self, entry, uid=None):
         if not isinstance(entry, dict):
-            entry = entry.dict(force=False, by_alias=True)
+            if isinstance(entry, BaseStorageModel):
+                entry = entry.dict(by_alias=True)
+            elif isinstance(entry, ModelObject):
+                entry = entry.dict(force=False, by_alias=True)
+            else:
+                raise ValueError(f"{entry} of wrong type.")
         if entry['storage_type'] == ResultType.embedded:
             # Instead of a path an embedded object should return the object itself and not be stored to our backend
             return entry

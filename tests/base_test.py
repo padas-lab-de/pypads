@@ -14,7 +14,7 @@ base.DEFAULT_SETUP_FNS = {}
 config = {
     "recursion_identity": False,
     "recursion_depth": -1,
-    "mongo_db" : False}
+    "mongo_db": True}
 
 if "loguru" in str(logger):
     import pytest
