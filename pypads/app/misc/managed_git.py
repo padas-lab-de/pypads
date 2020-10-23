@@ -71,7 +71,6 @@ class ManagedGit:
         Creates a patch without changing anything on the state of the current repository
         :return: patch, a name for the patch and it's hash
         """
-        orig_branch = self.repo.active_branch.name
 
         # push untracked changes to the stash)
         files = list(
@@ -85,6 +84,7 @@ class ManagedGit:
             self.repo.git.stash('push', '--keep-index')
 
             # generate the diff patch
+            logger.info("Stashing the uncommitted/untracked changes of the repo and generating a patch file...")
             patch = self.repo.git.stash('show', '-p')
             diff_hash = persistent_hash(patch)
         finally:
@@ -102,7 +102,7 @@ class ManagedGit:
         try:
             self.repo.git.apply([patch])
         except (GitCommandError, GitError) as e:
-            raise Exception(
+            logger.error(
                 "Failed to restore state of the repository from patch file due to exception {}".format(str(e)))
 
     def _verify_path(self, path, pads=None, source=True):

@@ -13,7 +13,6 @@ class MLFlowBackend(BaseTest):
         """
         from pypads.app.backends.mlflow import MLFlowBackendFactory, LocalMlFlowBackend, \
             MongoSupportMixin, RemoteMlFlowBackend
-        from pypads.app.pypads import set_current_pads
         from pypads.app.base import PyPads
 
         tracker = PyPads(uri=TEST_FOLDER, config=config)

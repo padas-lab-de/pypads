@@ -1,8 +1,7 @@
 import git
 from git import InvalidGitRepositoryError
 
-from pypads.injections.setup.git import IGitRSF
-from tests.base_test import BaseTest, TEST_FOLDER, config
+from tests.base_test import BaseTest, TEST_FOLDER, config, TempDir
 from pypads.app.misc.managed_git import ManagedGit
 
 GIT_URI = "git://" + TEST_FOLDER
@@ -36,28 +35,19 @@ class GitBackend(BaseTest):
         # Activate tracking of pypads
         from pypads.app.base import PyPads
 
-        # Mocking cwd path extraction for source verification
-        def cwd():
-            return self.folder.name
+        with TempDir(chdr=True) as test_folder:
+            tracker = PyPads(uri=self.folder.name, config=config, autostart=True)
 
-        import os
-        orig_cwd = os.getcwd
-        os.getcwd = cwd
+            # --------------------------- asserts ------------------------------
+            with self.assertRaises(InvalidGitRepositoryError):
+                git.Repo(path=test_folder._path)
 
-        tracker = PyPads(uri=TEST_FOLDER, config=config, autostart=True)
+            managed_git: ManagedGit = tracker.managed_git_factory(test_folder._path)
+            temp_repo = git.Repo(test_folder._path)
 
-        # --------------------------- asserts ------------------------------
-        with self.assertRaises(InvalidGitRepositoryError):
-            git.Repo(path=self.folder.name)
+            self.assertEqual(temp_repo, managed_git.repo)
 
-        managed_git: ManagedGit = tracker.managed_git_factory(self.folder.name)
-        temp_repo = git.Repo(self.folder.name)
-
-        self.assertEqual(temp_repo, managed_git.repo)
-        # restoring mocked variables
-        os.getcwd = orig_cwd
-
-        tracker.api.end_run()
+            tracker.api.end_run()
         # !-------------------------- asserts ---------------------------
 
     def test_patch_untracked_changes(self):
@@ -67,47 +57,37 @@ class GitBackend(BaseTest):
         """
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-
-        # Mocking cwd path extraction for source verification
-        def cwd():
-            return self.folder.name
-
         import os
-        orig_cwd = os.getcwd
-        os.getcwd = cwd
 
-        tracker = PyPads(uri=TEST_FOLDER, config=config, autostart=True)
+        with TempDir(chdr=True) as test_folder:
+            tracker = PyPads(uri=self.folder.name, config=config, autostart=True)
 
-        init_git: ManagedGit = tracker.managed_git_factory(self.folder.name)
-        # add untracked changes to the repository
-        with open(os.path.join(self.folder.name, "new_file.txt"), "w") as file:
-            file.write("new untracked changes.")
-        managed_git: ManagedGit = tracker.managed_git_factory(self.folder.name)
+            init_git: ManagedGit = tracker.managed_git_factory(test_folder._path)
+            # add untracked changes to the repository
+            with open(os.path.join(test_folder._path, "new_file.txt"), "w") as file:
+                file.write("new untracked changes.")
+            managed_git: ManagedGit = tracker.managed_git_factory(test_folder._path)
 
-        # --------------------------- asserts ------------------------------
-        self.assertTrue(managed_git.has_changes())
+            # --------------------------- asserts ------------------------------
+            self.assertTrue(managed_git.has_changes())
 
-        # Create a patch of the current state of the repository
-        status = managed_git.repo.git.status()
-        patch, patch_hash = managed_git.create_patch()
-        patch_folder = temporary_folder()
-        patch_file = os.path.join(patch_folder.name, "patch.patch")
-        with open(patch_file, "w") as f:
-            f.write(patch)
+            # Create a patch of the current state of the repository
+            status = managed_git.repo.git.status()
+            patch, patch_hash = managed_git.create_patch()
 
-        # Do some changes
-        os.remove(os.path.join(self.folder.name, "new_file.txt"))
-        self.assertNotEqual(status, managed_git.repo.git.status())
+            # Do some changes
+            os.remove(os.path.join(test_folder._path, "new_file.txt"))
+            self.assertNotEqual(status, managed_git.repo.git.status())
 
-        # Restore the state
-        managed_git.restore_patch(patch_file)
-        self.assertEqual(status, managed_git.repo.git.status())
+            # Restore the state
+            with TempDir(chdr=False) as patch_folder:
+                with open(os.path.join(patch_folder._path, "patch.patch"), "w") as f:
+                    f.write(patch)
+                managed_git.restore_patch(os.path.join(patch_folder._path, "patch.patch"))
+                self.assertEqual(status, managed_git.repo.git.status())
 
-        # restoring mocked variables
-        os.getcwd = orig_cwd
-        patch_folder.cleanup()
-        tracker.api.end_run()
-        # !-------------------------- asserts ---------------------------
+            tracker.api.end_run()
+            # !-------------------------- asserts ---------------------------
 
     def test_results_repository(self):
         """
