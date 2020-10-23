@@ -1,3 +1,5 @@
+import tempfile
+
 import git
 from git import InvalidGitRepositoryError
 
@@ -7,12 +9,6 @@ from pypads.app.misc.managed_git import ManagedGit
 GIT_URI = "git://" + TEST_FOLDER
 
 
-def temporary_folder():
-    import tempfile
-    temp_dir = tempfile.TemporaryDirectory()
-    return temp_dir
-
-
 class GitBackend(BaseTest):
     """
     This class will test basic functionality of the git backend, e.g, versioning of source code, managing results in a git repo
@@ -20,7 +16,7 @@ class GitBackend(BaseTest):
 
     def setUp(self) -> None:
         """ Setting up the temporary repository with files to simulate"""
-        self.folder = temporary_folder()
+        self.folder = tempfile.TemporaryDirectory()
         super().setUp()
 
     def tearDown(self):
@@ -34,9 +30,8 @@ class GitBackend(BaseTest):
         """
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-
         with TempDir(chdr=True) as test_folder:
-            tracker = PyPads(uri=self.folder.name, config=config, autostart=True)
+            tracker = PyPads(uri=self.folder.name, config=config, setup_fns={},autostart=True)
 
             # --------------------------- asserts ------------------------------
             with self.assertRaises(InvalidGitRepositoryError):
@@ -60,13 +55,13 @@ class GitBackend(BaseTest):
         import os
 
         with TempDir(chdr=True) as test_folder:
-            tracker = PyPads(uri=self.folder.name, config=config, autostart=True)
+            tracker = PyPads(uri=self.folder.name, config=config, setup_fns={}, autostart=True)
 
-            init_git: ManagedGit = tracker.managed_git_factory(test_folder._path)
+            managed_git: ManagedGit = tracker.managed_git_factory(test_folder._path)
             # add untracked changes to the repository
             with open(os.path.join(test_folder._path, "new_file.txt"), "w") as file:
                 file.write("new untracked changes.")
-            managed_git: ManagedGit = tracker.managed_git_factory(test_folder._path)
+            # managed_git: ManagedGit = tracker.managed_git_factory(test_folder._path)
 
             # --------------------------- asserts ------------------------------
             self.assertTrue(managed_git.has_changes())

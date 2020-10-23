@@ -3,6 +3,7 @@ from typing import Type, Union, Optional, List
 
 from pydantic import BaseModel
 
+from pypads import logger
 from pypads.app.env import LoggerEnv
 from pypads.app.injections.run_loggers import RunSetup
 from pypads.app.injections.tracked_object import TrackedObject
@@ -11,12 +12,12 @@ from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.utils.util import sizeof_fmt, uri_to_path, PeriodicThread
 
 
-class ComputerTO(TrackedObject):
+class SystemStatsTO(TrackedObject):
     """
     Tracked object to represent a single computing node.
     """
 
-    class ComputerTOModel(TrackedObjectModel):
+    class SystemStatsTOModel(TrackedObjectModel):
         """
         Model class containing references to the real hardware information and a mac address
         """
@@ -32,12 +33,12 @@ class ComputerTO(TrackedObject):
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
-        return cls.ComputerTOModel
+        return cls.SystemStatsTOModel
 
 
 class IMacAddressRSF(RunSetup):
     """
-    Run setup function to create the ComputerTO and store it for further additions into the cache.
+    Run setup function to create the SystemStatsTO and store it for further additions into the cache.
     """
     name = "Generic MacAddress Run Setup Logger"
     type: str = "MacAddressRunLogger"
@@ -47,9 +48,9 @@ class IMacAddressRSF(RunSetup):
 
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         import re, uuid
-        cto = ComputerTO(mac_address=':'.join(re.findall('..', '%012x' % uuid.getnode())),
-                         parent=_logger_output)
-        _pypads_env.pypads.cache.run_add(ComputerTO.__name__, cto)
+        cto = SystemStatsTO(mac_address=':'.join(re.findall('..', '%012x' % uuid.getnode())),
+                            parent=_logger_output)
+        _pypads_env.pypads.cache.run_add(SystemStatsTO.__name__, cto)
         cto.store()
 
 
@@ -71,10 +72,10 @@ class SystemTO(TrackedObject):
 
 class ISystemRSF(RunSetup):
     """
-    System run setup function running after IMacAddressRSF (see order) and updating the ComputerTO (see _needed_cached)
+    System run setup function running after IMacAddressRSF (see order) and updating the SystemStatsTO (see _needed_cached)
     """
     _dependencies = {"psutil"}
-    _needed_cached = ComputerTO.__name__
+    _needed_cached = SystemStatsTO.__name__
     name = "Generic System Run Setup Logger"
     type: str = "SystemRumLogger"
 
@@ -84,13 +85,122 @@ class ISystemRSF(RunSetup):
     def _call(self, *args, _pypads_env: LoggerEnv, _pypads_cached_results=None, _logger_call, _logger_output, **kwargs):
         import platform
         system = platform.uname()
-        computer_to: ComputerTO = _pypads_cached_results[0]
+        computer_to: SystemStatsTO = _pypads_cached_results[0]
         system_info = SystemTO(system=system.system, node=system.node, release=system.release, version=system.version,
                                machine=system.machine, processor=system.processor, parent=_logger_output)
 
         # Update computer to
         computer_to.system = system_info.store()
         computer_to.store()
+
+
+class GpuUsageTO(TrackedObject):
+    """
+    Tracked object to be updated live on the gpu usage.
+    """
+
+    class GpuUsageTOModel(TrackedObjectModel):
+        type: str = "GpuUsage"
+        description: str = "Timeline about the usage of the in the experiment used gpu."
+
+        class GpuCoreModel(BaseModel):
+            index: int = ...
+            handle: int = ...
+            gpu: str = ...
+            memory: List[float] = ...
+            memoryAllocated: List[float] = ...
+            temperature: List[float] = ...
+            power_usage: List[float] = ...
+
+            class Config:
+                orm_mode = True
+
+        gpu_count: int = ...
+        gpu_cores: List[GpuCoreModel] = []
+        period: float = ...
+
+    @classmethod
+    def get_model_cls(cls) -> Type[BaseModel]:
+        return cls.GpuUsageTOModel
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        import pynvml
+        try:
+            pynvml.nvmlInit()
+            self.gpu_count = pynvml.nvmlDeviceGetCount()
+        except pynvml.NVMLError:
+            self.gpu_count = 0
+
+    def add_gpu_usage(self: Union['GpuUsageTO', GpuUsageTOModel]):
+        gpu_cores = _get_gpu_usage(self.gpu_count)
+        if gpu_cores is not None:
+            for idx, handle, gpu, memory, memory_allocated, temp, power_usage in enumerate(gpu_cores):
+                self.gpu_cores.append(self.__class__.GpuCoreModel(index=idx, handle=handle, gpu=gpu, memory=memory,
+                                                                  memoryAllocated=memory_allocated, temprature=temp,
+                                                                  power_usage=power_usage))
+
+
+def _get_gpu_usage(gpu_count):
+    import pynvml
+    gpus = []
+    for i in range(gpu_count):
+        handle = pynvml.nvmlDeviceGetHandleByIndex(i)
+        try:
+            util = pynvml.nvmlDeviceGetUtilizationRates(handle)
+            memory = pynvml.nvmlDeviceGetMemoryInfo(handle)
+            temp = pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU)
+            try:
+                power_usage = (pynvml.nvmlDeviceGetPowerUsage(handle) / 1000.0) / (
+                        pynvml.nvmlDeviceGetEnforcedPowerLimit(handle) / 1000.0) * 100
+            except pynvml.NVMLError as e:
+                logger.error("Coudln't extract power usage due to NVML exception: {}".format(str(e)))
+                power_usage = -9999
+            gpus.append((handle, util.gpu, util.memory, (
+                    memory.used / float(memory.total)
+            ) * 100, temp, power_usage))
+        except pynvml.NVMLError as e:
+            logger.error("Coudln't extract gpu usage information due to NVML exception: {}".format(str(e)))
+            return None
+    return gpus
+
+
+class IGpuRSF(RunSetup):
+    _dependencies = {"pynvml"}
+    _needed_cached = SystemStatsTO.__name__
+    name = "Generic GPU Run Setup Logger"
+    type: str = "GPURunLogger"
+
+    def __init__(self, *args, order=None, **kwargs):
+        super().__init__(*args, order=order if order is not None else DEFAULT_ORDER + 1, **kwargs)
+
+    class IGpuRSFOutput(OutputModel):
+        type: str = "IGpuRSF-Output"
+        gpu_usage: Optional[Union[uuid.UUID, str]] = ...  # GpuUsageTO
+
+    @classmethod
+    def output_schema_class(cls) -> Type[OutputModel]:
+        return cls.IGpuRSFOutput
+
+    def _call(self, *args, _pypads_period=1.0, _pypads_env: LoggerEnv, _logger_call, _logger_output,
+              _pypads_cached_results=None, **kwargs):
+        if _pypads_period > 0:
+            gpu_usage_info = GpuUsageTO(parent=_logger_output)
+            gpu_usage_info.period = _pypads_period
+
+            def track_gpu_usage(to: GpuUsageTO):
+                to.add_gpu_usage()
+                to.store()
+
+            _logger_output.gpu_usage = gpu_usage_info.store()
+            thread = PeriodicThread(target=track_gpu_usage, sleep=_pypads_period, args=(gpu_usage_info,))
+            thread.start()
+
+            # stop thread store disk_usage object
+            def cleanup_thread(*args, **kwargs):
+                thread.join()
+
+            _pypads_env.pypads.api.register_teardown_utility(_logger_call, fn=cleanup_thread)
 
 
 class CpuTO(TrackedObject):
@@ -159,7 +269,7 @@ def _get_cpu_usage():
 
 class ICpuRSF(RunSetup):
     _dependencies = {"psutil"}
-    _needed_cached = ComputerTO.__name__
+    _needed_cached = SystemStatsTO.__name__
     name = "Generic CPU Run Setup Logger"
     type: str = "CPURunLogger"
 
@@ -179,7 +289,7 @@ class ICpuRSF(RunSetup):
               _pypads_cached_results=None, **kwargs):
         import psutil
         freq = psutil.cpu_freq()
-        computer_to: ComputerTO = _pypads_cached_results[0]
+        computer_to: SystemStatsTO = _pypads_cached_results[0]
         cpu_info = CpuTO(physical_cores=psutil.cpu_count(logical=False), total_cores=psutil.cpu_count(logical=True),
                          max_freq=f"{freq.max:2f}Mhz", min_freq=f"{freq.min:2f}Mhz", parent=_logger_output)
 
@@ -222,7 +332,7 @@ class RamTO(TrackedObject):
 
 class IRamRSF(RunSetup):
     _dependencies = {"psutil"}
-    _needed_cached = ComputerTO.__name__
+    _needed_cached = SystemStatsTO.__name__
     name = "Generic Ram Run Setup Logger"
     type: str = "RamRunLogger"
 
@@ -234,7 +344,7 @@ class IRamRSF(RunSetup):
         import psutil
         memory = psutil.virtual_memory()
         swap = psutil.swap_memory()
-        computer_to: ComputerTO = _pypads_cached_results[0]
+        computer_to: SystemStatsTO = _pypads_cached_results[0]
         memory_info = RamTO(total_memory=sizeof_fmt(memory.total), total_swap=sizeof_fmt(swap.total),
                             parent=_logger_output)
 
@@ -256,7 +366,7 @@ class DiskTO(TrackedObject):
 
 class IDiskRSF(RunSetup):
     _dependencies = {"psutil"}
-    _needed_cached = ComputerTO.__name__
+    _needed_cached = SystemStatsTO.__name__
     name = "Disk Run Setup Logger"
     type: str = "DiskRunLogger"
 
@@ -268,7 +378,7 @@ class IDiskRSF(RunSetup):
         pads = _logger_call._logging_env.pypads
         path = uri_to_path(pads.backend.uri)
         disk_usage = psutil.disk_usage(path)
-        computer_to: ComputerTO = _pypads_cached_results[0]
+        computer_to: SystemStatsTO = _pypads_cached_results[0]
         disk_info = DiskTO(total_size=disk_usage.total, free=disk_usage.free, parent=_logger_output)
 
         computer_to.disk = disk_info.store()
@@ -289,7 +399,7 @@ class ProcessTO(TrackedObject):
 
 class IPidRSF(RunSetup):
     _dependencies = {"psutil"}
-    _needed_cached = ComputerTO.__name__
+    _needed_cached = SystemStatsTO.__name__
     name = "Process Run Setup Logger"
     type: str = "ProcessRunLogger"
 
@@ -301,7 +411,7 @@ class IPidRSF(RunSetup):
         import os
         pid = os.getpid()
         process = psutil.Process(pid=pid)
-        computer_to: ComputerTO = _pypads_cached_results[0]
+        computer_to: SystemStatsTO = _pypads_cached_results[0]
         process_info = ProcessTO(id=pid, cwd=process.cwd(), parent=_logger_output)
 
         computer_to.process = process_info.store()
@@ -323,13 +433,13 @@ class SocketTO(TrackedObject):
 class ISocketInfoRSF(RunSetup):
     name = "Socket Run Setup Logger"
     type: str = "SockerRunLogger"
-    _needed_cached = ComputerTO.__name__
+    _needed_cached = SystemStatsTO.__name__
 
     def __init__(self, *args, order=None, **kwargs):
         super().__init__(*args, order=order if order is not None else DEFAULT_ORDER + 1, **kwargs)
 
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, _pypads_cached_results=None, **kwargs):
-        computer_to: ComputerTO = _pypads_cached_results[0]
+        computer_to: SystemStatsTO = _pypads_cached_results[0]
         import socket
         socket_info = SocketTO(hostname=socket.gethostname(), ip=socket.gethostbyname(socket.gethostname()),
                                parent=_logger_output)

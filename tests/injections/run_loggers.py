@@ -43,7 +43,7 @@ class PypadsInjectionLoggers(BaseTest):
 
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, setup_fns=[TestLogger()], autostart=True)
+        tracker = PyPads(uri=TEST_FOLDER, config=config, setup_fns={TestLogger()}, autostart=True)
 
         # --------------------------- asserts ---------------------------
         self.assertTrue(flag)
@@ -68,7 +68,7 @@ class PypadsInjectionLoggers(BaseTest):
 
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, autostart=True)
+        tracker = PyPads(uri=TEST_FOLDER, config=config, setup_fns={}, autostart=True)
 
         tracker.api.register_teardown(name= "test_teardown", post_fn=TestLogger())
         # --------------------------- asserts ---------------------------

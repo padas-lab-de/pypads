@@ -85,9 +85,6 @@ class TempDir(object):
         assert not self._remove or not os.path.exists(self._path)
         assert os.path.exists(os.getcwd())
 
-    def path(self, *path):
-        return os.path.join("./", *path) if self._chdr else os.path.join(self._path, *path)
-
 
 class BaseTest(unittest.TestCase):
 

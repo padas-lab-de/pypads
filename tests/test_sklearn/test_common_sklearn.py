@@ -16,9 +16,7 @@ class CommonSklearnTest(BaseSklearnTest):
         """
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
-
-        from pypads.injections.setup.misc_setup import DependencyRSF
-        set_up_fns = {DependencyRSF()}
+        set_up_fns = {}
 
         from pypads.app.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER, setup_fns=set_up_fns)

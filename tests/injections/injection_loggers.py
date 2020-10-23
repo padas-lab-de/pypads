@@ -83,7 +83,7 @@ class PypadsInjectionLoggers(BaseTest):
 
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, setup_fns={}, autostart=True)
 
         experiment = tracker.api.track(dummy_function, anchors=["pypads_log"])
 
@@ -138,7 +138,7 @@ class PypadsInjectionLoggers(BaseTest):
 
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, setup_fns={}, autostart=True)
 
         experiment = tracker.api.track(dummy_function, anchors=["pypads_log"])
 
@@ -189,7 +189,7 @@ class PypadsInjectionLoggers(BaseTest):
 
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, setup_fns={}, autostart=True)
 
         experiment = tracker.api.track(dummy_function, anchors=["pypads_log"])
 
@@ -206,7 +206,7 @@ class PypadsInjectionLoggers(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, setup_fns={}, autostart=True)
 
         def failing_function():
             print("I'm a failing function")
@@ -227,7 +227,7 @@ class PypadsInjectionLoggers(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, autostart=True)
+        tracker = PyPads(uri=TEST_FOLDER, config=config, hooks=hooks, events=events, setup_fns={}, autostart=True)
 
         i = 0
 

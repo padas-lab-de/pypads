@@ -16,20 +16,10 @@ class MLFlowBackend(BaseTest):
         from pypads.app.base import PyPads
 
         tracker = PyPads(uri=TEST_FOLDER, config=config)
-        # Mocking get_current_config
-        from pypads.app import pypads
-        orig_fn = pypads.get_current_config
 
-        def modify_config():
-            nonlocal mongo_db
-            config = orig_fn()
-            config.update({'mongo_db': mongo_db})
-            return config
-
-        pypads.get_current_config = modify_config
         # --------------------------- asserts ------------------------------
         # Without MongoSupport
-        mongo_db = False
+        tracker.config = {**tracker.config, **{"mongo_db":False}}
         uri = TEST_FOLDER
         self.assertIsInstance(MLFlowBackendFactory.make(uri), LocalMlFlowBackend)
         self.assertNotIsInstance(MLFlowBackendFactory.make(uri), MongoSupportMixin)
@@ -39,17 +29,17 @@ class MLFlowBackend(BaseTest):
         self.assertNotIsInstance(MLFlowBackendFactory.make(uri), MongoSupportMixin)
 
         # With MongoSupport
-        mongo_db = True
+        tracker.config = {**tracker.config, **{"mongo_db":True}}
         uri = TEST_FOLDER
         self.assertIsInstance(MLFlowBackendFactory.make(uri), MongoSupportMixin)
 
         uri = "http://mlflow.padre-lab.eu"
         self.assertIsInstance(MLFlowBackendFactory.make(uri), MongoSupportMixin)
-        pypads.get_current_config = orig_fn
         # !-------------------------- asserts ---------------------------
 
     def test_MLFlowBackend(self):
         """
-        Test the local mlflow backend functionalities.
+        Test the mlflow backend mocked functionalities functionalities.
         :return:
         """
+

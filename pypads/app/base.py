@@ -185,7 +185,7 @@ class PyPads:
         self._cache.add("events", events)
 
         # Initialize pre run functions before starting a run
-        setup_fns = setup_fns or DEFAULT_SETUP_FNS
+        setup_fns = DEFAULT_SETUP_FNS if setup_fns is None else setup_fns
         for fn in setup_fns:
             self.api.register_setup(fn.__class__.__name__ + "_" + str(id(fn)), fn)
 

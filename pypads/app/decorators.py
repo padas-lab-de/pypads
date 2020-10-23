@@ -43,9 +43,9 @@ def decorator(f):
 
     @wraps(f)
     def wrapper(self, *args, **kwargs):
-        # self is an instance of the class
-        return Decorator(fn=f)(self, *args, _pypads_env=LoggerEnv(parameter=dict(), experiment_id=get_experiment_id(),
-                                                                  run_id=get_run_id()), **kwargs)
+        # self is an instance of the class _pypads_env=LoggerEnv(parameter=dict(), experiment_id=get_experiment_id(),
+        #                                                                   run_id=get_run_id()),s
+        return Decorator(fn=f)(self, *args,  **kwargs)
 
     return wrapper
 
