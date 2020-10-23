@@ -107,7 +107,8 @@ class FunctionWrapper(BaseWrapper):
         call = None
         try:
             current_call: Call = self._pypads.call_tracker.current_call()
-            if current_call and accessor.is_call_identity(current_call.call_id):
+            # if current_call and (accessor.is_call_identity(current_call.call_id) or fn_reference.is_wrapped()):
+            if not fn_reference.context.original(fn_reference.wrappee) == fn_reference.wrappee:
                 call = current_call
             else:
                 call = add_call(accessor)
@@ -368,7 +369,7 @@ class FunctionWrapper(BaseWrapper):
                 if self._pypads.call_tracker.call_depth() > config['recursion_depth'] + 1:
                     return True
             if 'recursion_identity' in config and config['recursion_identity']:
-                if self._pypads.call_tracker.has_call_identity(accessor):
+                if self._pypads.call_tracker.is_recursive(accessor):
                     return True
             return False
         except Exception as e:

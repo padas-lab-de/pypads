@@ -110,8 +110,11 @@ class CallTracker:
 
         return function_calls[instance_id]
 
-    def has_call_identity(self, accessor: CallAccessor):
-        for stored in self._call_stack:
+    def is_recursive(self, accessor: CallAccessor):
+        # TODO change the naming
+        if len(self._call_stack) == 0:
+            return False
+        for stored in self._call_stack[:-1]:
             if stored.call_id.is_call_identity(accessor):
                 return True
         return False

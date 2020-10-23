@@ -134,14 +134,21 @@ class ConfigsTest(BaseTest):
         config["recursion_identity"] = True  # Ignoring recursive function calls is enabled
         tracker.config = {**DEFAULT_CONFIG, **config}
         recursive_dummy("".join([str(i) for i in range(1, 10)]))
-        self.assertEqual(0, i)
+        self.assertEqual(1, i)
 
-        i = 0
+        i = 1
         config["recursion_identity"] = False  # Ignoring recursive function calls is disabled
         tracker.config = {**DEFAULT_CONFIG, **config}
         recursive_dummy("".join([str(i) for i in range(1, 10)]))
-        self.assertEqual(1, i)
+        self.assertEqual(10, i)
 
         # !-------------------------- asserts ---------------------------
         # End the mlflow run opened by PyPads
         tracker.api.end_run()
+
+
+    def test_double_tracking(self):
+        """
+        this example tests the case where we have recursive hooking
+        :return:
+        """
