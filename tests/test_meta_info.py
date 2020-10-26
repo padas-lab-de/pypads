@@ -21,13 +21,13 @@ class PypadsHookTest(BaseTest):
 
         holder = tracker.api.get_programmatic_output()
         meta = ParameterMetaModel(name=name, value_format='str', data=str(neural_network_shape),
-                                  description=description, parent=holder, parent_type=holder.storage_type,
-                                  produced_by=holder.produced_by, producer_type=holder.producer_type,
+                                  description=description, parent=holder,
+                                  produced_by=holder.produced_by,
                                   part_of=holder.get_reference())
 
         # --------------------------- asserts ---------------------------
         # Number of retrieved items should be 1
-        retrieved_items = [x for x in tracker.results.get_parameters(name='networks_shape', run_id=meta.run_id)]
+        retrieved_items = [x for x in tracker.results.get_parameters(name='networks_shape', run_id=meta.run.uid)]
         assert len(retrieved_items) == 1
 
         retrieved_items = retrieved_items[0]
@@ -55,12 +55,12 @@ class PypadsHookTest(BaseTest):
 
         holder = tracker.api.get_programmatic_output()
         meta = MetricMetaModel(name=name, value_format='str', data=str(value), step=step,
-                               description=description, parent=holder, parent_type=holder.storage_type,
-                               produced_by=holder.produced_by, producer_type=holder.producer_type,
+                               description=description, parent=holder,
+                               produced_by=holder.produced_by,
                                part_of=holder.get_reference())
 
         artifacts = [x for x in tracker.results.get_metrics(experiment_name='TEST CASE EXPERIMENT',
-                                                            name=name, step=step, run_id=meta.run_id)]
+                                                            name=name, step=step, run_id=meta.run.uid)]
         # --------------------------- asserts ---------------------------
         assert len(artifacts) == 1
         for key in keys:
@@ -91,11 +91,11 @@ class PypadsHookTest(BaseTest):
         meta = ArtifactMetaModel(value_format='str', file_format=FileFormats.pickle,
                                  description=description, file_size=229,
                                  data=str(obj),
-                                 parent=holder, parent_type=holder.storage_type,
-                                 produced_by=holder.produced_by, producer_type=holder.producer_type,
+                                 parent=holder,
+                                 produced_by=holder.produced_by,
                                  part_of=holder.get_reference())
 
-        artifacts = [x for x in tracker.results.get_artifacts(run_id=meta.run_id) if x.data == path+'.pickle']
+        artifacts = [x for x in tracker.results.get_artifacts(run_id=meta.run.uid) if x.data == path + '.pickle']
 
         # --------------------------- asserts ---------------------------
         assert len(artifacts) == 1
@@ -132,12 +132,12 @@ class PypadsHookTest(BaseTest):
         meta = ArtifactMetaModel(value_format='str', file_format=FileFormats.pickle,
                                  description=description, file_size=229,
                                  data=str(obj),
-                                 parent=holder, parent_type=holder.storage_type,
-                                 produced_by=holder.produced_by, producer_type=holder.producer_type,
+                                 parent=holder,
+                                 produced_by=holder.produced_by,
                                  part_of=holder.get_reference())
 
         # Load the artifacts
-        artifacts = [x for x in tracker.results.get_artifacts(run_id=meta.run_id) if x.data == name]
+        artifacts = [x for x in tracker.results.get_artifacts(run_id=meta.run.uid) if x.data == name]
 
         # Load the data from the pypads path
         loaded_data = tracker.results.load_artifact(name, read_format=FileFormats.pickle)

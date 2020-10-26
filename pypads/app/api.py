@@ -78,6 +78,14 @@ class PyPadsApi(IApi):
         from pypads.app.pypads import get_current_pads
         return get_current_pads()
 
+    @cmd
+    def get_run(self, run_id):
+        mlflow.get_run(run_id=run_id)
+
+    @cmd
+    def get_run(self, experiment_id):
+        mlflow.get_experiment(experiment_id=experiment_id)
+
     # noinspection PyMethodMayBeStatic
     @cmd
     def track(self, fn, ctx=None, anchors: List = None, mapping: Mapping = None, additional_data=None):
@@ -163,6 +171,9 @@ class PyPadsApi(IApi):
     # ---- logging ----
     def get_programmatic_output(self):
         if not self.pypads.cache.run_exists("programmatic_output"):
+            reference = dummy_logger.store()
+            dummy_logger.experiment = reference.experiment
+            dummy_logger.run = reference.run
             self.pypads.cache.run_add("programmatic_output",
                                       LoggerOutput(_pypads_env=self.create_dummy_env(), producer=dummy_logger))
 

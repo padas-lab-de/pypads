@@ -165,6 +165,10 @@ class PyPads:
         # Store function registry into cache
         self._cache.add("events", events)
 
+        self._library_repository = LibraryRepository()
+        self._schema_repository = SchemaRepository()
+        self._logger_repository = LoggerRepository()
+
         # Init mapping registry and repository
         self._mapping_repository = MappingRepository()
         self._mapping_registry = MappingRegistry.from_params(self, mappings)
@@ -188,10 +192,6 @@ class PyPads:
         setup_fns = setup_fns or DEFAULT_SETUP_FNS
         for fn in setup_fns:
             self.api.register_setup(fn.__class__.__name__ + "_" + str(id(fn)), fn)
-
-        self._schema_repository = SchemaRepository()
-        self._logger_repository = LoggerRepository()
-        self._library_repository = LibraryRepository()
 
         # Execute instance modification functions given by a plugin
         for fn in self._instance_modifiers:

@@ -220,7 +220,7 @@ class ArtifactDataLoader(ModelObject):
             return self._content
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
-        return pads.backend.load_artifact_data(self.run_id, self.data)
+        return pads.backend.load_artifact_data(self.run.uid, self.data)
 
 
 class LoadedResultHolder(ResultHolderModel):

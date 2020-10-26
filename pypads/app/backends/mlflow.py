@@ -17,7 +17,8 @@ from pypads.app.injections.tracked_object import ArtifactTO
 from pypads.app.misc.inheritance import SuperStop
 from pypads.model.logger_output import FileInfo, MetricMetaModel, ParameterMetaModel, ArtifactMetaModel, TagMetaModel
 from pypads.model.metadata import ModelObject
-from pypads.model.models import ResultType, BaseStorageModel, to_reference, IdReference, PathReference
+from pypads.model.models import ResultType, BaseStorageModel, to_reference, IdReference, PathReference, \
+    ExperimentModel, get_reference, RunModel
 from pypads.utils.logging_util import FileFormats, jsonable_encoder, store_tmp_artifact
 from pypads.utils.util import string_to_int, get_run_id
 
@@ -185,8 +186,9 @@ class MLFlowBackend(BackendInterface, metaclass=ABCMeta):
         :param storage_type:
         :return:
         """
-        reference = IdReference(uid=uid, storage_type=storage_type, experiment_name=experiment_name,
-                                experiment_id=experiment_id, run_id=run_id,
+        reference = IdReference(uid=uid, storage_type=storage_type,
+                                experiment=get_reference(ExperimentModel(uid=experiment_id, name=experiment_name)),
+                                run=get_reference(RunModel(uid=str(self.run_id))),
                                 backend_uri=self.uri)
         json_data = self.get_json(reference)
         if storage_type == ResultType.artifact:
@@ -201,7 +203,7 @@ class MLFlowBackend(BackendInterface, metaclass=ABCMeta):
         :return:
         """
         # TODO search by uid instead
-        return self.load_artifact_data(run_id=reference.run_id,
+        return self.load_artifact_data(run_id=reference.run.uid,
                                        path=reference.path if isinstance(reference, PathReference) else reference.id)
 
     def get_by_path(self, run_id, path):
@@ -355,6 +357,10 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
                 entry = entry.dict(force=False, by_alias=True)
             else:
                 raise ValueError(f"{entry} of wrong type.")
+        if "storage_type" not in entry:
+            logger.error(
+                f"Tried to log an invalid entry. Json logged data has to define a storage_type. For entry {entry}")
+            return None
         if entry['storage_type'] == ResultType.embedded:
             # Instead of a path an embedded object should return the object itself and not be stored to our backend
             return entry
@@ -363,10 +369,6 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
         reference = to_reference(entry)
         _id = reference.id
         entry["_id"] = _id
-        if "storage_type" not in entry:
-            logger.error(
-                f"Tried to log an invalid entry. Json logged data has to define a storage_type. For entry {entry}")
-            return None
         storage_type = entry["storage_type"].value if isinstance(entry["storage_type"], ResultType) else entry[
             "storage_type"]
         try:

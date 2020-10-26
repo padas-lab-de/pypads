@@ -57,7 +57,7 @@ def get_artifact_dir(obj):
     if issubclass(model_cls, RunObjectModel):
         from pypads.model.models import EntryModel
         obj: Union[RunObjectModel, EntryModel]
-        return os.path.join(obj.experiment_id, obj.run_id, "artifacts", get_relative_artifact_dir(obj))
+        return os.path.join(obj.experiment.uid, obj.run.uid, "artifacts", get_relative_artifact_dir(obj))
 
     raise Exception("Given object is not part of a run/experiment.")
 

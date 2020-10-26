@@ -46,7 +46,7 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
     """
     An object building the model from itself on the fly.
     """
-    _schema_path = None
+    _schema_reference = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -84,7 +84,7 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
             return m
         else:
             cls, obj = self._decompose_class()
-            return cls.construct(**obj)
+            return cls.construct(**{k: v for k, v in obj.items() if k in cls.__fields__})
 
     def validate(self, include=None):
         """
@@ -101,12 +101,8 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
 
             cls = ReducedClass
             cls.__fields__ = {k: v for k, v in cls.__fields__.items() if k in include}
-
-        try:
-            return validate_model(cls, {**deepcopy(cls.__field_defaults__),
-                                        **{k: obj[k] for k in obj.keys() if include is None or k in include}})
-        except KeyError as e:
-            raise e
+        return validate_model(cls, {**deepcopy(cls.__field_defaults__),
+                                    **{k: obj[k] for k in obj.keys() if include is None or k in include}})
 
     def typed_id(self):
         cls = self.get_model_cls()
@@ -126,7 +122,7 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
 
     @classmethod
     def store_schema(cls):
-        if not cls._schema_path:
+        if not cls._schema_reference:
             from pypads.app.pypads import get_current_pads
             pads = get_current_pads()
             schema_repo = pads.schema_repository
@@ -140,14 +136,20 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
                 schema_obj.log_json(schema_wrapper)
             else:
                 schema_obj = schema_repo.get_object(uid=schema_hash)
-            cls._schema_path = schema_obj.uid
-        return cls._schema_path
+            cls._schema_reference = schema_obj.get_reference()
+        return cls._schema_reference
 
     def json(self, force=True, validate=True, include=None, *args, **kwargs):
-        return self.model(force=force, validate=validate, include=include).json(*args, include=include, **kwargs)
+        model = self.model(force=force, validate=validate, include=include)
+        if isinstance(model, ModelObject):
+            return model.json(*args, force=force, validate=validate, include=include, **kwargs)
+        return model.json(*args, include=include, **kwargs)
 
     def dict(self, force=True, validate=True, include=None, *args, **kwargs):
-        return self.model(force=force, validate=validate, include=include).dict(*args, include=include, **kwargs)
+        model = self.model(force=force, validate=validate, include=include)
+        if isinstance(model, ModelObject):
+            return model.dict(*args, force=force, validate=validate, include=include, **kwargs)
+        return model.dict(*args, include=include, **kwargs)
 
 
 class ModelHolder(ModelInterface, metaclass=ABCMeta):

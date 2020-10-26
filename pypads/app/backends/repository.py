@@ -6,7 +6,8 @@ from uuid import uuid4
 from pydantic import Extra
 
 from pypads.app.backends.mlflow import MongoSupportMixin
-from pypads.model.models import EntryModel, to_reference, BaseStorageModel, ResultType, IdReference
+from pypads.model.models import EntryModel, to_reference, BaseStorageModel, ResultType, IdReference, \
+    get_reference, ExperimentModel, RunModel
 from pypads.utils.logging_util import FileFormats
 
 
@@ -62,7 +63,7 @@ class Repository:
 
     def repo_reference(self, uid, run_id=-1):
         """
-        Translates a uid in a uid hash with the repos meta information
+        Translates a uid in a uid hash with the repos meta information.
         :param run_id:
         :param uid:
         :return:
@@ -70,10 +71,10 @@ class Repository:
         return to_reference({
             "uid": uid,
             "storage_type": ResultType.repository_entry,
-            "experiment_id": self.id,
-            "experiment_name": self.name,
+            "experiment": get_reference(ExperimentModel(uid=self.id, name=self.name)),
             "backend_uri": self.pads.backend.uri,
-            "run_id": run_id,  # The run_id is here not important,
+            "run": get_reference(RunModel(uid=str(run_id))),
+            # The run_id is here not important the run doesn't exist right now
             "category": self.name
         })
 
@@ -131,15 +132,13 @@ class RepositoryObject:
         self._run_id = run_id
 
     def get_reference(self):
-        return to_reference({
-            "uid": self.uid,
-            "storage_type": ResultType.repository_entry,
-            "experiment_id": self.repository.id,
-            "experiment_name": self.repository.name,
-            "backend_uri": self.pads.backend.uri,
-            "run_id": self.run_id,  # The run_id is here not important,
-            "category": self.repository.name
-        })
+        """
+        Function to build a reference to the repository object. (And it's internal singular json)
+        :return:
+        """
+        reference = self.repository.repo_reference(self.uid)
+        reference.run = get_reference(RunModel(uid=str(self.run_id)))
+        return reference
 
     @property
     def uid(self):
@@ -239,14 +238,18 @@ class RepositoryObject:
                                           holder=holder))
 
     def reference_dict(self):
+        """
+        Dict of the repo object to extend the passed json on.
+        :return:
+        """
         return {
             "uid": self.uid,
             "repository": self.repo_reference,
             "storage_type": self.repository.name,
-            "experiment_id": self.repository.id,
-            "experiment_name": self.repository.name,
+            "experiment": get_reference(ExperimentModel(uid=self.repository.id, name=self.repository.name)),
             "backend_uri": self.pads.backend.uri,
-            "run_id": self.run_id,  # The run_id is here not important,
+            "run": get_reference(RunModel(uid=str(self.run_id))),
+            # The run_id is here not important the run doesn't exist right now
             "category": self.repository.name
         }
 
@@ -259,6 +262,10 @@ class RepositoryObject:
         if isinstance(obj, dict):
             obj = RepositoryEntryModel(**self._extend_meta({**obj, **self.reference_dict()}))
         else:
+            if hasattr(obj, "experiment"):
+                obj.experiment = get_reference(ExperimentModel(uid=self.repository.id, name=self.repository.name))
+            if hasattr(obj, "run"):
+                obj.run = get_reference(RunModel(uid=str(self.run_id)))
             obj = RepositoryEntryModel(**self._extend_meta({**obj.dict(by_alias=True), **self.reference_dict()}))
         if isinstance(self.pads.backend, MongoSupportMixin):
             return self.pads.backend.log_json(obj)
