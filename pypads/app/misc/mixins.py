@@ -5,19 +5,11 @@ from typing import List, Union, Tuple, Set
 
 from pypads import logger
 from pypads.app.misc.inheritance import SuperStop
-from pypads.importext.versioning import LibSelector, VersionNotFoundException
+from pypads.exceptions import NoCallAllowedError, VersionNotFoundException
+from pypads.importext.versioning import LibSelector
 from pypads.utils.util import get_experiment_name, get_run_id
 
 DEFAULT_ORDER = 1
-
-
-class NoCallAllowedError(Exception):
-    """
-    Exception to denote that a callable couldn't be called, but isn't essential.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
 
 class MissingDependencyError(NoCallAllowedError):

@@ -3,14 +3,11 @@ from typing import Type
 
 from pydantic.main import BaseModel
 
+from pypads.exceptions import VersionNotFoundException
 from pypads.importext.semver import parse_constraint
 from pypads.model.domain import LibSelectorModel
 from pypads.model.metadata import ModelObject
 from pypads.utils.util import is_package_available, find_package_version, find_package_regex_versions
-
-
-class VersionNotFoundException(Exception):
-    pass
 
 
 class LibSelector(ModelObject):

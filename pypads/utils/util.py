@@ -12,6 +12,7 @@ import pkg_resources
 
 from pypads import logger
 from pypads.app.misc.caches import Cache
+from pypads.exceptions import UninitializedTrackerException
 
 
 def get_class_that_defined_method(meth):
@@ -51,6 +52,8 @@ def dict_merge(*dicts, str_to_set=False):
                         if not isinstance(merged[key], set):
                             merged[key] = {merged[key]}
                         merged[key] = merged[key].union({value})
+                        if len(merged[key]) == 1:
+                            merged[key] = merged[key].pop()
                 elif isinstance(value, set):
                     node = merged.setdefault(key, set())
                     if not isinstance(node, set):
@@ -253,7 +256,7 @@ def get_backend_uri():
         pads = get_current_pads()
         if pads:
             return pads.uri
-    except ImportError:
+    except (ImportError, UninitializedTrackerException):
         pass  # PyPads is not available here the backend uri is not set. Backend_uri has to be provided later on
     return None
 

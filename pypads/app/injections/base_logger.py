@@ -11,22 +11,14 @@ from pypads import logger
 from pypads.app.env import LoggerEnv
 from pypads.app.injections.tracked_object import LoggerCall, TrackedObject, LoggerOutput
 from pypads.app.misc.mixins import DependencyMixin, DefensiveCallableMixin, TimedCallableMixin, \
-    IntermediateCallableMixin, NoCallAllowedError, ConfigurableCallableMixin, LibrarySpecificMixin, \
+    IntermediateCallableMixin, ConfigurableCallableMixin, LibrarySpecificMixin, \
     FunctionHolderMixin, BaseDefensiveCallableMixin, ResultDependentMixin, CacheDependentMixin
+from pypads.exceptions import PassThroughException, NoCallAllowedError
 from pypads.importext.versioning import all_libs
 from pypads.model.logger_model import LoggerModel
 from pypads.model.logger_output import OutputModel
 from pypads.model.mixins import ProvenanceMixin, get_library_descriptor
 from pypads.utils.util import persistent_hash
-
-
-class PassThroughException(Exception):
-    """
-    Exception to be passed from _pre / _post and not be caught by the defensive logger.
-    """
-
-    def __init__(self, *args):
-        super().__init__(*args)
 
 
 class OriginalExecutor(FunctionHolderMixin, TimedCallableMixin):

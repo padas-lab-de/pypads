@@ -35,8 +35,20 @@ def data_str(data, *path, default=None, warning=None):
 
 def data_path(data, *path, default=None, warning=None):
     cur = data
-    for p in path:
-        if p in cur:
+    for i, p in enumerate(path):
+        if isinstance(cur, list):
+            out = []
+            for list_element in cur:
+                value = data_path(list_element, *path[i:])
+                if value is not None:
+                    if isinstance(value, list) and not len(path[i:]) == 0:
+                        out.extend(value)
+                    else:
+                        out.append(value)
+            return out if len(out) > 0 else default
+        elif p in cur:
+            # If list recursively call itself
+            # Multiple return values needed instead of one
             cur = cur[p]
         else:
             if warning is not None:

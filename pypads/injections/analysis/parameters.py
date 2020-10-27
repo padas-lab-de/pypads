@@ -143,7 +143,7 @@ class ParametersILF(InjectionLogger):
                                                 default="No description in mapping file.")
                         parameter_type = data_path(parameter, "padre:value_type", default=str(type(value)))
                         hyper_params.persist_parameter(key, value, parameter_type, description,
-                                                       additional_data=parameter)
+                                                       additional_data=mapping_data)
                     else:
                         logger.warning(
                             f"Couldn't access im mapping file defined parameter {parameter} on {ctx.__class__}")
