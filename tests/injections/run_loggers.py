@@ -3,6 +3,7 @@ from typing import Any
 from pypads.app.env import LoggerEnv
 from pypads.app.injections.run_loggers import RunTeardown, RunSetup
 from pypads.app.injections.tracked_object import LoggerCall
+from pypads.injections.setup.hardware import IGpuRSF, IMacAddressRSF
 from pypads.model.logger_output import OutputModel
 from tests.base_test import BaseTest, TEST_FOLDER, config
 

@@ -174,12 +174,14 @@ def is_package_available(name):
 def find_package_version(name: str):
     try:
         import sys
-        base_package = sys.modules[name]
-        if hasattr(base_package, "__version__"):
-            lib_version = getattr(base_package, "__version__")
+        if name in sys.modules:
+            base_package = sys.modules[name]
+            if hasattr(base_package, "__version__"):
+                lib_version = getattr(base_package, "__version__")
+                return lib_version
         else:
             lib_version = pkg_resources.get_distribution(name).version
-        return lib_version
+            return lib_version
     except Exception as e:
         logger.debug("Couldn't get version of package {}".format(name))
         return None
