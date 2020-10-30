@@ -78,7 +78,7 @@ class RunReference(Reference, RunModel):
     def load(self):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
-        return pads.api.get_run(self.uid)
+        return pads.results.get_run(self.uid)
 
 
 class ExperimentReference(Reference, ExperimentModel):
@@ -86,7 +86,7 @@ class ExperimentReference(Reference, ExperimentModel):
     def load(self):
         from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
-        return pads.api.get_experiment(self.uid)
+        return pads.results.get_experiment(self.uid)
 
 
 class RunObjectModel(BackendObjectModel):

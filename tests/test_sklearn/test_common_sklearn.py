@@ -71,7 +71,7 @@ class CommonSklearnTest(BaseSklearnTest):
         from pypads.app.base import PyPads
         tracker = PyPads(uri="http://mlflow.padre-lab.eu", config=config)
         tracker.activate_tracking()
-        tracker.start_track(experiment_name="Additional Experiment 2")
+        tracker.start_track(experiment_name="1. Experiment")
         tracker.actuators.set_random_seed(seed=1)
 
         import timeit
@@ -98,6 +98,8 @@ class CommonSklearnTest(BaseSklearnTest):
         #
         # tags = tracker.mlf.list_artifacts(run.info.run_id, path='../tags')
         # assert 'pypads.system.processor' in ''.join([m.path for m in tags])
+
+        tracker.results.get_summary(experiment_names="1. Experiment")
 
         tracker.api.end_run()
         # pr.disable()

@@ -395,11 +395,11 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
         if search_dict is None:
             search_dict = {}
         if experiment_name:
-            search_dict["experiment_name"] = experiment_name
+            search_dict["experiment.name"] = experiment_name
         if experiment_id:
-            search_dict["experiment_id"] = experiment_id
+            search_dict["experiment.uid"] = experiment_name
         if run_id:
-            search_dict["run_id"] = run_id
+            search_dict["run.uid"] = run_id
         return self._get_entry_generator(
             self._db[storage_type if isinstance(storage_type, str) else storage_type.value].find(search_dict))
 
@@ -409,12 +409,12 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
             search_dict = {}
         search_dict["uid"] = uid
         search_dict["storage_type"] = storage_type
-        if experiment_name is not None:
-            search_dict["experiment_name"] = experiment_name
-        if experiment_id is not None:
-            search_dict["experiment_id"] = experiment_id
-        if run_id is not None:
-            search_dict["run_id"] = run_id
+        if experiment_name:
+            search_dict["experiment.name"] = experiment_name
+        if experiment_id:
+            search_dict["experiment.uid"] = experiment_name
+        if run_id:
+            search_dict["run.uid"] = run_id
         if all([a is not None for a in [experiment_id, run_id]]) is not None:
             search_dict["_id"] = IdReference(uid=uid, storage_type=storage_type, experiment_name=experiment_name,
                                              experiment_id=experiment_id, run_id=run_id,

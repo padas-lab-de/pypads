@@ -1,4 +1,5 @@
 import os
+import pathlib
 from dataclasses import dataclass
 from typing import Type, Union
 
@@ -263,7 +264,7 @@ class PipelineTrackerILF(MultiInjectionLogger):
         base_folder = get_temp_folder()
         path = os.path.join(base_folder, "pipeline_graph.png")
         if not os.path.exists(base_folder):
-            os.mkdir(base_folder)
+            pathlib.Path(base_folder).mkdir(parents=True, exist_ok=True)
 
         if is_package_available("agraph") and is_package_available("graphviz") and is_package_available("pygraphviz"):
             from networkx.drawing.nx_agraph import to_agraph

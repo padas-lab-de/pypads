@@ -3,6 +3,7 @@ from functools import wraps
 from typing import Union
 
 from mlflow.entities import ViewType
+from pandas import DataFrame, Series
 
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
 from pypads.app.misc.mixins import FunctionHolderMixin
@@ -81,9 +82,14 @@ class PyPadsResults(IResults):
             read_format=read_format)
 
     @result
-    def list_run_infos(self, experiment_name, run_view_type: ViewType = ViewType.ALL):
-        experiment = self.pypads.backend.get_experiment_by_name(experiment_name)
-        return self.pypads.backend.list_run_infos(experiment_id=experiment.experiment_id, run_view_type=run_view_type)
+    def list_run_infos(self, experiment_name=None, experiment_id=None, run_view_type: ViewType = ViewType.ALL):
+        if experiment_id is None:
+            if experiment_name is not None:
+                experiment = self.pypads.backend.get_experiment_by_name(experiment_name)
+                experiment_id = experiment.experiment_id
+            else:
+                raise ValueError("Pass either a name or an id to list run infos.")
+        return self.pypads.backend.list_run_infos(experiment_id=experiment_id, run_view_type=run_view_type)
 
     @result
     def get_metrics(self, experiment_name=None, run_id=None, logger_id=None, output_id=None, tracked_object_id=None,
@@ -150,6 +156,105 @@ class PyPadsResults(IResults):
             search_dict = {**search_dict, **{"part_of": tracked_object_id, "parent_type": ResultType.tracked_object}}
         return self.pypads.backend.list(storage_type=storage_type, experiment_name=experiment_name,
                                         experiment_id=experiment_id, run_id=run_id, search_dict=search_dict)
+
+    @result
+    def get_run(self, run_id):
+        self.pypads.backend.get_run(run_id=run_id)
+
+    @result
+    def get_experiment(self, experiment_name=None, experiment_id=None):
+        if experiment_id:
+            return self.pypads.backend.get_experiment(experiment_id)
+        elif experiment_name:
+            return self.pypads.backend.get_experiment_by_name(experiment_name)
+        raise ValueError("Pass either a name or id to find a representative experiment.")
+
+    def get_summary(self, experiment_names=None, experiment_ids=None, run_ids=None, search_dict=None, group_by=None):
+
+        def _to_data(column):
+            def get_data(val):
+                if hasattr(val, "storage_type"):
+                    if getattr(val, "storage_type") in [ResultType.parameter, ResultType.metric]:
+                        return getattr(val, "data")
+                return val
+
+            return column.apply(get_data)
+
+        def _to_tag_data(column):
+            def get_data(val):
+                return [(name, tag_meta.data) for name, tag_meta in val]
+
+            return column.apply(get_data)
+
+        df = self.get_data_frame(experiment_names=experiment_names, experiment_ids=experiment_ids, run_ids=run_ids,
+                                 search_dict=search_dict)
+        df = df.apply(lambda x: _to_data(x) if not x.name == "tags" else _to_tag_data(x), axis=0)
+
+        def _group(column):
+            def get_data(val):
+                return [(name, tag_meta.data) for name, tag_meta in val]
+
+            return column.apply(get_data)
+
+        if group_by is not None:
+            pass
+            # TODO group by and aggregate other columns
+            # df = df.groupby(..., axis=0)
+
+        return df
+
+    @result
+    def get_data_frame(self, experiment_names=None, experiment_ids=None, run_ids=None, search_dict=None):
+        """
+        Returns a pandas data frame containing results of the last runs of the experiment.
+        The results contain all parameters and metrics as well as timestamps of the execution and notes about the runs.
+        :return:
+        """
+        # Ids to set
+        if experiment_ids is None:
+            experiment_ids = set()
+        elif isinstance(experiment_ids, str):
+            experiment_ids = {experiment_ids}
+        elif isinstance(experiment_ids, list):
+            experiment_ids = set(experiment_ids)
+
+        # Names to ids
+        if experiment_names is not None:
+            if isinstance(experiment_names, str):
+                experiment_names = {experiment_names}
+            for name in experiment_names:
+                experiment_ids.update([self.get_experiment(name).experiment_id])
+
+        # Run ids
+        if run_ids is not None:
+            if isinstance(run_ids, str):
+                run_ids = {run_ids}
+            elif isinstance(run_ids, list):
+                run_ids = set(run_ids)
+
+        df = DataFrame()
+        # Add experiments
+        for e_id in experiment_ids:
+
+            runs = self.list_run_infos(experiment_id=e_id)
+            filtered_runs = [r for r in runs if run_ids is None or r.run_id in run_ids]
+            for run_info in filtered_runs:
+                run_id = run_info.run_id
+                metrics = self.get_metrics(run_id=run_id)
+                metrics = {"m_" + m.name: m for m in metrics}
+                parameters = self.get_parameters(run_id=run_id)
+                parameters = {"p_" + p.name: p for p in parameters}
+                tags = self.get_tags(run_id=run_id)
+                tags = {"tags": [(t.name, t) for t in tags]}
+                exp = {"experiment": e_id}
+                run = {"start_time": run_info.start_time, "end_time": run_info.end_time}
+                row = {**exp, **run, **metrics, **parameters, **tags}
+                index = row.keys()
+                data = row.values()
+                run_series = Series(data=[v for v in data], index=index, name=run_id)
+                df = df.append(run_series)
+
+        return df
 
 
 class ResultPluginManager(ExtendableMixin):
