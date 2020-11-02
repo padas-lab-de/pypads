@@ -104,12 +104,10 @@ class GpuUsageTO(TrackedObject):
         description: str = "Timeline about the usage of the in the experiment used gpu."
 
         class GpuCoreModel(BaseModel):
-            index: int = ...
-            handle: int = ...
-            gpu: str = ...
-            memory: List[float] = ...
+            device: int = ...
+            memory: float = ...
             memoryAllocated: List[float] = ...
-            temperature: List[float] = ...
+            temperature: List[int] = ...
             power_usage: List[float] = ...
 
             class Config:
@@ -135,10 +133,17 @@ class GpuUsageTO(TrackedObject):
     def add_gpu_usage(self: Union['GpuUsageTO', GpuUsageTOModel]):
         gpu_cores = _get_gpu_usage(self.gpu_count)
         if gpu_cores is not None:
-            for idx, handle, gpu, memory, memory_allocated, temp, power_usage in enumerate(gpu_cores):
-                self.gpu_cores.append(self.__class__.GpuCoreModel(index=idx, handle=handle, gpu=gpu, memory=memory,
-                                                                  memoryAllocated=memory_allocated, temprature=temp,
-                                                                  power_usage=power_usage))
+            for idx, (handle, gpu, memory, memory_allocated, temp, power_usage) in enumerate(gpu_cores):
+                if idx >= len(self.gpu_cores):
+                    self.gpu_cores.append(
+                        self.GpuUsageTOModel.GpuCoreModel(device=gpu, memory=memory,
+                                                          memoryAllocated=[memory_allocated], temperature=[temp],
+                                                          power_usage=[power_usage]))
+                else:
+                    core = self.gpu_cores[idx]
+                    core.memoryAllocated.append(memory_allocated)
+                    core.temperature.append(temp)
+                    core.power_usage.append(power_usage)
 
 
 def _get_gpu_usage(gpu_count):
