@@ -204,7 +204,7 @@ class PyPadsResults(IResults):
         return df
 
     @result
-    def get_data_frame(self, experiment_names=None, experiment_ids=None, run_ids=None, search_dict=None):
+    def get_data_frame(self, experiment_names=None, experiment_ids=None, run_ids=None, search_dict={}):
         """
         Returns a pandas data frame containing results of the last runs of the experiment.
         The results contain all parameters and metrics as well as timestamps of the execution and notes about the runs.
@@ -258,12 +258,12 @@ class PyPadsResults(IResults):
                 if bool(curr_search_dict) and not bool(parameters):
                     continue
 
-                curr_search_dict = search_dict.get('tags', {})
+                curr_search_dict = search_dict.get(ResultType.tag, {})
                 tags = self.get_tags(run_id=run_id, **curr_search_dict)
                 tags = {ResultType.tag: [(t.name, t.data) for t in tags]}
 
                 # We did not get any runs that satisfied the critieria
-                if bool(curr_search_dict) and tags is False:
+                if bool(curr_search_dict) and len(tags.get(ResultType.tag)) == 0:
                     continue
 
                 exp = {"experiment": e_id}
