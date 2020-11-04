@@ -186,6 +186,9 @@ class PyPadsResults(IResults):
                 if hasattr(val, "storage_type"):
                     if getattr(val, "storage_type") in [ResultType.parameter, ResultType.metric, ResultType.tag]:
                         return getattr(val, "data")
+
+                if isinstance(val, list):
+                    return [get_data(x) for x in val]
                 return val
 
             return column.apply(get_data)
@@ -282,7 +285,19 @@ class PyPadsResults(IResults):
             for search in inclusion_dicts:
                 search["run.uid"] = run_id
                 found = self._get_by_dict(search)
-                row.update({m.storage_type.value + "_" + m.name: m for m in found})
+                if found is None:
+                    continue
+
+                obtained_rows = {}
+                for row_ in found:
+                    arr = obtained_rows.get(row_.storage_type.value + "_" + row_.name, [])
+                    arr.append(row_)
+                    obtained_rows[row_.storage_type.value + "_" + row_.name] = arr
+                row.update(obtained_rows)
+
+            if not bool(row):
+                continue
+
             index = row.keys()
             data = row.values()
             run_series = Series(data=[v for v in data], index=index, name=run_id)
