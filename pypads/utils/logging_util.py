@@ -34,6 +34,14 @@ def data_str(data, *path, default=None, warning=None):
 
 
 def data_path(data, *path, default=None, warning=None):
+    """
+    Gets an data item of given dict at path
+    :param data:
+    :param path:
+    :param default:
+    :param warning:
+    :return:
+    """
     cur = data
     for i, p in enumerate(path):
         if isinstance(cur, list):
@@ -54,6 +62,37 @@ def data_path(data, *path, default=None, warning=None):
             if warning is not None:
                 logger.warning(warning)
             return default
+    return cur
+
+
+def add_data(data, *path, value):
+    """
+    Add an data item to the given dict
+    :param data:
+    :param path:
+    :param value:
+    :return:
+    """
+    cur = data
+    for i, p in enumerate(path):
+        if isinstance(cur, list):
+            for list_element in cur:
+                add_data(list_element, *path[i:], value=value)
+        else:
+            if i == len(path) - 1:
+                if p not in cur:
+                    cur[p] = value
+                elif isinstance(cur[p], list):
+                    if isinstance(value, list):
+                        cur[p].extend(value)
+                    else:
+                        cur[p].append(value)
+                else:
+                    cur[p] = value
+            else:
+                if p not in cur:
+                    cur[p] = {}
+                cur = cur[p]
     return cur
 
 

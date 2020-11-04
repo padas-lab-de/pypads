@@ -169,6 +169,7 @@ class PyPadsResults(IResults):
             return self.pypads.backend.get_experiment_by_name(experiment_name)
         raise ValueError("Pass either a name or id to find a representative experiment.")
 
+    @result
     def get_summary(self, experiment_names=None, experiment_ids=None, run_ids=None, search_dict=None, group_by=None):
 
         def _to_data(column):
@@ -190,17 +191,9 @@ class PyPadsResults(IResults):
                                  search_dict=search_dict)
         df = df.apply(lambda x: _to_data(x) if not x.name == "tags" else _to_tag_data(x), axis=0)
 
-        def _group(column):
-            def get_data(val):
-                return [(name, tag_meta.data) for name, tag_meta in val]
-
-            return column.apply(get_data)
-
         if group_by is not None:
-            pass
-            # TODO group by and aggregate other columns
-            # df = df.groupby(..., axis=0)
-
+            df = df.groupby(group_by).std()
+            # TODO aggregate columns into val + std deviation
         return df
 
     @result
@@ -253,7 +246,6 @@ class PyPadsResults(IResults):
                 data = row.values()
                 run_series = Series(data=[v for v in data], index=index, name=run_id)
                 df = df.append(run_series)
-
         return df
 
 

@@ -9,7 +9,7 @@ from pypads.app.injections.tracked_object import TrackedObject, LoggerOutput
 from pypads.model.logger_call import ContextModel
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.model.models import IdReference
-from pypads.utils.logging_util import data_str, data_path
+from pypads.utils.logging_util import data_str, data_path, add_data
 
 
 class ParametersILFOutput(OutputModel):
@@ -142,6 +142,9 @@ class ParametersILF(InjectionLogger):
                         description = data_path(parameter, "rdfs:description",
                                                 default="No description in mapping file.")
                         parameter_type = data_path(parameter, "padre:value_type", default=str(type(value)))
+
+                        # TODO Add data for rdf - better separation of concerns
+                        add_data(mapping_data, "@rdf", "@type", value=data_path(parameter, "@id"))
                         hyper_params.persist_parameter(key, value, parameter_type, description,
                                                        additional_data=mapping_data)
                     else:
