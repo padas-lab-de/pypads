@@ -99,7 +99,8 @@ class CommonSklearnTest(BaseSklearnTest):
         # tags = tracker.mlf.list_artifacts(run.info.run_id, path='../tags')
         # assert 'pypads.system.processor' in ''.join([m.path for m in tags])
 
-        tracker.results.get_summary(experiment_names="1. Experiment")
+        tracker.results.get_summary()
+        # tracker.results.get_summary(tracker.results.get_data_frame(tracker.results.get_run_ids_by_search({"storage_type": ResultType.parameter.value, "data": "data to search for etc."})))
 
         tracker.api.end_run()
         # pr.disable()

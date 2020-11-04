@@ -170,39 +170,51 @@ class PyPadsResults(IResults):
         raise ValueError("Pass either a name or id to find a representative experiment.")
 
     @result
-    def get_summary(self, experiment_names=None, experiment_ids=None, run_ids=None, search_dict=None, group_by=None):
+    def get_summary(self, df=None, group_by=None):
+        """
+        Produces a summary of given data frame by converting the content to simplified data entries and grouping etc.
+        :param df:
+        :param group_by:
+        :return:
+        """
+
+        if df is None:
+            df = self.get_experiments_data_frame(experiment_ids=self.pypads.api.active_experiment().experiment_id)
 
         def _to_data(column):
             def get_data(val):
                 if hasattr(val, "storage_type"):
-                    if getattr(val, "storage_type") in [ResultType.parameter, ResultType.metric]:
+                    if getattr(val, "storage_type") in [ResultType.parameter, ResultType.metric, ResultType.tag]:
                         return getattr(val, "data")
                 return val
 
             return column.apply(get_data)
 
-        def _to_tag_data(column):
-            def get_data(val):
-                return [(name, tag_meta.data) for name, tag_meta in val]
-
-            return column.apply(get_data)
-
-        df = self.get_data_frame(experiment_names=experiment_names, experiment_ids=experiment_ids, run_ids=run_ids,
-                                 search_dict=search_dict)
-        df = df.apply(lambda x: _to_data(x) if not x.name == "tags" else _to_tag_data(x), axis=0)
+        df = df.apply(lambda x: _to_data(x), axis=0)
 
         if group_by is not None:
             df = df.groupby(group_by).std()
             # TODO aggregate columns into val + std deviation
         return df
 
+    def _get_by_dict(self, search_dict):
+        if 'storage_type' in search_dict:
+            if search_dict['storage_type'] == ResultType.metric.value:
+                return self.get_metrics(**search_dict)
+            elif search_dict['storage_type'] == ResultType.parameter.value:
+                return self.get_parameters(**search_dict)
+            elif search_dict['storage_type'] == ResultType.tag.value:
+                return self.get_tags(**search_dict)
+            elif search_dict['storage_type'] == ResultType.artifact.value:
+                return self.get_artifacts(**search_dict)
+            elif search_dict['storage_type'] == ResultType.tracked_object.value:
+                return self.get_tracked_objects(**search_dict)
+            elif search_dict['storage_type'] == ResultType.output.value:
+                return self.get_outputs(**search_dict)
+        return None
+
     @result
-    def get_data_frame(self, experiment_names=None, experiment_ids=None, run_ids=None, search_dict={}):
-        """
-        Returns a pandas data frame containing results of the last runs of the experiment.
-        The results contain all parameters and metrics as well as timestamps of the execution and notes about the runs.
-        :return:
-        """
+    def get_experiments_data_frame(self, experiment_names=None, experiment_ids=None, inclusion_dicts=None, limit=10):
         # Ids to set
         if experiment_ids is None:
             experiment_ids = set()
@@ -219,54 +231,138 @@ class PyPadsResults(IResults):
             experiment_ids.update([self.get_experiment(name).experiment_id
                                    for name in experiment_names if self.get_experiment(name) is not None])
 
-        # Run ids
-        if run_ids is not None:
-            if isinstance(run_ids, str):
-                run_ids = {run_ids}
-            elif isinstance(run_ids, list):
-                run_ids = set(run_ids)
+        all_runs = []
+        for e_id in experiment_ids:
+            runs = self.list_run_infos(experiment_id=e_id)
+            all_runs.extend(runs)
+            if len(all_runs) > limit:
+                all_runs = all_runs[:limit]
+                break
+
+        return self.get_data_frame([r.run_id for r in all_runs], inclusion_dicts=inclusion_dicts)
+
+    @result
+    def get_run_ids_by_search(self, search_dict) -> set:
+        """
+        Search for run ids by a search dict.
+        The search dict has to contain a storage_type to denote which collection to search through.
+        :param search_dict:
+        :return:
+        """
+        # TODO are there more complex searches we don't know about possible?
+        if "$or" in search_dict:
+            dicts = search_dict["$or"]
+            out = set()
+            for d in dicts:
+                out.union(self.get_run_ids_by_search(d))
+            return out
+        else:
+            return {obj.run.uid for obj in self._get_by_dict(search_dict)}
+
+    @result
+    def get_data_frame(self, run_ids, inclusion_dicts=None):
+        """
+        Returns a pandas data frame containing results of the last runs of the experiment.
+        @:param inclusion_dict: Search for run objects to include in the data frame for the found runs.
+         Defaults to parameters, metrics and tags.
+        :return:
+        """
+        if isinstance(run_ids, str):
+            run_ids = {run_ids}
+        elif isinstance(run_ids, list):
+            run_ids = set(run_ids)
+
+        if inclusion_dicts is None:
+            inclusion_dicts = [{"storage_type": ResultType.parameter.value}, {"storage_type": ResultType.metric.value},
+                               {"storage_type": ResultType.tag.value}]
 
         df = DataFrame()
-        # Add experiments
-        for e_id in experiment_ids:
-
-            runs = self.list_run_infos(experiment_id=e_id)
-            filtered_runs = [r for r in runs if run_ids is None or r.run_id in run_ids]
-            for run_info in filtered_runs:
-                run_id = run_info.run_id
-
-                curr_search_dict = search_dict.get(ResultType.metric, {})
-                metrics = self.get_metrics(run_id=run_id, **curr_search_dict)
-                metrics = {"m_" + m.name: m.data for m in metrics}
-
-                # We did not get any runs that satisfied the critieria
-                if bool(curr_search_dict) and not bool(metrics):
-                    continue
-
-                curr_search_dict = search_dict.get(ResultType.parameter, {})
-                parameters = self.get_parameters(run_id=run_id, **curr_search_dict)
-                parameters = {"p_" + p.name: p.data for p in parameters}
-
-                # We did not get any runs that satisfied the critieria
-                if bool(curr_search_dict) and not bool(parameters):
-                    continue
-
-                curr_search_dict = search_dict.get(ResultType.tag, {})
-                tags = self.get_tags(run_id=run_id, **curr_search_dict)
-                tags = {ResultType.tag: [(t.name, t.data) for t in tags]}
-
-                # We did not get any runs that satisfied the critieria
-                if bool(curr_search_dict) and len(tags.get(ResultType.tag)) == 0:
-                    continue
-
-                exp = {"experiment": e_id}
-                run = {"start_time": run_info.start_time, "end_time": run_info.end_time}
-                row = {**exp, **run, **metrics, **parameters, **tags}
-                index = row.keys()
-                data = row.values()
-                run_series = Series(data=[v for v in data], index=index, name=run_id)
-                df = df.append(run_series)
+        for run_id in run_ids:
+            row = {}
+            for search in inclusion_dicts:
+                search["run.uid"] = run_id
+                found = self._get_by_dict(search)
+                row.update({m.storage_type.value + "_" + m.name: m for m in found})
+            index = row.keys()
+            data = row.values()
+            run_series = Series(data=[v for v in data], index=index, name=run_id)
+            df = df.append(run_series)
         return df
+
+    # @result
+    # def get_data_frame(self, experiment_names=None, experiment_ids=None, run_ids=None, search_dict=None):
+    #     """
+    #     Returns a pandas data frame containing results of the last runs of the experiment.
+    #     The results contain all parameters and metrics as well as timestamps of the execution and notes about the runs.
+    #     :return:
+    #     """
+    #     if search_dict is None:
+    #         search_dict = {}
+    #
+    #     # Ids to set
+    #     if experiment_ids is None:
+    #         experiment_ids = set()
+    #     elif isinstance(experiment_ids, str):
+    #         experiment_ids = {experiment_ids}
+    #     elif isinstance(experiment_ids, list):
+    #         experiment_ids = set(experiment_ids)
+    #
+    #     # Names to ids
+    #     if experiment_names is not None:
+    #         if isinstance(experiment_names, str):
+    #             experiment_names = {experiment_names}
+    #
+    #         experiment_ids.update([self.get_experiment(name).experiment_id
+    #                                for name in experiment_names if self.get_experiment(name) is not None])
+    #
+    #     # Run ids
+    #     if run_ids is not None:
+    #         if isinstance(run_ids, str):
+    #             run_ids = {run_ids}
+    #         elif isinstance(run_ids, list):
+    #             run_ids = set(run_ids)
+    #
+    #     df = DataFrame()
+    #     # Add experiments
+    #     for e_id in experiment_ids:
+    #
+    #         runs = self.list_run_infos(experiment_id=e_id)
+    #         filtered_runs = [r for r in runs if run_ids is None or r.run_id in run_ids]
+    #         for run_info in filtered_runs:
+    #             run_id = run_info.run_id
+    #
+    #             curr_search_dict = search_dict.get(ResultType.metric, {})
+    #             metrics = self.get_metrics(run_id=run_id, **curr_search_dict)
+    #             metrics = {"m_" + m.name: m.data for m in metrics}
+    #
+    #             # We did not get any runs that satisfied the critieria
+    #             if bool(curr_search_dict) and not bool(metrics):
+    #                 continue
+    #
+    #             curr_search_dict = search_dict.get(ResultType.parameter, {})
+    #             parameters = self.get_parameters(run_id=run_id, **curr_search_dict)
+    #             parameters = {"p_" + p.name: p.data for p in parameters}
+    #
+    #             # We did not get any runs that satisfied the critieria
+    #             if bool(curr_search_dict) and not bool(parameters):
+    #                 continue
+    #
+    #             curr_search_dict = search_dict.get(ResultType.tag, {})
+    #             tags = self.get_tags(run_id=run_id, **curr_search_dict)
+    #             tags = {ResultType.tag: [(t.name, t.data) for t in tags]}
+    #
+    #             # We did not get any runs that satisfied the critieria
+    #             if bool(curr_search_dict) and len(tags.get(ResultType.tag)) == 0:
+    #                 continue
+    #
+    #             exp = {"experiment": e_id}
+    #             run = {"start_time": run_info.start_time, "end_time": run_info.end_time}
+    #             row = {**exp, **run, **metrics, **parameters, **tags}
+    #             index = row.keys()
+    #             data = row.values()
+    #             run_series = Series(data=[v for v in data], index=index, name=run_id)
+    #             df = df.append(run_series)
+    #     return df
 
 
 class ResultPluginManager(ExtendableMixin):

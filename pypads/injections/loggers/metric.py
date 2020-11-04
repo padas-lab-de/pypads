@@ -86,9 +86,9 @@ class MetricILF(InjectionLogger):
 
         storable = metric.store_value(result, step=_logger_call.original_call.call_id.call_number)
 
-        if data_path(metric.additional_data, "metric.@schema.@id"):
+        if data_path(metric.additional_data, "metric", "@schema", "@id"):
             add_data(metric.additional_data, "@rdf", "@type",
-                     value=data_path(metric.additional_data, "metric.@schema.@id"))
+                     value=data_path(metric.additional_data, "metric", "@schema", "@id"))
         else:
             logger.warning(f"Metric of {ctx} unknown. Data will have to be extracted automatically.")
 
