@@ -197,7 +197,7 @@ class PyPadsResults(IResults):
         return df
 
     @result
-    def get_data_frame(self, experiment_names=None, experiment_ids=None, run_ids=None, search_dict=None):
+    def get_data_frame(self, experiment_names=None, experiment_ids=None, run_ids=None, search_dict={}):
         """
         Returns a pandas data frame containing results of the last runs of the experiment.
         The results contain all parameters and metrics as well as timestamps of the execution and notes about the runs.
@@ -215,8 +215,9 @@ class PyPadsResults(IResults):
         if experiment_names is not None:
             if isinstance(experiment_names, str):
                 experiment_names = {experiment_names}
-            for name in experiment_names:
-                experiment_ids.update([self.get_experiment(name).experiment_id])
+
+            experiment_ids.update([self.get_experiment(name).experiment_id
+                                   for name in experiment_names if self.get_experiment(name) is not None])
 
         # Run ids
         if run_ids is not None:
@@ -233,12 +234,31 @@ class PyPadsResults(IResults):
             filtered_runs = [r for r in runs if run_ids is None or r.run_id in run_ids]
             for run_info in filtered_runs:
                 run_id = run_info.run_id
-                metrics = self.get_metrics(run_id=run_id)
-                metrics = {"m_" + m.name: m for m in metrics}
-                parameters = self.get_parameters(run_id=run_id)
-                parameters = {"p_" + p.name: p for p in parameters}
-                tags = self.get_tags(run_id=run_id)
-                tags = {"tags": [(t.name, t) for t in tags]}
+
+                curr_search_dict = search_dict.get(ResultType.metric, {})
+                metrics = self.get_metrics(run_id=run_id, **curr_search_dict)
+                metrics = {"m_" + m.name: m.data for m in metrics}
+
+                # We did not get any runs that satisfied the critieria
+                if bool(curr_search_dict) and not bool(metrics):
+                    continue
+
+                curr_search_dict = search_dict.get(ResultType.parameter, {})
+                parameters = self.get_parameters(run_id=run_id, **curr_search_dict)
+                parameters = {"p_" + p.name: p.data for p in parameters}
+
+                # We did not get any runs that satisfied the critieria
+                if bool(curr_search_dict) and not bool(parameters):
+                    continue
+
+                curr_search_dict = search_dict.get(ResultType.tag, {})
+                tags = self.get_tags(run_id=run_id, **curr_search_dict)
+                tags = {ResultType.tag: [(t.name, t.data) for t in tags]}
+
+                # We did not get any runs that satisfied the critieria
+                if bool(curr_search_dict) and len(tags.get(ResultType.tag)) == 0:
+                    continue
+
                 exp = {"experiment": e_id}
                 run = {"start_time": run_info.start_time, "end_time": run_info.end_time}
                 row = {**exp, **run, **metrics, **parameters, **tags}
