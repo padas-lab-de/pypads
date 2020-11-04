@@ -288,12 +288,13 @@ class PyPadsResults(IResults):
                 if found is None:
                     continue
 
-                obtained_rows = {}
+                entries = {}
                 for row_ in found:
-                    arr = obtained_rows.get(row_.storage_type.value + "_" + row_.name, [])
+                    arr = entries.get(row_.storage_type.value + "_" + row_.name, [])
                     arr.append(row_)
-                    obtained_rows[row_.storage_type.value + "_" + row_.name] = arr
-                row.update(obtained_rows)
+                    entries[row_.storage_type.value + "_" + row_.name] = arr
+
+                row.update({key: (value[0] if len(value) == 1 else value)for key, value in entries.items()})
 
             if not bool(row):
                 continue
