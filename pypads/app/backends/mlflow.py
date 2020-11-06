@@ -378,7 +378,8 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
                 self._db[storage_type].replace_one({"_id": _id}, jsonable_encoder(entry))
         except Exception as e:
             # TODO maybe handle duplicates
-            raise e
+            pass
+            # raise e
         return reference
 
     def get_json(self, reference: IdReference):
