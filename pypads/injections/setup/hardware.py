@@ -1,4 +1,3 @@
-import uuid
 from typing import Type, Union, Optional, List
 
 from pydantic import BaseModel
@@ -9,6 +8,7 @@ from pypads.app.injections.run_loggers import RunSetup
 from pypads.app.injections.tracked_object import TrackedObject
 from pypads.app.misc.mixins import DEFAULT_ORDER
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
+from pypads.model.models import IdReference
 from pypads.utils.util import sizeof_fmt, uri_to_path, PeriodicThread
 
 
@@ -24,12 +24,12 @@ class SystemStatsTO(TrackedObject):
         type: str = "Computer"
         description: str = "Information about the in the experiment used computer."
         mac_address: str = ...
-        cpu: Optional[str] = ...  # CPU TrackedObject
-        memory: Optional[str] = ...  # Memory TrackedObject
-        disk: Optional[str] = ...  # Disk TrackedObject
-        system: Optional[str] = ...  # System TrackedObject
-        process: Optional[str] = ...  # Process TrackedObject
-        network: Optional[str] = ...  # Network TrackedObject
+        cpu: Optional[IdReference] = ...  # CPU TrackedObject
+        memory: Optional[IdReference] = ...  # Memory TrackedObject
+        disk: Optional[IdReference] = ...  # Disk TrackedObject
+        system: Optional[IdReference] = ...  # System TrackedObject
+        process: Optional[IdReference] = ...  # Process TrackedObject
+        network: Optional[IdReference] = ...  # Network TrackedObject
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
@@ -283,8 +283,8 @@ class ICpuRSF(RunSetup):
 
     class ICpuRSFOutput(OutputModel):
         type: str = "ISystemRSF-Output"
-        cpu: Union[uuid.UUID, str] = ...  # CpuTO
-        cpu_usage: Optional[Union[uuid.UUID, str]] = ...  # CpuUsageTO
+        cpu: IdReference = ...  # CpuTO
+        cpu_usage: Optional[IdReference] = ...  # CpuUsageTO
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:

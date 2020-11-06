@@ -39,12 +39,37 @@ class CommonSklearnTest(BaseSklearnTest):
         This example will track the experiment exection with the default configuration.
         :return:
         """
+        # import cProfile
+        #
+        # pr = cProfile.Profile()
+        # pr.enable()
+
+        # import mlflow
+        #
+        # from mlflow.tracking import MlflowClient
+        #
+        # def dummy(*args, **kwargs):
+        #     return []
+        #
+        # MlflowClient.list_artifacts = dummy
+        # MlflowClient.list = dummy
+        # MlflowClient.set_tag = dummy
+        # MlflowClient.log_param = dummy
+        # MlflowClient.log_metric = dummy
+        # MlflowClient.log_artifact = dummy
+        # MlflowClient.log_batch = dummy
+        # MlflowClient.log_artifacts = dummy
+        # mlflow.log_artifact = dummy
+        # mlflow.log_param = dummy
+        # mlflow.log_metric = dummy
+        # mlflow.set_tag = dummy
+
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
         tracker = PyPads(uri="http://mlflow.padre-lab.eu", config=config)
         tracker.activate_tracking()
-        tracker.start_track(experiment_name="Additional Experiment 2")
+        tracker.start_track(experiment_name="1. Experiment")
         tracker.actuators.set_random_seed(seed=1)
 
         import timeit
@@ -72,7 +97,13 @@ class CommonSklearnTest(BaseSklearnTest):
         # tags = tracker.mlf.list_artifacts(run.info.run_id, path='../tags')
         # assert 'pypads.system.processor' in ''.join([m.path for m in tags])
 
+        tracker.results.get_summary()
+        # tracker.results.get_summary(tracker.results.get_data_frame(tracker.results.get_run_ids_by_search({"storage_type": ResultType.parameter.value, "data": "data to search for etc."})))
+
         tracker.api.end_run()
+        # pr.disable()
+        # # after your program ends
+        # pr.print_stats(sort="cumtime")
         # !-------------------------- asserts ---------------------------
 
     def test_simple_parameter_mapping(self):

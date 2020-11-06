@@ -1,12 +1,12 @@
 from abc import abstractmethod, ABCMeta
 from collections import deque
+from copy import deepcopy
 from typing import Type, List
 
-from pydantic import validate_model, BaseModel, ValidationError
+from pydantic import validate_model, BaseModel, ValidationError, ConfigError
 
 from pypads.app.misc.inheritance import SuperStop
-from pypads.model.domain import RunObjectModel
-from pypads.model.models import IdBasedEntry, get_typed_id
+from pypads.model.models import BaseStorageModel, get_reference
 from pypads.utils.logging_util import jsonable_encoder
 from pypads.utils.util import has_direct_attr, persistent_hash
 
@@ -46,7 +46,7 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
     """
     An object building the model from itself on the fly.
     """
-    _schema_path = None
+    _schema_reference = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -65,16 +65,49 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
                     not hasattr(self.__class__, key) or not isinstance(getattr(self.__class__, key), property)):
                 setattr(self, key, self.get_model_fields()[key].get_default())
 
-    def model(self):
-        return self.get_model_cls().from_orm(self)
+    def _decompose_class(self):
+        cls = self.get_model_cls()
+        if not cls.__config__.orm_mode:
+            raise ConfigError('You must have the config attribute orm_mode=True for models of a ModelObject.')
+        obj = cls._decompose_class(self)
+        return cls, obj
 
-    def validate(self):
-        validate_model(self.get_model_cls(), self.model().__dict__)
+    def model(self, force=False, validate=True, include=None):
+        if validate:
+            values, fields_set, validation_error = self.validate(include=include)
+            if validation_error and not force:
+                raise validation_error
+            cls = self.get_model_cls()
+            m = cls.__new__(cls)
+            object.__setattr__(m, '__dict__', values)
+            object.__setattr__(m, '__fields_set__', fields_set)
+            return m
+        else:
+            cls, obj = self._decompose_class()
+            return cls.construct(**{k: v for k, v in obj.items() if k in cls.__fields__})
+
+    def validate(self, include=None):
+        """
+        Validate the current object.
+        :param include: Only validate on given parameters
+        :return:
+        """
+        cls, obj = self._decompose_class()
+
+        # Disable validation for unneeded fields by deleting fields in a dummy class
+        if include is not None:
+            class ReducedClass(cls, BaseModel):
+                pass
+
+            cls = ReducedClass
+            cls.__fields__ = {k: v for k, v in cls.__fields__.items() if k in include}
+        return validate_model(cls, {**deepcopy(cls.__field_defaults__),
+                                    **{k: obj[k] for k in obj.keys() if include is None or k in include}})
 
     def typed_id(self):
         cls = self.get_model_cls()
-        if issubclass(cls, IdBasedEntry):
-            return get_typed_id(self)
+        if issubclass(cls, BaseStorageModel):
+            return get_reference(self)
         else:
             raise Exception(f"Can't extracted typed id: Model {str(cls)} is not an IdBasedEntry.")
 
@@ -89,7 +122,7 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
 
     @classmethod
     def store_schema(cls):
-        if not cls._schema_path:
+        if not cls._schema_reference:
             from pypads.app.pypads import get_current_pads
             pads = get_current_pads()
             schema_repo = pads.schema_repository
@@ -103,14 +136,20 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
                 schema_obj.log_json(schema_wrapper)
             else:
                 schema_obj = schema_repo.get_object(uid=schema_hash)
-            cls._schema_path = schema_obj.uid
-        return cls._schema_path
+            cls._schema_reference = schema_obj.get_reference()
+        return cls._schema_reference
 
-    def json(self, *args, **kwargs):
-        return self.model().json(*args, **kwargs)
+    def json(self, force=True, validate=True, include=None, *args, **kwargs):
+        model = self.model(force=force, validate=validate, include=include)
+        if isinstance(model, ModelObject):
+            return model.json(*args, force=force, validate=validate, include=include, **kwargs)
+        return model.json(*args, include=include, **kwargs)
 
-    def dict(self, *args, **kwargs):
-        return self.model().dict(*args, **kwargs)
+    def dict(self, force=True, validate=True, include=None, *args, **kwargs):
+        model = self.model(force=force, validate=validate, include=include)
+        if isinstance(model, ModelObject):
+            return model.dict(*args, force=force, validate=validate, include=include, **kwargs)
+        return model.dict(*args, include=include, **kwargs)
 
 
 class ModelHolder(ModelInterface, metaclass=ABCMeta):
@@ -118,7 +157,7 @@ class ModelHolder(ModelInterface, metaclass=ABCMeta):
     Used for objects storing their information directly into a validated base model
     """
 
-    def __init__(self, *args, model: RunObjectModel = None, **kwargs):
+    def __init__(self, *args, model: BaseStorageModel = None, **kwargs):
         super().__init__(*args, **kwargs)
         self._model = self.get_model_cls()(**kwargs) if model is None else model
 

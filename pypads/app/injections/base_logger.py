@@ -3,7 +3,6 @@ import time
 import traceback
 from abc import abstractmethod, ABCMeta
 from typing import Type, List, Callable, Optional
-from uuid import UUID
 
 import mlflow
 from pydantic import BaseModel
@@ -12,24 +11,14 @@ from pypads import logger
 from pypads.app.env import LoggerEnv
 from pypads.app.injections.tracked_object import LoggerCall, TrackedObject, LoggerOutput
 from pypads.app.misc.mixins import DependencyMixin, DefensiveCallableMixin, TimedCallableMixin, \
-    IntermediateCallableMixin, NoCallAllowedError, ConfigurableCallableMixin, LibrarySpecificMixin, \
+    IntermediateCallableMixin, ConfigurableCallableMixin, LibrarySpecificMixin, \
     FunctionHolderMixin, BaseDefensiveCallableMixin, ResultDependentMixin, CacheDependentMixin
+from pypads.exceptions import PassThroughException, NoCallAllowedError
 from pypads.importext.versioning import all_libs
 from pypads.model.logger_model import LoggerModel
 from pypads.model.logger_output import OutputModel
-from pypads.model.metadata import ModelObject
 from pypads.model.mixins import ProvenanceMixin, get_library_descriptor
-from pypads.utils.logging_util import jsonable_encoder
 from pypads.utils.util import persistent_hash
-
-
-class PassThroughException(Exception):
-    """
-    Exception to be passed from _pre / _post and not be caught by the defensive logger.
-    """
-
-    def __init__(self, *args):
-        super().__init__(*args)
 
 
 class OriginalExecutor(FunctionHolderMixin, TimedCallableMixin):
@@ -87,22 +76,6 @@ class LoggerExecutor(DefensiveCallableMixin, FunctionHolderMixin, TimedCallableM
             return None, 0
 
 
-class DummyLogger(ModelObject):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.name = "API Call"
-        self.uid = UUID('urn:uuid:00000000-0000-0000-0000-000000000000')
-        self.supported_libraries = all_libs
-
-    @classmethod
-    def get_model_cls(cls) -> Type[BaseModel]:
-        return LoggerModel
-
-
-dummy_logger = DummyLogger()
-
-
 class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, CacheDependentMixin, ResultDependentMixin,
              DependencyMixin,
              LibrarySpecificMixin, ProvenanceMixin, ConfigurableCallableMixin, metaclass=ABCMeta):
@@ -114,7 +87,7 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, CacheDepende
 
     # Default allow all libraries
     supported_libraries = {all_libs}
-    _schema_path = None
+    _schema_reference = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -184,10 +157,10 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, CacheDepende
             logger_repo = pads.logger_repository
             if not logger_repo.has_object(uid=self.uid):
                 logger_obj = logger_repo.get_object(uid=self.uid)
-                logger_obj.log_json(jsonable_encoder(self.dict(by_alias=True)))
-                self.__class__._pypads_stored = self.uid
+                logger_obj.log_json(self)
+                self.__class__._pypads_stored = logger_obj.get_reference()
             else:
-                self.__class__._pypads_stored = self.uid
+                self.__class__._pypads_stored = logger_repo.get_object(uid=self.uid).get_reference()
         return self.__class__._pypads_stored
 
     def get_reference_path(self):
@@ -203,6 +176,22 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, CacheDepende
     def _persistent_hash(cls):
         # TODO include package? version? git hash? content with inspect? Something else?
         return persistent_hash(inspect.getsource(cls))
+
+
+class DummyLogger(Logger):
+
+    def __real_call__(self, *args, **kwargs):
+        pass
+
+    def __init__(self, *args, **kwargs):
+        self.name = "API Call"
+        self.supported_libraries = [all_libs]
+        self.schema_location = "Unknown"  # An api call can't store anything about it's result schema because
+        super().__init__(*args, **kwargs)
+        # calls currently don't define result schemata
+
+
+dummy_logger = DummyLogger(experiment=None, run=None)
 
 
 class SimpleLogger(Logger):

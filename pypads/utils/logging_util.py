@@ -34,14 +34,65 @@ def data_str(data, *path, default=None, warning=None):
 
 
 def data_path(data, *path, default=None, warning=None):
+    """
+    Gets an data item of given dict at path
+    :param data:
+    :param path:
+    :param default:
+    :param warning:
+    :return:
+    """
     cur = data
-    for p in path:
-        if p in cur:
+    for i, p in enumerate(path):
+        if isinstance(cur, list):
+            out = []
+            for list_element in cur:
+                value = data_path(list_element, *path[i:])
+                if value is not None:
+                    if isinstance(value, list) and not len(path[i:]) == 0:
+                        out.extend(value)
+                    else:
+                        out.append(value)
+            return out if len(out) > 0 else default
+        elif p in cur:
+            # If list recursively call itself
+            # Multiple return values needed instead of one
             cur = cur[p]
         else:
             if warning is not None:
                 logger.warning(warning)
             return default
+    return cur
+
+
+def add_data(data, *path, value):
+    """
+    Add an data item to the given dict
+    :param data:
+    :param path:
+    :param value:
+    :return:
+    """
+    cur = data
+    for i, p in enumerate(path):
+        if isinstance(cur, list):
+            for list_element in cur:
+                add_data(list_element, *path[i:], value=value)
+        else:
+            if i == len(path) - 1:
+                if p not in cur:
+                    cur[p] = value
+                elif isinstance(cur[p], list):
+                    if isinstance(value, list):
+                        cur[p].extend(value)
+                    else:
+                        cur[p].append(value)
+                else:
+                    cur[p] = value
+            else:
+                if p not in cur:
+                    cur[p] = {}
+                cur = cur[p]
     return cur
 
 
@@ -53,11 +104,11 @@ def get_artifact_dir(obj):
     """
     model_cls = obj.get_model_cls()
 
-    from pypads.model.domain import RunObjectModel
+    from pypads.model.models import RunObjectModel
     if issubclass(model_cls, RunObjectModel):
-        from pypads.model.models import Entry
-        obj: Union[RunObjectModel, Entry]
-        return os.path.join(obj.experiment_id, obj.run_id, "artifacts", get_relative_artifact_dir(obj))
+        from pypads.model.models import EntryModel
+        obj: Union[RunObjectModel, EntryModel]
+        return os.path.join(obj.experiment.uid, obj.run.uid, "artifacts", get_relative_artifact_dir(obj))
 
     raise Exception("Given object is not part of a run/experiment.")
 
@@ -69,14 +120,14 @@ def get_relative_artifact_dir(obj):
     :return:
     """
     from pypads.app.injections.tracked_object import ChildResultHolderMixin
-    from pypads.model.models import Entry
+    from pypads.model.models import EntryModel
     if isinstance(obj, ChildResultHolderMixin):
-        obj: Union[Entry, ChildResultHolderMixin]
+        obj: Union[EntryModel, ChildResultHolderMixin]
         return os.path.join(get_relative_artifact_dir(obj.parent), obj.category)
 
     from pypads.app.injections.tracked_object import ResultHolderMixin
     if isinstance(obj, ResultHolderMixin):
-        obj: Union[Entry, ResultHolderMixin]
+        obj: Union[EntryModel, ResultHolderMixin]
         return os.path.join(get_relative_artifact_dir(obj.producer), obj.category)
 
     return os.path.join(obj.category)

@@ -1,4 +1,3 @@
-import uuid
 from typing import List, Type, Union
 
 from pydantic import BaseModel
@@ -9,7 +8,8 @@ from pypads.app.injections.injection import InjectionLogger
 from pypads.app.injections.tracked_object import TrackedObject, LoggerOutput
 from pypads.model.logger_call import ContextModel
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
-from pypads.utils.logging_util import data_str, data_path
+from pypads.model.models import IdReference
+from pypads.utils.logging_util import data_str, data_path, add_data
 
 
 class ParametersILFOutput(OutputModel):
@@ -18,7 +18,7 @@ class ParametersILFOutput(OutputModel):
     tracked object doesn't give a lot of benefit but enforcing a description a name and a category and could be omitted.
     """
     type: str = "ParametersILF-Output"
-    hyper_parameter_to: Union[uuid.UUID, str] = ...
+    hyper_parameter_to: IdReference = ...
 
 
 class ParametersTO(TrackedObject):
@@ -31,7 +31,7 @@ class ParametersTO(TrackedObject):
         description = "The parameters of the experiment."
         ml_model: ContextModel = ...
         estimator: str = ...
-        hyper_parameters: List[Union[uuid.UUID, str]] = []
+        hyper_parameters: List[IdReference] = []
 
     def __init__(self, *args, parent: Union[OutputModel, 'TrackedObject'], **kwargs):
         super().__init__(*args, parent=parent, **kwargs)
@@ -142,8 +142,11 @@ class ParametersILF(InjectionLogger):
                         description = data_path(parameter, "rdfs:description",
                                                 default="No description in mapping file.")
                         parameter_type = data_path(parameter, "padre:value_type", default=str(type(value)))
+
+                        # TODO Add data for rdf - better separation of concerns
+                        add_data(mapping_data, "@rdf", "@type", value=data_path(parameter, "@id"))
                         hyper_params.persist_parameter(key, value, parameter_type, description,
-                                                       additional_data=parameter)
+                                                       additional_data=mapping_data)
                     else:
                         logger.warning(
                             f"Couldn't access im mapping file defined parameter {parameter} on {ctx.__class__}")

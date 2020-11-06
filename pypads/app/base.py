@@ -165,6 +165,10 @@ class PyPads:
         # Store function registry into cache
         self._cache.add("events", events)
 
+        self._library_repository = LibraryRepository()
+        self._schema_repository = SchemaRepository()
+        self._logger_repository = LoggerRepository()
+
         # Init mapping registry and repository
         self._mapping_repository = MappingRepository()
         self._mapping_registry = MappingRegistry.from_params(self, mappings)
@@ -188,10 +192,6 @@ class PyPads:
         setup_fns = DEFAULT_SETUP_FNS if setup_fns is None else setup_fns
         for fn in setup_fns:
             self.api.register_setup(fn.__class__.__name__ + "_" + str(id(fn)), fn)
-
-        self._schema_repository = SchemaRepository()
-        self._logger_repository = LoggerRepository()
-        self._library_repository = LibraryRepository()
 
         # Execute instance modification functions given by a plugin
         for fn in self._instance_modifiers:
@@ -653,6 +653,7 @@ class PyPads:
 
         # check if there is already an active run
         run = mlflow.active_run()
+        experiment = None
         if run is None:
             experiment_name = experiment_name or DEFAULT_EXPERIMENT_NAME
             # Create run if run doesn't already exist
@@ -664,8 +665,8 @@ class PyPads:
             if not disable_run_init:
                 self.api.run_setups()
 
-        experiment = self.backend.get_experiment_by_name(
-            experiment_name) if experiment_name else self.backend.get_experiment(run.info.experiment_id)
+        if experiment is None:
+            experiment = self.backend.get_experiment(run.info.experiment_id)
 
         # override active run if used
         if experiment_name and run.info.experiment_id != experiment.experiment_id:

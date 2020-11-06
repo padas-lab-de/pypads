@@ -5,13 +5,11 @@ import mlflow
 
 from pypads import logger
 from pypads.app.base import PyPads, CONFIG_NAME
-
 # Cache configs for runs. Each run could is for now static in it's config.
+from pypads.exceptions import UninitializedTrackerException
+
 configs = {}
 current_pads = None
-
-
-# !--- Clean the config cache after run ---
 
 
 def set_current_pads(pads: Union[None, PyPads]):
@@ -39,7 +37,7 @@ def get_current_pads(init=False) -> Union[None, PyPads]:
                     "PyPads has to be initialized before it can be used. Initializing for your with default values.")
                 return PyPads()
         else:
-            raise Exception(
+            raise UninitializedTrackerException(
                 "Pypads didn't get initialized and can't be used. Inititalize PyPads by creating an instance.")
     return current_pads
 

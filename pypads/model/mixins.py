@@ -18,17 +18,21 @@ class ProvenanceMixin(ModelObject, metaclass=ABCMeta):
         else:
             self._defined_in = lib_model
 
+    def model(self, force=False, validate=True, include=None):
+        self.store_lib()
+        return super().model(force=force, validate=validate, include=include)
+
     def store_lib(self):
         from pypads.app.pypads import get_current_pads
         lib_repo = get_current_pads().library_repository
         # TODO get hash uid for logger
         lib_hash = persistent_hash((self._defined_in.name, self._defined_in.version))
         if not lib_repo.has_object(uid=lib_hash):
-            logger_obj = lib_repo.get_object(uid=lib_hash)
-            logger_obj.log_json(self._defined_in.dict(by_alias=True))
+            lib_obj = lib_repo.get_object(uid=lib_hash)
+            lib_obj.log_json(self._defined_in)
         else:
-            logger_obj = lib_repo.get_object(uid=lib_hash)
-        self.defined_in = logger_obj.uid
+            lib_obj = lib_repo.get_object(uid=lib_hash)
+        self.defined_in = lib_obj.get_reference()
 
 
 def get_library_descriptor(obj) -> LibraryModel:

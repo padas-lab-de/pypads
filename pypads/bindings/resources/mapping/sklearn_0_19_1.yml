@@ -12,17 +12,20 @@ mappings:
   !!python/pPath 'sklearn':
     data:
       '@json-ld': # Path to json-lds to be added to the ontology with onto-pads
+        - metric.@schema
+        - metric.algorithm.@schema
+        - dataset.@schema
         - estimator.@schema # A-Box estimator class
-        - estimator.alogorithm.@schema # T-Box algorithm mathematical concept
-        - parameters.model_parameters.algorithm.@schema # T-Box parameter info ...
-        - parameters.optimisation_parameters.algorithm.@schema
-        - parameters.execution_parameters.algorithm.@schema
-        - parameters.model_parameters.@schema # A-Box estimator ...
-        - parameters.optimisation_parameters.@schema
-        - parameters.execution_parameters.@schema
+        - estimator.algorithm.@schema # T-Box algorithm mathematical concept
+        - estimator.parameters.model_parameters.algorithm.@schema # T-Box parameter info ...
+        - estimator.parameters.optimisation_parameters.algorithm.@schema
+        - estimator.parameters.execution_parameters.algorithm.@schema
+        - estimator.parameters.model_parameters.@schema # A-Box parameter ...
+        - estimator.parameters.optimisation_parameters.@schema
+        - estimator.parameters.execution_parameters.@schema
       '@rdf':
         mapped_by: http://www.padre-lab.eu/PyPadsInjection
-        defined_in: http://www.padre-lab.eu/onto/Sklearn#0.19.1
+        implemented_in: http://www.padre-lab.eu/onto/Sklearn#0.19.1
     !!python/pPath 'base.BaseEstimator':
       ;default_model: null
       __init__:
@@ -33,12 +36,344 @@ mappings:
     !!python/rSeg '(RegressorMixin|ClassifierMixin|DensityMixin)':
       !!python/pPath 'score':
         hooks: pypads_metric
-    !!python/pPath 'metrics.classification':
-      !!python/rSeg '.*':
+    !!python/pPath 'metrics':
+      !!python/rSeg '^(?!_).+':
         data:
           '@rdf':
             in_context: http://www.padre-lab.eu/onto/Metric
         hooks: pypads_metric
+    !!python/pPath 'metrics.cluster':
+      !!python/rSeg '^(?!_).+':
+        data:
+          '@rdf':
+            in_context: http://www.padre-lab.eu/onto/ClusterMetric
+        hooks: pypads_metric
+    !!python/pPath 'metrics.cluster.supervised':
+      !!python/rSeg '^(?!_).+':
+        data:
+          '@rdf':
+            in_context: http://www.padre-lab.eu/onto/SupervisedClusterMetric
+        hooks: pypads_metric
+    !!python/pPath 'metrics.cluster.unsupervised':
+      !!python/rSeg '^(?!_).+':
+        data:
+          '@rdf':
+            in_context: http://www.padre-lab.eu/onto/UnsupervisedClusterMetric
+        hooks: pypads_metric
+    !!python/pPath 'metrics.regression':
+      !!python/rSeg '^(?!_).+':
+        data:
+          '@rdf':
+            in_context: http://www.padre-lab.eu/onto/RegressionMetric
+        hooks: pypads_metric
+    !!python/pPath 'metrics.classification':
+      !!python/rSeg '^(?!_).+':
+        data:
+          '@rdf':
+            in_context: http://www.padre-lab.eu/onto/ClassificationMetric
+        hooks: pypads_metric
+      !!python/pPath 'accuracy_score':
+        hooks: pypads_metric
+        data:
+          metric:
+            '@schema':
+              '@id': padre:sklearn.metrics.classification.AccuracyScore
+              '@type': padre:MetricImplementation
+              padre:documentation: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.accuracy_score.html#sklearn.metrics.accuracy_score
+              padre:implements: padre:AccuracyScore
+              rdfs:description: In multilabel classification, this function computes subset accuracy;
+                the set of labels predicted for a sample must *exactly* match the
+                corresponding set of labels in y_true.
+              rdfs:label: Sklearn implementation of Accuracy classification score
+              algorithm:
+                '@schema':
+                  '@id': padre:AccuracyScore
+                  '@type': padre:MetricAlgorithm
+                  padre:documentation: ['https://en.wikipedia.org/wiki/Accuracy_and_precision', 'https://scikit-learn.org/stable/modules/model_evaluation.html#accuracy-score']
+                  rdfs:description: Fraction (default) or the count (normalize=False) of correct predictions.
+                  rdfs:label: Accuracy classification score
+      !!python/pPath 'confusion_matrix':
+        hooks: pypads_metric
+        data:
+          metric:
+            '@schema':
+              '@id': padre:sklearn.metrics.classification.ConfusionMatrix
+              '@type': padre:MetricImplementation
+              padre:documentation: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.confusion_matrix.html#sklearn.metrics.confusion_matrix
+              padre:implements: padre:ConfusionMatrix
+              rdfs:description: Compute confusion matrix to evaluate the accuracy of a classification.
+              rdfs:label: Sklearn implementation of Confusion matrix
+              algorithm:
+                '@schema':
+                  '@id': padre:ConfusionMatrix
+                  '@type': padre:MetricAlgorithm
+                  padre:documentation: ['https://scikit-learn.org/stable/modules/model_evaluation.html#confusion-matrix', 'https://en.wikipedia.org/wiki/Confusion_matrix']
+                  rdfs:description: By definition a confusion matrix :math:`C` is such that :math:`C_{i, j}`
+                    is equal to the number of observations known to be in group :math:`i` but
+                    predicted to be in group :math:`j`.
+                  rdfs:label: Confusion matrix
+      !!python/pPath 'multilabel_confusion_matrix':
+        hooks: pypads_metric
+        data:
+          metric:
+            '@schema':
+              '@id': padre:sklearn.metrics.classification.MultilabelConfusionMatrix
+              '@type': padre:MetricImplementation
+              padre:documentation: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.multilabel_confusion_matrix.html#sklearn.metrics.multilabel_confusion_matrix
+              padre:implements: padre:MultilabelConfusionMatrix
+              rdfs:description: Compute class-wise (default) or sample-wise (samplewise=True) multilabel
+                confusion matrix to evaluate the accuracy of a classification, and output
+                confusion matrices for each class or sample.
+              rdfs:label: Sklearn implementation of Multilabel Confusion matrix
+              algorithm:
+                '@schema':
+                  '@id': padre:MultilabelConfusionMatrix
+                  '@type': padre:MetricAlgorithm
+                  padre:documentation: https://scikit-learn.org/stable/modules/model_evaluation.html#multilabel-confusion-matrix
+                  rdfs:description: In multilabel confusion matrix :math:`MCM`, the count of true negatives
+                    is :math:`MCM_{:,0,0}`, false negatives is :math:`MCM_{:,1,0}`,
+                    true positives is :math:`MCM_{:,1,1}` and false positives is
+                    :math:`MCM_{:,0,1}`.
+                  rdfs:label: Multilabel Confusion matrix
+      !!python/pPath 'cohen_kappa_score':
+        hooks: pypads_metric
+        data:
+          metric:
+            '@schema':
+              '@id': padre:sklearn.metrics.classification.CohenKappaScore
+              '@type': padre:MetricImplementation
+              padre:documentation: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.cohen_kappa_score.html#sklearn.metrics.cohen_kappa_score
+              padre:implements: padre:CohenKappaScore
+              rdfs:description: This function computes Cohen's kappa [1]_, a score that expresses the level
+                of agreement between two annotators on a classification problem.
+              rdfs:label: Sklearn implementation of Cohen's kappa
+              algorithm:
+                '@schema':
+                  '@id': padre:CohenKappaScore
+                  '@type': padre:MetricAlgorithm
+                  padre:documentation: ['https://scikit-learn.org/stable/modules/model_evaluation.html#cohen-kappa', 'https://en.wikipedia.org/wiki/Cohen%27s_kappa']
+                  rdfs:description: "A statistic that measures inter-annotator agreement."
+                  rdfs:label: Cohen's kappa
+      !!python/pPath 'jaccard_similarity_score':
+        hooks: pypads_metric
+        data:
+          metric:
+            '@schema':
+              '@id': padre:sklearn.metrics.classification.JaccardSimilarityScore
+              '@type': padre:MetricImplementation
+              padre:documentation: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.jaccard_score.html#sklearn.metrics.jaccard_score
+              padre:implements: padre:JaccardScore
+              rdfs:description: null
+              rdfs:label: Old sklearn implementation of Jaccard Score
+      !!python/pPath 'jaccard_score':
+        hooks: pypads_metric
+        data:
+          metric:
+            '@schema':
+              '@id': padre:sklearn.metrics.classification.JaccardScore
+              '@type': padre:MetricImplementation
+              padre:documentation: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.jaccard_score.html#sklearn.metrics.jaccard_score
+              padre:implements: padre:JaccardScore
+              rdfs:description: The Jaccard index [1], or Jaccard similarity coefficient, defined as the size of the intersection divided by the size of the union of two label sets, is used to compare set of predicted labels for a sample to the corresponding set of labels in y_true.
+              rdfs:label: Sklearn implementation of Jaccard Similarity Score
+              algorithm:
+                '@schema':
+                  '@id': padre:JaccardScore
+                  '@type': padre:MetricAlgorithm
+                  padre:documentation: ['https://scikit-learn.org/stable/modules/model_evaluation.html#jaccard-similarity-score', 'https://en.wikipedia.org/wiki/Jaccard_index']
+                  rdfs:description: Aaverage of Jaccard similarity coefficients, also called the Jaccard index, between pairs of label sets.
+                  rdfs:label: Jaccard Similarity Score
+      !!python/pPath 'matthews_corrcoef':
+        hooks: pypads_metric
+        data:
+          metric:
+            '@schema':
+              '@id': padre:sklearn.metrics.classification.MatthewsCorrelationCoefficient
+              '@type': padre:MetricImplementation
+              padre:documentation: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.matthews_corrcoef.html#sklearn.metrics.matthews_corrcoef
+              padre:implements: padre:MatthewsCorrelationCoefficient
+              rdfs:description: Compute the Matthews correlation coefficient (MCC)
+              rdfs:label: Sklearn implementation of Matthews correlation coefficient
+              algorithm:
+                '@schema':
+                  '@id': padre:MatthewsCorrelationCoefficient
+                  '@type': padre:MetricAlgorithm
+                  padre:documentation: ['https://scikit-learn.org/stable/modules/model_evaluation.html#matthews-corrcoef', 'https://en.wikipedia.org/wiki/Matthews_correlation_coefficient']
+                  rdfs:description: The Matthews correlation coefficient is used in machine learning as a measure of the quality of binary and multiclass classifications. It takes into account true and false positives and negatives and is generally regarded as a balanced measure which can be used even if the classes are of very different sizes. The MCC is in essence a correlation coefficient value between -1 and +1. A coefficient of +1 represents a perfect prediction, 0 an average random prediction and -1 an inverse prediction. The statistic is also known as the phi coefficient.
+                  rdfs:label: Matthews correlation coefficient (MCC)
+      !!python/pPath 'zero_one_loss':
+        hooks: pypads_metric
+        data:
+          metric:
+            '@schema':
+              '@id': padre:sklearn.metrics.classification.ZeroOneLoss
+              '@type': padre:MetricImplementation
+              padre:documentation: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.zero_one_loss.html#sklearn.metrics.zero_one_loss
+              padre:implements: padre:ZeroOneLoss
+              rdfs:description: Zero-one classification loss.
+              rdfs:label: Sklearn implementation of Zero-one classification loss
+              algorithm:
+                '@schema':
+                  '@id': padre:ZeroOneLoss
+                  '@type': padre:MetricAlgorithm
+                  padre:documentation: ['https://scikit-learn.org/stable/modules/model_evaluation.html#zero-one-loss']
+                  rdfs:description: Sum or the average of the 0-1 classification loss.
+                  rdfs:label: Zero-one classification loss
+      !!python/pPath 'f1_score':
+        hooks: pypads_metric
+        data:
+          metric:
+            '@schema':
+              '@id': padre:sklearn.metrics.classification.F1Score
+              '@type': padre:MetricImplementation
+              padre:documentation: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.f1_score.html#sklearn.metrics.f1_score
+              padre:implements: padre:FBetaScore
+              rdfs:description: The F1 score can be interpreted as a weighted average of the precision and recall, where an F1 score reaches its best value at 1 and worst score at 0. The relative contribution of precision and recall to the F1 score are equal.
+              rdfs:label: Sklearn implementation of balanced F-score
+      !!python/pPath 'fbeta_score':
+        hooks: pypads_metric
+        data:
+          metric:
+            '@schema':
+              '@id': padre:sklearn.metrics.classification.FBetaScore
+              '@type': padre:MetricImplementation
+              padre:documentation: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.fbeta_score.html#sklearn.metrics.fbeta_score
+              padre:implements: padre:FScore
+              rdfs:description: Compute the F-beta score
+              rdfs:label: Sklearn implementation of F-score
+              algorithm:
+                '@schema':
+                  '@id': padre:FBetaScore
+                  '@type': padre:MetricAlgorithm
+                  padre:documentation: ['https://scikit-learn.org/stable/modules/model_evaluation.html#precision-recall-f-measure-metrics', 'https://en.wikipedia.org/wiki/F-score']
+                  rdfs:description: The F-beta score is the weighted harmonic mean of precision and recall, reaching its optimal value at 1 and its worst value at 0.
+                  rdfs:label: F-score
+      !!python/pPath 'precision_score':
+        hooks: pypads_metric
+        data:
+          metric:
+            '@schema':
+              '@id': padre:sklearn.metrics.classification.PrecisionScore
+              '@type': padre:MetricImplementation
+              padre:documentation: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_score.html#sklearn.metrics.precision_score
+              padre:implements: padre:PrecisionScore
+              rdfs:description: The precision is the ratio tp / (tp + fp) where tp is the number of true positives and fp the number of false positives. The precision is intuitively the ability of the classifier not to label as positive a sample that is negative.
+              rdfs:label: Sklearn implementation of Precision
+              algorithm:
+                '@schema':
+                  '@id': padre:PrecisionScore
+                  '@type': padre:MetricAlgorithm
+                  padre:documentation: https://scikit-learn.org/stable/modules/model_evaluation.html#precision-recall-f-measure-metrics
+                  rdfs:description: Intuitively, precision is the ability of the classifier not to label as positive a sample that is negative.
+                  rdfs:label: Precision
+      !!python/pPath 'recall_score':
+        hooks: pypads_metric
+        data:
+          metric:
+            '@schema':
+              '@id': padre:sklearn.metrics.classification.RecallScore
+              '@type': padre:MetricImplementation
+              padre:documentation: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.recall_score.html#sklearn.metrics.recall_score
+              padre:implements: padre:RecallScore
+              rdfs:description: The recall is the ratio tp / (tp + fn) where tp is the number of true positives and fn the number of false negatives. The recall is intuitively the ability of the classifier to find all the positive samples.
+              rdfs:label: Sklearn implementation of Recall
+              algorithm:
+                '@schema':
+                  '@id': padre:RecallScore
+                  '@type': padre:MetricAlgorithm
+                  padre:documentation: https://scikit-learn.org/stable/modules/model_evaluation.html#precision-recall-f-measure-metrics
+                  rdfs:description: Intuitively, recall is the ability of the classifier to find all the positive samples.
+                  rdfs:label: Recall
+      !!python/pPath 'balanced_accuracy_score':
+        hooks: pypads_metric
+        data:
+          metric:
+            '@schema':
+              '@id': padre:sklearn.metrics.classification.BalancedAccuracyScore
+              '@type': padre:MetricImplementation
+              padre:documentation: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.balanced_accuracy_score.html#sklearn.metrics.balanced_accuracy_score
+              padre:implements: padre:BalancedAccuracyScore
+              rdfs:description: The balanced accuracy in binary and multiclass classification problems to deal with imbalanced datasets. It is defined as the average of recall obtained on each class.
+              rdfs:label: Sklearn implementation of Balanced Accuracy
+              algorithm:
+                '@schema':
+                  '@id': padre:BalancedAccuracyScore
+                  '@type': padre:MetricAlgorithm
+                  padre:documentation: https://scikit-learn.org/stable/modules/model_evaluation.html#balanced-accuracy-score
+                  rdfs:description: Balanced Accuracy is the macro-average of recall scores per class or, equivalently, raw accuracy where each sample is weighted according to the inverse prevalence of its true class. Thus for balanced datasets, the score is equal to accuracy.
+                  rdfs:label: Balanced Accuracy
+      !!python/pPath 'hamming_loss':
+        hooks: pypads_metric
+        data:
+          metric:
+            '@schema':
+              '@id': padre:sklearn.metrics.classification.HammingLoss
+              '@type': padre:MetricImplementation
+              padre:documentation: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.hamming_loss.html#sklearn.metrics.hamming_loss
+              padre:implements: padre:HammingLoss
+              rdfs:description: Computes the average Hamming loss.
+              rdfs:label: Sklearn implementation of Hamming Loss
+              algorithm:
+                '@schema':
+                  '@id': padre:HammingLoss
+                  '@type': padre:MetricAlgorithm
+                  padre:documentation: ['https://scikit-learn.org/stable/modules/model_evaluation.html#hamming-loss', 'https://en.wikipedia.org/wiki/Hamming_distance']
+                  rdfs:description: The Hamming loss is the fraction of labels that are incorrectly predicted.
+                  rdfs:label: Hamming Loss
+      !!python/pPath 'log_loss':
+        hooks: pypads_metric
+        data:
+          metric:
+            '@schema':
+              '@id': padre:sklearn.metrics.classification.LogLoss
+              '@type': padre:MetricImplementation
+              padre:documentation: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.log_loss.html#sklearn.metrics.log_loss
+              padre:implements: padre:LogLoss
+              rdfs:description: Computes the logistic loss.
+              rdfs:label: Sklearn implementation of Logistic Loss
+              algorithm:
+                '@schema':
+                  '@id': padre:LogLoss
+                  '@type': padre:MetricAlgorithm
+                  padre:documentation: https://scikit-learn.org/stable/modules/model_evaluation.html#log-loss
+                  rdfs:description: Log loss, also called logistic regression loss or cross-entropy loss, is defined on probability estimates. It is commonly used in (multinomial) logistic regression and neural networks, as well as in some variants of expectation-maximization, and can be used to evaluate the probability outputs of a classifier instead of its discrete predictions.
+                  rdfs:label: ['logistic loss', 'cross-entropy loss']
+      !!python/pPath 'hinge_loss':
+        hooks: pypads_metric
+        data:
+          metric:
+            '@schema':
+              '@id': padre:sklearn.metrics.classification.HingeLoss
+              '@type': padre:MetricImplementation
+              padre:documentation: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.hinge_loss.html#sklearn.metrics.hinge_loss
+              padre:implements: padre:HingeLoss
+              rdfs:description: The hinge_loss function computes the average distance between the model and the data using hinge loss, a one-sided metric that considers only prediction errors. (Hinge loss is used in maximal margin classifiers such as support vector machines.)
+              rdfs:label: Sklearn implementation of Average Hinge Loss
+              algorithm:
+                '@schema':
+                  '@id': padre:HingeLoss
+                  '@type': padre:MetricAlgorithm
+                  padre:documentation: ['https://scikit-learn.org/stable/modules/model_evaluation.html#hinge-loss', 'https://en.wikipedia.org/wiki/Hinge_loss']
+                  rdfs:description: In machine learning, the hinge loss is a loss function used for training classifiers. The hinge loss is used for "maximum-margin" classification, most notably for support vector machines.
+                  rdfs:label: Average hinge loss
+      !!python/pPath 'brier_score_loss':
+        hooks: pypads_metric
+        data:
+          metric:
+            '@schema':
+              '@id': padre:sklearn.metrics.classification.BrierScoreLoss
+              '@type': padre:MetricImplementation
+              padre:documentation: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.brier_score_loss.html#sklearn.metrics.brier_score_loss
+              padre:implements: padre:BrierScoreLoss
+              rdfs:description: Compute the Brier score.
+              rdfs:label: Sklearn implementation of Brier Score
+              algorithm:
+                '@schema':
+                  '@id': padre:BrierScoreLoss
+                  '@type': padre:MetricAlgorithm
+                  padre:documentation: 'https://en.wikipedia.org/wiki/Brier_score'
+                  rdfs:description: The smaller the Brier score, the better, hence the naming with “loss”. Across all items in a set N predictions, the Brier score measures the mean squared difference between (1) the predicted probability assigned to the possible outcomes for item i, and (2) the actual outcome. Therefore, the lower the Brier score is for a set of predictions, the better the predictions are calibrated. Note that the Brier score always takes on a value between zero and one, since this is the largest possible difference between a predicted probability (which must be between zero and one) and the actual outcome (which can take on values of only 0 and 1). The Brier loss is composed of refinement loss and calibration loss. The Brier score is appropriate for binary and categorical outcomes that can be structured as true or false, but is inappropriate for ordinal variables which can take on three or more values (this is because the Brier score assumes that all possible outcomes are equivalently “distant” from one another). Which label is considered to be the positive label is controlled via the parameter pos_label, which defaults to 1.
+                  rdfs:label: Brier Score
     !!python/pPath 'datasets.base':
       !!python/rSeg '(?!^load_data$)load_.*':
         data:
@@ -83,16 +418,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.calibration.CalibratedClassifierCV
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:CalibratedClassifierCV
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: probability calibration with cross validation
           algorithm:
             '@schema':
               '@id': padre:CalibratedClassifierCV
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: probability calibration with cross validation
           parameters:
             execution_parameters: []
@@ -155,16 +490,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.cluster.affinity_propagation_.AffinityPropagation
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:AffinityPropagation
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: affinity propagation clustering
           algorithm:
             '@schema':
               '@id': padre:AffinityPropagation
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: affinity propagation clustering
           parameters:
             execution_parameters: []
@@ -298,16 +633,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.cluster.bicluster.SpectralBiclustering
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:SpectralBiclustering
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: spectral biclustering
           algorithm:
             '@schema':
               '@id': padre:SpectralBiclustering
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: spectral biclustering
           parameters:
             execution_parameters: []
@@ -506,16 +841,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.cluster.bicluster.SpectralCoclustering
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:SpectralCoclustering
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: spectral co-clustering
           algorithm:
             '@schema':
               '@id': padre:SpectralCoclustering
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: spectral co-clustering
           parameters:
             execution_parameters: []
@@ -664,16 +999,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.cluster.birch.Birch
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:Birch
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: birch clustering
           algorithm:
             '@schema':
               '@id': padre:Birch
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: birch clustering
           parameters:
             execution_parameters: []
@@ -776,16 +1111,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.cluster.dbscan_.DBSCAN
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:DBSCAN
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: DBSCAN
           algorithm:
             '@schema':
               '@id': padre:DBSCAN
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: DBSCAN
           parameters:
             execution_parameters: []
@@ -942,16 +1277,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.cluster.hierarchical.AgglomerativeClustering
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:AgglomerativeClustering
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: agglomerative clustering
           algorithm:
             '@schema':
               '@id': padre:AgglomerativeClustering
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: agglomerative clustering
           parameters:
             execution_parameters: []
@@ -1092,16 +1427,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.cluster.hierarchical.FeatureAgglomeration
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:FeatureAgglomeration
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: feature agglomerative clustering
           algorithm:
             '@schema':
               '@id': padre:FeatureAgglomeration
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: feature agglomerative clustering
           parameters:
             execution_parameters: []
@@ -1242,16 +1577,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.cluster.k_means_.KMeans
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:KMeans
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: k-means clustering
           algorithm:
             '@schema':
               '@id': padre:KMeans
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: k-means clustering
           parameters:
             execution_parameters: []
@@ -1457,16 +1792,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.cluster.k_means_.MiniBatchKMeans
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:MiniBatchKMeans
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: mini batch k-means clustering
           algorithm:
             '@schema':
               '@id': padre:MiniBatchKMeans
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: mini batch k-means clustering
           parameters:
             execution_parameters: []
@@ -1690,16 +2025,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.cluster.mean_shift_.MeanShift
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:MeanShift
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: mean shift clustering with flat kernel
           algorithm:
             '@schema':
               '@id': padre:MeanShift
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: mean shift clustering with flat kernel
           parameters:
             execution_parameters: []
@@ -1817,16 +2152,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.cluster.spectral.SpectralClustering
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:SpectralClustering
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: spectral clustering
           algorithm:
             '@schema':
               '@id': padre:SpectralClustering
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: spectral clustering
           parameters:
             execution_parameters: []
@@ -2043,16 +2378,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.covariance.outlier_detection.EllipticEnvelope
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:EllipticEnvelope
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: elliptice envelope
           algorithm:
             '@schema':
               '@id': padre:EllipticEnvelope
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: elliptice envelope
           parameters:
             execution_parameters: []
@@ -2158,16 +2493,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.cross_decomposition.cca_.CCA
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:CCA
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: canonical correlation analysis
           algorithm:
             '@schema':
               '@id': padre:CCA
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: canonical correlation analysis
           parameters:
             execution_parameters: []
@@ -2263,16 +2598,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.cross_decomposition.pls_.PLSCanonical
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:PLSCanonical
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: 2 blocks canonical partial least squares
           algorithm:
             '@schema':
               '@id': padre:PLSCanonical
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: 2 blocks canonical partial least squares
           parameters:
             execution_parameters: []
@@ -2384,16 +2719,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.cross_decomposition.pls_.PLSRegression
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:PLSRegression
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: partial least squares regression
           algorithm:
             '@schema':
               '@id': padre:PLSRegression
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: partial least squares regression
           parameters:
             execution_parameters: []
@@ -2489,16 +2824,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.cross_decomposition.pls_.PLSSVD
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:PLSSVD
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: partial least squares singular value decomposition
           algorithm:
             '@schema':
               '@id': padre:PLSSVD
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: partial least squares singular value decomposition
           parameters:
             execution_parameters: []
@@ -2561,16 +2896,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.decomposition.SparseCoder
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:SparseCoder
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: sparse coding
           algorithm:
             '@schema':
               '@id': padre:SparseCoder
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: sparse coding
           parameters:
             execution_parameters: []
@@ -2685,16 +3020,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.decomposition.dict_learning.DictionaryLearning
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:DictionaryLearning
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: dictionary learning
           algorithm:
             '@schema':
               '@id': padre:DictionaryLearning
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: dictionary learning
           parameters:
             execution_parameters: []
@@ -2940,16 +3275,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.decomposition.dict_learning.MiniBatchDictionaryLearning
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:MiniBatchDictionaryLearning
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: mini batch dictionary learning
           algorithm:
             '@schema':
               '@id': padre:MiniBatchDictionaryLearning
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: mini batch dictionary learning
           parameters:
             execution_parameters: []
@@ -3195,16 +3530,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.decomposition.factor_analysis.FactorAnalysis
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:FactorAnalysis
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: factor analysis
           algorithm:
             '@schema':
               '@id': padre:FactorAnalysis
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: factor analysis
           parameters:
             execution_parameters: []
@@ -3336,16 +3671,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.decomposition.fastica_.FastICA
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:FastICA
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: fast independent component analysis
           algorithm:
             '@schema':
               '@id': padre:FastICA
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: fast independent component analysis
           parameters:
             execution_parameters: []
@@ -3511,16 +3846,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.decomposition.incremental_pca.IncrementalPCA
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:IncrementalPCA
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: incremental principal component analysis
           algorithm:
             '@schema':
               '@id': padre:IncrementalPCA
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: incremental principal component analysis
           parameters:
             execution_parameters: []
@@ -3606,16 +3941,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.decomposition.kernel_pca.KernelPCA
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:KernelPCA
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: kernel principal component analysis
           algorithm:
             '@schema':
               '@id': padre:KernelPCA
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: kernel principal component analysis
           parameters:
             execution_parameters: []
@@ -3885,16 +4220,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.decomposition.nmf.NMF
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:NMF
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: non-negative matrix factorization
           algorithm:
             '@schema':
               '@id': padre:NMF
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: non-negative matrix factorization
           parameters:
             execution_parameters: []
@@ -4078,16 +4413,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.decomposition.online_lda.LatentDirichletAllocation
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:LatentDirichletAllocation
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: latent Dirichlet allocation
           algorithm:
             '@schema':
               '@id': padre:LatentDirichletAllocation
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: latent Dirichlet allocation
           parameters:
             execution_parameters: []
@@ -4382,16 +4717,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.decomposition.pca.PCA
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:PCA
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: principal component analysis
           algorithm:
             '@schema':
               '@id': padre:PCA
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: principal component analysis
           parameters:
             execution_parameters: []
@@ -4531,16 +4866,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.decomposition.sparse_pca.MiniBatchSparsePCA
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:MiniBatchSparsePCA
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: mini batch sparse principal component analysis
           algorithm:
             '@schema':
               '@id': padre:MiniBatchSparsePCA
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: mini batch sparse principal component analysis
           parameters:
             execution_parameters: []
@@ -4604,7 +4939,7 @@ mappings:
                   padre:path: callback
                   padre:value_default: ''
                   padre:value_type: '{callable, None}'
-                  rdfs:description: ''
+                  rdfs:description: null
                   rdfs:label: callback
                 algorithm:
                   '@schema':
@@ -4737,16 +5072,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.decomposition.sparse_pca.SparsePCA
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:SparsePCA
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: sparse principal component analysis
           algorithm:
             '@schema':
               '@id': padre:SparsePCA
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: sparse principal component analysis
           parameters:
             execution_parameters: []
@@ -4944,16 +5279,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.decomposition.truncated_svd.TruncatedSVD
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:TruncatedSVD
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: truncated single value decomposition
           algorithm:
             '@schema':
               '@id': padre:TruncatedSVD
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: truncated single value decomposition
           parameters:
             execution_parameters: []
@@ -5053,16 +5388,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.discriminant_analysis.LinearDiscriminantAnalysis
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:LinearDiscriminantAnalysis
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: linear discriminant analysis
           algorithm:
             '@schema':
               '@id': padre:LinearDiscriminantAnalysis
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: linear discriminant analysis
           parameters:
             execution_parameters: []
@@ -5178,16 +5513,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.discriminant_analysis.QuadraticDiscriminantAnalysis
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:QuadraticDiscriminantAnalysis
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: quadratic discriminant analysis
           algorithm:
             '@schema':
               '@id': padre:QuadraticDiscriminantAnalysis
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: quadratic discriminant analysis
           parameters:
             execution_parameters: []
@@ -5265,16 +5600,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.ensemble.VotingClassifier
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:VotingClassifier
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: voting classifier
           algorithm:
             '@schema':
               '@id': padre:VotingClassifier
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: voting classifier
           parameters:
             execution_parameters: []
@@ -5375,16 +5710,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.ensemble.bagging.BaggingClassifier
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:BaggingClassifier
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: bagging classifier
           algorithm:
             '@schema':
               '@id': padre:BaggingClassifier
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: bagging classifier
           parameters:
             execution_parameters: []
@@ -5584,16 +5919,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.ensemble.bagging.BaggingRegressor
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:BaggingRegressor
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: bagging regressor
           algorithm:
             '@schema':
               '@id': padre:BaggingRegressor
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: bagging regressor
           parameters:
             execution_parameters: []
@@ -5793,16 +6128,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.ensemble.forest.ExtraTreesClassifier
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:ExtraTreesClassifier
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: extra-trees classifier
           algorithm:
             '@schema':
               '@id': padre:ExtraTreesClassifier
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: extra-trees classifier
           parameters:
             execution_parameters: []
@@ -6086,16 +6421,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.ensemble.forest.ExtraTreesRegressor
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:ExtraTreesRegressor
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: extra-trees regressor
           algorithm:
             '@schema':
               '@id': padre:ExtraTreesRegressor
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: extra-trees regressor
           parameters:
             execution_parameters: []
@@ -6363,16 +6698,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.ensemble.forest.RandomForestClassifier
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:RandomForestClassifier
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: random forest classifier
           algorithm:
             '@schema':
               '@id': padre:RandomForestClassifier
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: random forest classifier
           parameters:
             execution_parameters: []
@@ -6656,16 +6991,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.ensemble.forest.RandomForestRegressor
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:RandomForestRegressor
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: random forest regressor
           algorithm:
             '@schema':
               '@id': padre:RandomForestRegressor
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: random forest regressor
           parameters:
             execution_parameters: []
@@ -6933,16 +7268,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.ensemble.forest.RandomTreesEmbedding
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:RandomTreesEmbedding
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: random trees ensemble
           algorithm:
             '@schema':
               '@id': padre:RandomTreesEmbedding
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: random trees ensemble
           parameters:
             execution_parameters: []
@@ -7177,16 +7512,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.ensemble.gradient_boosting.GradientBoostingClassifier
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:GradientBoostingClassifier
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: gradient boosting for classification
           algorithm:
             '@schema':
               '@id': padre:GradientBoostingClassifier
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: gradient boosting for classification
           parameters:
             execution_parameters: []
@@ -7492,16 +7827,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.ensemble.gradient_boosting.GradientBoostingRegressor
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:GradientBoostingRegressor
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: gradient boosting for regression
           algorithm:
             '@schema':
               '@id': padre:GradientBoostingRegressor
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: gradient boosting for regression
           parameters:
             execution_parameters: []
@@ -7824,16 +8159,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.ensemble.iforest.IsolationForest
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:IsolationForest
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: isolation forest
           algorithm:
             '@schema':
               '@id': padre:IsolationForest
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: isolation forest
           parameters:
             execution_parameters: []
@@ -7984,16 +8319,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.ensemble.weight_boosting.AdaBoostClassifier
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:AdaBoostClassifier
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: AdaBoost classifier
           algorithm:
             '@schema':
               '@id': padre:AdaBoostClassifier
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: AdaBoost classifier
           parameters:
             execution_parameters: []
@@ -8098,16 +8433,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.ensemble.weight_boosting.AdaBoostRegressor
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:AdaBoostRegressor
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: AdaBoost regressor
           algorithm:
             '@schema':
               '@id': padre:AdaBoostRegressor
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: AdaBoost regressor
           parameters:
             execution_parameters: []
@@ -8207,16 +8542,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.feature_selection.RFE
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:RFE
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: recursive feature elimination
           algorithm:
             '@schema':
               '@id': padre:RFE
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: recursive feature elimination
           parameters:
             execution_parameters: []
@@ -8299,16 +8634,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.feature_selection.RFECV
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:RFECV
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: recursive feature elimination with cross-validation
           algorithm:
             '@schema':
               '@id': padre:RFECV
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: recursive feature elimination with cross-validation
           parameters:
             execution_parameters: []
@@ -8431,16 +8766,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.feature_selection.SelectFromModel
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:SelectFromModel
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: select from model
           algorithm:
             '@schema':
               '@id': padre:SelectFromModel
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: select from model
           parameters:
             execution_parameters: []
@@ -8521,16 +8856,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.feature_selection.univariate_selection.GenericUnivariateSelect
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:GenericUnivariateSelect
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: univariate feature selector
           algorithm:
             '@schema':
               '@id': padre:GenericUnivariateSelect
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: univariate feature selector
           parameters:
             execution_parameters: []
@@ -8593,16 +8928,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.feature_selection.univariate_selection.SelectFdr
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:SelectFdr
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: select estimated false discovery rate
           algorithm:
             '@schema':
               '@id': padre:SelectFdr
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: select estimated false discovery rate
           parameters:
             execution_parameters: []
@@ -8649,16 +8984,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.feature_selection.univariate_selection.SelectFpr
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:SelectFpr
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: select below false positive rate
           algorithm:
             '@schema':
               '@id': padre:SelectFpr
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: select below false positive rate
           parameters:
             execution_parameters: []
@@ -8705,16 +9040,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.feature_selection.univariate_selection.SelectFwe
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:SelectFwe
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: select familiy-wise error rate
           algorithm:
             '@schema':
               '@id': padre:SelectFwe
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: select familiy-wise error rate
           parameters:
             execution_parameters: []
@@ -8761,16 +9096,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.feature_selection.univariate_selection.SelectKBest
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:SelectKBest
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: select k best
           algorithm:
             '@schema':
               '@id': padre:SelectKBest
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: select k best
           parameters:
             execution_parameters: []
@@ -8816,16 +9151,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.feature_selection.univariate_selection.SelectPercentile
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:SelectPercentile
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: select percentile
           algorithm:
             '@schema':
               '@id': padre:SelectPercentile
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: select percentile
           parameters:
             execution_parameters: []
@@ -8871,16 +9206,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.feature_selection.variance_threshold.VarianceThreshold
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:VarianceThreshold
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: variance threshold
           algorithm:
             '@schema':
               '@id': padre:VarianceThreshold
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: variance threshold
           parameters:
             execution_parameters: []
@@ -8910,16 +9245,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.gaussian_process.gpc.GaussianProcessClassifier
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:GaussianProcessClassifier
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: gaussian process classification
           algorithm:
             '@schema':
               '@id': padre:GaussianProcessClassifier
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: gaussian process classification
           parameters:
             execution_parameters: []
@@ -9096,16 +9431,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.gaussian_process.gpr.GaussianProcessRegressor
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:GaussianProcessRegressor
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: gaussian process regression
           algorithm:
             '@schema':
               '@id': padre:GaussianProcessRegressor
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: gaussian process regression
           parameters:
             execution_parameters: []
@@ -9257,16 +9592,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.isotonic.IsotonicRegression
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:IsotonicRegression
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: isotonic regression
           algorithm:
             '@schema':
               '@id': padre:IsotonicRegression
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: isotonic regression
           parameters:
             execution_parameters: []
@@ -9351,16 +9686,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.kernel_ridge.KernelRidge
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:KernelRidge
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: kernel ridge regression
           algorithm:
             '@schema':
               '@id': padre:KernelRidge
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: kernel ridge regression
           parameters:
             execution_parameters: []
@@ -9480,16 +9815,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.base.LinearRegression
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:LinearRegression
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: linear regression
           algorithm:
             '@schema':
               '@id': padre:LinearRegression
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: linear regression
           parameters:
             execution_parameters: []
@@ -9568,16 +9903,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.bayes.ARDRegression
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:ARDRegression
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: automatic relevance determination regression
           algorithm:
             '@schema':
               '@id': padre:ARDRegression
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: automatic relevance determination regression
           parameters:
             execution_parameters: []
@@ -9790,16 +10125,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.bayes.BayesianRidge
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:BayesianRidge
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: bayesian ridge regression
           algorithm:
             '@schema':
               '@id': padre:BayesianRidge
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: bayesian ridge regression
           parameters:
             execution_parameters: []
@@ -9995,16 +10330,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.coordinate_descent.ElasticNet
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:ElasticNet
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: elastic net
           algorithm:
             '@schema':
               '@id': padre:ElasticNet
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: elastic net
           parameters:
             execution_parameters: []
@@ -10225,16 +10560,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.coordinate_descent.Lasso
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:Lasso
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: lasso
           algorithm:
             '@schema':
               '@id': padre:Lasso
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: lasso
           parameters:
             execution_parameters: []
@@ -10436,16 +10771,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.coordinate_descent.MultiTaskElasticNet
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:MultiTaskElasticNet
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: multi-task elastic net
           algorithm:
             '@schema':
               '@id': padre:MultiTaskElasticNet
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: multi-task elastic net
           parameters:
             execution_parameters: []
@@ -10632,16 +10967,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.coordinate_descent.MultiTaskLasso
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:MultiTaskLasso
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: multi-task lasso
           algorithm:
             '@schema':
               '@id': padre:MultiTaskLasso
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: multi-task lasso
           parameters:
             execution_parameters: []
@@ -10809,16 +11144,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.huber.HuberRegressor
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:HuberRegressor
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: huber regressor
           algorithm:
             '@schema':
               '@id': padre:HuberRegressor
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: huber regressor
           parameters:
             execution_parameters: []
@@ -10932,16 +11267,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.least_angle.Lars
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:Lars
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: least angle regression
           algorithm:
             '@schema':
               '@id': padre:Lars
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: least angle regression
           parameters:
             execution_parameters: []
@@ -11090,16 +11425,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.least_angle.LassoLars
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:LassoLars
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: lasso least angle regression
           algorithm:
             '@schema':
               '@id': padre:LassoLars
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: lasso least angle regression
           parameters:
             execution_parameters: []
@@ -11280,16 +11615,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.logistic.LogisticRegression
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:LogisticRegression
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: logistic regression
           algorithm:
             '@schema':
               '@id': padre:LogisticRegression
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: logistic regression
           parameters:
             execution_parameters: []
@@ -11545,16 +11880,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.omp.OrthogonalMatchingPursuit
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:OrthogonalMatchingPursuit
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: orthogonal matching pursuit model
           algorithm:
             '@schema':
               '@id': padre:OrthogonalMatchingPursuit
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: orthogonal matching pursuit model
           parameters:
             execution_parameters: []
@@ -11650,16 +11985,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.orthogonal_mp
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:orthogonal_mp
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: n-target orthogonal matching pursuit
           algorithm:
             '@schema':
               '@id': padre:orthogonal_mp
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: n-target orthogonal matching pursuit
           parameters:
             execution_parameters: []
@@ -11801,16 +12136,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.passive_aggressive.PassiveAggressiveClassifier
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:PassiveAggressiveClassifier
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: passive aggressive classifier
           algorithm:
             '@schema':
               '@id': padre:PassiveAggressiveClassifier
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: passive aggressive classifier
           parameters:
             execution_parameters: []
@@ -12028,16 +12363,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.passive_aggressive.PassiveAggressiveRegressor
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:PassiveAggressiveRegressor
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: passive aggressive regressor
           algorithm:
             '@schema':
               '@id': padre:PassiveAggressiveRegressor
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: passive aggressive regressor
           parameters:
             execution_parameters: []
@@ -12240,16 +12575,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.perceptron.Perceptron
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:Perceptron
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: perceptron
           algorithm:
             '@schema':
               '@id': padre:Perceptron
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: perceptron
           parameters:
             execution_parameters: []
@@ -12461,16 +12796,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.ransac.RANSACRegressor
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:RANSACRegressor
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: random sample consensus regressor
           algorithm:
             '@schema':
               '@id': padre:RANSACRegressor
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: random sample consensus regressor
           parameters:
             execution_parameters: []
@@ -12698,16 +13033,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.ridge.Ridge
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:Ridge
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: ridge regression
           algorithm:
             '@schema':
               '@id': padre:Ridge
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: ridge regression
           parameters:
             execution_parameters: []
@@ -12856,16 +13191,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.stochastic_gradient.SGDClassifier
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:SGDClassifier
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: stochastic gradient descent classifier
           algorithm:
             '@schema':
               '@id': padre:SGDClassifier
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: stochastic gradient descent classifier
           parameters:
             execution_parameters: []
@@ -13218,16 +13553,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.stochastic_gradient.SGDRegressor
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:SGDRegressor
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: stochastic gradient descent regressor
           algorithm:
             '@schema':
               '@id': padre:SGDRegressor
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: stochastic gradient descent regressor
           parameters:
             execution_parameters: []
@@ -13514,16 +13849,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.linear_model.theil_sen.TheilSenRegressor
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:TheilSenRegressor
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: theil-sen estimator
           algorithm:
             '@schema':
               '@id': padre:TheilSenRegressor
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: theil-sen estimator
           parameters:
             execution_parameters: []
@@ -13692,16 +14027,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.manifold.isomap.Isomap
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:Isomap
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: isomap embedding
           algorithm:
             '@schema':
               '@id': padre:Isomap
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: isomap embedding
           parameters:
             execution_parameters: []
@@ -13848,16 +14183,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.manifold.locally_linear.LocallyLinearEmbedding
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:LocallyLinearEmbedding
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: object oriented locally linear embedding analysis
           algorithm:
             '@schema':
               '@id': padre:LocallyLinearEmbedding
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: object oriented locally linear embedding analysis
           parameters:
             execution_parameters: []
@@ -14071,16 +14406,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.manifold.locally_linear_embedding
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:locally_linear_embedding
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: locally linear embedding analysis
           algorithm:
             '@schema':
               '@id': padre:locally_linear_embedding
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: locally linear embedding analysis
           parameters:
             execution_parameters: []
@@ -14294,16 +14629,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.manifold.mds.MDS
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:MDS
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: multidimensional scaling
           algorithm:
             '@schema':
               '@id': padre:MDS
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: multidimensional scaling
           parameters:
             execution_parameters: []
@@ -14471,16 +14806,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.manifold.spectral_embedding
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:spectral_embedding
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: spectral embedding
           algorithm:
             '@schema':
               '@id': padre:spectral_embedding
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: spectral embedding
           parameters:
             execution_parameters: []
@@ -14594,16 +14929,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.manifold.spectral_embedding_.SpectralEmbedding
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:SpectralEmbedding
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: object oriented spectral embedding
           algorithm:
             '@schema':
               '@id': padre:SpectralEmbedding
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: object oriented spectral embedding
           parameters:
             execution_parameters: []
@@ -14717,16 +15052,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.manifold.t_sne.TSNE
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:TSNE
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: t-distributed stochastic neighbor embedding
           algorithm:
             '@schema':
               '@id': padre:TSNE
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: t-distributed stochastic neighbor embedding
           parameters:
             execution_parameters: []
@@ -14984,16 +15319,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.mixture.bayesian_mixture.BayesianGaussianMixture
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:BayesianGaussianMixture
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: Bayesian Gaussian mixture
           algorithm:
             '@schema':
               '@id': padre:BayesianGaussianMixture
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: Bayesian Gaussian mixture
           parameters:
             execution_parameters: []
@@ -15303,16 +15638,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.mixture.gaussian_mixture.GaussianMixture
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:GaussianMixture
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: Gaussian mixture
           algorithm:
             '@schema':
               '@id': padre:GaussianMixture
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: Gaussian mixture
           parameters:
             execution_parameters: []
@@ -15567,16 +15902,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.multiclass.OneVsOneClassifier
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:OneVsOneClassifier
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: one vs one classifier
           algorithm:
             '@schema':
               '@id': padre:OneVsOneClassifier
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: one vs one classifier
           parameters:
             execution_parameters: []
@@ -15623,16 +15958,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.multiclass.OneVsRestClassifier
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:OneVsRestClassifier
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: one vs rest classifier
           algorithm:
             '@schema':
               '@id': padre:OneVsRestClassifier
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: one vs rest classifier
           parameters:
             execution_parameters: []
@@ -15679,16 +16014,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.multiclass.OutputCodeClassifier
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:OutputCodeClassifier
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: output code classifier
           algorithm:
             '@schema':
               '@id': padre:OutputCodeClassifier
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: output code classifier
           parameters:
             execution_parameters: []
@@ -15774,16 +16109,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.multioutput.ClassifierChain
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:ClassifierChain
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: classifier chain
           algorithm:
             '@schema':
               '@id': padre:ClassifierChain
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: classifier chain
           parameters:
             execution_parameters: []
@@ -15867,16 +16202,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.multioutput.MultiOutputRegressor
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:MultiOutputRegressor
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: multi target regression
           algorithm:
             '@schema':
               '@id': padre:MultiOutputRegressor
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: multi target regression
           parameters:
             execution_parameters: []
@@ -15922,16 +16257,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.naive_bayes.BernoulliNB
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:BernoulliNB
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: bernoulli naive bayes classifier
           algorithm:
             '@schema':
               '@id': padre:BernoulliNB
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: bernoulli naive bayes classifier
           parameters:
             execution_parameters: []
@@ -16011,16 +16346,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.naive_bayes.GaussianNB
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:GaussianNB
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: gaussian naive bayes
           algorithm:
             '@schema':
               '@id': padre:GaussianNB
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: gaussian naive bayes
           parameters:
             execution_parameters: []
@@ -16050,16 +16385,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.naive_bayes.MultinomialNB
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:MultinomialNB
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: multinomial naive bayes classifier
           algorithm:
             '@schema':
               '@id': padre:MultinomialNB
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: multinomial naive bayes classifier
           parameters:
             execution_parameters: []
@@ -16122,16 +16457,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.neighbors.BallTree
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:BallTree
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: ball tree
           algorithm:
             '@schema':
               '@id': padre:BallTree
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: ball tree
           parameters:
             execution_parameters: []
@@ -16201,16 +16536,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.neighbors.KDTree
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:KDTree
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: k-d tree
           algorithm:
             '@schema':
               '@id': padre:KDTree
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: k-d tree
           parameters:
             execution_parameters: []
@@ -16276,16 +16611,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.neighbors.classification.KNeighborsClassifier
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:KNeighborsClassifier
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: k-nn classifier
           algorithm:
             '@schema':
               '@id': padre:KNeighborsClassifier
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: k-nn classifier
           parameters:
             execution_parameters: []
@@ -16438,16 +16773,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.neighbors.classification.RadiusNeighborsClassifier
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:RadiusNeighborsClassifier
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: radius neighbors classifier
           algorithm:
             '@schema':
               '@id': padre:RadiusNeighborsClassifier
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: radius neighbors classifier
           parameters:
             execution_parameters: []
@@ -16601,16 +16936,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.neighbors.kde.KernelDensity
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:KernelDensity
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: kernel density
           algorithm:
             '@schema':
               '@id': padre:KernelDensity
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: kernel density
           parameters:
             execution_parameters: []
@@ -16781,16 +17116,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.neighbors.lof.LocalOutlierFactor
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:LocalOutlierFactor
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: local outlier factor
           algorithm:
             '@schema':
               '@id': padre:LocalOutlierFactor
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: local outlier factor
           parameters:
             execution_parameters: []
@@ -16948,16 +17283,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.neighbors.nearest_centroid.NearestCentroid
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:NearestCentroid
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: nearest centroid classifier
           algorithm:
             '@schema':
               '@id': padre:NearestCentroid
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: nearest centroid classifier
           parameters:
             execution_parameters: []
@@ -17008,16 +17343,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.neighbors.regression.KNeighborsRegressor
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:KNeighborsRegressor
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: k-nn regressor
           algorithm:
             '@schema':
               '@id': padre:KNeighborsRegressor
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: k-nn regressor
           parameters:
             execution_parameters: []
@@ -17170,16 +17505,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.neighbors.regression.RadiusNeighborsRegressor
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:RadiusNeighborsRegressor
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: radius neighbors regressor
           algorithm:
             '@schema':
               '@id': padre:RadiusNeighborsRegressor
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: radius neighbors regressor
           parameters:
             execution_parameters: []
@@ -17315,16 +17650,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.neighbors.unsupervised.NearestNeighbors
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:NearestNeighbors
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: nearest neighbours
           algorithm:
             '@schema':
               '@id': padre:NearestNeighbors
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: nearest neighbours
           parameters:
             execution_parameters: []
@@ -17477,16 +17812,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.neural_network.multilayer_perceptron.MLPClassifier
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:MLPClassifier
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: multi-layer perceptron classifier
           algorithm:
             '@schema':
               '@id': padre:MLPClassifier
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: multi-layer perceptron classifier
           parameters:
             execution_parameters: []
@@ -17851,16 +18186,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.neural_network.multilayer_perceptron.MLPRegressor
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:MLPRegressor
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: multi-layer perceptron regressor
           algorithm:
             '@schema':
               '@id': padre:MLPRegressor
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: multi-layer perceptron regressor
           parameters:
             execution_parameters: []
@@ -18225,16 +18560,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.neural_network.rbm.BernoulliRBM
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:BernoulliRBM
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: Bernoulli restricted Boltzmann machines
           algorithm:
             '@schema':
               '@id': padre:BernoulliRBM
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: Bernoulli restricted Boltzmann machines
           parameters:
             execution_parameters: []
@@ -18347,16 +18682,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.semi_supervised.label_propagation.LabelPropagation
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:LabelPropagation
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: label propagation
           algorithm:
             '@schema':
               '@id': padre:LabelPropagation
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: label propagation
           parameters:
             execution_parameters: []
@@ -18469,16 +18804,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.semi_supervised.label_propagation.LabelSpreading
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:LabelSpreading
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: label spreading
           algorithm:
             '@schema':
               '@id': padre:LabelSpreading
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: label spreading
           parameters:
             execution_parameters: []
@@ -18610,16 +18945,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.svm.classes.LinearSVC
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:LinearSVC
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: linear-support vector classification
           algorithm:
             '@schema':
               '@id': padre:LinearSVC
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: linear-support vector classification
           parameters:
             execution_parameters: []
@@ -18839,16 +19174,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.svm.classes.LinearSVR
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:LinearSVR
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: linear-support vector regression
           algorithm:
             '@schema':
               '@id': padre:LinearSVR
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: linear-support vector regression
           parameters:
             execution_parameters: []
@@ -19035,16 +19370,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.svm.classes.NuSVC
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:NuSVC
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: nu-support vector classification
           algorithm:
             '@schema':
               '@id': padre:NuSVC
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: nu-support vector classification
           parameters:
             execution_parameters: []
@@ -19299,16 +19634,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.svm.classes.NuSVR
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:NuSVR
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: nu-support vector regression
           algorithm:
             '@schema':
               '@id': padre:NuSVR
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: nu-support vector regression
           parameters:
             execution_parameters: []
@@ -19503,16 +19838,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.svm.classes.OneClassSVM
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:OneClassSVM
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: one-class support vector machine
           algorithm:
             '@schema':
               '@id': padre:OneClassSVM
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: one-class support vector machine
           parameters:
             execution_parameters: []
@@ -19711,16 +20046,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.svm.classes.SVC
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:SVC
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: c-oja pas vector classification
           algorithm:
             '@schema':
               '@id': padre:SVC
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: c-oja pas vector classification
           parameters:
             execution_parameters: []
@@ -19973,16 +20308,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.svm.classes.SVR
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:SVR
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: epsilon-support vector regression
           algorithm:
             '@schema':
               '@id': padre:SVR
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: epsilon-support vector regression
           parameters:
             execution_parameters: []
@@ -20178,16 +20513,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.tree.tree.DecisionTreeClassifier
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:DecisionTreeClassifier
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: decision tree classifier
           algorithm:
             '@schema':
               '@id': padre:DecisionTreeClassifier
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: decision tree classifier
           parameters:
             execution_parameters: []
@@ -20403,16 +20738,16 @@ mappings:
           '@schema':
             '@id': padre:sklearn.tree.tree.DecisionTreeRegressor
             '@type': padre:Estimator
-            padre:documentation: TBD
+            padre:documentation: null
             padre:implements: padre:DecisionTreeRegressor
-            rdfs:description: ''
+            rdfs:description: null
             rdfs:label: decision tree regressor
           algorithm:
             '@schema':
               '@id': padre:DecisionTreeRegressor
               '@type': padre:Algorithm
-              padre:documentation: TBD
-              rdfs:description: ''
+              padre:documentation: null
+              rdfs:description: null
               rdfs:label: decision tree regressor
           parameters:
             execution_parameters: []
@@ -20606,7 +20941,7 @@ mappings:
                     '@type': padre:OptimisationParameters
                     padre:configures: padre:DecisionTreeRegressor
 metadata:
-  author: "Thomas Wei\xDFgerber"
+  author: "Thomas Weissgerber"
   library:
     name: sklearn
     version: '>= 0.19.1'

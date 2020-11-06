@@ -10,7 +10,8 @@ from pypads.app.env import InjectionLoggerEnv
 from pypads.app.injections.base_logger import Logger, LoggerExecutor, OriginalExecutor
 from pypads.app.injections.tracked_object import LoggerCall, FallibleMixin
 from pypads.app.misc.inheritance import SuperStop
-from pypads.app.misc.mixins import OrderMixin, NoCallAllowedError
+from pypads.app.misc.mixins import OrderMixin
+from pypads.exceptions import NoCallAllowedError
 from pypads.model.logger_call import InjectionLoggerCallModel, MultiInjectionLoggerCallModel
 from pypads.model.logger_model import InjectionLoggerModel
 from pypads.utils.util import inheritors
@@ -72,7 +73,7 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
                       _pypads_cached_results, **kwargs):
         _pypads_hook_params = _pypads_env.parameter
 
-        self.store()
+        reference = self.store()
 
         logger_call: Union[InjectionLoggerCall, FallibleMixin] = self._get_logger_call(_pypads_env)
         output = self.build_output(_pypads_env, logger_call)

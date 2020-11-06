@@ -1,5 +1,4 @@
 import os
-import uuid
 from typing import List, Type, Union
 
 from pydantic import BaseModel
@@ -11,6 +10,7 @@ from pypads.app.injections.run_loggers import RunSetup
 from pypads.app.injections.tracked_object import TrackedObject
 from pypads.model.domain import LibraryModel
 from pypads.model.logger_output import OutputModel, TrackedObjectModel
+from pypads.model.models import IdReference
 from pypads.utils.logging_util import FileFormats, get_artifact_dir, get_temp_folder
 
 
@@ -24,7 +24,7 @@ class DependencyTO(TrackedObject):
         description = "A object holding all dependencies found in the current environment."
 
         dependencies: List[LibraryModel] = []
-        pip_freeze: Union[uuid.UUID, str] = ...
+        pip_freeze: IdReference = ...
 
         class Config:
             orm_mode = True
@@ -63,7 +63,7 @@ class DependencyRSF(RunSetup):
 
     class DependencyRSFOutput(OutputModel):
         type: str = "DependencyRSF-Output"
-        dependencies: Union[uuid.UUID, str] = None
+        dependencies: IdReference = None
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
@@ -97,7 +97,7 @@ class LogTO(TrackedObject):
         type: str = "Log"
         description = "A log file containing the log output of the run."
 
-        path: Union[uuid.UUID, str] = ...
+        path: str = ...
 
         # TODO add log_level
 
@@ -140,7 +140,7 @@ class LoguruRSF(DelayedResultsMixin, RunSetup):
 
     class LoguruRSFOutput(OutputModel):
         type: str = "LoguruRSF-Output"
-        logs: Union[uuid.UUID, str] = ...
+        logs: IdReference = ...
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
@@ -194,7 +194,7 @@ class StdOutRSF(DelayedResultsMixin, RunSetup):
 
     class StdOutRSFOutput(OutputModel):
         type: str = "StdOutRSF-Output"
-        logs: Union[uuid.UUID, str] = ...
+        logs: IdReference = ...
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:

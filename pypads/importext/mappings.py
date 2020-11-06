@@ -424,10 +424,12 @@ class MappingRegistry:
             mapping_hash = mapping._hash
             if not mapping_repo.has_object(uid=mapping_hash):
                 mapping_object = mapping_repo.get_object(uid=mapping_hash)
-                if isinstance(mapping, MappingFile):
-                    mapping.mapping_file = mapping_object.log_artifact(local_path=mapping.path,
-                                                                       description="A copy of the mapping file used.")
-                mapping_object.log_json(mapping.dict(by_alias=True))
+                # Just init context once here
+                with mapping_object.init_context():
+                    if isinstance(mapping, MappingFile):
+                        mapping.mapping_file = mapping_object.log_artifact(local_path=mapping.path,
+                                                                           description="A copy of the mapping file used.")
+                    mapping_object.log_json(mapping)
             self._mappings[key] = mapping
 
     def load_mapping(self, path):

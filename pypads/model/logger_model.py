@@ -1,18 +1,19 @@
+import uuid
 from typing import List, Union
 
 from pypads.model.domain import LibSelectorModel
-from pypads.model.models import IdBasedEntry, ResultType, ProvenanceModel
+from pypads.model.models import BaseStorageModel, ResultType, ProvenanceModel
 
 
-class LoggerModel(ProvenanceModel, IdBasedEntry):
+class LoggerModel(ProvenanceModel, BaseStorageModel):
     """
     A reference object for a logger.
     """
     name: str = "Generic Tracking Function"
     schema_location: str = ...
-    uid: str = ...
+    uid: Union[str, uuid.UUID] = ...
     category: str = "Logger"
-    dependencies: List[LibSelectorModel] = {}
+    dependencies: List[LibSelectorModel] = []
     supported_libraries: List[LibSelectorModel] = ...
     allow_nested: bool = True
     allow_intermediate: bool = True
