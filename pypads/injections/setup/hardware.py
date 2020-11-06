@@ -11,6 +11,8 @@ from pypads.model.logger_output import OutputModel, TrackedObjectModel
 from pypads.model.models import IdReference
 from pypads.utils.util import sizeof_fmt, uri_to_path, PeriodicThread
 
+import uuid
+
 
 class SystemStatsTO(TrackedObject):
     """

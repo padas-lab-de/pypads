@@ -108,7 +108,7 @@ class FunctionWrapper(BaseWrapper):
         try:
             current_call: Call = self._pypads.call_tracker.current_call()
             # if current_call and (accessor.is_call_identity(current_call.call_id) or fn_reference.is_wrapped()):
-            if not fn_reference.context.original(fn_reference.wrappee) == fn_reference.wrappee:
+            if not fn_reference.context.original(fn_reference.wrappee) == fn_reference.wrappee and current_call is not None:
                 call = current_call
             else:
                 call = add_call(accessor)
