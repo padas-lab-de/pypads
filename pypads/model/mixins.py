@@ -45,6 +45,6 @@ def get_library_descriptor(obj) -> LibraryModel:
         name = obj.__module__.split(".")[0]
         from pypads.utils.util import find_package_version
         version = find_package_version(name)
-        return LibraryModel(name=name, version=version, extracted=True)
+        return LibraryModel(name=name, version=version, uid=persistent_hash((name, version)), extracted=True)
     except Exception:
-        return LibraryModel(name="__unkown__", version="0.0", extracted=True)
+        return LibraryModel(name="__unkown__", version="0.0", uid=persistent_hash(("__unkown__", "0.0")),extracted=True)

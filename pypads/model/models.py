@@ -107,7 +107,7 @@ class BaseIdModel(EntryModel, BackendObjectModel):
     uid: Union[str, uuid.UUID] = Field(default_factory=uuid.uuid4)
 
     def __hash__(self):
-        return persistent_hash((self.clazz, self.backend_uri, self.uid))
+        return persistent_hash((self.backend_uri, self.uid))
 
 
 class IdHashModel(BaseIdModel):
@@ -140,7 +140,7 @@ class IdReference(Reference, RunObjectModel, BaseIdModel):
     @pydantic.validator('id', always=True)
     def default_ts_modified(cls, v, *, values, **kwargs):
         return v or str(persistent_hash(
-            (values["clazz"], values["backend_uri"], values["uid"])))
+            (values["backend_uri"], values["uid"])))
 
     def load(self):
         from pypads.app.pypads import get_current_pads

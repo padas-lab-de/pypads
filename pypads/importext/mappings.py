@@ -121,6 +121,7 @@ class MappingCollection(ModelObject):
         self._version = version
         self._lib = LibSelector.from_dict(library)
         self._hash = persistent_hash((self._name, self._version, hash(self._lib)))
+        self.uid = self._hash
         super().__init__()
 
     @classmethod
@@ -344,6 +345,7 @@ class MappingFile(SerializedMapping):
 
         # computing the hash of the mapping file
         self._hash = persistent_hash(data)
+        self.uid = self._hash
 
 
 class MappingRegistry:

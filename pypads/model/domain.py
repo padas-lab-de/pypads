@@ -1,3 +1,4 @@
+import uuid
 from typing import Optional, Union
 
 from pydantic import BaseModel, root_validator
@@ -16,10 +17,10 @@ class LibraryModel(BaseStorageModel):
     extracted: bool = False
     storage_type: Union[str, ResultType] = ResultType.library
 
-    @root_validator
-    def set_default(cls, values):
-        values['_id'] = ".".join([values["name"], values["version"]])
-        return values
+    # @root_validator
+    # def set_default(cls, values):
+    #     values['_id'] = ".".join([values["name"], values["version"]])
+    #     return values
 
 
 class LibSelectorModel(BaseModel):
@@ -43,6 +44,7 @@ class MappingModel(BaseStorageModel):
     Representation of a mapping of a library
     """
     category: str = "SoftwareMapping"
+    uid: Union[str, uuid.UUID] = ...
     name: str = ...
     author: Optional[str] = ...
     version: str = ...
@@ -50,11 +52,11 @@ class MappingModel(BaseStorageModel):
     mapping_file: Optional[str] = ...  # reference to the mapping file artifact
     storage_type: Union[str, ResultType] = ResultType.mapping
 
-    @root_validator
-    def set_default(cls, values):
-        values['_id'] = persistent_hash(
-            (values["author"], values["version"], values["lib"].name, values["lib"].constraint))
-        return values
+    # @root_validator
+    # def set_default(cls, values):
+    #     values['_id'] = persistent_hash(
+    #         (values["author"], values["version"], values["lib"].name, values["lib"].constraint))
+    #     return values
 
     class Config:
         orm_mode = True

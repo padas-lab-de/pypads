@@ -6,7 +6,7 @@ from uuid import uuid4
 from pydantic import Extra
 
 from pypads.app.backends.mlflow import MongoSupportMixin
-from pypads.model.models import EntryModel, to_reference, BaseStorageModel, ResultType, IdReference, \
+from pypads.model.models import EntryModel, to_reference, BaseStorageModel, IdReference, \
     get_reference, ExperimentModel, RunModel
 from pypads.utils.logging_util import FileFormats
 
@@ -45,7 +45,7 @@ class Repository:
         :return:
         """
         if uid not in self._object_cache:
-            repo_obj = RepositoryObject(self, run_id, self.repo_reference(uid).id, name)
+            repo_obj = RepositoryObject(self, run_id, uid, name)
             self._object_cache[uid] = repo_obj
             return repo_obj
         else:
@@ -70,7 +70,7 @@ class Repository:
         """
         return to_reference({
             "uid": uid,
-            "storage_type": ResultType.repository_entry,
+            "storage_type": self.name,
             "experiment": get_reference(ExperimentModel(uid=self.id, name=self.name)),
             "backend_uri": self.pads.backend.uri,
             "run": get_reference(RunModel(uid=str(run_id))),
