@@ -182,12 +182,22 @@ class PyPadsResults(IResults):
             df = self.get_experiments_data_frame(experiment_ids=self.pypads.api.active_experiment().experiment_id)
 
         def _to_data(column):
+            def _get_max_step_metric(array):
+                max_step = array[0]
+                for element in array[1:]:
+                    if element.step > max_step.step:
+                        max_step = element
+
+                return max_step
+
             def get_data(val):
                 if hasattr(val, "storage_type"):
                     if getattr(val, "storage_type") in [ResultType.parameter, ResultType.metric, ResultType.tag]:
                         return getattr(val, "data")
 
                 if isinstance(val, list):
+                    if hasattr(val[0], "storage_type") and val[0].storage_type == ResultType.metric:
+                        return get_data(_get_max_step_metric(val))
                     return [get_data(x) for x in val]
                 return val
 
@@ -270,6 +280,7 @@ class PyPadsResults(IResults):
          Defaults to parameters, metrics and tags.
         :return:
         """
+
         if isinstance(run_ids, str):
             run_ids = {run_ids}
         elif isinstance(run_ids, list):
@@ -294,7 +305,8 @@ class PyPadsResults(IResults):
                     arr.append(row_)
                     entries[row_.storage_type.value + "_" + row_.name] = arr
 
-                row.update({key: (value[0] if len(value) == 1 else value)for key, value in entries.items()})
+                row.update({key: (value[0] if len(value) == 1 else value)
+                            for key, value in entries.items()})
 
             if not bool(row):
                 continue
