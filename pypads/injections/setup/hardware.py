@@ -181,7 +181,7 @@ class IGpuRSF(RunSetup):
 
     class IGpuRSFOutput(OutputModel):
         type: str = "IGpuRSF-Output"
-        gpu_usage: Optional[Union[uuid.UUID, str]] = ...  # GpuUsageTO
+        gpu_usage: Optional[IdReference] = ...  # GpuUsageTO
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
