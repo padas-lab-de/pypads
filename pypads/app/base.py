@@ -1,9 +1,7 @@
 import ast
 import atexit
 import importlib
-import os
 import pkgutil
-from os.path import expanduser
 from typing import List, Union, Callable
 
 import mlflow
@@ -16,6 +14,7 @@ from pypads.app.decorators import DecoratorPluginManager, PyPadsDecorators
 from pypads.app.misc.caches import PypadsCache
 from pypads.app.results import ResultPluginManager, results, PyPadsResults
 from pypads.app.validators import ValidatorPluginManager, validators, PyPadsValidators
+from pypads.arguments import PYPADS_FOLDER, PYPADS_URI
 from pypads.bindings.events import FunctionRegistry
 from pypads.bindings.hooks import HookRegistry
 from pypads.importext.mappings import MappingRegistry, MappingCollection
@@ -141,10 +140,10 @@ class PyPads:
         self._cache = pre_initialized_cache if pre_initialized_cache else PypadsCache()
 
         # Store folder into cache
-        self._cache.add("folder", folder or os.path.join(expanduser("~"), ".pypads"))
+        self._cache.add("folder", folder or PYPADS_FOLDER)
 
         # Store uri into cache
-        self._cache.add("uri", uri or os.environ.get('MLFLOW_PATH') or os.path.join(self.folder, ".mlruns"))
+        self._cache.add("uri", uri or PYPADS_URI)
 
         # Store config into cache
         self.config = {**DEFAULT_CONFIG, **config} if config else DEFAULT_CONFIG
