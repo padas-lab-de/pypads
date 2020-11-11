@@ -40,7 +40,7 @@ class IResults(Plugin):
 
 def result(f):
     """
-    Result used to convert a function to a tracked actuator.
+    Result used to convert a function to a tracked actuator.#
     :param f:
     :return:
     """
