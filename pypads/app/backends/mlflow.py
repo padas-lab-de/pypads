@@ -21,6 +21,7 @@ from pypads.model.models import ResultType, BaseStorageModel, to_reference, IdRe
     ExperimentModel, get_reference, RunModel
 from pypads.utils.logging_util import FileFormats, jsonable_encoder, store_tmp_artifact
 from pypads.utils.util import string_to_int, get_run_id
+from pypads.variables import MONGO_URL, MONGO_USER, MONGO_PW, MONGO_DB, mongo_db
 
 
 class MLFlowBackend(BackendInterface, metaclass=ABCMeta):
@@ -333,9 +334,9 @@ class RemoteMlFlowBackend(MLFlowBackend):
 
 class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
     def __init__(self, *args, **kwargs):
-        self._mongo_client = MongoClient(os.environ['MONGO_URL'], username=os.environ['MONGO_USER'],
-                                         password=os.environ['MONGO_PW'], authSource=os.environ['MONGO_DB'])
-        self._db = self._mongo_client[os.environ['MONGO_DB']]
+        self._mongo_client = MongoClient(os.environ[MONGO_URL], username=os.environ[MONGO_USER],
+                                         password=os.environ[MONGO_PW], authSource=os.environ[MONGO_DB])
+        self._db = self._mongo_client[os.environ[MONGO_DB]]
         super().__init__(*args, **kwargs)
 
     @staticmethod
@@ -441,12 +442,12 @@ class MLFlowBackendFactory:
     def make(uri) -> MLFlowBackend:
         from pypads.app.pypads import get_current_pads, get_current_config
         if uri.startswith("git://") or uri.startswith("/"):
-            if get_current_config()["mongo_db"]:
+            if get_current_config()[mongo_db]:
                 return MongoSupportedLocalMlFlowBackend(uri=uri, pypads=get_current_pads())
             else:
                 return LocalMlFlowBackend(uri=uri, pypads=get_current_pads())
         else:
-            if get_current_config()["mongo_db"]:
+            if get_current_config()[mongo_db]:
                 return MongoSupportedRemoteMlFlowBackend(uri=uri, pypads=get_current_pads())
             else:
                 return RemoteMlFlowBackend(uri=uri, pypads=get_current_pads())
