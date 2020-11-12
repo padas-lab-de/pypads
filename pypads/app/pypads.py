@@ -4,9 +4,10 @@ from typing import Union
 import mlflow
 
 from pypads import logger
-from pypads.app.base import PyPads, CONFIG_NAME
+from pypads.app.base import PyPads
 # Cache configs for runs. Each run could is for now static in it's config.
 from pypads.exceptions import UninitializedTrackerException
+from pypads.variables import CONFIG_NAME
 
 configs = {}
 current_pads = None

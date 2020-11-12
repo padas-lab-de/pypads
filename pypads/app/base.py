@@ -14,7 +14,7 @@ from pypads.app.decorators import DecoratorPluginManager, PyPadsDecorators
 from pypads.app.misc.caches import PypadsCache
 from pypads.app.results import ResultPluginManager, results, PyPadsResults
 from pypads.app.validators import ValidatorPluginManager, validators, PyPadsValidators
-from pypads.arguments import PYPADS_FOLDER, PYPADS_URI
+from pypads.arguments import PYPADS_FOLDER, PYPADS_URI, PARSED_CONFIG
 from pypads.bindings.events import FunctionRegistry
 from pypads.bindings.hooks import HookRegistry
 from pypads.importext.mappings import MappingRegistry, MappingCollection
@@ -25,6 +25,8 @@ from pypads.injections.setup.git import IGitRSF
 from pypads.injections.setup.hardware import ISystemRSF, IRamRSF, ICpuRSF, IDiskRSF, IPidRSF, ISocketInfoRSF, \
     IMacAddressRSF
 from pypads.injections.setup.misc_setup import DependencyRSF, LoguruRSF, StdOutRSF
+from pypads.variables import CONFIG_NAME, DEFAULT_EXPERIMENT_NAME, track_sub_processes, recursion_identity, \
+    recursion_depth, log_on_failure, include_default_mappings, mongo_db
 
 tracking_active = None
 
@@ -56,26 +58,21 @@ Logs loss and any other metrics specified in the fit
 # but define events on which different logging functions can listen.
 # This config defines such a listening structure.
 # {"recursive": track functions recursively. Otherwise check the callstack to only track the top level function.}
-DEFAULT_CONFIG = {
-    "track_sub_processes": False,
+DEFAULT_CONFIG = {**{
+    track_sub_processes: False,
     # Activate to track spawned subprocesses by extending the joblib. This is currently experimental.
-    "recursion_identity": False,
+    recursion_identity: False,
     # Activate to ignore tracking on recursive calls of the same function with the same mapping
-    "recursion_depth": -1,  # Limit the tracking of recursive calls
-    "log_on_failure": True,  # Log the stdout / stderr output when the execution of the experiment failed
-    "include_default_mappings": True,  # Include the default mappings additionally to the passed mapping if a mapping
+    recursion_depth: -1,  # Limit the tracking of recursive calls
+    log_on_failure: True,  # Log the stdout / stderr output when the execution of the experiment failed
+    include_default_mappings: True,  # Include the default mappings additionally to the passed mapping if a mapping
     # is passed
-    "mongo_db": True  # Use a mongo_db endpoint
-}
+    mongo_db: True  # Use a mongo_db endpoint
+}, **PARSED_CONFIG}
 
 DEFAULT_SETUP_FNS = {DependencyRSF(), LoguruRSF(), StdOutRSF(), IGitRSF(_pypads_timeout=3), ISystemRSF(), IRamRSF(),
                      ICpuRSF(),
                      IDiskRSF(), IPidRSF(), ISocketInfoRSF(), IMacAddressRSF()}
-
-# Tag name to save the config to in mlflow context.
-CONFIG_NAME = "pypads.config"
-
-DEFAULT_EXPERIMENT_NAME = "Default-PyPads"
 
 
 #  pypads isn't allowed to hold a state anymore (Everything with state should be part of the caching system)
