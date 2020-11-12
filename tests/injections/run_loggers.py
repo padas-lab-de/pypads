@@ -70,7 +70,7 @@ class PypadsInjectionLoggers(BaseTest):
         from pypads.app.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER, config=config, autostart=True)
 
-        tracker.api.register_teardown(name= "test_teardown", post_fn=TestLogger())
+        tracker.api.register_teardown(name="test_teardown", post_fn=TestLogger())
         # --------------------------- asserts ---------------------------
         self.assertFalse(flag)
         tracker.api.end_run()

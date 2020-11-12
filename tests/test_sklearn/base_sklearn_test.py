@@ -7,23 +7,16 @@ def sklearn_simple_decision_tree_experiment(min_samples_leaf=1):
     from sklearn import datasets
     from sklearn.tree import DecisionTreeClassifier
 
-    print("Imports done!")
-
     # load the iris datasets
     dataset = datasets.load_iris()
 
-    print("Dataset loaded!")
-
     # fit a model to the data
     model = DecisionTreeClassifier(min_samples_leaf=min_samples_leaf)
-    print("Model initialized!")
     model.fit(dataset.data, dataset.target)
-    print("Model trained!")
 
     # make predictions
     expected = dataset.target
     predicted = model.predict(dataset.data)
-    print("Predicted!")
 
     # summarize the fit of the model
     from sklearn.metrics.classification import f1_score

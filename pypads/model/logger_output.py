@@ -112,6 +112,7 @@ class ParameterMetaModel(MetadataModel):
     category: str = "HyperParameter"
     storage_type: Union[ResultType, str] = ResultType.parameter
     data: Optional[str] = ...  # str representation of the parameter or path to artifact
+    is_a: Optional[str]  # str representation of the parameter type
 
     class Config:
         orm_mode = True

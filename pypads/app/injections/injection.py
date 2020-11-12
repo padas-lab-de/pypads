@@ -78,7 +78,18 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
         logger_call: Union[InjectionLoggerCall, FallibleMixin] = self._get_logger_call(_pypads_env)
         output = self.build_output(_pypads_env, logger_call)
 
+        kwargs_ = {**self.static_parameters, **_pypads_hook_params}
+
         try:
+            # Set environment information into cache
+            _environment_information = {"ctx": ctx, "_args": args, "_pypads_env": _pypads_env,
+                                        "_logger_call": logger_call,
+                                        "_logger_output": output, "_kwargs": kwargs,
+                                        "_pypads_input_results": _pypads_input_results,
+                                        "_pypads_cached_results": _pypads_cached_results,
+                                        "kwargs": kwargs_}
+            _pypads_env.pypads.cache.run_add(id(output), _environment_information)
+
             # Trigger pre run functions
             _pre_result, pre_time = self._pre(ctx, _pypads_env=_pypads_env,
                                               _logger_output=output,
@@ -86,14 +97,18 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
                                               _pypads_input_results=_pypads_input_results,
                                               _pypads_cached_results=_pypads_cached_results,
                                               _args=args,
-                                              _kwargs=kwargs, **{**self.static_parameters, **_pypads_hook_params})
+                                              _kwargs=kwargs, **kwargs_)
             logger_call.pre_time = pre_time
+
+            _environment_information.update({"_pre_result": _pre_result})
 
             # Trigger function itself
             _return, time = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _logger_call=logger_call,
                                                   _logger_output=output, _args=args,
                                                   _kwargs=kwargs)
             logger_call.child_time = time
+
+            _environment_information.update({"_pypads_result": _return})
 
             # Trigger post run functions
             _post_result, post_time = self._post(ctx, _pypads_env=_pypads_env,
@@ -104,8 +119,10 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
                                                  _pypads_input_results=_pypads_input_results,
                                                  _pypads_cached_results=_pypads_cached_results,
                                                  _args=args,
-                                                 _kwargs=kwargs, **{**self.static_parameters, **_pypads_hook_params})
+                                                 _kwargs=kwargs, **kwargs_)
             logger_call.post_time = post_time
+
+            _environment_information.update({"_post_result": _post_result})
         except Exception as e:
             logger_call.failed = str(e)
             if output:
@@ -115,6 +132,7 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
             self._store_results(output, logger_call)
+            _pypads_env.pypads.cache.run_remove(id(output))
         return self._get_return_value(_return, _post_result)
 
     def _get_logger_call(self, _pypads_env) -> Union[InjectionLoggerCall, FallibleMixin]:
@@ -253,6 +271,7 @@ class MultiInjectionLogger(DelayedResultsMixin, InjectionLogger, SuperStop, meta
         else:
             return super().build_output(_pypads_env, _logger_call)
 
+    # noinspection DuplicatedCode
     def __real_call__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, _pypads_input_results,
                       _pypads_cached_results, **kwargs):
         _pypads_hook_params = _pypads_env.parameter
@@ -261,7 +280,18 @@ class MultiInjectionLogger(DelayedResultsMixin, InjectionLogger, SuperStop, meta
             _pypads_env)
         output = self.build_output(_pypads_env, logger_call)
 
+        kwargs_ = {**self.static_parameters, **_pypads_hook_params}
+
         try:
+            # Set environment information into cache
+            _environment_information = {"ctx": ctx,
+                                        "_args": args, "_pypads_env": _pypads_env, "_logger_call": logger_call,
+                                        "_logger_output": output, "_kwargs": kwargs,
+                                        "_pypads_input_results": _pypads_input_results,
+                                        "_pypads_cached_results": _pypads_cached_results,
+                                        "kwargs": kwargs_}
+            _pypads_env.pypads.cache.run_add(id(output), _environment_information)
+
             # Trigger pre run functions
             _pre_result, pre_time = self._pre(ctx, _pypads_env=_pypads_env,
                                               _logger_output=output,
@@ -269,13 +299,17 @@ class MultiInjectionLogger(DelayedResultsMixin, InjectionLogger, SuperStop, meta
                                               _pypads_input_results=_pypads_input_results,
                                               _pypads_cached_results=_pypads_cached_results,
                                               _args=args,
-                                              _kwargs=kwargs, **{**self.static_parameters, **_pypads_hook_params})
+                                              _kwargs=kwargs, **kwargs_)
             logger_call.pre_time += pre_time
+
+            _environment_information.update({"_pre_result": _pre_result})
 
             # Trigger function itself
             _return, time = self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _logger_call=logger_call,
                                                   _logger_output=output, _args=args, _kwargs=kwargs)
             logger_call.child_time += time
+
+            _environment_information.update({"_pypads_result": _return})
 
             # Trigger post run functions
             _post_result, post_time = self._post(ctx, _pypads_env=_pypads_env,
@@ -288,6 +322,8 @@ class MultiInjectionLogger(DelayedResultsMixin, InjectionLogger, SuperStop, meta
                                                  _args=args,
                                                  _kwargs=kwargs, **{**self.static_parameters, **_pypads_hook_params})
             logger_call.post_time += post_time
+
+            _environment_information.update({"_post_result": _post_result})
         except Exception as e:
             logger_call.failed = str(e)
             if output:
@@ -297,6 +333,7 @@ class MultiInjectionLogger(DelayedResultsMixin, InjectionLogger, SuperStop, meta
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
             self._store_results(output, logger_call)
+            _pypads_env.pypads.cache.run_remove(id(output))
         return self._get_return_value(_return, _post_result)
 
 

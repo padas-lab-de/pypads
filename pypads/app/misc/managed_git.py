@@ -1,10 +1,11 @@
 import os
 import pathlib
 
+from git import InvalidGitRepositoryError, GitCommandError, GitError
+
 from pypads import logger
 from pypads.app.misc.mixins import DefensiveCallableMixin, DependencyMixin
 from pypads.utils.util import persistent_hash
-from git import InvalidGitRepositoryError, GitCommandError, GitError
 
 
 class ManagedGitFactory(DefensiveCallableMixin, DependencyMixin):
@@ -71,26 +72,29 @@ class ManagedGit:
         Creates a patch without changing anything on the state of the current repository
         :return: patch, a name for the patch and it's hash
         """
-        orig_branch = self.repo.active_branch.name
+        # orig_branch = self.repo.active_branch.name
+        #
+        # # push untracked changes to the stash)
+        # files = list(
+        #     set([item.a_path for item in self.repo.index.diff('HEAD')]) |
+        #     set([item.a_path for item in self.repo.index.diff(None)]) |
+        #     set(self.repo.untracked_files))
+        # # files = [item.a_path for item in untracked_files]
+        # try:
+        #     for f in files:
+        #         self.repo.git.add(f)
+        #     self.repo.git.stash('push', '--keep-index')
+        #
+        #     # generate the diff patch
+        #     patch = self.repo.git.stash('show', '-p')
+        #     diff_hash = persistent_hash(patch)
+        # finally:
+        #     # Remove temporary tracked files
+        #     for f in files:
+        #         self.repo.git.reset(f)
 
-        # push untracked changes to the stash)
-        files = list(
-            set([item.a_path for item in self.repo.index.diff('HEAD')]) |
-            set([item.a_path for item in self.repo.index.diff(None)]) |
-            set(self.repo.untracked_files))
-        # files = [item.a_path for item in untracked_files]
-        try:
-            for f in files:
-                self.repo.git.add(f)
-            self.repo.git.stash('push', '--keep-index')
-
-            # generate the diff patch
-            patch = self.repo.git.stash('show', '-p')
-            diff_hash = persistent_hash(patch)
-        finally:
-            # Remove temporary tracked files
-            for f in files:
-                self.repo.git.reset(f)
+        patch = self.repo.git.diff('HEAD')
+        diff_hash = persistent_hash(patch)
         return patch, diff_hash
 
     def restore_patch(self, patch):

@@ -12,25 +12,16 @@ from pypads.model.models import IdReference
 from pypads.utils.logging_util import data_str, data_path, add_data
 
 
-class ParametersILFOutput(OutputModel):
-    """
-    Output of the logger. An output can reference multiple Tracked Objects or Values directly. In this case a own
-    tracked object doesn't give a lot of benefit but enforcing a description a name and a category and could be omitted.
-    """
-    type: str = "ParametersILF-Output"
-    hyper_parameter_to: IdReference = ...
-
-
-class ParametersTO(TrackedObject):
+class FunctionParametersTO(TrackedObject):
     """
     Tracking object class for model hyper parameters.
     """
 
-    class HyperParameterModel(TrackedObjectModel):
+    class FunctionParametersModel(TrackedObjectModel):
         type: str = "ModelHyperParameter"
         description = "The parameters of the experiment."
-        ml_model: ContextModel = ...
         estimator: str = ...
+        ml_model: ContextModel = ...
         hyper_parameters: List[IdReference] = []
 
     def __init__(self, *args, parent: Union[OutputModel, 'TrackedObject'], **kwargs):
@@ -39,9 +30,9 @@ class ParametersTO(TrackedObject):
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
-        return cls.HyperParameterModel
+        return cls.FunctionParametersModel
 
-    def persist_parameter(self: Union['ParametersTO', HyperParameterModel], key, value, param_type=None,
+    def persist_parameter(self: Union['FunctionParametersTO', FunctionParametersModel], key, value, param_type=None,
                           description=None, additional_data=None):
         """
         Persist a new parameter to the tracking object.
@@ -53,9 +44,8 @@ class ParametersTO(TrackedObject):
         :param additional_data: Additional data to store about the parameter.
         :return:
         """
-        name = self.ml_model.reference + "." + key
-        description = description or "Parameter {} of context {}".format(name, self.ml_model)
-        self.hyper_parameters.append(self.store_param(name, value, param_type=param_type, description=description,
+        description = description or "Parameter named {} of context {}".format(key, self.ml_model)
+        self.hyper_parameters.append(self.store_param(key, value, param_type=param_type, description=description,
                                                       additional_data=additional_data))
 
 
@@ -110,45 +100,83 @@ class ParametersILF(InjectionLogger):
     name = "Parameter Logger"
     type: str = "ParameterLogger"
 
+    class ParametersILFOutput(OutputModel):
+        """
+        Output of the logger. An output can reference multiple Tracked Objects or Values directly. In this case a own
+        tracked object doesn't give a lot of benefit but enforcing a description a name and a category and could be omitted.
+        """
+        type: str = "ParametersILF-Output"
+        hyper_parameter_to: IdReference = ...
+
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
-        return ParametersILFOutput
+        return cls.ParametersILFOutput
 
     def __post__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, _logger_call,
                  _logger_output: Union['ParametersILFOutput', LoggerOutput], **kwargs):
         """
         Function logging the parameters of the current pipeline object function call.
         """
-        hyper_params = ParametersTO(parent=_logger_output)
 
         mapping_data = _pypads_env.data
 
-        if 'estimator' not in mapping_data or 'parameters' not in mapping_data['estimator']:
-            logger.warning("No parameters are defined on the mapping file for " + str(
-                ctx.__class__) + ". Trying to log parameters without schema definition programmatically.")
-            for key, value in ctx.get_params().items():
-                hyper_params.persist_parameter(key, value)
-            hyper_params.estimator = ctx.__class__.__name__
-        else:
-            hyper_params.estimator = data_str(mapping_data, "estimator", "@schema", "rdfs:label",
-                                              default=ctx.__class__.__name__)
+        # Get the estimator name
+        estimator = data_str(mapping_data, "estimator", "@schema", "rdfs:label",
+                             default=ctx.__class__.__name__)
 
+        hyper_params = FunctionParametersTO(estimator=estimator,
+                                            description=f"The parameters of estimator {estimator} with {ctx}.",
+                                            parent=_logger_output)
+
+        # List of parameters to extract. Either provided by a mapping file or by get_params function or by _kwargs
+        relevant_parameters = []
+
+        if data_path(_pypads_env.data, "estimator", "parameters",
+                     warning="No parameters are defined on the mapping file for " + str(
+                         ctx.__class__) + ". Trying to log parameters without schema definition programmatically."):
+            relevant_parameters = []
             for parameter_type, parameters in data_path(mapping_data, "estimator", "parameters", default={}).items():
                 for parameter in parameters:
                     parameter = data_path(parameter, "@schema")
                     key = data_path(parameter, "padre:path")
-                    if key is not None and hasattr(ctx, key):
-                        value = getattr(ctx, key)
-                        description = data_path(parameter, "rdfs:description",
-                                                default="No description in mapping file.")
-                        parameter_type = data_path(parameter, "padre:value_type", default=str(type(value)))
+                    name = data_path(parameter, "rdfs:label")
 
-                        # TODO Add data for rdf - better separation of concerns
-                        add_data(mapping_data, "@rdf", "@type", value=data_path(parameter, "@id"))
-                        hyper_params.persist_parameter(key, value, parameter_type, description,
-                                                       additional_data=mapping_data)
+                    param_dict = {"name": name,
+                                  "description": data_path(parameter, "rdfs:comment"),
+                                  "parameter_type": data_path(parameter, "padre:value_type")}
+
+                    if hasattr(ctx, key):
+                        value = getattr(ctx, key)
                     else:
-                        logger.warning(
-                            f"Couldn't access im mapping file defined parameter {parameter} on {ctx.__class__}")
+                        _kwargs = getattr(kwargs, "_kwargs")
+                        if hasattr(_kwargs, key):
+                            value = getattr(_kwargs, key)
+                        else:
+                            logger.warning(f"Couldn't extract value of in schema defined parameter {parameter}.")
+                            continue
+                    param_dict["value"] = value
+                    add_data(mapping_data, "is_a", value=data_path(parameter, "@id"))
+                    relevant_parameters.append(param_dict)
+
+        else:
+            get_params = getattr(self, "get_params", None)
+            if callable(get_params):
+
+                # Extracting via get_params (valid for sklearn)
+                relevant_parameters = [{"name": k, "value": v} for k, v in ctx.get_params().items()]
+            else:
+
+                # Trying to get at least the named arguments
+                relevant_parameters = [{"name": k, "value": v} for k, v in
+                                       getattr(kwargs, "_kwargs", {}).items()]
+
+        for i, param in enumerate(relevant_parameters):
+            name = data_path(_pypads_env.data, "name", default="UnknownParameter" + str(i))
+            description = data_path(_pypads_env.data, "description")
+            value = data_path(_pypads_env.data, "value")
+            parameter_type = data_path(_pypads_env.data, "parameter_type", default=str(type(value)))
+
+            hyper_params.persist_parameter(name, value, param_type=parameter_type, description=description,
+                                           additional_data=mapping_data)
 
         _logger_output.hyper_parameter_to = hyper_params.store()
