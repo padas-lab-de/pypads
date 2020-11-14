@@ -380,6 +380,81 @@ mappings:
           '@rdf':
             in_context: http://www.padre-lab.eu/onto/Dataset
         hooks: pypads_dataset
+      !!python/rSeg 'load_iris':
+        data:
+          dataset:
+            "@schema":
+              '@id': padre:Iris
+              '@type': padre:MultivariatDataset
+              padre:documentation: https://scikit-learn.org/stable/datasets/index.html#iris-dataset
+              padre:author: R.A. Fisher
+              rdfs:label: Iris plants dataset
+              rdfs:description: The famous Iris database, first used by Sir R.A. Fisher. The dataset is taken from Fisher’s paper. Note that it’s the same as in R, but not as in the UCI Machine Learning Repository, which has two wrong data points. This is perhaps the best known database to be found in the pattern recognition literature. Fisher’s paper is a classic in the field and is referenced frequently to this day. (See Duda & Hart, for example.) The data set contains 3 classes of 50 instances each, where each class refers to a type of iris plant. One class is linearly separable from the other 2; the latter are NOT linearly separable from each other.
+              padre:hasCharacteristic:
+                - '@id': padre:Iris#InstanceNumber
+                  '@type': padre:InstanceNumber
+                  rdfs:label: Instance Number
+                  padre:dataType: padre:Integer
+                  padre:hasData: 150
+                - '@id': padre:Iris#ClassDistribution
+                  '@type': padre:ClassDistribution
+                  rdfs:label: Class Distribution
+                  padre:dataType: padre:Float
+                  padre:hasData:
+                    - '@id': padre:Iris#SetosaShare
+                      '@type': padre:ClassShare
+                      padre:share: 33.3
+                      padre:of: padre:Iris#Setosa
+                    - '@id': padre:Iris#VersicolourShare
+                      '@type': padre:ClassShare
+                      padre:share: 33.3
+                      padre:of: padre:Iris#Versicolour
+                    - '@id': padre:Iris#VirginicaShare
+                      '@type': padre:ClassShare
+                      padre:share: 33.3
+                      padre:of: padre:Iris#Virginica
+              padre:hasFeature:
+                - '@id': padre:Iris#SepalLength
+                  '@type': padre:Feature
+                  rdfs:label: Sepal Length
+                  padre:unitType: padre:Length
+                  padre:unit: padre:CentiMeter
+                  padre:dataType: padre:Integer
+                  padre:measurement: padre:Ratio
+                - '@id': padre:Iris#SepalWidth
+                  '@type': padre:Feature
+                  rdfs:label: Sepal Width
+                  padre:unitType: padre:Length
+                  padre:unit: padre:CentiMeter
+                  padre:dataType: padre:Integer
+                  padre:measurement: padre:Ratio
+                - '@id': padre:Iris#PetalLength
+                  '@type': padre:Feature
+                  rdfs:label: Petal Length
+                  padre:unitType: padre:Length
+                  padre:unit: padre:CentiMeter
+                  padre:dataType: padre:Integer
+                  padre:measurement: padre:Ratio
+                - '@id': padre:Iris#PetalWidth
+                  '@type': padre:Feature
+                  rdfs:label: Petal Width
+                  padre:unitType: padre:Length
+                  padre:unit: padre:CentiMeter
+                  padre:dataType: padre:Integer
+                  padre:measurement: padre:Ratio
+                - '@id': padre:Iris#Class
+                  '@type': padre:Classification
+                  rdfs:label: Classification
+                  padre:dataType: padre:Character
+                  padre:measurement: padre:Nominal
+                  padre:hasClass:
+                    - '@id': padre:Iris#Setosa
+                      '@type': padre:ClassData
+                    - '@id': padre:Iris#Versicolour
+                      '@type': padre:ClassData
+                    - '@id': padre:Iris#Virginica
+                      '@type': padre:ClassData
+        hooks: pypads_dataset
     !!python/pPath 'model_selection':
       !!python/pPath '_search.BaseSearchCV':
         !!python/pPath 'fit':
