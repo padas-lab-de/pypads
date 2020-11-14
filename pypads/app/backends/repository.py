@@ -295,6 +295,8 @@ class RepositoryObject:
         return os.path.join(self.repository.id, self.run_id)
 
     def get_rel_artifact_path(self, path):
+        if isinstance(self.pads.backend, MongoSupportMixin):
+            return path.id
         return os.path.join(self.get_rel_base_path(), "artifacts", str(path))
 
 
