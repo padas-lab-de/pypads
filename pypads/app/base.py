@@ -104,7 +104,8 @@ class PyPads:
         self._instance_modifiers = []
 
         if disable_plugins is None:
-            disable_plugins = []
+            # Temporarily disabling pypads_onto
+            disable_plugins = ['pypads_onto']
         for name, plugin in discovered_plugins.items():
             if name not in disable_plugins:
                 plugin.activate(self, *args, **kwargs)
