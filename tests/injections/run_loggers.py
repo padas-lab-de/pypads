@@ -12,7 +12,7 @@ def dummy_function():
     return "I'm a return value"
 
 
-class dummy_output(OutputModel):
+class DummyOutput(OutputModel):
     """
     Dummy output model for testing.
     """
