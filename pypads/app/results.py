@@ -13,6 +13,14 @@ from pypads.utils.logging_util import read_artifact, FileFormats
 result_plugins = set()
 result_set = set()
 
+from enum import Enum
+
+
+class OperatorType(Enum):
+    OR = '$or'
+    AND = '$AND'
+    NOT = '$NOT'
+
 
 class Result(FunctionHolderMixin, metaclass=ABCMeta):
 
@@ -252,10 +260,12 @@ class PyPadsResults(IResults):
                 all_runs = all_runs[:limit]
                 break
 
+        # We need to filter the runs based on the query here
+
         return self.get_data_frame([r.run_id for r in all_runs], inclusion_dicts=inclusion_dicts)
 
     @result
-    def get_run_ids_by_search(self, search_dict) -> set:
+    def get_run_ids_by_search(self, search_dict, experiment_name=None) -> set:
         """
         Search for run ids by a search dict.
         The search dict has to contain a storage_type to denote which collection to search through.
@@ -263,14 +273,48 @@ class PyPadsResults(IResults):
         :return:
         """
         # TODO are there more complex searches we don't know about possible?
-        if "$or" in search_dict:
-            dicts = search_dict["$or"]
-            out = set()
-            for d in dicts:
-                out.union(self.get_run_ids_by_search(d))
-            return out
-        else:
-            return {obj.run.uid for obj in self._get_by_dict(search_dict)}
+
+        uids = set()
+
+        if 'storage_type' in search_dict.keys():
+            uids = self._get_by_dict(search_dict={**{'experiment.name': experiment_name}, **search_dict,
+                                                  'chosen_columns': {"run.uid": 1, "_id": 0}})
+            uids = [x.get('run').get('uid') for x in uids]
+            return uids
+
+        all_runs = set()
+        for key, queries in search_dict.items():
+
+            uids = set()
+
+            if key == OperatorType.OR and isinstance(queries, list):
+                for query in queries:
+                    run_uids = self.get_run_ids_by_search(search_dict=query, experiment_name=experiment_name)
+                    uids = uids.union(run_uids)
+
+            elif key == OperatorType.AND and isinstance(queries, list):
+                for query in queries:
+                    run_uids = self.get_run_ids_by_search(search_dict=query, experiment_name=experiment_name)
+                    if not uids:
+                        uids = set(run_uids)
+                    else:
+                        uids = uids.intersection(run_uids)
+
+            elif key == OperatorType.NOT and not isinstance(queries, list):
+                # Get the list of all the runs for the experiment
+                if len(all_runs):
+                    # TODO: Find a better way to get all the runs rather than using the tag
+                    all_runs = set(self.get_run_ids_by_search(search_dict={ResultType.tag.value},
+                                                              experiment_name=experiment_name))
+                run_uids = self.get_run_ids_by_search(search_dict=queries, experiment_name=experiment_name)
+                if run_uids is None:
+                    return None
+                uids = all_runs.difference(run_uids)
+
+            else:
+                return set()
+
+        return uids
 
     @result
     def get_data_frame(self, run_ids, inclusion_dicts=None):

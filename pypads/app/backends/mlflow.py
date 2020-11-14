@@ -401,8 +401,10 @@ class MongoSupportMixin(BackendInterface, SuperStop, metaclass=ABCMeta):
             search_dict["experiment.uid"] = experiment_name
         if run_id:
             search_dict["run.uid"] = run_id
+        chosen_columns = search_dict.pop('chosen_columns', None)
         return self._get_entry_generator(
-            self._db[storage_type if isinstance(storage_type, str) else storage_type.value].find(search_dict))
+            self._db[storage_type if isinstance(storage_type, str) else storage_type.value].find(search_dict,
+                                                                                                 chosen_columns))
 
     def get(self, uid, storage_type: Union[str, ResultType], experiment_name=None, experiment_id=None, run_id=None,
             search_dict=None):
