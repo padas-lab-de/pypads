@@ -263,7 +263,7 @@ class TrackedObject(ChildResultHolderMixin, ProvenanceMixin):
         return super().store()
 
 
-class MetricTO(ChildResultMixin, ModelObject, SuperStop):
+class Metric(ChildResultMixin, ModelObject, SuperStop):
     """
     Metric Tracking Object to be stored in MongoDB itself. The data value is mirrored into mlflow.
     """
@@ -276,7 +276,7 @@ class MetricTO(ChildResultMixin, ModelObject, SuperStop):
         return MetricMetaModel
 
 
-class ParameterTO(ChildResultMixin, ModelObject, SuperStop):
+class Parameter(ChildResultMixin, ModelObject, SuperStop):
     """
     Parameter Tracking Object to be stored in MongoDB itself. The data value is mirrored into mlflow.
     """
@@ -289,7 +289,7 @@ class ParameterTO(ChildResultMixin, ModelObject, SuperStop):
         return ParameterMetaModel
 
 
-class ArtifactTO(ChildResultMixin, ModelObject, SuperStop):
+class Artifact(ChildResultMixin, ModelObject, SuperStop):
     """
     Artifact to be stored into MongoDB the content is just a path reference to the artifact in mlflow.
     """
@@ -302,7 +302,7 @@ class ArtifactTO(ChildResultMixin, ModelObject, SuperStop):
     def get_model_cls(cls) -> Type[BaseModel]:
         return ArtifactMetaModel
 
-    def content(self: Union['ArtifactTO', ArtifactMetaModel]):
+    def content(self: Union['Artifact', ArtifactMetaModel]):
         if self._content is not None:
             return self._content
         from pypads.app.pypads import get_current_pads
@@ -310,7 +310,7 @@ class ArtifactTO(ChildResultMixin, ModelObject, SuperStop):
         return pads.backend.load_artifact_data(self.run.uid, self.data)
 
 
-class TagTO(ChildResultMixin, ModelObject, SuperStop):
+class Tag(ChildResultMixin, ModelObject, SuperStop):
     """
     Tag to be stored in MongoDB the content is generally the tag value store in mlflow.
     """

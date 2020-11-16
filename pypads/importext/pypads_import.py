@@ -104,6 +104,8 @@ def duck_punch_loader(spec):
                     if len(mappings) > 0:
                         current_pads.wrap_manager.wrap(obj, Context(module, reference),
                                                        {MatchedMapping(mapping, package.path) for mapping in mappings})
+            if reference in current_pads.wrap_manager.module_wrapper.punched_module_names:
+                logger.info(f"PyPads wrapped functions of module {reference}.")
         return out
 
     spec.loader.exec_module = types.MethodType(exec_module, spec.loader)

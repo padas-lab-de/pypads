@@ -10,7 +10,7 @@ from pypads import logger
 from pypads.app.env import LoggerEnv
 from pypads.app.injections.base_logger import dummy_logger
 from pypads.app.injections.run_loggers import RunSetup, RunTeardown, SimpleRunFunction
-from pypads.app.injections.tracked_object import LoggerOutput, ParameterTO, TagTO, ArtifactTO, MetricTO
+from pypads.app.injections.tracked_object import LoggerOutput, Parameter, Tag, Artifact, Metric
 from pypads.app.misc.caches import Cache
 from pypads.app.misc.extensions import ExtendableMixin, Plugin
 from pypads.app.misc.mixins import FunctionHolderMixin
@@ -198,8 +198,8 @@ class PyPadsApi(IApi):
         """
         if holder is None:
             holder = self.get_programmatic_output()
-        ato = ArtifactTO(value=artifact_path, description=description, file_format=find_file_format(local_path),
-                         additional_data=additional_data, parent=holder)
+        ato = Artifact(value=artifact_path, description=description, file_format=find_file_format(local_path),
+                       additional_data=additional_data, parent=holder)
         out = self.pypads.backend.log_artifact(ato, local_path)
         holder.add_result(ato)
         return out
@@ -221,8 +221,8 @@ class PyPadsApi(IApi):
         """
         if holder is None:
             holder = self.get_programmatic_output()
-        return ArtifactTO(data=path, content=obj, description=description, file_format=write_format,
-                          additional_data=additional_data, parent=holder).store()
+        return Artifact(data=path, content=obj, description=description, file_format=write_format,
+                        additional_data=additional_data, parent=holder).store()
 
     @cmd
     def log_metric(self, key, value, description="", step=0, additional_data: dict = None, holder=None):
@@ -239,8 +239,8 @@ class PyPadsApi(IApi):
         """
         if holder is None:
             holder = self.get_programmatic_output()
-        return MetricTO(name=key, step=step, data=value, description=description, additional_data=additional_data,
-                        parent=holder).store()
+        return Metric(name=key, step=step, data=value, description=description, additional_data=additional_data,
+                      parent=holder).store()
 
     @cmd
     def log_param(self, key, value, value_format=None, description="", additional_data: dict = None, holder=None):
@@ -257,9 +257,9 @@ class PyPadsApi(IApi):
         """
         if holder is None:
             holder = self.get_programmatic_output()
-        return ParameterTO(name=key, value_format=value_format or str(type(value)),
-                           description=description, additional_data=additional_data,
-                           data=value, parent=holder).store()
+        return Parameter(name=key, value_format=value_format or str(type(value)),
+                         description=description, additional_data=additional_data,
+                         data=value, parent=holder).store()
 
     @cmd
     def set_tag(self, key, value, value_format="string", description="", additional_data: dict = None,
@@ -277,10 +277,10 @@ class PyPadsApi(IApi):
         """
         if holder is None:
             holder = self.get_programmatic_output()
-        return TagTO(name=key, value_format=value_format or str(type(value)),
-                     description=description, additional_data=additional_data,
-                     data=value,
-                     parent=holder).store()
+        return Tag(name=key, value_format=value_format or str(type(value)),
+                   description=description, additional_data=additional_data,
+                   data=value,
+                   parent=holder).store()
 
     @cmd
     def artifact(self, name):

@@ -98,9 +98,12 @@ class PyPads:
 
     def __init__(self, uri=None, folder=None, mappings: List[MappingCollection] = None, hooks=None,
                  events=None, setup_fns=None, config=None, pre_initialized_cache: PypadsCache = None,
-                 disable_plugins=None, autostart=None, *args, **kwargs):
+                 disable_plugins=None, autostart=None, log_level="WARNING", *args, **kwargs):
         from pypads.app.pypads import set_current_pads
         set_current_pads(self)
+
+        from pypads.pads_loguru import logger_manager
+        self._default_logger = logger_manager.add_default_logger(level=log_level)
 
         self._instance_modifiers = []
 
@@ -203,6 +206,7 @@ class PyPads:
         def cleanup():
             from pypads.app.pypads import get_current_pads
             pads: PyPads = get_current_pads()
+
             if pads.api.active_run():
                 pads.api.end_run()
 
@@ -676,6 +680,10 @@ class PyPads:
                 mlflow.end_run()
                 self.api.start_run(experiment_id=experiment.experiment_id)
         return self
+
+    def remove_default_logger(self):
+        from pypads.pads_loguru import logger_manager
+        logger_manager.remove(level=self._default_logger)
 
 
 # --- Pypads Plugins ---
