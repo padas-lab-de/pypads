@@ -21,26 +21,28 @@ class FunctionWrapper(BaseWrapper):
         if (fn.__name__.startswith("__") or fn.__name__.startswith("_pypads")) and fn.__name__ is not "__init__":
             return fn
 
-        dirty = False
+        added_mappings = set()
 
         for matched_mapping in matched_mappings:
             if not context.has_wrap_meta(matched_mapping.mapping, fn):
                 context.store_wrap_meta(matched_mapping, fn)
-                dirty = True
+                added_mappings.add(matched_mapping)
 
-        if dirty:
+        if len(added_mappings) > 0:
             if not context.has_original(fn) or not context.defined_stored_original(fn):
                 context.store_original(fn)
 
             if context.is_class():
-                return self._wrap_on_class(fn, context, matched_mappings)
+                return self._wrap_on_class(fn, context, added_mappings)
             elif hasattr(context.container, fn.__name__):
-                return self._wrap_on_object(fn, context, matched_mappings)
+                return self._wrap_on_object(fn, context, added_mappings)
             else:
                 logger.warning(str(
                     context) + " is no class and doesn't provide attribute with name " + str(
                     fn.__name__) + ". Couldn't access " + str(
                     fn) + " on it.")
+        else:
+            return fn
 
     def _wrap_on_object(self, fn, context: Context, mappings: Set[MatchedMapping]):
         # Add module of class to the changed modules
@@ -114,7 +116,8 @@ class FunctionWrapper(BaseWrapper):
         try:
             current_call: Call = self._pypads.call_tracker.current_call()
             # if current_call and (accessor.is_call_identity(current_call.call_id) or fn_reference.is_wrapped()):
-            if not fn_reference.context.original(fn_reference.wrappee) == fn_reference.wrappee and current_call is not None:
+            if not fn_reference.context.original(
+                    fn_reference.wrappee) == fn_reference.wrappee and current_call is not None:
                 call = current_call
             else:
                 call = add_call(accessor)

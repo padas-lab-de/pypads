@@ -151,9 +151,7 @@ class MlFlowAutoILF(InjectionLogger):
             for destination, patch in mlflow_auto_log_fns[_pypads_env.call.call_id.wrappee.__name__].items():
                 if destination == _pypads_env.call.call_id.context.container or issubclass(
                         _pypads_env.call.call_id.context.container, destination):
-                    from pypads.importext.wrapping.base_wrapper import Context
-                    # Jump directly to the original function
-                    mlflow_auto_log_callbacks.append(Context(destination).original(getattr(destination, patch.name)))
+                    mlflow_auto_log_callbacks.append(OriginalExecutor(fn=_pypads_env.callback))
 
                     def fn(*args, **kwargs):
                         return patch.obj(ctx, *args, **kwargs)

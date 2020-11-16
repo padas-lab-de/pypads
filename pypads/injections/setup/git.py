@@ -55,7 +55,7 @@ class IGitRSF(RunSetup):
 
     class IGitRSFOutput(OutputModel):
         type: str = "IGitRSF-Output"
-        git_info: IdReference = None
+        git_info: Optional[IdReference] = None
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
@@ -71,21 +71,21 @@ class IGitRSF(RunSetup):
             managed_git: ManagedGit = pads.managed_git_factory(source_name)
             if managed_git:
                 repo = managed_git.repo
-                git_info = GitTO(parent=_logger_output, source=source_name or repo.working_dir,
-                                 version=repo.head.commit.hexsha)
 
-                # Persist local changes into a patch file
-                if managed_git.has_changes():
-                    patch, patch_hash = managed_git.create_patch()
-                    git_info.add_tag(PYPADS_GIT_UNCOMMITTED_CHANGES, patch_hash,
-                                     description="A hash of the patch including uncommitted changes.")
-                    git_info.patch = git_info.store_mem_artifact("git_stash", patch, write_format="patch",
-                                                                 description="A patch file including uncommitted "
-                                                                             "changes")
-
-                # Disable pager for returns
-                repo.git.set_persistent_git_options(no_pager=True)
                 try:
+                    git_info = GitTO(parent=_logger_output, source=source_name or repo.working_dir,
+                                     version=repo.head.commit.hexsha)
+                    # Persist local changes into a patch file
+                    if managed_git.has_changes():
+                        patch, patch_hash = managed_git.create_patch()
+                        git_info.add_tag(PYPADS_GIT_UNCOMMITTED_CHANGES, patch_hash,
+                                         description="A hash of the patch including uncommitted changes.")
+                        git_info.patch = git_info.store_mem_artifact("git_stash", patch, write_format="patch",
+                                                                     description="A patch file including uncommitted "
+                                                                                 "changes")
+
+                    # Disable pager for returns
+                    repo.git.set_persistent_git_options(no_pager=True)
                     git_info.add_tag(PYPADS_SOURCE_COMMIT_HASH, managed_git.commit_hash)
                     git_info.add_tag(PYPADS_GIT_BRANCH, managed_git.branch)
                     git_info.add_tag(PYPADS_GIT_DESC, repo.description, description="Repository description")
@@ -98,7 +98,7 @@ class IGitRSF(RunSetup):
                         for remote in remotes:
                             remote_out += remote.name + ": " + remote.url + "\n"
                     git_info.add_tag(PYPADS_GIT_REMOTES, remote_out, description="Remotes of the repositories")
+
+                    _logger_output.git_info = git_info.store()
                 except Exception as e:
                     _logger_output.set_failure_state(e)
-                finally:
-                    _logger_output.git_info = git_info.store()
