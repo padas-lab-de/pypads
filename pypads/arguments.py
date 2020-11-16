@@ -54,11 +54,11 @@ PYPADS_FOLDER = os.path.join(expanduser("~"), ".pypads")
 parser = argparse.ArgumentParser()
 
 # Adding optional argument
-parser.add_argument("-c", "--config", default=os.path.join(PYPADS_FOLDER, ".config"),
+parser.add_argument("--config", default=os.path.join(PYPADS_FOLDER, ".config"),
                     help="Path to a config file.")
-parser.add_argument("-u", "--uri", default=None,
+parser.add_argument("--uri", default=None,
                     help="Set the tracking uri of your backend.")
-parser.add_argument("-f", "--folder", default=PYPADS_FOLDER,
+parser.add_argument("--folder", default=PYPADS_FOLDER,
                     help="Set the path to the pypads folder.")
 parser.add_argument("--MLFLOW_S3_ENDPOINT_URL", default=None,
                     help="Set the url of the S3 store endpoint of the tracking server.")
@@ -79,7 +79,6 @@ parser.add_argument("--MONGO_PW", default=None,
 args, _ = parser.parse_known_args()
 config_file = args.config
 PYPADS_FOLDER = args.folder
-
 PARSED_CONFIG = parse_configfile(config_file, args)
 
 PYPADS_URI = args.uri or os.environ.get('MLFLOW_TRACKING_URI') or os.environ.get('MLFLOW_PATH') or os.path.join(
