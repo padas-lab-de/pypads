@@ -188,19 +188,28 @@ class PypadsKerasTest(BaseTest):
         # TODO add asserts
         # !-------------------------- asserts ---------------------------
 
-    # @pytest.mark.forked
+    # # @pytest.mark.forked
+    # def test_keras_autolog(self):
+    #     # Activate tracking of pypads
+    #     from pypads.app.base import PyPads
+    #     PyPads(uri=TEST_FOLDER, hooks={
+    #         "autolog": {"on": ["pypads_fit"]},
+    #         "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metrics"]}
+    #     }, autostart="Keras Autolog")
+    #
+    #     import timeit
+    #     t = timeit.Timer(keras_simple_sequential_experiment)
+    #     print(t.timeit(1))
+    #
+    #     # --------------------------- asserts ---------------------------
+    #     # TODO add asserts
+    #     # !-------------------------- asserts ---------------------------
+
     def test_keras_autolog(self):
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        PyPads(uri=TEST_FOLDER, hooks={
-            "autolog": {"on": ["pypads_fit"]},
-            "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metrics"]}
-        }, autostart=True)
+        PyPads(uri=TEST_FOLDER, autostart="Keras Basic Auto-Log")
 
         import timeit
         t = timeit.Timer(keras_simple_sequential_experiment)
         print(t.timeit(1))
-
-        # --------------------------- asserts ---------------------------
-        # TODO add asserts
-        # !-------------------------- asserts ---------------------------
