@@ -37,7 +37,7 @@ class Cache:
         return None
 
     def get(self, item, default=None):
-        return self._cache.get(item,default)
+        return self._cache.get(item, default)
 
     def items(self):
         return self._cache.items()
@@ -47,6 +47,9 @@ class Cache:
 
     def clear(self):
         self._cache = {}
+
+    def remove(self, key):
+        del self._cache[key]
 
     def __str__(self):
         out = str(super(Cache, self).__str__()) + "["
@@ -148,7 +151,7 @@ class PypadsCache(Cache):
 
     def run_remove(self, key, run_id=None):
         run_id = self.run_init(run_id)
-        del self._run_caches[run_id][key]
+        return self._run_caches[run_id].remove(key)
 
     def run_get(self, key, run_id=None):
         run_id = self.run_init(run_id)

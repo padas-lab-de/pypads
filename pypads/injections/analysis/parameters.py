@@ -167,14 +167,13 @@ class ParametersILF(InjectionLogger):
             else:
 
                 # Trying to get at least the named arguments
-                relevant_parameters = [{"name": k, "value": v} for k, v in
-                                       getattr(kwargs, "_kwargs", {}).items()]
+                relevant_parameters = [{"name": k, "value": v} for k, v in kwargs["_kwargs"].items()]
 
         for i, param in enumerate(relevant_parameters):
-            name = data_path(_pypads_env.data, "name", default="UnknownParameter" + str(i))
-            description = data_path(_pypads_env.data, "description")
-            value = data_path(_pypads_env.data, "value")
-            parameter_type = data_path(_pypads_env.data, "parameter_type", default=str(type(value)))
+            name = data_path(param, "name", default="UnknownParameter" + str(i))
+            description = data_path(param, "description")
+            value = data_path(param, "value")
+            parameter_type = data_path(param, "parameter_type", default=str(type(value)))
 
             hyper_params.persist_parameter(name, value, param_type=parameter_type, description=description,
                                            additional_data=mapping_data)

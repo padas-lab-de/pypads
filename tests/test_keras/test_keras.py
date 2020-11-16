@@ -208,8 +208,21 @@ class PypadsKerasTest(BaseTest):
     def test_keras_autolog(self):
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        PyPads(uri=TEST_FOLDER, autostart="Keras Basic Auto-Log")
+        PyPads(autostart="Keras Autolog")
 
         import timeit
         t = timeit.Timer(keras_simple_sequential_experiment)
         print(t.timeit(1))
+
+        # --------------------------- asserts ---------------------------
+        # TODO add asserts
+        # !-------------------------- asserts ---------------------------
+
+    # def test_simple_keras_autolog(self):
+    #     # Activate tracking of pypads
+    #     from pypads.app.base import PyPads
+    #     PyPads(uri=TEST_FOLDER, autostart="Keras Basic Auto-Log")
+    #
+    #     import timeit
+    #     t = timeit.Timer(keras_simple_sequential_experiment)
+    #     print(t.timeit(1))
