@@ -13,7 +13,7 @@ def dummy_function():
     return "I'm a return value"
 
 
-class dummy_output(OutputModel):
+class DummyOutput(OutputModel):
     """
     Dummy output model for testing.
     """
@@ -71,7 +71,7 @@ class PypadsInjectionLoggers(BaseTest):
         from pypads.app.base import PyPads
         tracker = PyPads(uri=TEST_FOLDER, config=config, setup_fns={}, autostart=True)
 
-        tracker.api.register_teardown(name= "test_teardown", post_fn=TestLogger())
+        tracker.api.register_teardown(name="test_teardown", post_fn=TestLogger())
         # --------------------------- asserts ---------------------------
         self.assertFalse(flag)
         tracker.api.end_run()

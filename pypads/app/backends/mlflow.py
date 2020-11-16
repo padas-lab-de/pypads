@@ -13,7 +13,7 @@ from pymongo.errors import DuplicateKeyError
 
 from pypads import logger
 from pypads.app.backends.backend import BackendInterface
-from pypads.app.injections.tracked_object import ArtifactTO
+from pypads.app.injections.tracked_object import Artifact
 from pypads.app.misc.inheritance import SuperStop
 from pypads.model.logger_output import FileInfo, MetricMetaModel, ParameterMetaModel, ArtifactMetaModel, TagMetaModel
 from pypads.model.metadata import ModelObject
@@ -135,7 +135,7 @@ class MLFlowBackend(BackendInterface, metaclass=ABCMeta):
             return stored_meta
 
         elif rt == ResultType.artifact:
-            obj: Union[ArtifactTO, ArtifactMetaModel]
+            obj: Union[Artifact, ArtifactMetaModel]
             path = self._log_mem_artifact(path=obj.data, artifact=obj.content(), write_format=obj.file_format)
             # Todo maybe don't store filesize because of performance (querying for file after storing takes time)
             for file_info in self.list_files(run_id=get_run_id(), path=os.path.dirname(path)):
@@ -193,7 +193,7 @@ class MLFlowBackend(BackendInterface, metaclass=ABCMeta):
                                 backend_uri=self.uri)
         json_data = self.get_json(reference)
         if storage_type == ResultType.artifact:
-            return ArtifactTO(**dict(json_data))
+            return Artifact(**dict(json_data))
         else:
             return json_data
 

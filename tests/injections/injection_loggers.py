@@ -28,7 +28,7 @@ def dummy_function():
     return "I'm a return value"
 
 
-class dummy_output(OutputModel):
+class DummyOutput(OutputModel):
     """
     Dummy output model for testing.
     """
@@ -113,7 +113,7 @@ class PypadsInjectionLoggers(BaseTest):
 
             @classmethod
             def output_schema_class(cls) -> Optional[Type[OutputModel]]:
-                return dummy_output
+                return DummyOutput
 
             @staticmethod
             def finalize_output(pads, logger_call, output, *args, **kwargs):

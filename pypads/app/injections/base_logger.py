@@ -230,18 +230,24 @@ class SimpleLogger(Logger):
         kwargs_ = {**self.static_parameters, **kwargs}
         self.store()
 
-        # parameters passed by the env
-        _pypads_params = _pypads_env.parameter
-
         logger_call = self.build_call_object(_pypads_env, creator=self)
         output = self.build_output(_pypads_env, logger_call)
 
         try:
+            # Set environment information into cache
+            _environment_information = {"_args": args, "_pypads_env": _pypads_env, "_logger_call": logger_call,
+                                        "_logger_output": output,
+                                        "_kwargs": kwargs_}
+            _pypads_env.pypads.cache.run_add(id(output), _environment_information)
+
+            # Run logger function
             _return, time = self._fn(*args, _pypads_env=_pypads_env, _logger_call=logger_call, _logger_output=output,
-                                     _pypads_params=_pypads_params,
                                      **kwargs_)
 
             logger_call.execution_time = time
+
+            # Update environment information into cache
+            _environment_information.update({"_return": _return})
         except Exception as e:
             logger_call.failed = str(e)
             if output:
@@ -251,6 +257,7 @@ class SimpleLogger(Logger):
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
             self._store_results(output, logger_call)
+            _pypads_env.pypads.cache.run_remove(id(output))
         return _return
 
     @abstractmethod

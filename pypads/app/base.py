@@ -21,6 +21,7 @@ from pypads.importext.mappings import MappingRegistry, MappingCollection
 from pypads.importext.pypads_import import extend_import_module, duck_punch_loader
 from pypads.importext.wrapping.wrapping import WrapManager
 from pypads.injections.analysis.call_tracker import CallTracker
+from pypads.injections.loggers.mlflow.mlflow_autolog import MlFlowAutoRSF
 from pypads.injections.setup.git import IGitRSF
 from pypads.injections.setup.hardware import ISystemRSF, IRamRSF, ICpuRSF, IDiskRSF, IPidRSF, ISocketInfoRSF, \
     IMacAddressRSF
@@ -70,8 +71,8 @@ DEFAULT_CONFIG = {**{
     mongo_db: True  # Use a mongo_db endpoint
 }, **PARSED_CONFIG}
 
-DEFAULT_SETUP_FNS = {DependencyRSF(), LoguruRSF(), StdOutRSF(), IGitRSF(_pypads_timeout=3), ISystemRSF(), IRamRSF(),
-                     ICpuRSF(),
+DEFAULT_SETUP_FNS = {MlFlowAutoRSF(), DependencyRSF(), LoguruRSF(), StdOutRSF(), IGitRSF(_pypads_timeout=3),
+                     ISystemRSF(), IRamRSF(), ICpuRSF(),
                      IDiskRSF(), IPidRSF(), ISocketInfoRSF(), IMacAddressRSF()}
 
 
@@ -97,9 +98,12 @@ class PyPads:
 
     def __init__(self, uri=None, folder=None, mappings: List[MappingCollection] = None, hooks=None,
                  events=None, setup_fns=None, config=None, pre_initialized_cache: PypadsCache = None,
-                 disable_plugins=None, autostart=None, *args, **kwargs):
+                 disable_plugins=None, autostart=None, log_level="WARNING", *args, **kwargs):
         from pypads.app.pypads import set_current_pads
         set_current_pads(self)
+
+        from pypads.pads_loguru import logger_manager
+        self._default_logger = logger_manager.add_default_logger(level=log_level)
 
         self._instance_modifiers = []
 
@@ -202,6 +206,7 @@ class PyPads:
         def cleanup():
             from pypads.app.pypads import get_current_pads
             pads: PyPads = get_current_pads()
+
             if pads.api.active_run():
                 pads.api.end_run()
 
@@ -675,6 +680,10 @@ class PyPads:
                 mlflow.end_run()
                 self.api.start_run(experiment_id=experiment.experiment_id)
         return self
+
+    def remove_default_logger(self):
+        from pypads.pads_loguru import logger_manager
+        logger_manager.remove(level=self._default_logger)
 
 
 # --- Pypads Plugins ---

@@ -21,11 +21,17 @@ class FunctionWrapper(BaseWrapper):
         if (fn.__name__.startswith("__") or fn.__name__.startswith("_pypads")) and fn.__name__ is not "__init__":
             return fn
 
-        if not context.has_original(fn) or not context.defined_stored_original(fn):
-            for matched_mapping in matched_mappings:
-                context.store_wrap_meta(matched_mapping, fn)
+        dirty = False
 
-            context.store_original(fn)
+        for matched_mapping in matched_mappings:
+            if not context.has_wrap_meta(matched_mapping.mapping, fn):
+                context.store_wrap_meta(matched_mapping, fn)
+                dirty = True
+
+        if dirty:
+            if not context.has_original(fn) or not context.defined_stored_original(fn):
+                context.store_original(fn)
+
             if context.is_class():
                 return self._wrap_on_class(fn, context, matched_mappings)
             elif hasattr(context.container, fn.__name__):

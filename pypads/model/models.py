@@ -32,14 +32,6 @@ class AbstractionType(Enum):
     value = 'value'  # This object represents only the contained value and a reference to the described object
 
 
-class FieldType(Enum):
-    """
-    Some objects merge instance and class information in model fields.
-    """
-    a_box = 'a_box'  # Instance information. This is considered to be the default information.
-    t_box = 't_box'  # Static class information
-
-
 class EntryModel(BaseModel):
     clazz: str = None  # Class of the model
     abstraction_type: Optional[AbstractionType] = None  # This optional field can represent an abstraction or view level
