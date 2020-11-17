@@ -159,7 +159,7 @@ class ParametersILF(InjectionLogger):
                     relevant_parameters.append(param_dict)
 
         else:
-            get_params = getattr(self, "get_params", None)
+            get_params = getattr(ctx, "get_params", None)
             if callable(get_params):
 
                 # Extracting via get_params (valid for sklearn)
