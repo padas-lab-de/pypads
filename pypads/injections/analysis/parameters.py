@@ -159,7 +159,7 @@ class ParametersILF(InjectionLogger):
                     relevant_parameters.append(param_dict)
 
         else:
-            get_params = getattr(self, "get_params", None)
+            get_params = getattr(ctx, "get_params", None)
             if callable(get_params):
 
                 # Extracting via get_params (valid for sklearn)
@@ -175,7 +175,10 @@ class ParametersILF(InjectionLogger):
             value = data_path(param, "value")
             parameter_type = data_path(param, "parameter_type", default=str(type(value)))
 
-            hyper_params.persist_parameter(name, value, param_type=parameter_type, description=description,
-                                           additional_data=mapping_data)
+            try:
+                hyper_params.persist_parameter(name, str(value), param_type=parameter_type, description=description,
+                                               additional_data=mapping_data)
+            except Exception:
+                logger.error(f"Couldn't log parameter {name} with value {value}")
 
         _logger_output.hyper_parameter_to = hyper_params.store()

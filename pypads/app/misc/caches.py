@@ -49,7 +49,8 @@ class Cache:
         self._cache = {}
 
     def remove(self, key):
-        del self._cache[key]
+        if key in self._cache:
+            del self._cache[key]
 
     def __str__(self):
         out = str(super(Cache, self).__str__()) + "["

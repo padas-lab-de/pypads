@@ -77,6 +77,32 @@ class Context(ModelHolder):
             logger.debug("Can't set attribute '" + wrappee.__name__ + "' on '" + str(self._c) + "'.")
             raise e
 
+    def store_hook(self, hook, wrappee):
+        try:
+            if not inspect.isfunction(wrappee) or "<slot wrapper" in str(wrappee):
+                holder = wrappee
+            else:
+                holder = self._c
+            # Set self reference
+            if not hasattr(holder, "_pypads_hooks_" + wrappee.__name__):
+                setattr(holder, "_pypads_hooks_" + wrappee.__name__, set())
+            getattr(holder, "_pypads_hooks_" + wrappee.__name__).add(hook)
+
+        except TypeError as e:
+            logger.debug("Can't set attribute '" + wrappee.__name__ + "' on '" + str(self._c) + "'.")
+            raise e
+
+    def get_hooks(self, wrappee):
+        if not inspect.isfunction(wrappee):
+            holder = wrappee
+        else:
+            holder = self._c
+        if hasattr(holder, "_pypads_hooks_" + wrappee.__name__):
+            return sorted(list(getattr(holder, "_pypads_hooks_" + wrappee.__name__)),
+                          key=lambda x: (x[1].order, x[0].order),
+                          reverse=True)  # sort by config order and then by injection logger order
+        return list()
+
     def store_original(self, wrappee):
         try:
             if not inspect.isfunction(wrappee):

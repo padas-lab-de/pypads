@@ -20,7 +20,6 @@ class LoggerManager:
             logger.warning(e)
         self._add_history = {}
         self._removed = []
-        self.add_default_logger()
 
     def add_default_logger(self, level="INFO"):
         self.add(sys.stdout, filter="pypads", level=level)

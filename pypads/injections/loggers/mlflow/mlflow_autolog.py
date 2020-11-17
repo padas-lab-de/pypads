@@ -1,6 +1,5 @@
 import sys
 
-import gorilla
 from mlflow.utils.annotations import experimental
 
 from pypads.app.env import LoggerEnv, InjectionLoggerEnv
@@ -65,20 +64,20 @@ mlflow_auto_log_fns = {}
 mlflow_auto_log_callbacks = []
 
 
-def fake_gorilla_apply(patch):
-    if patch.name not in mlflow_auto_log_fns:
-        mlflow_auto_log_fns[patch.name] = {}
-    mlflow_auto_log_fns[patch.name][patch.destination] = patch
-    # TODO patch directly into the pypads structure if already wrapped otherwise patch with new pypads logger
-
-
-# For now only take last added callback
-def fake_gorilla_get_original_attribute(clz, fn_name):
-    return mlflow_auto_log_callbacks.pop()
-
-
-gorilla.apply = fake_gorilla_apply
-gorilla.get_original_attribute = fake_gorilla_get_original_attribute
+# def fake_gorilla_apply(patch):
+#     if patch.name not in mlflow_auto_log_fns:
+#         mlflow_auto_log_fns[patch.name] = {}
+#     mlflow_auto_log_fns[patch.name][patch.destination] = patch
+#     # TODO patch directly into the pypads structure if already wrapped otherwise patch with new pypads logger
+#
+#
+# # For now only take last added callback
+# def fake_gorilla_get_original_attribute(clz, fn_name):
+#     return mlflow_auto_log_callbacks.pop()
+#
+#
+# gorilla.apply = fake_gorilla_apply
+# gorilla.get_original_attribute = fake_gorilla_get_original_attribute
 
 
 # Could also be a normal function right now
@@ -90,7 +89,7 @@ class MlFlowAutoILF(InjectionLogger):
     is stored right now.
     """
 
-    def __init__(self, *args, order=-1, **kwargs):
+    def __init__(self, *args, order=sys.maxsize, **kwargs):
         super().__init__(*args, order=order, **kwargs)
 
     @experimental
@@ -147,14 +146,14 @@ class MlFlowAutoILF(InjectionLogger):
     def __call_wrapped__(self, ctx, *args, _args, _kwargs, _pypads_env=InjectionLoggerEnv, **kwargs):
         # If the function is to be logged call the related mlflow autolog function which would have
         #  been applied via gorilla
-        if _pypads_env.call.call_id.wrappee.__name__ in mlflow_auto_log_fns:
-            for destination, patch in mlflow_auto_log_fns[_pypads_env.call.call_id.wrappee.__name__].items():
-                if destination == _pypads_env.call.call_id.context.container or issubclass(
-                        _pypads_env.call.call_id.context.container, destination):
-                    mlflow_auto_log_callbacks.append(OriginalExecutor(fn=_pypads_env.callback))
-
-                    def fn(*args, **kwargs):
-                        return patch.obj(ctx, *args, **kwargs)
-
-                    return OriginalExecutor(fn=fn)(*_args, **_kwargs)
+        # if _pypads_env.call.call_id.wrappee.__name__ in mlflow_auto_log_fns:
+        #     for destination, patch in mlflow_auto_log_fns[_pypads_env.call.call_id.wrappee.__name__].items():
+        #         if destination == _pypads_env.call.call_id.context.container or issubclass(
+        #                 _pypads_env.call.call_id.context.container, destination):
+        #             mlflow_auto_log_callbacks.append(_pypads_env.callback)
+        #
+        #             def fn(*args, **kwargs):
+        #                 return patch.obj(ctx, *args, **kwargs)
+        #
+        #             return OriginalExecutor(fn=fn)(*_args, **_kwargs)
         return OriginalExecutor(fn=_pypads_env.callback)(*_args, **_kwargs)
