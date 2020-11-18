@@ -218,7 +218,6 @@ class StdOutRSF(DelayedResultsMixin, RunSetup):
 
         class Logger(object):
             def __init__(self):
-                self._terminal = sys.stdout
                 temp_folder = get_temp_folder()
                 if not os.path.isdir(temp_folder):
                     os.mkdir(temp_folder)
@@ -230,7 +229,6 @@ class StdOutRSF(DelayedResultsMixin, RunSetup):
                 return self._terminal
 
             def write(self, message):
-                self._terminal.write(message)
                 self.log.write(message)
 
             def flush(self):
@@ -239,4 +237,13 @@ class StdOutRSF(DelayedResultsMixin, RunSetup):
                 # you might want to specify some extra behavior here.
                 pass
 
-        sys.stdout = Logger()
+        stdout_logger = Logger()
+
+        original_function = getattr(sys.stdout, 'write')
+        setattr(sys.stdout, 'original_write', original_function)
+
+        def modified_function(message):
+            stdout_logger.write(message)
+            sys.stdout.original_write(message)
+
+        setattr(sys.stdout, 'write', modified_function)
