@@ -2,7 +2,8 @@ import os
 from abc import ABCMeta
 from contextlib import contextmanager
 from functools import wraps
-from typing import List, Iterable, Union
+from types import ModuleType
+from typing import List, Iterable, Union, Set, Dict
 
 import mlflow
 
@@ -138,6 +139,84 @@ class PyPadsApi(IApi):
         # Wrap the function of given context and return it
         return self.pypads.wrap_manager.wrap(fn, ctx=ctx, matched_mappings={MatchedMapping(mapping, PackagePath(
             ctx_path + "." + fn.__name__))})
+
+    # noinspection PyMethodMayBeStatic, DuplicatedCode
+    @cmd
+    def track_class(self, cls, ctx=None, fn_anchors: dict = None, mappings: Dict[str, Mapping] = None,
+                    additional_data=None):
+        """
+        Method to inject logging capabilities into a class functions
+        :param additional_data: Additional meta data to be provided to the tracking. This should be used to map to rdf.
+        :param cls: Class to extend
+        :param ctx: Ctx which defined the function
+        :param fn_anchors: {Functions :Anchors} to trigger on each function call of the class
+        :param mappings: Mapping defining this extension
+        :return: The extended function
+        """
+        if additional_data is None:
+            additional_data = {}
+
+        # Warn if ctx doesn't defined the function we want to track
+        if ctx is not None and not hasattr(ctx, cls.__name__):
+            logger.warning("Given context " + str(ctx) + " doesn't define " + str(cls.__name__))
+            ctx = None
+
+        # If we don't have a valid ctx the class is unbound,
+        # so we create a dummy ctx holding the class, otherwise we can extract the ctx path
+        if ctx is not None:
+            if hasattr(ctx, '__module__') and ctx.__module__ is not str.__class__.__module__:
+                ctx_path = ctx.__module__.__name__
+            else:
+                ctx_path = ctx.__name__
+        else:
+            ctx = ModuleType("<unbound-module>")
+            setattr(ctx, cls.__name__, cls)
+            ctx_path = ctx.__name__
+
+        if fn_anchors is None:
+            fn_anchors = {cls.__init__.__name__: [get_anchor("pypads_log")]}
+        elif not isinstance(fn_anchors, dict):
+            logger.error('function anchors passed to track class has to be a dict of funtions, anchors')
+        else:
+            for fn, anchors in fn_anchors.items():
+                if not isinstance(anchors, Iterable):
+                    fn_anchors[fn] = [anchors]
+
+        for fn, anchors in fn_anchors.items():
+
+            _anchors = set()
+            for a in anchors:
+                if isinstance(a, str):
+                    anchor = get_anchor(a)
+                    if anchor is None:
+                        anchor = Anchor(a, "No description available")
+                    _anchors.add(anchor)
+                elif isinstance(a, Anchor):
+                    _anchors.add(a)
+            fn_anchors[fn] = _anchors
+
+        # If no mapping was given a default mapping has to be created
+        if mappings is None:
+            logger.warning("Tracking a function without a mapping definition. A default mapping will be generated.")
+            _matched_mappings = set()
+            if '__file__' in cls.__dict__:
+                lib = cls.__dict__['__file__']
+            else:
+                lib = cls.__module__
+
+            # For all events we want to hook to each class function
+            for fn, anchors in fn_anchors.items():
+                _mapping = Mapping(PackagePathMatcher(ctx_path + "." + cls.__name__ + "." + fn),
+                                   make_run_time_mapping_collection(lib),
+                                   anchors,
+                                   {**additional_data, **{"mapped_by": "http://www.padre-lab.eu/onto/PyPadsApi"}})
+                _matched_mappings.add(MatchedMapping(_mapping, PackagePath(ctx_path + "." + cls.__name__ + "." + fn)))
+        else:
+            _matched_mappings = {MatchedMapping(mapping, PackagePath(ctx_path + "." + cls.__name__ + "." + fn)) for
+                                 fn, mapping in mappings.items()}
+
+        # Wrap the function of given context and return it
+        return self.pypads.wrap_manager.wrap(cls, ctx=ctx, matched_mappings=_matched_mappings)
 
     @cmd
     def start_run(self, run_id=None, experiment_id=None, run_name=None, nested=False, _pypads_env=None, setups=True):
