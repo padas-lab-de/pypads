@@ -2,6 +2,7 @@ import os
 from abc import ABCMeta
 from contextlib import contextmanager
 from functools import wraps
+from types import ModuleType
 from typing import List, Iterable, Union, Set, Dict
 
 import mlflow
@@ -160,14 +161,17 @@ class PyPadsApi(IApi):
             logger.warning("Given context " + str(ctx) + " doesn't define " + str(cls.__name__))
             ctx = None
 
-        # If we don't have a valid ctx the fn is unbound, otherwise we can extract the ctx path
+        # If we don't have a valid ctx the class is unbound,
+        # so we create a dummy ctx holding the class, otherwise we can extract the ctx path
         if ctx is not None:
             if hasattr(ctx, '__module__') and ctx.__module__ is not str.__class__.__module__:
                 ctx_path = ctx.__module__.__name__
             else:
                 ctx_path = ctx.__name__
         else:
-            ctx_path = "<unbound>"
+            ctx = ModuleType("<unbound-module>")
+            setattr(ctx, cls.__name__, cls)
+            ctx_path = ctx.__name__
 
         if fn_anchors is None:
             fn_anchors = {cls.__init__.__name__: [get_anchor("pypads_log")]}

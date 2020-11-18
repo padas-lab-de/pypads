@@ -51,7 +51,7 @@ class WrapManager:
                 except ValueError as e:
 
                     dummy = ModuleType("dummy_module")
-                    if inspect.isfunction(wrappee) or inspect.isclass(wrappee):
+                    if inspect.isfunction(wrappee):
                         setattr(dummy, wrappee.__name__, wrappee)
                     ctx = Context(dummy)
 
