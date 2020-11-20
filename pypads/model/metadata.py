@@ -4,11 +4,12 @@ from copy import deepcopy
 from typing import Type, List
 
 from pydantic import validate_model, BaseModel, ValidationError, ConfigError
+from pydantic.version import VERSION
 
 from pypads.app.misc.inheritance import SuperStop
 from pypads.model.models import BaseStorageModel, get_reference
 from pypads.utils.logging_util import jsonable_encoder
-from pypads.utils.util import has_direct_attr, persistent_hash
+from pypads.utils.util import has_direct_attr, persistent_hash, find_package_version
 
 
 class ModelInterface(SuperStop):
@@ -101,7 +102,12 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
 
             cls = ReducedClass
             cls.__fields__ = {k: v for k, v in cls.__fields__.items() if k in include}
-        return validate_model(cls, {**deepcopy(cls.__field_defaults__),
+        # Todo stop supporting pydantic < 1.7
+        if VERSION >= '1.7':
+            defaults = {k: v.get_default() for k,v in cls.__fields__.items()}
+        else:
+            defaults = cls.__field_defaults__
+        return validate_model(cls, {**deepcopy(defaults),
                                     **{k: obj[k] for k in obj.keys() if include is None or k in include}})
 
     def typed_id(self):
