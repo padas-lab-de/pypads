@@ -183,10 +183,6 @@ class StdOutRSF(DelayedResultsMixin, RunSetup):
         output.logs = log_to.store()
         output.store()
 
-        import sys
-        if hasattr(sys.stdout, 'terminal'):
-            sys.stdout = sys.stdout.terminal
-
     name = "StdOut Run Setup Logger"
     type: str = "StdOutRunLogger"
 
@@ -223,13 +219,11 @@ class StdOutRSF(DelayedResultsMixin, RunSetup):
                     os.mkdir(temp_folder)
                 # TODO close file?
                 self.log = open(os.path.join(temp_folder, "logfile.log"), "a")
-
-            @property
-            def terminal(self):
-                return self._terminal
+                self.temp = temp_folder
 
             def write(self, message):
                 self.log.write(message)
+                self.log.flush()
 
             def flush(self):
                 # this flush method is needed for python 3 compatibility.
