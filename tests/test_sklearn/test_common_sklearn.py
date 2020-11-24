@@ -42,8 +42,7 @@ class CommonSklearnTest(BaseSklearnTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, config=config)
-        tracker.activate_tracking()
+        tracker = PyPads(autostart=False)
         tracker.start_track(experiment_name="1. Experiment")
         tracker.actuators.set_random_seed(seed=1)
 
