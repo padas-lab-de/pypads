@@ -258,7 +258,7 @@ class DefensiveCallableMixin(CallableMixin):
             # Ignore for now?? / return callback
             import traceback
             logger.debug(traceback.format_exc())
-            return _pypads_env.callback(*args,**kwargs)
+            return _pypads_env.callback(*args, **kwargs)
         except Exception as e:
             import traceback
             logger.debug(traceback.format_exc())

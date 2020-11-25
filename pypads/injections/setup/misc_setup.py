@@ -214,15 +214,16 @@ class StdOutRSF(DelayedResultsMixin, RunSetup):
 
         class Logger(object):
             def __init__(self):
+                import re
                 temp_folder = get_temp_folder()
                 if not os.path.isdir(temp_folder):
                     os.mkdir(temp_folder)
                 # TODO close file?
                 self.log = open(os.path.join(temp_folder, "logfile.log"), "a")
-                self.temp = temp_folder
+                self.re = re.compile(r'(\x9B|\x1B\[)[0-?]*[ -\/]*[@-~]')
 
             def write(self, message):
-                self.log.write(message)
+                self.log.write(self.re.sub('', message))
                 self.log.flush()
 
             def flush(self):
