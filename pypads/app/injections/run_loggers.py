@@ -1,3 +1,4 @@
+import traceback
 from abc import ABCMeta
 from typing import Type
 
@@ -8,6 +9,7 @@ from pypads import logger
 from pypads.app.injections.base_logger import SimpleLogger
 from pypads.app.injections.tracked_object import LoggerCall
 from pypads.app.misc.mixins import OrderMixin, FunctionHolderMixin, BaseDefensiveCallableMixin
+from pypads.exceptions import NoCallAllowedError
 from pypads.model.logger_model import RunLoggerModel
 from pypads.utils.util import inheritors
 
@@ -22,6 +24,23 @@ class RunLogger(SimpleLogger, OrderMixin, metaclass=ABCMeta):
     def get_model_cls(cls) -> Type[BaseModel]:
         return RunLoggerModel
 
+    def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
+        """
+        Handle error for DefensiveCallableMixin
+        :param args:
+        :param ctx:
+        :param _pypads_env:
+        :param error:
+        :param kwargs:
+        :return:
+        """
+        try:
+            raise error
+        except (NoCallAllowedError, Exception) as e:
+            # do nothing and call the next run function
+            logger.error(
+                f"Logging failed for {str(self)} with error: {str(error)} \nTrace:\n{traceback.format_exc()}")
+            pass
 
 class RunSetup(RunLogger, metaclass=ABCMeta):
     """
