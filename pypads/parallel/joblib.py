@@ -63,7 +63,7 @@ if is_package_available("joblib"):
 
                 # If pads already exists on process
                 else:
-                    _pypads = pypads.app.pypads.current_pads
+                    _pypads = pypads.current_pads
                     _pypads.cache.merge(_pypads_cache)
 
                 # Unpickle args
@@ -90,6 +90,12 @@ if is_package_available("joblib"):
                 return fn(*args, **kwargs)
 
         def delayed_function(*args, **kwargs):
+            """
+            Inject pypads management into delayed of joblib.
+            :param args:
+            :param kwargs:
+            :return:
+            """
             from pypads.parallel.util import _pickle_tuple, _cloudpickle_tuple
             import mlflow
             run = mlflow.active_run()

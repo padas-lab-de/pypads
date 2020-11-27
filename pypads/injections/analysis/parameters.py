@@ -176,9 +176,13 @@ class ParametersILF(InjectionLogger):
             parameter_type = data_path(param, "parameter_type", default=str(type(value)))
 
             try:
-                hyper_params.persist_parameter(name, str(value), param_type=parameter_type, description=description,
+                from pypads.app.pypads import get_current_pads
+                call_number = get_current_pads().call_tracker.call_number(_pypads_env.call.call_id)
+                hyper_params.persist_parameter(".".join([estimator, str(call_number), name]), str(value),
+                                               param_type=parameter_type,
+                                               description=description,
                                                additional_data=mapping_data)
             except Exception:
-                logger.error(f"Couldn't log parameter {name} with value {value}")
+                logger.error(f"Couldn't log parameter {estimator + '.' + name} with value {value}")
 
         _logger_output.hyper_parameter_to = hyper_params.store()

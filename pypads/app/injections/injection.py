@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from pypads import logger
 from pypads.app.call import Call
 from pypads.app.env import InjectionLoggerEnv
-from pypads.app.injections.base_logger import Logger, LoggerExecutor, OriginalExecutor
+from pypads.app.injections.base_logger import Logger, LoggerExecutor, OriginalExecutor, env_cache
 from pypads.app.injections.tracked_object import LoggerCall, FallibleMixin
 from pypads.app.misc.inheritance import SuperStop
 from pypads.app.misc.mixins import OrderMixin, MissingDependencyError
@@ -88,7 +88,7 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
                                         "_pypads_input_results": _pypads_input_results,
                                         "_pypads_cached_results": _pypads_cached_results,
                                         "kwargs": kwargs_}
-            _pypads_env.pypads.cache.run_add(id(output), _environment_information)
+            _pypads_env.pypads.cache.run_add(env_cache(output), _environment_information)
 
             # Trigger pre run functions
             _pre_result, pre_time = self._pre(ctx, _pypads_env=_pypads_env,
@@ -132,7 +132,7 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
             self._store_results(output, logger_call)
-            _pypads_env.pypads.cache.run_remove(id(output))
+            _pypads_env.pypads.cache.run_remove(env_cache(output))
         return self._get_return_value(_return, _post_result)
 
     def _get_logger_call(self, _pypads_env) -> Union[InjectionLoggerCall, FallibleMixin]:
@@ -290,7 +290,7 @@ class MultiInjectionLogger(DelayedResultsMixin, InjectionLogger, SuperStop, meta
                                         "_pypads_input_results": _pypads_input_results,
                                         "_pypads_cached_results": _pypads_cached_results,
                                         "kwargs": kwargs_}
-            _pypads_env.pypads.cache.run_add(id(output), _environment_information)
+            _pypads_env.pypads.cache.run_add(env_cache(output), _environment_information)
 
             # Trigger pre run functions
             _pre_result, pre_time = self._pre(ctx, _pypads_env=_pypads_env,
@@ -333,7 +333,7 @@ class MultiInjectionLogger(DelayedResultsMixin, InjectionLogger, SuperStop, meta
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
             self._store_results(output, logger_call)
-            _pypads_env.pypads.cache.run_remove(id(output))
+            _pypads_env.pypads.cache.run_remove(env_cache(output))
         return self._get_return_value(_return, _post_result)
 
 

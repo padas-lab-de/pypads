@@ -455,6 +455,14 @@ mappings:
                     - '@id': padre:Iris#Virginica
                       '@type': padre:ClassData
         hooks: pypads_dataset
+    #    !!python/pPath 'ensemble.BaseEnsemble':
+    #      !!python/pPath 'fit':
+    #        data:
+    #          '@rdf':
+    #            in_context: http://www.padre-lab.eu/onto/Ensemble
+    #        hooks:
+    #          - pypads_param_search
+    #          - pypads_fit
     !!python/pPath 'model_selection':
       !!python/pPath '_search.BaseSearchCV':
         !!python/pPath 'fit':
