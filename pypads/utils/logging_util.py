@@ -304,7 +304,8 @@ def store_tmp_artifact(file_name, obj, write_format: FileFormats):
         if write_format in FileFormats.__members__:
             write_format = FileFormats[write_format]
         else:
-            logger.warning("Configured write format " + write_format + " not directly supported!")
+            logger.warning(
+                "Configured write format " + write_format + " not directly supported! Writing as generic file type.")
             return write_unknown(f"{path}.{write_format}", obj)
 
     return writers[write_format](path, obj)
