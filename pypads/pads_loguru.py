@@ -22,7 +22,7 @@ class LoggerManager:
         self._removed = []
 
     def add_default_logger(self, level="INFO"):
-        self.add(sys.stdout, filter="pypads", level=level)
+        self.add(sys.stdout, filter="pypads", level=level, colorize=True)
         # TODO make configureable
         # self.add(sys.stderr, filter="pypads", level="INFO")
 
