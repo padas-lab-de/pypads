@@ -10,7 +10,7 @@ from pypads.app.env import InjectionLoggerEnv
 from pypads.app.injections.base_logger import Logger, LoggerExecutor, OriginalExecutor, env_cache
 from pypads.app.injections.tracked_object import LoggerCall, FallibleMixin
 from pypads.app.misc.inheritance import SuperStop
-from pypads.app.misc.mixins import OrderMixin
+from pypads.app.misc.mixins import OrderMixin, MissingDependencyError
 from pypads.exceptions import NoCallAllowedError
 from pypads.model.logger_call import InjectionLoggerCallModel, MultiInjectionLoggerCallModel
 from pypads.model.logger_model import InjectionLoggerModel
@@ -164,16 +164,16 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
         :return:
         """
         try:
+            logger.error("Logging failed for " + str(self) + ": " + str(error) + "\nTrace:\n" + traceback.format_exc())
             raise error
+        except MissingDependencyError as e:
+            return _pypads_env.callback(*args, *kwargs)
         except NoCallAllowedError as e:
-
             # Call next wrapped callback if no call was allowed due to the settings or environment
             _pypads_hook_params = _pypads_env.parameter
             return self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs,
                                          **_pypads_hook_params)
         except Exception as e:
-            logger.error("Logging failed for " + str(self) + ": " + str(error) + "\nTrace:\n" + traceback.format_exc())
-
             # Try to call the original unwrapped function if something broke
             original = _pypads_env.call.call_id.context.original(_pypads_env.callback)
             if callable(original):
