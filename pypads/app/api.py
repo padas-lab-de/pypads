@@ -3,7 +3,7 @@ from abc import ABCMeta
 from contextlib import contextmanager
 from functools import wraps
 from types import ModuleType
-from typing import List, Iterable, Union, Set, Dict
+from typing import List, Iterable, Union, Dict
 
 import mlflow
 

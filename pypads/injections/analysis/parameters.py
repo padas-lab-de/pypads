@@ -182,7 +182,7 @@ class ParametersILF(InjectionLogger):
                                                param_type=parameter_type,
                                                description=description,
                                                additional_data=mapping_data)
-            except Exception:
+            except Exception as e:
                 logger.error(f"Couldn't log parameter {estimator + '.' + name} with value {value}")
 
         _logger_output.hyper_parameter_to = hyper_params.store()

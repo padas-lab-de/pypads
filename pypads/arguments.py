@@ -1,12 +1,11 @@
 import argparse
 import ast
 import configparser
-
 # Initialize parser
 import os
 from os.path import expanduser
-from pypads import logger
 
+from pypads import logger
 # Configure
 from pypads.variables import MLFLOW_TRACKING_URI, MLFLOW_S3_ENDPOINT_URL, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, \
     MONGO_DB, MONGO_PW, DEFAULT_PYPADS, MONGO_URL, MONGO_USER, CONFIG

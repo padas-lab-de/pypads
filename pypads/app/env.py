@@ -41,8 +41,8 @@ class LoggerEnv:
 
 class InjectionLoggerEnv(LoggerEnv):
 
-    def __init__(self, mappings, hook, callback, call: Call, parameter, experiment_id, run_id):
-        super().__init__(parameter, experiment_id, run_id, data=merge_mapping_data(mappings))
+    def __init__(self, mappings, hook, callback, call: Call, parameter, experiment_id, run_id, data=None):
+        super().__init__(parameter, experiment_id, run_id, data=data or merge_mapping_data(mappings))
         self._call = call
         self._callback = callback
         self._hook = hook
