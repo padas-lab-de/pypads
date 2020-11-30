@@ -30,6 +30,15 @@ class OriginalExecutor(FunctionHolderMixin, TimedCallableMixin):
         super().__init__(*args, fn=fn, **kwargs)
 
 
+def env_cache(obj):
+    """
+    Translate an object to a reference name for the environment stored in the cache.
+    :param obj:
+    :return:
+    """
+    return "env_" + str(id(obj))
+
+
 class LoggerExecutor(DefensiveCallableMixin, FunctionHolderMixin, TimedCallableMixin, ConfigurableCallableMixin):
     __metaclass__ = ABCMeta
     """
@@ -238,7 +247,7 @@ class SimpleLogger(Logger):
             _environment_information = {"_args": args, "_pypads_env": _pypads_env, "_logger_call": logger_call,
                                         "_logger_output": output,
                                         "_kwargs": kwargs_}
-            _pypads_env.pypads.cache.run_add(id(output), _environment_information)
+            _pypads_env.pypads.cache.run_add(env_cache(output), _environment_information)
 
             # Run logger function
             _return, time = self._fn(*args, _pypads_env=_pypads_env, _logger_call=logger_call, _logger_output=output,
@@ -257,7 +266,7 @@ class SimpleLogger(Logger):
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
             self._store_results(output, logger_call)
-            _pypads_env.pypads.cache.run_remove(id(output))
+            _pypads_env.pypads.cache.run_remove(env_cache(output))
         return _return
 
     @abstractmethod

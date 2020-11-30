@@ -23,8 +23,11 @@ class FunctionReference(ModelObject):
         self._real_context = None
         self._function_type = None
 
-        if self.is_wrapped():
-            self.wrappee = self.context.container.__dict__[self.wrappee.__name__]
+        if self.is_special_wrapped():
+            try:
+                self.wrappee = self.context.container.__dict__[self.wrappee.__name__]
+            except:
+                self.wrappee = getattr(self.context.container, self.wrappee.__name__)
 
     def real_context(self):
         """
@@ -87,7 +90,7 @@ class FunctionReference(ModelObject):
     def is_class_method(self):
         return "classmethod" in str(self.function_type())
 
-    def is_wrapped(self):
+    def is_special_wrapped(self):
         return "wrapped" in str(self.function_type())
 
     @property
@@ -122,7 +125,7 @@ class CallAccessor(FunctionReference):
                             _pypads_wrappee=function_reference.wrappee)
 
     def is_call_identity(self, other):
-        if other.is_class_method() or other.is_static_method() or other.is_wrapped():
+        if other.is_class_method() or other.is_static_method() or other.is_special_wrapped():
             if other.context == self.context:
                 if other.wrappee.__name__ == self.wrappee.__name__:
                     return True
@@ -176,6 +179,10 @@ class Call(ModelObject):
 
     def has_hook(self, hook):
         return hook in self._active_hooks
+
+    @property
+    def active_hooks(self):
+        return self._active_hooks
 
     def remove_hook(self, hook):
         self._active_hooks.remove(hook)

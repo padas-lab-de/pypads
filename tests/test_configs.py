@@ -119,7 +119,7 @@ class ConfigsTest(BaseTest):
         tracker = PyPads(uri=TEST_FOLDER, config=config, autostart=True,
                          hooks=hooks,
                          events=events,
-                         setup_fns=setup_fns)
+                         setup_fns=setup_fns, log_level="DEBUG")
 
         @tracker.decorators.track(event=["pypads_log"])
         def recursive_dummy(s: str):

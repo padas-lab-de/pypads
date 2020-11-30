@@ -1,10 +1,9 @@
 import uuid
 from typing import Optional, Union
 
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel
 
 from pypads.model.models import BaseStorageModel, ResultType
-from pypads.utils.util import persistent_hash
 
 
 class LibraryModel(BaseStorageModel):

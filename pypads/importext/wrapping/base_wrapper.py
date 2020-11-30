@@ -47,17 +47,17 @@ class Context(ModelHolder):
     def overwrite(self, key, obj):
         setattr(self._c, key, obj)
 
-    def has_wrap_meta(self, mapping, wrappee):
+    def get_wrap_metas(self, wrappee):
         if not inspect.isfunction(wrappee):
             holder = wrappee
         else:
             holder = self._c
-        # for k in holder.__dict__:
-        #     if k.startswith("_pypads_mapping_"):
-        #         if mapping in getattr(holder, k):
-        #             return True
-        if hasattr(holder, "_pypads_mapping_" + wrappee.__name__):
-            for hit in getattr(holder, "_pypads_mapping_" + wrappee.__name__):
+        return getattr(holder, "_pypads_mapping_" + wrappee.__name__, None)
+
+    def has_wrap_meta(self, mapping, wrappee):
+        meta = self.get_wrap_metas(wrappee)
+        if meta is not None:
+            for hit in meta:
                 if hit.mapping == mapping:
                     return True
         return False

@@ -9,7 +9,7 @@ from pydantic.version import VERSION
 from pypads.app.misc.inheritance import SuperStop
 from pypads.model.models import BaseStorageModel, get_reference
 from pypads.utils.logging_util import jsonable_encoder
-from pypads.utils.util import has_direct_attr, persistent_hash, find_package_version
+from pypads.utils.util import has_direct_attr, persistent_hash
 
 
 class ModelInterface(SuperStop):

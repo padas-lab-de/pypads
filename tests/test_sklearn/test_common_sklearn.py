@@ -2,7 +2,7 @@ import datetime
 
 import mlflow
 
-from tests.base_test import TEST_FOLDER, config
+from tests.base_test import TEST_FOLDER
 from tests.test_sklearn.base_sklearn_test import BaseSklearnTest, sklearn_simple_decision_tree_experiment, \
     sklearn_pipeline_experiment
 
@@ -42,7 +42,7 @@ class CommonSklearnTest(BaseSklearnTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(autostart=False)
+        tracker = PyPads(autostart=False, log_level="DEBUG")
         tracker.start_track(experiment_name="1. Experiment")
         tracker.actuators.set_random_seed(seed=1)
 

@@ -7,10 +7,10 @@ from pydantic import BaseModel
 from pypads import logger
 from pypads.app.call import Call
 from pypads.app.env import InjectionLoggerEnv
-from pypads.app.injections.base_logger import Logger, LoggerExecutor, OriginalExecutor
+from pypads.app.injections.base_logger import Logger, LoggerExecutor, OriginalExecutor, env_cache
 from pypads.app.injections.tracked_object import LoggerCall, FallibleMixin
 from pypads.app.misc.inheritance import SuperStop
-from pypads.app.misc.mixins import OrderMixin
+from pypads.app.misc.mixins import OrderMixin, MissingDependencyError
 from pypads.exceptions import NoCallAllowedError
 from pypads.model.logger_call import InjectionLoggerCallModel, MultiInjectionLoggerCallModel
 from pypads.model.logger_model import InjectionLoggerModel
@@ -88,7 +88,7 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
                                         "_pypads_input_results": _pypads_input_results,
                                         "_pypads_cached_results": _pypads_cached_results,
                                         "kwargs": kwargs_}
-            _pypads_env.pypads.cache.run_add(id(output), _environment_information)
+            _pypads_env.pypads.cache.run_add(env_cache(output), _environment_information)
 
             # Trigger pre run functions
             _pre_result, pre_time = self._pre(ctx, _pypads_env=_pypads_env,
@@ -132,7 +132,7 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
             self._store_results(output, logger_call)
-            _pypads_env.pypads.cache.run_remove(id(output))
+            _pypads_env.pypads.cache.run_remove(env_cache(output))
         return self._get_return_value(_return, _post_result)
 
     def _get_logger_call(self, _pypads_env) -> Union[InjectionLoggerCall, FallibleMixin]:
@@ -164,16 +164,16 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
         :return:
         """
         try:
+            logger.error("Logging failed for " + str(self) + ": " + str(error) + "\nTrace:\n" + traceback.format_exc())
             raise error
+        except MissingDependencyError as e:
+            return _pypads_env.callback(*args, *kwargs)
         except NoCallAllowedError as e:
-
             # Call next wrapped callback if no call was allowed due to the settings or environment
             _pypads_hook_params = _pypads_env.parameter
             return self.__call_wrapped__(ctx, _pypads_env=_pypads_env, _args=args, _kwargs=kwargs,
                                          **_pypads_hook_params)
         except Exception as e:
-            logger.error("Logging failed for " + str(self) + ": " + str(error) + "\nTrace:\n" + traceback.format_exc())
-
             # Try to call the original unwrapped function if something broke
             original = _pypads_env.call.call_id.context.original(_pypads_env.callback)
             if callable(original):
@@ -290,7 +290,7 @@ class MultiInjectionLogger(DelayedResultsMixin, InjectionLogger, SuperStop, meta
                                         "_pypads_input_results": _pypads_input_results,
                                         "_pypads_cached_results": _pypads_cached_results,
                                         "kwargs": kwargs_}
-            _pypads_env.pypads.cache.run_add(id(output), _environment_information)
+            _pypads_env.pypads.cache.run_add(env_cache(output), _environment_information)
 
             # Trigger pre run functions
             _pre_result, pre_time = self._pre(ctx, _pypads_env=_pypads_env,
@@ -333,7 +333,7 @@ class MultiInjectionLogger(DelayedResultsMixin, InjectionLogger, SuperStop, meta
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
             self._store_results(output, logger_call)
-            _pypads_env.pypads.cache.run_remove(id(output))
+            _pypads_env.pypads.cache.run_remove(env_cache(output))
         return self._get_return_value(_return, _post_result)
 
 
