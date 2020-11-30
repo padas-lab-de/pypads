@@ -24,7 +24,10 @@ class FunctionReference(ModelObject):
         self._function_type = None
 
         if self.is_special_wrapped():
-            self.wrappee = self.context.container.__dict__[self.wrappee.__name__]
+            try:
+                self.wrappee = self.context.container.__dict__[self.wrappee.__name__]
+            except:
+                self.wrappee = getattr(self.context.container, self.wrappee.__name__)
 
     def real_context(self):
         """
