@@ -128,7 +128,16 @@ class FunctionWrapper(BaseWrapper):
         call = None
         try:
             current_call: Call = self._pypads.call_tracker.current_call()
-
+            try:
+                instance_str = str(instance)
+            except Exception as e:
+                if hasattr(instance, '__class__'):
+                    if hasattr(instance.__class__, '__name__'):
+                        instance_str =  instance.__class__.__name__
+                    else:
+                        instance_str = str(instance.__class__)
+                else:
+                    instance_str = ""
             # Don't make a new call if the last call has the same identity as the current one
             # Or if the instance method access yields a different method than the current original (inherited methods)
             # And the instance as well as the function name where the same
@@ -141,10 +150,10 @@ class FunctionWrapper(BaseWrapper):
                 # if not fn_reference.context.original(
                 #        fn_reference.wrappee) == fn_reference.wrappee and current_call is not None:
                 call = current_call
-                logger.debug(f"Reused existing call {call} in {fn_reference} of {instance}.")
+                logger.debug(f"Reused existing call {call} in {fn_reference} of {instance_str}.")
             else:
                 call = add_call(accessor)
-                logger.debug(f"Created new call to track {call} in {fn_reference} of {instance}.")
+                logger.debug(f"Created new call to track {call} in {fn_reference} of {instance_str}.")
             yield call
         finally:
             if call and not current_call == call:

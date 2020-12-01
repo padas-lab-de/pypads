@@ -167,7 +167,7 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
             logger.error("Logging failed for " + str(self) + ": " + str(error) + "\nTrace:\n" + traceback.format_exc())
             raise error
         except MissingDependencyError as e:
-            return _pypads_env.callback(*args, *kwargs)
+            return _pypads_env.callback(*args, **kwargs)
         except NoCallAllowedError as e:
             # Call next wrapped callback if no call was allowed due to the settings or environment
             _pypads_hook_params = _pypads_env.parameter
