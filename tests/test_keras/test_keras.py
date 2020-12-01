@@ -1,5 +1,6 @@
 import os
 import pathlib
+from importlib import reload
 
 from pypads.app.injections.injection import InjectionLogger
 from pypads.importext.versioning import LibSelector
@@ -72,98 +73,15 @@ def keras_mlp_for_multi_class_softmax_classification():
     print(score)
 
 
-global callback
-callback = "empty"
-
-
 # noinspection PyMethodMayBeStatic
 class PypadsKerasTest(BaseTest):
-
-    def test_keras_custom_logging(self):
-        # --------------------------- setup of the tracking ---------------------------
-
-        # custom logging
-
-        class Predictions(InjectionLogger):
-
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args,  **kwargs)
-
-            def __pre__(self, ctx, *args, _logger_call, _args, _kwargs, **kwargs):
-                # Fallback logging function
-                global callback
-                callback = "predictions"
-
-            def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs,
-                         **kwargs):
-                pass
-
-        class KerasPredictions(InjectionLogger):
-
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args,  **kwargs)
-                self.identity = Predictions.__name__
-
-            supported_libraries = {LibSelector(name="keras", constraint="*", specificity=1),
-                                   LibSelector(name="tensorflow", constraint="*", specificity=1)}
-
-            def __pre__(self, ctx, *args, _logger_call, _args, _kwargs, **kwargs):
-                # Fallback logging function
-                global callback
-                callback = "predictions for keras"
-
-            def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs,
-                         **kwargs):
-                pass
-
-        class Keras231Predictions(InjectionLogger):
-
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-                self.identity = Predictions.__name__
-
-            supported_libraries = {LibSelector(name="keras", constraint="2.3.1", specificity=2),
-                                   LibSelector(name="tensorflow", constraint="2.3.0rc0", specificity=2)}
-
-            def __pre__(self, ctx, *args, _logger_call, _args, _kwargs, **kwargs):
-                global callback
-                callback = "predictions for keras v 2.3.1"
-
-            def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs,
-                         **kwargs):
-                pass
-
-        keras_events = {
-            "predictions": [Log(), Predictions(), KerasPredictions(), Keras231Predictions()]
-        }
-        keras_hooks = {
-            "predictions": {"on": ["pypads_predict"]}
-        }
-
-        config = {'mongo_db': False}
-        # Activate tracking of pypads
-        from pypads.app.base import PyPads
-        from pypads.bindings.hooks import DEFAULT_HOOK_MAPPING
-        from pypads.bindings.events import DEFAULT_LOGGING_FNS
-        PyPads(uri=TEST_FOLDER, config=config,hooks=dict_merge(DEFAULT_HOOK_MAPPING, keras_hooks),
-               events=dict_merge(DEFAULT_LOGGING_FNS, keras_events), autostart=True)
-
-        import timeit
-        t = timeit.Timer(keras_simple_sequential_experiment)
-        print(t.timeit(1))
-
-        # --------------------------- asserts ---------------------------
-        # TODO add asserts
-        global callback
-        assert callback == "predictions for keras v 2.3.1"
-        # !-------------------------- asserts ---------------------------
 
     # @pytest.mark.forked
     def test_keras_base_class(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, autostart=True)
+        tracker = PyPads(autostart=True)
 
         import timeit
         t = timeit.Timer(keras_simple_sequential_experiment)
@@ -172,13 +90,15 @@ class PypadsKerasTest(BaseTest):
         # --------------------------- asserts ---------------------------
         # TODO add asserts
         # !-------------------------- asserts ---------------------------
+        tracker.api.end_run()
 
     # @pytest.mark.forked
     def test_keras_mlp(self):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        PyPads(uri=TEST_FOLDER, autostart=True)
+        tracker = PyPads(autostart=False)
+        tracker.start_track(experiment_name='KerasTests')
 
         import timeit
         t = timeit.Timer(keras_mlp_for_multi_class_softmax_classification)
@@ -187,6 +107,7 @@ class PypadsKerasTest(BaseTest):
         # --------------------------- asserts ---------------------------
         # TODO add asserts
         # !-------------------------- asserts ---------------------------
+        tracker.api.end_run()
 
     # # @pytest.mark.forked
     # def test_keras_autolog(self):
@@ -208,7 +129,7 @@ class PypadsKerasTest(BaseTest):
     def test_keras_autolog(self):
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        PyPads(autostart="Keras Autolog")
+        tracker = PyPads(autostart="KerasAutolog")
 
         import timeit
         t = timeit.Timer(keras_simple_sequential_experiment)
@@ -217,6 +138,7 @@ class PypadsKerasTest(BaseTest):
         # --------------------------- asserts ---------------------------
         # TODO add asserts
         # !-------------------------- asserts ---------------------------
+        tracker.api.end_run()
 
     # def test_simple_keras_autolog(self):
     #     # Activate tracking of pypads
