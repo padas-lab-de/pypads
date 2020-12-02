@@ -1,13 +1,12 @@
 import sys
 
 from mlflow.utils.annotations import experimental
-from tensorflow.python.framework.errors_impl import AlreadyExistsError
 
 from pypads.app.env import LoggerEnv, InjectionLoggerEnv
 from pypads.app.injections.base_logger import OriginalExecutor
 from pypads.app.injections.injection import InjectionLogger
 from pypads.app.injections.run_loggers import RunSetup
-from pypads.utils.util import is_package_available
+from pypads.utils.util import is_package_available, find_package_version
 
 added_auto_logs = set()
 
@@ -160,9 +159,17 @@ class MlFlowAutoILF(InjectionLogger):
         return OriginalExecutor(fn=_pypads_env.callback)(*_args, **_kwargs)
 
     def _handle_error(self, *args, ctx, _pypads_env, error, **kwargs):
-        try:
-            raise error
-        except AlreadyExistsError:
-            pass
-        except Exception as e:
-            super()._handle_error(*args, ctx=ctx, _pypads_env=_pypads_env, error=error, **kwargs)
+        if find_package_version('tensorflow') >= '2.3.0':
+            from tensorflow.python.framework.errors_impl import AlreadyExistsError
+            try:
+                raise error
+            except AlreadyExistsError:
+                print('here')
+                pass
+            except Exception as e:
+                return super()._handle_error(*args, ctx=ctx, _pypads_env=_pypads_env, error=error, **kwargs)
+        else:
+            try:
+                raise error
+            except Exception as e:
+                return super()._handle_error(*args, ctx=ctx, _pypads_env=_pypads_env, error=error, **kwargs)
