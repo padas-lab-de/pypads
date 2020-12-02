@@ -3,19 +3,20 @@ metadata:
   version: "0.1.0"
   library:
     name: "tensorflow"
-    version: "2.3.0rc0"
+    version: ">= 2.3.0"
 
 mappings:
-  :tensorflow.python.keras:
-    :metrics.Metric.__call__:
+  !!python/pPath tensorflow.python.keras:
+    !!python/pPath metrics.Metric.__call__:
       hooks: ["pypads_metric"]
       data:
-        concepts: ["keras classification metrics"]
+        '@rdf':
+          in_context: http://www.padre-lab.eu/onto/Metric
 
-    :engine.training.Model:
-      :__init__:
+    !!python/pPath engine.training.Model:
+      !!python/pPath __init__:
         hooks: ["pypads_init"]
-      :{re:(fit|fit_generator)$}:
+      !!python/rSeg '(fit|fit_generator)$':
         hooks: ["pypads_fit"]
-      :predict_classes:
+      !!python/pPath predict_classes:
         hooks: ["pypads_predict"]

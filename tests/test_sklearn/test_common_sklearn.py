@@ -19,8 +19,8 @@ class CommonSklearnTest(BaseSklearnTest):
         set_up_fns = {}
 
         from pypads.app.base import PyPads
-        tracker = PyPads(uri=TEST_FOLDER, setup_fns=set_up_fns)
-        tracker.start_track()
+        tracker = PyPads(setup_fns=set_up_fns, log_level="DEBUG")
+        tracker.start_track(experiment_name="1. Experiment")
 
         import timeit
         t = timeit.Timer(sklearn_pipeline_experiment)
@@ -55,25 +55,6 @@ class CommonSklearnTest(BaseSklearnTest):
         import mlflow
         run = mlflow.active_run()
         assert tracker.api.active_run().info.run_id == run.info.run_id
-        #
-        # # 1 process
-        # assert len(tracker.mlf.list_artifacts(run.info.run_id)) > 0
-        #
-        # parameters = tracker.mlf.list_artifacts(run.info.run_id, path='../params')
-        # assert len(parameters) != 0
-        # assert 'split_quality' in ''.join([p.path for p in parameters])
-        #
-        # metrics = tracker.mlf.list_artifacts(run.info.run_id, path='../metrics')
-        # assert len(metrics) != 0
-        #
-        # assert 'f1_score' in ''.join([m.path for m in metrics])
-        #
-        # tags = tracker.mlf.list_artifacts(run.info.run_id, path='../tags')
-        # assert 'pypads.system.processor' in ''.join([m.path for m in tags])
-
-        tracker.results.get_summary()
-        # tracker.results.get_tracked_objects(run_id=tracker.api.active_run().info.run_id, category="Computer")
-        # tracker.results.get_summary(tracker.results.get_data_frame(tracker.results.get_run_ids_by_search({"storage_type": ResultType.parameter.value, "data": "data to search for etc."})))
 
         tracker.api.end_run()
         # pr.disable()
@@ -207,6 +188,6 @@ class CommonSklearnTest(BaseSklearnTest):
         model.fit(dataset.data, dataset.target)
         model.fit(dataset.data, dataset.target)
 
-        n_inputs = 5 * 2  # number of inputs of DecisionTreeClassifier.fit
-        n_outputs = 1 * 2  # number of outputs of fit
         # TODO add asserts
+
+        tracker.api.end_run()
