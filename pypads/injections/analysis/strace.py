@@ -49,7 +49,7 @@ class STrace(RunSetup):
                 os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
                 proc.terminate()
 
-        pads.add_atexit_fn(safety_hook)
+        pads.add_exit_fn(safety_hook)
 
 
 class STraceStop(RunTeardown):

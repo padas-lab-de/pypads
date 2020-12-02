@@ -2,6 +2,7 @@ import ast
 import atexit
 import importlib
 import pkgutil
+import signal
 from typing import List, Union, Callable
 
 import mlflow
@@ -75,11 +76,13 @@ DEFAULT_SETUP_FNS = {MlFlowAutoRSF(), DependencyRSF(), LoguruRSF(), StdOutRSF(),
                      ISystemRSF(), IRamRSF(), ICpuRSF(),
                      IDiskRSF(), IPidRSF(), ISocketInfoRSF(), IMacAddressRSF()}
 
+# List of exit functions already called. This is used to stop multiple execution on SIGNAL and atexit etc.
+executed_exit_fns = set()
 
-#  pypads isn't allowed to hold a state anymore (Everything with state should be part of the caching system)
+
+#  pypads shouldn't hold a state anymore (Everything with state should be part of the caching system)
 #  - We want to be able to rebuild PyPads from the cache alone if existing
 #  to stop the need for pickeling pypads as a whole.
-
 class PyPads:
     """
     PyPads app. Serves as the main entrypoint to PyPads. After constructing this app tracking is activated.
@@ -210,7 +213,12 @@ class PyPads:
             if pads.api.active_run():
                 pads.api.end_run()
 
-        self.add_atexit_fn(cleanup)
+        self.add_exit_fn(cleanup)
+
+        # SIGKILL and SIGSTOP are not catchable
+        signal.signal(signal.SIGTERM, self.run_exit_fns)
+        signal.signal(signal.SIGINT, self.run_exit_fns)
+        signal.signal(signal.SIGQUIT, self.run_exit_fns)
 
         if autostart:
             if isinstance(autostart, str):
@@ -516,21 +524,29 @@ class PyPads:
         """
         return self._backend.mlf
 
-    def add_atexit_fn(self, fn):
+    def add_exit_fn(self, fn):
         """
         Add function to be executed before stopping your process. This function is also added to pypads and errors
         are caught to not impact the experiment itself. Deactivating pypads should be able to run some of the atExit fns
         declared for pypads.
         """
 
-        def defensive_atexit():
+        def defensive_exit(signum, frame):
+            global executed_exit_fns
             try:
-                return fn()
+                if fn not in executed_exit_fns:
+                    logger.debug(f"Running exit fn {fn}.")
+                    out = fn()
+                    executed_exit_fns.add(fn)
+                    return out
+                logger.debug(f"Already ran exit fn {fn}.")
+                return None
             except (KeyboardInterrupt, Exception) as e:
                 logger.error("Couldn't run atexit function " + fn.__name__ + " because of " + str(e))
 
-        self._atexit_fns.append(defensive_atexit)
-        atexit.register(defensive_atexit)
+        # Otherwise as an atexit function?
+        self._atexit_fns.append(defensive_exit)
+        atexit.register(defensive_exit)
 
     def is_affected_module(self, name, affected_modules=None):
         """
@@ -602,6 +618,13 @@ class PyPads:
             logger.warning("Tracking was already activated.")
         return self
 
+    def run_exit_fns(self, signum=None, frame=None):
+        import sys
+        if frame is None:
+            frame = sys._getframe(0)
+        for fn in self._atexit_fns:
+            fn(signum, frame)
+
     def deactivate_tracking(self, run_atexits=False, reload_modules=True):
         """
         Deacticate the current tracking and cleanup.
@@ -611,8 +634,7 @@ class PyPads:
         """
         # run atexit fns if needed
         if run_atexits:
-            for fn in self._atexit_fns:
-                fn()
+            self.run_exit_fns()
 
         # Remove atexit fns
         for fn in self._atexit_fns:

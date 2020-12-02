@@ -284,10 +284,22 @@ def get_run_id():
 
 
 class PeriodicThread(threading.Thread):
-    def __init__(self, *args, sleep=1.0, target=None, **kwargs):
+    def __init__(self, *args, sleep=1.0, target=None, _cleanup=None, _atexit=None, **kwargs):
         self._stop_event = threading.Event()
+        self.daemon = True
         self._sleep_period = sleep
         super().__init__(*args, target=target, **kwargs)
+        self._cleanup = _cleanup or self._cleanup
+        self._atexit = _atexit or self._atexit
+
+    def _sigterm(self, signum, frame):
+        threading.Thread(target=self._cleanup, name='CleanupThread').start()
+
+    def _cleanup(self):
+        pass
+
+    def _atexit(self):
+        pass
 
     def run(self):
         try:

@@ -42,7 +42,7 @@ class CommonSklearnTest(BaseSklearnTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(autostart=False, log_level="DEBUG")
+        tracker = PyPads(autostart=False, log_level="WARNING")
         tracker.start_track(experiment_name="1. Experiment")
         tracker.actuators.set_random_seed(seed=1)
 
@@ -72,6 +72,7 @@ class CommonSklearnTest(BaseSklearnTest):
         # assert 'pypads.system.processor' in ''.join([m.path for m in tags])
 
         tracker.results.get_summary()
+        # tracker.results.get_tracked_objects(run_id=tracker.api.active_run().info.run_id, category="Computer")
         # tracker.results.get_summary(tracker.results.get_data_frame(tracker.results.get_run_ids_by_search({"storage_type": ResultType.parameter.value, "data": "data to search for etc."})))
 
         tracker.api.end_run()
