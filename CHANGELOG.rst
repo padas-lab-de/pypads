@@ -2,6 +2,35 @@ Changelog
 =========
 
 
+0.5.4 (2020-12-08)
+------------------
+
+Fix
+~~~
+- Syntax errors in the docs. [Mehdi Ben Amor]
+
+Other
+~~~~~
+- Bump version: 0.5.3 → 0.5.4. [Thomas Weißgerber]
+- Bump version: 0.5.2 → 0.5.3. [Thomas Weißgerber]
+- Bump version: 0.5.1 → 0.5.2. [Thomas Weißgerber]
+
+
+0.5.3 (2020-12-08)
+------------------
+- Bump version: 0.5.2 → 0.5.3. [Thomas Weißgerber]
+
+
+0.5.2 (2020-12-08)
+------------------
+- Bump version: 0.5.1 → 0.5.2. [Thomas Weißgerber]
+
+
+0.5.1 (2020-12-08)
+------------------
+- Bump version: 0.5.0 → 0.5.1. [Thomas Weißgerber]
+
+
 0.5.0 (2020-12-07)
 ------------------
 
