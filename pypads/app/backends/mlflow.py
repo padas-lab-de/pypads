@@ -89,12 +89,14 @@ class MLFlowBackend(BackendInterface, metaclass=ABCMeta):
         return mlflow.get_artifact_uri(artifact_path=artifact_path)
 
     def log_artifact(self, meta, local_path):
+        file_size = os.path.getsize(os.fspath(local_path))
+        meta.file_size = file_size
         path = self._log_artifact(local_path=local_path, artifact_path=meta.data)
         meta.data = path
-        for file_info in self.list_files(run_id=get_run_id(), path=os.path.dirname(path)):
-            if file_info.path == os.path.basename(path):
-                meta.file_size = file_info.file_size
-                break
+        # for file_info in self.list_files(run_id=get_run_id(), path=os.path.dirname(path)):
+        #     if file_info.path == os.path.basename(path):
+        #         meta.file_size = file_info.file_size
+        #         break
         self.log_json(meta, uuid4())
         return path
 

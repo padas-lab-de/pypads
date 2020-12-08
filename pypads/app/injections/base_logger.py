@@ -180,6 +180,8 @@ class Logger(BaseDefensiveCallableMixin, IntermediateCallableMixin, CacheDepende
             logger_call.output = output.store()
         logger_call.finish()
         logger_call.store()
+        from pypads.app.pypads import get_current_pads
+        get_current_pads().cache.run_remove(env_cache(output))
 
     @classmethod
     def _persistent_hash(cls):
@@ -266,7 +268,6 @@ class SimpleLogger(Logger):
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
             self._store_results(output, logger_call)
-            _pypads_env.pypads.cache.run_remove(env_cache(output))
         return _return
 
     @abstractmethod

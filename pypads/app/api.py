@@ -277,7 +277,7 @@ class PyPadsApi(IApi):
         """
         if holder is None:
             holder = self.get_programmatic_output()
-        ato = Artifact(value=artifact_path, description=description, file_format=find_file_format(local_path),
+        ato = Artifact(data=artifact_path, description=description, file_format=find_file_format(local_path),
                        additional_data=additional_data, parent=holder)
         out = self.pypads.backend.log_artifact(ato, local_path)
         holder.add_result(ato)

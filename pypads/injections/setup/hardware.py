@@ -24,12 +24,12 @@ class SystemStatsTO(TrackedObject):
         type: str = "Computer"
         description: str = "Information about the in the experiment used computer."
         mac_address: str = ...
-        cpu: Optional[IdReference] = ...  # CPU TrackedObject
-        memory: Optional[IdReference] = ...  # Memory TrackedObject
-        disk: Optional[IdReference] = ...  # Disk TrackedObject
-        system: Optional[IdReference] = ...  # System TrackedObject
-        process: Optional[IdReference] = ...  # Process TrackedObject
-        network: Optional[IdReference] = ...  # Network TrackedObject
+        cpu: Optional[IdReference] = None  # CPU TrackedObject
+        memory: Optional[IdReference] = None  # Memory TrackedObject
+        disk: Optional[IdReference] = None  # Disk TrackedObject
+        system: Optional[IdReference] = None  # System TrackedObject
+        process: Optional[IdReference] = None  # Process TrackedObject
+        network: Optional[IdReference] = None  # Network TrackedObject
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
