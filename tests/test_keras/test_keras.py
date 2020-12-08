@@ -76,7 +76,7 @@ class PypadsKerasTest(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(autostart=True)
+        tracker = PyPads(autostart=True, log_level="DEBUG")
 
         import timeit
         t = timeit.Timer(keras_simple_sequential_experiment)
@@ -88,30 +88,43 @@ class PypadsKerasTest(BaseTest):
         tracker.api.end_run()
 
     # @pytest.mark.forked
-    def test_keras_mlp(self):
-        # --------------------------- setup of the tracking ---------------------------
-        # Activate tracking of pypads
-        from pypads.app.base import PyPads
-        tracker = PyPads(autostart=False)
-        tracker.start_track(experiment_name='KerasTests')
-
-        import timeit
-        t = timeit.Timer(keras_mlp_for_multi_class_softmax_classification)
-        print(t.timeit(1))
-
-        # --------------------------- asserts ---------------------------
-        # TODO add asserts
-        # !-------------------------- asserts ---------------------------
-        tracker.api.end_run()
-
-    # # @pytest.mark.forked
+    # def test_keras_mlp(self):
+    #     # --------------------------- setup of the tracking ---------------------------
+    #     # Activate tracking of pypads
+    #     from pypads.app.base import PyPads
+    #     tracker = PyPads(autostart=False, log_level="INFO")
+    #     tracker.start_track(experiment_name='KerasTests')
+    #
+    #     import timeit
+    #     t = timeit.Timer(keras_mlp_for_multi_class_softmax_classification)
+    #     print(t.timeit(1))
+    #
+    #     # --------------------------- asserts ---------------------------
+    #     # TODO add asserts
+    #     # !-------------------------- asserts ---------------------------
+    #     tracker.api.end_run()
+    #
+    # # # @pytest.mark.forked
+    # # def test_keras_autolog(self):
+    # #     # Activate tracking of pypads
+    # #     from pypads.app.base import PyPads
+    # #     PyPads(uri=TEST_FOLDER, hooks={
+    # #         "autolog": {"on": ["pypads_fit"]},
+    # #         "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metrics"]}
+    # #     }, autostart="Keras Autolog")
+    # #
+    # #     import timeit
+    # #     t = timeit.Timer(keras_simple_sequential_experiment)
+    # #     print(t.timeit(1))
+    # #
+    # #     # --------------------------- asserts ---------------------------
+    # #     # TODO add asserts
+    # #     # !-------------------------- asserts ---------------------------
+    #
     # def test_keras_autolog(self):
     #     # Activate tracking of pypads
     #     from pypads.app.base import PyPads
-    #     PyPads(uri=TEST_FOLDER, hooks={
-    #         "autolog": {"on": ["pypads_fit"]},
-    #         "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metrics"]}
-    #     }, autostart="Keras Autolog")
+    #     tracker = PyPads(autostart="KerasAutolog", log_level="INFO")
     #
     #     import timeit
     #     t = timeit.Timer(keras_simple_sequential_experiment)
@@ -120,26 +133,4 @@ class PypadsKerasTest(BaseTest):
     #     # --------------------------- asserts ---------------------------
     #     # TODO add asserts
     #     # !-------------------------- asserts ---------------------------
-
-    def test_keras_autolog(self):
-        # Activate tracking of pypads
-        from pypads.app.base import PyPads
-        tracker = PyPads(autostart="KerasAutolog")
-
-        import timeit
-        t = timeit.Timer(keras_simple_sequential_experiment)
-        print(t.timeit(1))
-
-        # --------------------------- asserts ---------------------------
-        # TODO add asserts
-        # !-------------------------- asserts ---------------------------
-        tracker.api.end_run()
-
-    # def test_simple_keras_autolog(self):
-    #     # Activate tracking of pypads
-    #     from pypads.app.base import PyPads
-    #     PyPads(uri=TEST_FOLDER, autostart="Keras Basic Auto-Log")
-    #
-    #     import timeit
-    #     t = timeit.Timer(keras_simple_sequential_experiment)
-    #     print(t.timeit(1))
+    #     tracker.api.end_run()

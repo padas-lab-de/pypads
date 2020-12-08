@@ -1,8 +1,8 @@
 .. _getting_started:
 
-================
+===========================
 Getting started with PyPads
-================
+===========================
 
 .. meta::
    :description lang=en: Get started tracking experiments with PyPads.
@@ -108,7 +108,7 @@ The PyPads API delivers standard functionality of PyPads. This also pipes some o
 
 
 Validators
-=========
+==========
 Validators are to be used if the experimental status or code has to be checked on some properties. These should normally not log anything, but a validation report. A validation report should be an optional tag or at max a text file. In general validators should inform the user on runtime about errors and problems. It is planned to add the possibility to interrupt an execution if validators fail in the future. Some validators will be logging functions bound to library functions. An examplary validator which will want to be bound to the usage of pytorch is the determinism check for pytorch.
 
 .. code-block:: python
@@ -127,7 +127,7 @@ To call the api you can use the app.
 
 
 Setup / Teardown functions
-=========
+==========================
 Setup or teardown functions are to be called when a run starts or ends. These mostly are used to log meta information about the experiment including data about git, hardware and the environment. A list of currently defined decorators can be found :ref:`here <prepost>`.
 
 .. code-block:: python
@@ -156,17 +156,17 @@ Configuring setup or teardown functions can be done via the app constructor or a
 
 
 MappingFiles
-=========
+============
 Mapping files deliver hooks into libraries to trigger tracking functionality. They are written in yml and defining a syntax to markup functions, classes and modules.
 
 
 Decorators
-=========
+==========
 Decorators can be used instead of a mapping file to denote hooks in code. Because most libraries are not to be changed directly they are currently used sparingly. In PyPads defined decorators can be found :ref:`here <decorators>`.
 
 
 Logging functions
-=========
+=================
 Logging functions are the generic functions performing tracking tasks bound to hooked functions of libraries. Everything not fitting into other concepts is just called logging function. Following function would track the input to the hooked function.
 
 .. code-block:: python
@@ -269,7 +269,7 @@ Mapping files or mappings are a more permanent, shareable and modular approach.
 
 
 Check points
-=========
+============
 Check points are currently not implemented. They will introduce a structured way to denote cache able states. By defining check points we hope to be able to define marks from which an experiment can be rerun in the future.
 
 
@@ -277,7 +277,7 @@ Examples
 --------
 
 Sklearn DecisionTree example
-====================
+============================
 Following shows how PyPads can be used to track the parameters, input and output of a sklearn experiment.
 
 .. code-block:: python

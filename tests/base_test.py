@@ -98,6 +98,6 @@ class BaseTest(unittest.TestCase):
         if current_pads:
             current_pads.deactivate_tracking(run_atexits=True, reload_modules=False)
             # noinspection PyTypeChecker
-            set_current_pads(None)
+            # set_current_pads(None)
         cleanup()
 
