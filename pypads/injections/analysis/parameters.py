@@ -106,7 +106,7 @@ class ParametersILF(InjectionLogger):
         tracked object doesn't give a lot of benefit but enforcing a description a name and a category and could be omitted.
         """
         type: str = "ParametersILF-Output"
-        hyper_parameter_to: IdReference = ...
+        hyper_parameter_to: IdReference = None
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
