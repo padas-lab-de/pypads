@@ -1,8 +1,8 @@
 .. _base_class:
 
-============
+========================
 PyPads application class
-============
+========================
 
 This class represents the app. To start and activate the tracking of your modules, classes and functions, the app class has to be instantiated.
 
@@ -37,7 +37,7 @@ Anchors are names for repeating types of hooks. Fit functions for example are ex
 
 
 Default Event Types
-----------------
+-------------------
 
 Event types represent strategies to react to an anchor / hook.
 
@@ -71,7 +71,7 @@ The configuration for PyPads
 
 
 Default Hook Mapping
-----------------
+--------------------
 
 The hook mapping, maps hooks (anchors) to the events (event types).
 
@@ -90,7 +90,7 @@ The hook mapping, maps hooks (anchors) to the events (event types).
 
 
 Default Event Mapping
-----------------
+---------------------
 
 Defines which logging functions should be run for events.
 

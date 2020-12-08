@@ -2,6 +2,31 @@ Changelog
 =========
 
 
+0.5.0 (2020-12-07)
+------------------
+
+New
+~~~
+- Reduced performance impact of pypads by about 50% by reducing the
+  number of needed rest calls to the tracking server. [Thomas
+  Weißgerber]
+
+Changes
+~~~~~~~
+- Added function to retrieve subset of row ids based on logical
+  operators. [christofer]
+- Added result summary / search. [Thomas Weißgerber]
+- Added result summary / search. [Thomas Weißgerber]
+- Added classification metrics to the sklearn mapping file. [Thomas
+  Weißgerber]
+- Fix in call_tracke.has_call_identity, recursive tracking unit tests.
+  [Mehdi Ben Amor]
+
+Other
+~~~~~
+- Bump version: 0.4.0 → 0.5.0. [Mehdi Ben Amor]
+
+
 0.4.0 (2020-10-20)
 ------------------
 
