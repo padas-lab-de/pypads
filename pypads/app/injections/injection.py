@@ -132,7 +132,6 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
             self._store_results(output, logger_call)
-            _pypads_env.pypads.cache.run_remove(env_cache(output))
         return self._get_return_value(_return, _post_result)
 
     def _get_logger_call(self, _pypads_env) -> Union[InjectionLoggerCall, FallibleMixin]:
@@ -222,6 +221,9 @@ class DelayedResultsMixin(Logger, SuperStop, metaclass=ABCMeta):
             self.finalize_output(pads, *args, logger_call=logger_call, output=output, **kwargs)
             logger_call.finish()
             logger_call.store()
+
+            # Clean up saved env data for output
+            pads.cache.run_remove(env_cache(output))
 
         pads.api.register_teardown_utility('{}_clean_up'.format(self.__class__.__name__), finalize,
                                            error_message="Couldn't finalize output of logger {},"
@@ -333,7 +335,6 @@ class MultiInjectionLogger(DelayedResultsMixin, InjectionLogger, SuperStop, meta
             for fn in self.cleanup_fns(logger_call):
                 fn(self, logger_call)
             self._store_results(output, logger_call)
-            _pypads_env.pypads.cache.run_remove(env_cache(output))
         return self._get_return_value(_return, _post_result)
 
 
