@@ -8,7 +8,7 @@ from pypads.injections.loggers.debug import Log, LogInit
 from pypads.injections.loggers.metric import MetricILF
 # maps events to loggers
 # Default event mappings. We allow to log parameters, output defor input
-from pypads.injections.loggers.mlflow.mlflow_autolog import MlFlowAutoILF
+from pypads.injections.loggers.mlflow.mlflow_autolog import MlFlowAutoIL
 from pypads.injections.loggers.pipeline_detection import PipelineTrackerILF
 
 DEFAULT_LOGGING_FNS = {
@@ -18,7 +18,7 @@ DEFAULT_LOGGING_FNS = {
     # "hardware": [CpuILF(_pypads_write_format=FileFormats.text), RamILF(_pypads_write_format=FileFormats.text),
     #             DiskILF(_pypads_write_format=FileFormats.text)],
     "metric": MetricILF(),
-    "autolog": MlFlowAutoILF(),
+    "autolog": MlFlowAutoIL(),
     "pipeline": PipelineTrackerILF(),
     "log": Log(),
     "init": LogInit()

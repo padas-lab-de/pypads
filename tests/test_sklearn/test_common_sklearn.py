@@ -32,6 +32,8 @@ class CommonSklearnTest(BaseSklearnTest):
 
         artifacts = [x for x in tracker.results.get_artifacts(run_id=run.info.run_id)]
         assert len(artifacts) > 0
+
+        tracker.api.end_run()
         # !-------------------------- asserts ---------------------------
 
     def test_default_tracking(self):
@@ -92,6 +94,8 @@ class CommonSklearnTest(BaseSklearnTest):
         parameters = [x for x in tracker.results.get_parameters(run_id=run.info.run_id)]
         assert len(parameters) != 0
 
+        tracker.api.end_run()
+
     def test_experiment_configuration(self):
         # Activate tracking of pypads
         from pypads.app.base import PyPads
@@ -116,6 +120,7 @@ class CommonSklearnTest(BaseSklearnTest):
         # assert statements
         # assert tracker._experiment.regex == "ConfiguredExperiment"
         # TODO add asserts
+        tracker.api.end_run()
 
     def test_predefined_experiment(self):
         import mlflow
@@ -151,6 +156,7 @@ class CommonSklearnTest(BaseSklearnTest):
         assert run == tracker.api.active_run()
         # assert name == tracker._experiment.regex
         # TODO add asserts
+        tracker.api.end_run()
 
     # def test_parameter_logging_extension_after_import(self):
     #     from sklearn import datasets, metrics

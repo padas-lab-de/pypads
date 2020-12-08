@@ -2,6 +2,8 @@ import inspect
 import sys
 import types
 from functools import wraps
+from typing import Set
+
 from importlib._bootstrap_external import PathFinder
 # noinspection PyUnresolvedReferences
 from multiprocessing import Value
@@ -20,6 +22,26 @@ def _add_found_class(mapping):
 def _get_relevant_mappings(package: Package):
     from pypads.app.pypads import get_current_pads
     return get_current_pads().mapping_registry.get_relevant_mappings(package)
+
+
+def _get_hooked_on_import_fns(matched_mappings: Set[MatchedMapping]):
+    """
+    For a given module find the hook functions defined in a mapping and configured in a configuration to be executed on import.
+    :param mapping:
+    :return:
+    """
+    from pypads.app.pypads import get_current_pads
+    current_pads = get_current_pads()
+    fns = []
+    hooks = set()
+    for matched_mapping in matched_mappings:
+        for hook in matched_mapping.mapping.hooks:
+            if hook.anchor.name == "pypads_import":
+                hooks.add(hook)
+
+    for hook in hooks:
+        fns = fns + current_pads.hook_registry.get_logging_functions(hook)
+    return fns
 
 
 def _add_inherited_mapping(clazz, super_class):
@@ -52,13 +74,27 @@ def duck_punch_loader(spec):
 
     @wraps(original_exec)
     def exec_module(self, module, execute=original_exec):
+
+        # Trigger on import Loggers
+        _package = Package(module, PackagePath(".".join([module.__name__, "__init__"])))
+        # check if there are mappings on import
+        _mappings = _get_relevant_mappings(_package)
+
+        from pypads.app.pypads import current_pads
+        reference = module.__name__
+
+        if len(_mappings) > 0:
+            # execute On import logging functions
+            fns = _get_hooked_on_import_fns({MatchedMapping(mapping, _package.path) for mapping in _mappings})
+            for (fn, config) in fns:
+                fn(self, module=_package)
+
         out = execute(module)
 
         # History to check if a class inherits a wrapping intra-module
         mro_entry_history = {}
 
-        from pypads.app.pypads import current_pads
-        reference = module.__name__
+        # reference = module.__name__
 
         if current_pads:
             # TODO we might want to make this configurable/improve performance.
@@ -101,7 +137,10 @@ def duck_punch_loader(spec):
                         except Exception as e:
                             logger.debug("Skipping some superclasses of " + str(obj) + ". " + str(e))
                     mappings = mappings.union(_get_relevant_mappings(package))
-                    if len(mappings) > 0:
+                    current_import_loggers = []
+                    if current_pads.cache.run_exists("on-import-loggers"):
+                        current_import_loggers = current_pads.cache.run_get("on-import-loggers")
+                    if len(mappings) > 0 and len(current_import_loggers) > 0:
                         current_pads.wrap_manager.wrap(obj, Context(module, reference),
                                                        {MatchedMapping(mapping, package.path) for mapping in mappings})
             if reference in current_pads.wrap_manager.module_wrapper.punched_module_names:

@@ -6,17 +6,20 @@ metadata:
     version: ">= 2.3.0"
 
 mappings:
-  !!python/pPath tensorflow.python.keras:
-    !!python/pPath metrics.Metric.__call__:
-      hooks: ["pypads_metric"]
-      data:
-        '@rdf':
-          in_context: http://www.padre-lab.eu/onto/Metric
+  !!python/pPath tensorflow:
+    !!python/pPath .__init__:
+      hooks : ["pypads_import"]
+    !!python/pPath python.keras:
+      !!python/pPath metrics.Metric.__call__:
+        hooks: ["pypads_metric"]
+        data:
+          '@rdf':
+            in_context: http://www.padre-lab.eu/onto/Metric
 
-    !!python/pPath engine.training.Model:
-      !!python/pPath __init__:
-        hooks: ["pypads_init"]
-      !!python/rSeg '(fit|fit_generator)$':
-        hooks: ["pypads_fit"]
-      !!python/pPath predict_classes:
-        hooks: ["pypads_predict"]
+      !!python/pPath engine.training.Model:
+        !!python/pPath __init__:
+          hooks: ["pypads_init"]
+        !!python/rSeg '(fit|fit_generator)$':
+          hooks: ["pypads_fit"]
+        !!python/pPath predict_classes:
+          hooks: ["pypads_predict"]
