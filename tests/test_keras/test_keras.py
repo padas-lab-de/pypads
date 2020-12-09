@@ -76,7 +76,7 @@ class PypadsKerasTest(BaseTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(autostart=True, log_level="DEBUG")
+        tracker = PyPads(autostart="KerasAutolog", log_level="DEBUG")
 
         import timeit
         t = timeit.Timer(keras_simple_sequential_experiment)

@@ -13,7 +13,6 @@ from pypads.importext.mappings import Mapping, MatchedMapping
 from pypads.importext.package_path import PackagePath, PackagePathMatcher, Package
 from pypads.importext.wrapping.base_wrapper import Context
 
-
 def _add_found_class(mapping):
     from pypads.app.pypads import get_current_pads
     return get_current_pads().mapping_registry.add_found_class(mapping)
@@ -65,6 +64,14 @@ def _add_inherited_mapping(clazz, super_class):
                 found_mappings.add(found_mapping)
     return found_mappings
 
+_module_waiting_queue = []
+_import_loggers_queues = {}
+_wrapping_queues = {}
+
+
+def delay_wrapping():
+    return len(_module_waiting_queue) > 0
+
 
 def duck_punch_loader(spec):
     if not spec.loader:
@@ -83,18 +90,21 @@ def duck_punch_loader(spec):
         from pypads.app.pypads import current_pads
         reference = module.__name__
 
-        if len(_mappings) > 0:
-            # execute On import logging functions
-            fns = _get_hooked_on_import_fns({MatchedMapping(mapping, _package.path) for mapping in _mappings})
-            for (fn, config) in fns:
-                fn(self, module=_package)
+        if current_pads:
+            if len(_mappings) > 0:
+                # add import loggers to the queue of this module
+                fns = _get_hooked_on_import_fns({MatchedMapping(mapping, _package.path) for mapping in _mappings})
+                if reference not in _import_loggers_queues:
+                    _import_loggers_queues.update({reference: []})
+                if len(fns) >0:
+                    _module_waiting_queue.append(reference)
+                for (fn, config) in fns:
+                    _import_loggers_queues[reference].append((fn, config))
 
         out = execute(module)
 
         # History to check if a class inherits a wrapping intra-module
         mro_entry_history = {}
-
-        # reference = module.__name__
 
         if current_pads:
             # TODO we might want to make this configurable/improve performance.
@@ -137,12 +147,27 @@ def duck_punch_loader(spec):
                         except Exception as e:
                             logger.debug("Skipping some superclasses of " + str(obj) + ". " + str(e))
                     mappings = mappings.union(_get_relevant_mappings(package))
-                    current_import_loggers = []
-                    if current_pads.cache.run_exists("on-import-loggers"):
-                        current_import_loggers = current_pads.cache.run_get("on-import-loggers")
-                    if len(mappings) > 0 and len(current_import_loggers) > 0:
-                        current_pads.wrap_manager.wrap(obj, Context(module, reference),
-                                                       {MatchedMapping(mapping, package.path) for mapping in mappings})
+                    if len(mappings) > 0:
+                        if not delay_wrapping():
+                            current_pads.wrap_manager.wrap(obj, Context(module, reference),
+                                                           {MatchedMapping(mapping, package.path) for mapping in mappings})
+                        else:
+                            if not _module_waiting_queue[0] in _wrapping_queues:
+                                _wrapping_queues[_module_waiting_queue[0]] = []
+                            _wrapping_queues[_module_waiting_queue[0]].append((obj, Context(module, reference),{MatchedMapping(mapping, package.path) for mapping in mappings}))
+
+            if reference in _module_waiting_queue:
+                # execute import logger of this reference
+                while len(_import_loggers_queues[reference]) >0:
+                    (fn, config) = _import_loggers_queues[reference].pop()
+                    fn(self)
+                del _import_loggers_queues[reference]
+                _module_waiting_queue.remove(reference)
+                if reference in _wrapping_queues:
+                    for (obj, ctx, mm) in _wrapping_queues[reference]:
+                        current_pads.wrap_manager.wrap(obj, ctx, mm)
+                    del _wrapping_queues[reference]
+
             if reference in current_pads.wrap_manager.module_wrapper.punched_module_names:
                 logger.info(f"PyPads wrapped functions of module {reference}.")
         return out

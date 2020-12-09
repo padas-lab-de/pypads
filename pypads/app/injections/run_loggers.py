@@ -44,14 +44,6 @@ class RunLogger(SimpleLogger, OrderMixin, metaclass=ABCMeta):
             pass
 
 
-def call_cache(fn, ctx=None):
-    """
-    translate a logger call to a reference in the cache.
-    """
-
-    return "on_import_" + str(id(fn)) if ctx is None else "on_import_" + str(id(fn)) + "_" + str(id(ctx))
-
-
 class ImportLogger(RunLogger):
     """
     This class should be used to define logging functionalities to be injected on import before pypads wrapping.
@@ -61,39 +53,13 @@ class ImportLogger(RunLogger):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def add_call(self, module=None):
-        from pypads.app.pypads import get_current_pads
-        pads = get_current_pads()
-        if pads.cache.run_exists("on-import-loggers"):
-            call_stack = pads.cache.run_get("on-import-loggers")
-        else:
-            call_stack = []
-        call_stack.append(call_cache(self, module))
-        pads.cache.run_add("on-import-loggers", call_stack)
-
-    def end_call(self, module=None):
-        from pypads.app.pypads import get_current_pads
-        pads = get_current_pads()
-
-        if pads.cache.run_exists("on-import-loggers"):
-            call_stack = pads.cache.run_get("on-import-loggers")
-            if call_cache(self, module) in call_stack:
-                call_stack.pop(call_cache(self, module))
-                pads.cache.run_add("on-import-loggers", call_stack)
-            else:
-                logger.warning("On-Import call of: " + str(self) + "with context: " + str(module) + "doesn't exist")
-        else:
-            logger.warning("On-Import call of: " + str(self) + "with context: " + str(module) + "doesn't exist")
-
-    def __real_call__(self, *args, _pypads_env: LoggerEnv = None, module=None, **kwargs):
+    def __real_call__(self, *args, _pypads_env: LoggerEnv = None, **kwargs):
         logger.debug("Called on Import function " + str(self))
-        self.add_call(module=module)
         _return = super().__real_call__(*args, _pypads_env=_pypads_env or LoggerEnv(parameter=dict(),
                                                                                     experiment_id=get_experiment_id(),
                                                                                     run_id=get_run_id(),
                                                                                     data={"category: ImportLogger"}),
                                         **kwargs)
-        self.end_call(module=module)
         return _return
 
 
