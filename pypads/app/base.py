@@ -531,7 +531,7 @@ class PyPads:
         declared for pypads.
         """
 
-        def defensive_exit(signum, frame):
+        def defensive_exit(signum=None, frame=None):
             global executed_exit_fns
             try:
                 if fn not in executed_exit_fns:
