@@ -82,15 +82,15 @@ def duck_punch_loader(spec):
     @wraps(original_exec)
     def exec_module(self, module, execute=original_exec):
 
-        # Trigger on import Loggers
-        _package = Package(module, PackagePath(".".join([module.__name__, "__init__"])))
-        # check if there are mappings on import
-        _mappings = _get_relevant_mappings(_package)
-
         from pypads.app.pypads import current_pads
         reference = module.__name__
 
         if current_pads:
+            # Trigger on import Loggers
+            _package = Package(module, PackagePath(".".join([module.__name__, "__init__"])))
+            # check if there are mappings on import
+            _mappings = _get_relevant_mappings(_package)
+
             if len(_mappings) > 0:
                 # add import loggers to the queue of this module
                 fns = _get_hooked_on_import_fns({MatchedMapping(mapping, _package.path) for mapping in _mappings})
