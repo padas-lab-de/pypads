@@ -12,7 +12,7 @@ from pypads.app.injections.tracked_object import LoggerCall
 from pypads.app.misc.mixins import OrderMixin, FunctionHolderMixin, BaseDefensiveCallableMixin
 from pypads.exceptions import NoCallAllowedError
 from pypads.model.logger_model import RunLoggerModel
-from pypads.utils.util import inheritors, persistent_hash, get_experiment_id, get_run_id
+from pypads.utils.util import inheritors, get_experiment_id, get_run_id
 
 
 class RunLogger(SimpleLogger, OrderMixin, metaclass=ABCMeta):

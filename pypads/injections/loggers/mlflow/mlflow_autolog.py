@@ -1,12 +1,8 @@
 import sys
 
-from mlflow.utils.annotations import experimental
-
-from pypads.app.env import LoggerEnv, InjectionLoggerEnv
-from pypads.app.injections.base_logger import OriginalExecutor
-from pypads.app.injections.injection import InjectionLogger
+from pypads.app.env import LoggerEnv
 from pypads.app.injections.run_loggers import ImportLogger
-from pypads.utils.util import is_package_available, find_package_version
+from pypads.utils.util import is_package_available
 
 added_auto_logs = set()
 
@@ -60,8 +56,8 @@ class MlFlowAutoIL(ImportLogger):
             sklearn.autolog()
 
 
-mlflow_auto_log_fns = {}
-mlflow_auto_log_callbacks = []
+# mlflow_auto_log_fns = {}
+# mlflow_auto_log_callbacks = []
 
 
 # def fake_gorilla_apply(patch):
