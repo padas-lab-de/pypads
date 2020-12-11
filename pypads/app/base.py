@@ -110,13 +110,6 @@ class PyPads:
 
         self._instance_modifiers = []
 
-        if disable_plugins is None:
-            # Temporarily disabling pypads_onto
-            disable_plugins = ['pypads_onto']
-        for name, plugin in discovered_plugins.items():
-            if name not in disable_plugins:
-                plugin.activate(self, *args, **kwargs)
-
         # Init variable to filled later in this constructor
         self._atexit_fns = []
 
@@ -172,6 +165,14 @@ class PyPads:
         self._library_repository = LibraryRepository()
         self._schema_repository = SchemaRepository()
         self._logger_repository = LoggerRepository()
+
+        # Activate the discovered plugins
+        if disable_plugins is None:
+            # Temporarily disabling pypads_onto
+            disable_plugins = ['pypads_onto']
+        for name, plugin in discovered_plugins.items():
+            if name not in disable_plugins:
+                plugin.activate(self, *args, **kwargs)
 
         # Init mapping registry and repository
         self._mapping_repository = MappingRepository()
