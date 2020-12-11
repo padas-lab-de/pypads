@@ -8,7 +8,7 @@ metadata:
 mappings:
   !!python/pPath tensorflow:
     !!python/pPath .__init__:
-      hooks: [ "pypads_import" ]
+      import-hooks: [ "pypads_import" ]
     !!python/pPath python.keras:
       !!python/pPath metrics.Metric.__call__:
         hooks: ["pypads_metric"]

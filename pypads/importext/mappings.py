@@ -26,13 +26,16 @@ class Mapping:
     Mapping for an algorithm defined by a pypads mapping file
     """
 
-    def __init__(self, matcher: PackagePathMatcher, in_collection, anchors, values, inherited=None):
+    def __init__(self, matcher: PackagePathMatcher, in_collection, anchors, import_anchors, values, inherited=None):
         self._in_collection = in_collection
         self._values = values
         self._hooks = set()
+        self._import_hooks = set()
         from pypads.bindings.hooks import Hook
         for a in anchors:
             self._hooks.add(Hook(a, self))
+        for a in import_anchors:
+            self._import_hooks.add(Hook(a, self))
         self._matcher = matcher
         self._inherited = inherited
 
@@ -89,6 +92,10 @@ class Mapping:
         return self._hooks
 
     @property
+    def import_hooks(self):  # type: () -> Set[Hook]
+        return self._import_hooks
+
+    @property
     def values(self):
         return self._values
 
@@ -97,13 +104,15 @@ class Mapping:
         return self._matcher
 
     def __str__(self):
-        return "Mapping[" + str(self.reference) + ", lib=" + str(self.library) + ", hooks=" + str(self.hooks) + "]"
+        return "Mapping[" + str(self.reference) + ", lib=" + str(self.library) + ", hooks=" + str(
+            self.hooks) + ", import_hooks=" + str(self.import_hooks) + "]"
 
     def __eq__(self, other):
-        return self.reference == other.reference and self.hooks == other.hooks and self.values == other.values
+        return self.reference == other.reference and self.hooks == other.hooks and \
+               self.import_hooks == other.import_hooks and self.values == other.values
 
     def __hash__(self):
-        return hash((self.reference, "|".join([str(h) for h in self.hooks]), str(self.values)))
+        return hash((self.reference, "|".join([str(h) for h in self.hooks.union(self.import_hooks)]), str(self.values)))
 
 
 class MappingCollection(ModelObject):
@@ -215,7 +224,7 @@ class MappingSchema:
     Schema holding the context of a mapping. This is used to build mappings iteratively.
     """
 
-    def __init__(self, fragments, metadata, matcher: PackagePathMatcher, anchors, values):
+    def __init__(self, fragments, metadata, matcher: PackagePathMatcher, anchors, import_anchors, values):
         self._fragments = fragments
         self._metadata = metadata
         self._matcher = matcher
@@ -224,6 +233,11 @@ class MappingSchema:
         self._anchors = set()
         for anchor in anchors:
             self._anchors.add(get_anchor(anchor) or Anchor(anchor, "Runtime anchor. No description available."))
+        if not isinstance(import_anchors, Iterable):
+            import_anchors = [import_anchors]
+        self._import_anchors = set()
+        for anchor in import_anchors:
+            self._import_anchors.add(get_anchor(anchor) or Anchor(anchor, "Runtime anchor. No description available."))
         self._values = values
 
     @property
@@ -246,6 +260,10 @@ class MappingSchema:
     def anchors(self):
         return self._anchors
 
+    @property
+    def import_anchors(self):
+        return self._import_anchors
+
     def get(self, key):
         return self._values[key]
 
@@ -261,7 +279,7 @@ class SerializedMapping(MappingCollection):
     def __init__(self, key, content):
         yml = yaml.load(content, Loader=yaml.SafeLoader)
         schema = MappingSchema(yml["fragments"] if "fragments" in yml else [], yml["metadata"], PackagePathMatcher(""),
-                               set(), {})
+                               set(), set(), {})
         super().__init__(key, schema.metadata["version"], schema.metadata["library"], schema.metadata["author"])
 
         self._build_mappings(yml["mappings"], schema)
@@ -276,6 +294,7 @@ class SerializedMapping(MappingCollection):
         _fragments = []
         _children = []
         _anchors = set()
+        _import_anchors = set()
         _values = {}
 
         # replace fragments
@@ -292,6 +311,12 @@ class SerializedMapping(MappingCollection):
                 elif isinstance(v, List):
                     for anchor in v:
                         _anchors.add(anchor)
+            elif k == "import-hooks":
+                if isinstance(v, str):
+                    _import_anchors.add(v)
+                elif isinstance(v, List):
+                    for anchor in v:
+                        _import_anchors.add(anchor)
             elif k == "data":
                 _values[k] = v
 
@@ -302,6 +327,7 @@ class SerializedMapping(MappingCollection):
 
         schema = MappingSchema(schema.fragments, schema.metadata, matcher=schema.matcher,
                                anchors=_anchors.union(schema.anchors),
+                               import_anchors=_import_anchors.union(schema.import_anchors),
                                values=dict_merge(schema.values, _values, str_to_set=True))
 
         if len(_fragments) > 0:
@@ -317,16 +343,18 @@ class SerializedMapping(MappingCollection):
                         self._build_mappings(v, MappingSchema(schema.fragments, schema.metadata,
                                                               matcher=matcher,
                                                               anchors=schema.anchors,
+                                                              import_anchors=schema.import_anchors,
                                                               values=schema.values))
                     else:
                         self._build_mappings({"hooks": schema.anchors, "data": schema.values},
                                              MappingSchema(schema.fragments, schema.metadata,
                                                            matcher=matcher,
                                                            anchors=schema.anchors,
+                                                           import_anchors=schema.import_anchors,
                                                            values=schema.values))
             elif schema.matcher.matchers is not None:
                 self.add_mapping(
-                    Mapping(schema.matcher, self, schema.anchors,
+                    Mapping(schema.matcher, self, schema.anchors, schema.import_anchors,
                             {**schema.values, "mapped_by": "http://www.padre-lab.eu/PyPadsInjection"}))
 
 

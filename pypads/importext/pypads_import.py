@@ -34,12 +34,12 @@ def _get_hooked_on_import_fns(matched_mappings: Set[MatchedMapping]):
     from pypads.app.pypads import get_current_pads
     current_pads = get_current_pads()
     fns = []
-    hooks = set()
+    import_hooks = set()
     for matched_mapping in matched_mappings:
-        for hook in matched_mapping.mapping.hooks:
-            hooks.add(hook)
+        for hook in matched_mapping.mapping.import_hooks:
+            import_hooks.add(hook)
 
-    for hook in hooks:
+    for hook in import_hooks:
         fns = fns + current_pads.hook_registry.get_logging_functions(hook)
     return fns
 
