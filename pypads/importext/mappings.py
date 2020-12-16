@@ -364,7 +364,7 @@ class MappingFile(SerializedMapping):
     """
 
     def __init__(self, path, name=None):
-        with open(path) as f:
+        with open(path, encoding='utf-8') as f:
             if name is None:
                 name = os.path.basename(f.name)
             data = f.read()
