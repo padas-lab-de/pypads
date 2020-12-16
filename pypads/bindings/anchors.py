@@ -1,3 +1,5 @@
+from pypads import logger
+
 anchors = {}
 
 
@@ -15,7 +17,8 @@ class Anchor:
         self._name = name
         self._description = description
         if self._name in anchors:
-            raise Exception("Anchor with name {} already exists".format(self._name))
+            logger.warning("Anchor with name {} already exists".format(self._name))
+            pass
         anchors[self._name] = self
 
     @property

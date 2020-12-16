@@ -140,7 +140,7 @@ class ManagedGit:
                 self.commit_changes(message="Pypads initial commit")
             logger.info("Repository was successfully initialized")
         except (InvalidGitRepositoryError, GitCommandError, GitError) as e:
-            raise Exception(
+            logger.error(
                 "No repository was present and git could not initialize a repository in this directory"
                 " {0} because of exception: {1}".format(path, e))
 
@@ -149,7 +149,8 @@ class ManagedGit:
             self.add_untracked_files()
             self._commit(message)
         except Exception as e:
-            raise Exception("Failed to commit due to following exception: %s" % str(e))
+            logger.warning("Failed to commit due to following exception: %s" % str(e))
+            pass
 
     def _commit(self, message=""):
         self.repo.git.commit(message=message)
