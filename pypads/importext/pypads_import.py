@@ -22,7 +22,11 @@ def _add_found_class(mapping):
 
 def _get_relevant_mappings(package: Package):
     from pypads.app.pypads import get_current_pads
-    return get_current_pads().mapping_registry.get_relevant_mappings(package)
+    try:
+        return get_current_pads().mapping_registry.get_relevant_mappings(package)
+    except Exception as e:
+        logger.debug('Getting on-import mappings failed due to : {}'.format(str(e)))
+        return set()
 
 
 def _get_hooked_on_import_fns(matched_mappings: Set[MatchedMapping]):
