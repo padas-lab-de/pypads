@@ -178,7 +178,7 @@ class PyPadsResults(IResults):
         raise ValueError("Pass either a name or id to find a representative experiment.")
 
     @result
-    def get_summary(self, df=None, group_by=None):
+    def get_summary(self, experiment_id=None, df=None, group_by=None):
         """
         Produces a summary of given data frame by converting the content to simplified data entries and grouping etc.
         :param df:
@@ -186,8 +186,10 @@ class PyPadsResults(IResults):
         :return:
         """
 
-        if df is None:
+        if df is None and experiment_id is None:
             df = self.get_experiments_data_frame(experiment_ids=self.pypads.api.active_experiment().experiment_id)
+        elif df is None and experiment_id:
+            df = self.get_experiments_data_frame(experiment_ids=experiment_id)
 
         def _to_data(column):
             def _get_max_step_metric(array):
