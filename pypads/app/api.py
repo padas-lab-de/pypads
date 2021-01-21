@@ -24,6 +24,9 @@ from pypads.utils.util import get_experiment_id, get_run_id
 api_plugins = set()
 cmds = set()
 
+# Experiment stack
+active_experiment = []
+
 
 class Cmd(FunctionHolderMixin, metaclass=ABCMeta):
 
@@ -232,6 +235,8 @@ class PyPadsApi(IApi):
         :param _pypads_env: Pass the logging env if one is set.
         :return: The newly spawned run
         """
+        if experiment_id is None and self.active_experiment() is not None:
+            experiment_id = self.active_experiment().experiment_id
         out = mlflow.start_run(run_id=run_id, experiment_id=experiment_id, run_name=run_name, nested=nested)
         if setups:
             self.run_setups(
@@ -562,8 +567,27 @@ class PyPadsApi(IApi):
         return mlflow.active_run()
 
     @cmd
+    def open_experiment(self, experiment_id):
+        """
+        Open a new experiment.
+        :return:
+        """
+        if len(active_experiment) is 0 or active_experiment[-1].experiment_id is not experiment_id:
+            active_experiment.append(mlflow.get_experiment(experiment_id))
+
+    @cmd
+    def close_experiment(self):
+        """
+        Close the currently active experiment.
+        :return:
+        """
+        active_experiment.pop()
+
+    @cmd
     def active_experiment(self):
         run = mlflow.active_run()
+        if run is None:
+            return active_experiment[-1] if len(active_experiment) is not 0 else None
         r_id = run.info.run_id
         if not self.pypads.cache.run_exists(f"experiment_for_run_{r_id}"):
             self.pypads.cache.run_add(f"experiment_for_run_{r_id}", mlflow.get_experiment(run.info.experiment_id))

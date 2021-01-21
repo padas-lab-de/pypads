@@ -111,8 +111,7 @@ class PyPads:
         self._instance_modifiers = []
 
         if disable_plugins is None:
-            # Temporarily disabling pypads_onto
-            disable_plugins = ['pypads_onto']
+            disable_plugins = []
         for name, plugin in discovered_plugins.items():
             if name not in disable_plugins:
                 plugin.activate(self, *args, **kwargs)
@@ -691,6 +690,8 @@ class PyPads:
 
         if experiment is None:
             experiment = self.backend.get_experiment(run.info.experiment_id)
+
+        self.api.open_experiment(experiment_id=experiment.experiment_id)
 
         # override active run if used
         if experiment_name and run.info.experiment_id != experiment.experiment_id:
