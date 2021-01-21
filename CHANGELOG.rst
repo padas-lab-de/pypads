@@ -2,6 +2,75 @@ Changelog
 =========
 
 
+0.5.7 (2020-12-16)
+------------------
+- Bump version: 0.5.6 → 0.5.7. [Mehdi Ben Amor]
+
+
+0.5.6 (2020-12-10)
+------------------
+- Bump version: 0.5.5 → 0.5.6. [Mehdi Ben Amor]
+
+
+0.5.5 (2020-12-10)
+------------------
+- Bump version: 0.5.4 → 0.5.5. [Mehdi Ben Amor]
+
+
+0.5.4 (2020-12-08)
+------------------
+
+Fix
+~~~
+- Syntax errors in the docs. [Mehdi Ben Amor]
+
+Other
+~~~~~
+- Bump version: 0.5.3 → 0.5.4. [Thomas Weißgerber]
+- Bump version: 0.5.2 → 0.5.3. [Thomas Weißgerber]
+- Bump version: 0.5.1 → 0.5.2. [Thomas Weißgerber]
+
+
+0.5.3 (2020-12-08)
+------------------
+- Bump version: 0.5.2 → 0.5.3. [Thomas Weißgerber]
+
+
+0.5.2 (2020-12-08)
+------------------
+- Bump version: 0.5.1 → 0.5.2. [Thomas Weißgerber]
+
+
+0.5.1 (2020-12-08)
+------------------
+- Bump version: 0.5.0 → 0.5.1. [Thomas Weißgerber]
+
+
+0.5.0 (2020-12-07)
+------------------
+
+New
+~~~
+- Reduced performance impact of pypads by about 50% by reducing the
+  number of needed rest calls to the tracking server. [Thomas
+  Weißgerber]
+
+Changes
+~~~~~~~
+- Added function to retrieve subset of row ids based on logical
+  operators. [christofer]
+- Added result summary / search. [Thomas Weißgerber]
+- Added result summary / search. [Thomas Weißgerber]
+- Added classification metrics to the sklearn mapping file. [Thomas
+  Weißgerber]
+- Fix in call_tracke.has_call_identity, recursive tracking unit tests.
+  [Mehdi Ben Amor]
+
+Other
+~~~~~
+- Bump version: 0.4.0 → 0.5.0. [Mehdi Ben Amor]
+
+
 0.4.0 (2020-10-20)
 ------------------
 

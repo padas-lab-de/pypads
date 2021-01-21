@@ -141,7 +141,7 @@ class InjectionLogger(Logger, OrderMixin, SuperStop, metaclass=ABCMeta):
     def _get_return_value(original_return, pypads_return):
         return original_return
 
-    def __call_wrapped__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, _args,
+    def __call_wrapped__(self, ctx, *args, _pypads_env: InjectionLoggerEnv, _logger_call, _logger_output, _args,
                          _kwargs, **kwargs):
         """
         The real call of the wrapped function. Be carefull when you change this.

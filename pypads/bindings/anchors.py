@@ -1,3 +1,5 @@
+from pypads import logger
+
 anchors = {}
 
 
@@ -15,7 +17,8 @@ class Anchor:
         self._name = name
         self._description = description
         if self._name in anchors:
-            raise Exception("Anchor with name {} already exists".format(self._name))
+            logger.warning("Anchor with name {} already exists".format(self._name))
+            pass
         anchors[self._name] = self
 
     @property
@@ -58,6 +61,7 @@ DEFAULT_ANCHORS = [Anchor("pypads_init", "Used if a tracked concept is initializ
                    Anchor("pypads_fit", "Used if an model is fitted to data."),
                    Anchor("pypads_predict", "Used if an model predicts something."),
                    Anchor("pypads_metric", "Used if an metric is compiled."),
-                   Anchor("pypads_log", "Used to only log a call.")]
+                   Anchor("pypads_log", "Used to only log a call."),
+                   Anchor("pypads_import", "Used for on-import logging")]
 
 init_anchors()

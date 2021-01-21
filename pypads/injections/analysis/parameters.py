@@ -57,7 +57,7 @@ class ParametersILF(InjectionLogger):
         Hook:
             Hook this logger to function calls on which an estimator parameter setting should be extracted. For sklearn
             this is the fit, fit_predict etc. function. Generally one could log parameters on initialisation of an
-            estimator too but this would't be able to track changes to the parameter settings done in between inti
+            estimator too but this wouldn't be able to track changes to the parameter settings done in between inti
             and fitting.
         Mapping_File:
             data:
@@ -106,7 +106,7 @@ class ParametersILF(InjectionLogger):
         tracked object doesn't give a lot of benefit but enforcing a description a name and a category and could be omitted.
         """
         type: str = "ParametersILF-Output"
-        hyper_parameter_to: IdReference = ...
+        hyper_parameter_to: IdReference = None
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:

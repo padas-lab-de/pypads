@@ -33,7 +33,7 @@ respectively.
 Mlflow autolog (experimental)
 =============================
 
-Pypads also support mlflow autologging functionalities. More on that can be found at `MLflow <https://mlflow.org/docs/latest/tracking.html#automatic-logging>`_.
+Pypads also support mlflow autologging functionalities via an on-import logger which is activated by hooking the __init__ of a module. More on that can be found at `MLflow <https://mlflow.org/docs/latest/tracking.html#automatic-logging>`_.
 
-.. autoclass:: pypads.injections.loggers.mlflow.mlflow_autolog.MlflowAutologger
-    :special-members: __call_wrapped__
+.. autoclass:: pypads.injections.loggers.mlflow.mlflow_autolog.MlFlowAutoIL
+    :special-members: _call

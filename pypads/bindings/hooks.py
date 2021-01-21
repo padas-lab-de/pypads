@@ -14,7 +14,7 @@ DEFAULT_HOOK_MAPPING = {
     "metric": {"on": ["pypads_metric"]},
     "pipeline": {"on": ["pypads_fit", "pypads_predict", "pypads_transform", "pypads_metric"]},
     "log": {"on": ["pypads_log"]},
-    "autolog": {"on": ["pypads_fit", "pypads_init"]}
+    "autolog": {"on": ["pypads_import"]}
 }
 
 

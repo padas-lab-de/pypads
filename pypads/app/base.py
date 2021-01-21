@@ -6,6 +6,7 @@ import signal
 from typing import List, Union, Callable
 
 import mlflow
+from pypads.app.env import LoggerEnv
 
 from pypads import logger
 from pypads.app.actuators import ActuatorPluginManager, PyPadsActuators
@@ -22,7 +23,7 @@ from pypads.importext.mappings import MappingRegistry, MappingCollection
 from pypads.importext.pypads_import import extend_import_module, duck_punch_loader
 from pypads.importext.wrapping.wrapping import WrapManager
 from pypads.injections.analysis.call_tracker import CallTracker
-from pypads.injections.loggers.mlflow.mlflow_autolog import MlFlowAutoRSF
+# from pypads.injections.loggers.mlflow.mlflow_autolog import MlFlowAutoRSF
 from pypads.injections.setup.git import IGitRSF
 from pypads.injections.setup.hardware import ISystemRSF, IRamRSF, ICpuRSF, IDiskRSF, IPidRSF, ISocketInfoRSF, \
     IMacAddressRSF
@@ -72,7 +73,7 @@ DEFAULT_CONFIG = {**{
     mongo_db: True  # Use a mongo_db endpoint
 }, **PARSED_CONFIG}
 
-DEFAULT_SETUP_FNS = {MlFlowAutoRSF(), DependencyRSF(), LoguruRSF(), StdOutRSF(), IGitRSF(_pypads_timeout=3),
+DEFAULT_SETUP_FNS = {DependencyRSF(), LoguruRSF(), StdOutRSF(), IGitRSF(_pypads_timeout=3),
                      ISystemRSF(), IRamRSF(), ICpuRSF(),
                      IDiskRSF(), IPidRSF(), ISocketInfoRSF(), IMacAddressRSF()}
 
@@ -109,12 +110,6 @@ class PyPads:
         self._default_logger = logger_manager.add_default_logger(level=log_level)
 
         self._instance_modifiers = []
-
-        if disable_plugins is None:
-            disable_plugins = []
-        for name, plugin in discovered_plugins.items():
-            if name not in disable_plugins:
-                plugin.activate(self, *args, **kwargs)
 
         # Init variable to filled later in this constructor
         self._atexit_fns = []
@@ -172,6 +167,14 @@ class PyPads:
         self._schema_repository = SchemaRepository()
         self._logger_repository = LoggerRepository()
 
+        # Activate the discovered plugins
+        if disable_plugins is None:
+            # Temporarily disabling pypads_onto
+            disable_plugins = ['pypads_onto']
+        for name, plugin in discovered_plugins.items():
+            if name not in disable_plugins:
+                plugin.activate(self, *args, **kwargs)
+
         # Init mapping registry and repository
         self._mapping_repository = MappingRepository()
         self._mapping_registry = MappingRegistry.from_params(self, mappings)
@@ -215,9 +218,12 @@ class PyPads:
         self.add_exit_fn(cleanup)
 
         # SIGKILL and SIGSTOP are not catchable
-        signal.signal(signal.SIGTERM, self.run_exit_fns)
-        signal.signal(signal.SIGINT, self.run_exit_fns)
-        signal.signal(signal.SIGQUIT, self.run_exit_fns)
+        try:
+            signal.signal(signal.SIGTERM, self.run_exit_fns)
+            signal.signal(signal.SIGINT, self.run_exit_fns)
+            signal.signal(signal.SIGQUIT, self.run_exit_fns)
+        except Exception as e:
+            pass
 
         if autostart:
             if isinstance(autostart, str):
@@ -530,7 +536,7 @@ class PyPads:
         declared for pypads.
         """
 
-        def defensive_exit(signum, frame):
+        def defensive_exit(signum=None, frame=None):
             global executed_exit_fns
             try:
                 if fn not in executed_exit_fns:
@@ -684,9 +690,15 @@ class PyPads:
             experiment_id = experiment.experiment_id if experiment else mlflow.create_experiment(experiment_name)
             run = self.api.start_run(experiment_id=experiment_id)
         else:
-            # Run init functions if run already exists but tracking is starting for it now
-            if not disable_run_init:
-                self.api.run_setups()
+            # if not disable_run_init:
+            #     self.api.run_setups(_pypads_env=LoggerEnv(parameter=dict(), experiment_id=experiment_id, run_id=run_id,
+            #                                               data={"category": "SetupFn"}))
+            if experiment_name:
+                # Check if we're still in the same experiment
+                experiment = mlflow.get_experiment_by_name(experiment_name)
+                experiment_id = experiment.experiment_id if experiment else mlflow.create_experiment(experiment_name)
+                if run.info.experiment_id != experiment_id:
+                    experiment = mlflow.get_experiment_by_name(experiment_name)
 
         if experiment is None:
             experiment = self.backend.get_experiment(run.info.experiment_id)

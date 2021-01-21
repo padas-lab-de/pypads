@@ -234,7 +234,10 @@ class StdOutRSF(DelayedResultsMixin, RunSetup):
 
         stdout_logger = Logger()
 
-        original_function = getattr(sys.stdout, 'write')
+        if hasattr(sys.stdout,'original_write'):
+            original_function = getattr(sys.stdout, 'original_write')
+        else:
+            original_function = getattr(sys.stdout, 'write')
         setattr(sys.stdout, 'original_write', original_function)
 
         def modified_function(message):

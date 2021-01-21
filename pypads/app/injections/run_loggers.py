@@ -6,12 +6,13 @@ from pydantic.main import BaseModel
 
 # Default init_run fns
 from pypads import logger
+from pypads.app.env import LoggerEnv
 from pypads.app.injections.base_logger import SimpleLogger
 from pypads.app.injections.tracked_object import LoggerCall
 from pypads.app.misc.mixins import OrderMixin, FunctionHolderMixin, BaseDefensiveCallableMixin
 from pypads.exceptions import NoCallAllowedError
 from pypads.model.logger_model import RunLoggerModel
-from pypads.utils.util import inheritors
+from pypads.utils.util import inheritors, get_experiment_id, get_run_id
 
 
 class RunLogger(SimpleLogger, OrderMixin, metaclass=ABCMeta):
@@ -41,6 +42,26 @@ class RunLogger(SimpleLogger, OrderMixin, metaclass=ABCMeta):
             logger.error(
                 f"Logging failed for {str(self)} with error: {str(error)} \nTrace:\n{traceback.format_exc()}")
             pass
+
+
+class ImportLogger(RunLogger):
+    """
+    This class should be used to define logging functionalities to be injected on import before pypads wrapping.
+    """
+    category: str = "ImportLogger"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __real_call__(self, *args, _pypads_env: LoggerEnv = None, **kwargs):
+        logger.debug("Called on Import function " + str(self))
+        _return = super().__real_call__(*args, _pypads_env=_pypads_env or LoggerEnv(parameter=dict(),
+                                                                                    experiment_id=get_experiment_id(),
+                                                                                    run_id=get_run_id(),
+                                                                                    data={"category: ImportLogger"}),
+                                        **kwargs)
+        return _return
+
 
 class RunSetup(RunLogger, metaclass=ABCMeta):
     """
