@@ -218,9 +218,12 @@ class PyPads:
         self.add_exit_fn(cleanup)
 
         # SIGKILL and SIGSTOP are not catchable
-        signal.signal(signal.SIGTERM, self.run_exit_fns)
-        signal.signal(signal.SIGINT, self.run_exit_fns)
-        signal.signal(signal.SIGQUIT, self.run_exit_fns)
+        try:
+            signal.signal(signal.SIGTERM, self.run_exit_fns)
+            signal.signal(signal.SIGINT, self.run_exit_fns)
+            signal.signal(signal.SIGQUIT, self.run_exit_fns)
+        except Exception as e:
+            pass
 
         if autostart:
             if isinstance(autostart, str):

@@ -18,6 +18,7 @@ class MetricTO(TrackedObject):
 
     class MetricTOModel(TrackedObjectModel):
         type: str = "Metric"
+        description = "Holding a metric metadata."
         as_artifact: bool = False
         documentation: str = ...
         metric: IdReference = ...
