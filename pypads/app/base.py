@@ -211,7 +211,14 @@ class PyPads:
             if pads.api.active_run():
                 pads.api.end_run()
 
-        self.add_atexit_fn(cleanup)
+
+        self.add_exit_fn(cleanup)
+
+        # SIGKILL and SIGSTOP are not catchable
+        try:
+            signal.signal(signal.SIGTERM, self.run_exit_fns)
+            signal.signal(signal.SIGINT, self.run_exit_fns)
+            signal.signal(signal.SIGQUIT, self.run_exit_fns)
 
         if autostart:
             if isinstance(autostart, str):
@@ -670,6 +677,8 @@ class PyPads:
 
         if experiment is None:
             experiment = self.backend.get_experiment(run.info.experiment_id)
+
+        self.api.open_experiment(experiment_id=experiment.experiment_id)
 
         # override active run if used
         if experiment_name and run.info.experiment_id != experiment.experiment_id:
