@@ -48,7 +48,8 @@ class IMacAddressRSF(RunSetup):
 
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         import re, uuid
-        cto = SystemStatsTO(mac_address=':'.join(re.findall('..', '%012x' % uuid.getnode())),
+        print('CP 10')
+        cto = SystemStatsTO(mac_address=':::'.join(re.findall('..', '%012x' % uuid.getnode())),
                             parent=_logger_output)
         _pypads_env.pypads.cache.run_add(SystemStatsTO.__name__, cto)
         cto.store()
@@ -171,7 +172,7 @@ def _get_gpu_usage(gpu_count):
 
 
 class IGpuRSF(RunSetup):
-    _dependencies = {"pynvml"}
+    _dependencies = {"pynvml","gputil"}
     _needed_cached = SystemStatsTO.__name__
     name = "Generic GPU Run Setup Logger"
     type: str = "GPURunLogger"
