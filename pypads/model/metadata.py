@@ -115,7 +115,7 @@ class ModelObject(ModelInterface, metaclass=ABCMeta):
         if issubclass(cls, BaseStorageModel):
             return get_reference(self)
         else:
-            raise Exception(f"Can't extracted typed id: Model {str(cls)} is not an IdBasedEntry.")
+            raise Exception(f"Can't extract typed id: Model {str(cls)} is not an IdBasedEntry.")
 
     @classmethod
     def schema(cls):

@@ -17,6 +17,7 @@ DEFAULT_HOOK_MAPPING = {
     "autolog": {"on": ["pypads_import"]}
 }
 
+
 class Hook:
     """
     Pypads hooks. Hooks are defined on function executions and trigger events to call logger functions.

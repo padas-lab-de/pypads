@@ -6,6 +6,7 @@ import signal
 from typing import List, Union, Callable
 
 import mlflow
+from pypads.app.env import LoggerEnv
 
 from pypads import logger
 from pypads.app.actuators import ActuatorPluginManager, PyPadsActuators
@@ -110,13 +111,6 @@ class PyPads:
 
         self._instance_modifiers = []
 
-        if disable_plugins is None:
-            # Temporarily disabling pypads_onto
-            disable_plugins = ['pypads_onto']
-        for name, plugin in discovered_plugins.items():
-            if name not in disable_plugins:
-                plugin.activate(self, *args, **kwargs)
-
         # Init variable to filled later in this constructor
         self._atexit_fns = []
 
@@ -172,6 +166,14 @@ class PyPads:
         self._library_repository = LibraryRepository()
         self._schema_repository = SchemaRepository()
         self._logger_repository = LoggerRepository()
+
+        # Activate the discovered plugins
+        if disable_plugins is None:
+            # Temporarily disabling pypads_onto
+            disable_plugins = ['pypads_onto']
+        for name, plugin in discovered_plugins.items():
+            if name not in disable_plugins:
+                plugin.activate(self, *args, **kwargs)
 
         # Init mapping registry and repository
         self._mapping_repository = MappingRepository()
@@ -685,9 +687,15 @@ class PyPads:
             experiment_id = experiment.experiment_id if experiment else mlflow.create_experiment(experiment_name)
             run = self.api.start_run(experiment_id=experiment_id)
         else:
-            # Run init functions if run already exists but tracking is starting for it now
-            if not disable_run_init:
-                self.api.run_setups()
+            # if not disable_run_init:
+            #     self.api.run_setups(_pypads_env=LoggerEnv(parameter=dict(), experiment_id=experiment_id, run_id=run_id,
+            #                                               data={"category": "SetupFn"}))
+            if experiment_name:
+                # Check if we're still in the same experiment
+                experiment = mlflow.get_experiment_by_name(experiment_name)
+                experiment_id = experiment.experiment_id if experiment else mlflow.create_experiment(experiment_name)
+                if run.info.experiment_id != experiment_id:
+                    experiment = mlflow.get_experiment_by_name(experiment_name)
 
         if experiment is None:
             experiment = self.backend.get_experiment(run.info.experiment_id)

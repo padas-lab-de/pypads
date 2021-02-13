@@ -309,13 +309,14 @@ class LocalMlFlowBackend(MLFlowBackend):
         :return:
         """
         if self.managed_result_git is None:
-            raise Exception("Can only add remotes to the result directory if it is managed by pypads git.")
-        try:
-            self.managed_result_git.remote = remote
-            self.managed_result_git.remote_uri = uri
-            self.managed_result_git.repo.create_remote(remote, uri)
-        except Exception as e:
-            logger.warning("Failed to add remote due to exception: " + str(e))
+            logger.warning("Can only add remotes to the result directory if it is managed by pypads git.")
+        else:
+            try:
+                self.managed_result_git.remote = remote
+                self.managed_result_git.remote_uri = uri
+                self.managed_result_git.repo.create_remote(remote, uri)
+            except Exception as e:
+                logger.warning("Failed to add remote due to exception: " + str(e))
 
 
 class RemoteMlFlowBackend(MLFlowBackend):
