@@ -2,11 +2,10 @@ import ast
 import atexit
 import importlib
 import pkgutil
-import signal
 from typing import List, Union, Callable
 
 import mlflow
-from pypads.app.env import LoggerEnv
+from pypads.injections.setup.containerize import IContainerizeRSF
 
 from pypads import logger
 from pypads.app.actuators import ActuatorPluginManager, PyPadsActuators
@@ -23,7 +22,7 @@ from pypads.importext.mappings import MappingRegistry, MappingCollection
 from pypads.importext.pypads_import import extend_import_module, duck_punch_loader
 from pypads.importext.wrapping.wrapping import WrapManager
 from pypads.injections.analysis.call_tracker import CallTracker
-# from pypads.injections.loggers.mlflow.mlflow_autolog import MlFlowAutoRSF
+from pypads.injections.loggers.mlflow.mlflow_autolog import MlFlowAutoRSF
 from pypads.injections.setup.git import IGitRSF
 from pypads.injections.setup.hardware import ISystemRSF, IRamRSF, ICpuRSF, IDiskRSF, IPidRSF, ISocketInfoRSF, \
     IMacAddressRSF
@@ -73,17 +72,15 @@ DEFAULT_CONFIG = {**{
     mongo_db: True  # Use a mongo_db endpoint
 }, **PARSED_CONFIG}
 
-DEFAULT_SETUP_FNS = {DependencyRSF(), LoguruRSF(), StdOutRSF(), IGitRSF(_pypads_timeout=3),
+DEFAULT_SETUP_FNS = {MlFlowAutoRSF(), DependencyRSF(), LoguruRSF(), StdOutRSF(), IGitRSF(_pypads_timeout=3),
                      ISystemRSF(), IRamRSF(), ICpuRSF(),
-                     IDiskRSF(), IPidRSF(), ISocketInfoRSF(), IMacAddressRSF()}
-
-# List of exit functions already called. This is used to stop multiple execution on SIGNAL and atexit etc.
-executed_exit_fns = set()
+                     IDiskRSF(), IPidRSF(), ISocketInfoRSF(), IMacAddressRSF(), IContainerizeRSF()}
 
 
-#  pypads shouldn't hold a state anymore (Everything with state should be part of the caching system)
+#  pypads isn't allowed to hold a state anymore (Everything with state should be part of the caching system)
 #  - We want to be able to rebuild PyPads from the cache alone if existing
 #  to stop the need for pickeling pypads as a whole.
+
 class PyPads:
     """
     PyPads app. Serves as the main entrypoint to PyPads. After constructing this app tracking is activated.
@@ -110,6 +107,13 @@ class PyPads:
         self._default_logger = logger_manager.add_default_logger(level=log_level)
 
         self._instance_modifiers = []
+
+        if disable_plugins is None:
+            # Temporarily disabling pypads_onto
+            disable_plugins = ['pypads_onto']
+        for name, plugin in discovered_plugins.items():
+            if name not in disable_plugins:
+                plugin.activate(self, *args, **kwargs)
 
         # Init variable to filled later in this constructor
         self._atexit_fns = []
@@ -167,14 +171,6 @@ class PyPads:
         self._schema_repository = SchemaRepository()
         self._logger_repository = LoggerRepository()
 
-        # Activate the discovered plugins
-        if disable_plugins is None:
-            # Temporarily disabling pypads_onto
-            disable_plugins = ['pypads_onto']
-        for name, plugin in discovered_plugins.items():
-            if name not in disable_plugins:
-                plugin.activate(self, *args, **kwargs)
-
         # Init mapping registry and repository
         self._mapping_repository = MappingRepository()
         self._mapping_registry = MappingRegistry.from_params(self, mappings)
@@ -215,6 +211,7 @@ class PyPads:
             if pads.api.active_run():
                 pads.api.end_run()
 
+
         self.add_exit_fn(cleanup)
 
         # SIGKILL and SIGSTOP are not catchable
@@ -222,8 +219,6 @@ class PyPads:
             signal.signal(signal.SIGTERM, self.run_exit_fns)
             signal.signal(signal.SIGINT, self.run_exit_fns)
             signal.signal(signal.SIGQUIT, self.run_exit_fns)
-        except Exception as e:
-            pass
 
         if autostart:
             if isinstance(autostart, str):
@@ -529,29 +524,21 @@ class PyPads:
         """
         return self._backend.mlf
 
-    def add_exit_fn(self, fn):
+    def add_atexit_fn(self, fn):
         """
         Add function to be executed before stopping your process. This function is also added to pypads and errors
         are caught to not impact the experiment itself. Deactivating pypads should be able to run some of the atExit fns
         declared for pypads.
         """
 
-        def defensive_exit(signum=None, frame=None):
-            global executed_exit_fns
+        def defensive_atexit():
             try:
-                if fn not in executed_exit_fns:
-                    logger.debug(f"Running exit fn {fn}.")
-                    out = fn()
-                    executed_exit_fns.add(fn)
-                    return out
-                logger.debug(f"Already ran exit fn {fn}.")
-                return None
+                return fn()
             except (KeyboardInterrupt, Exception) as e:
                 logger.error("Couldn't run atexit function " + fn.__name__ + " because of " + str(e))
 
-        # Otherwise as an atexit function?
-        self._atexit_fns.append(defensive_exit)
-        atexit.register(defensive_exit)
+        self._atexit_fns.append(defensive_atexit)
+        atexit.register(defensive_atexit)
 
     def is_affected_module(self, name, affected_modules=None):
         """
@@ -623,13 +610,6 @@ class PyPads:
             logger.warning("Tracking was already activated.")
         return self
 
-    def run_exit_fns(self, signum=None, frame=None):
-        import sys
-        if frame is None:
-            frame = sys._getframe(0)
-        for fn in self._atexit_fns:
-            fn(signum, frame)
-
     def deactivate_tracking(self, run_atexits=False, reload_modules=True):
         """
         Deacticate the current tracking and cleanup.
@@ -639,7 +619,8 @@ class PyPads:
         """
         # run atexit fns if needed
         if run_atexits:
-            self.run_exit_fns()
+            for fn in self._atexit_fns:
+                fn()
 
         # Remove atexit fns
         for fn in self._atexit_fns:
@@ -690,15 +671,9 @@ class PyPads:
             experiment_id = experiment.experiment_id if experiment else mlflow.create_experiment(experiment_name)
             run = self.api.start_run(experiment_id=experiment_id)
         else:
-            # if not disable_run_init:
-            #     self.api.run_setups(_pypads_env=LoggerEnv(parameter=dict(), experiment_id=experiment_id, run_id=run_id,
-            #                                               data={"category": "SetupFn"}))
-            if experiment_name:
-                # Check if we're still in the same experiment
-                experiment = mlflow.get_experiment_by_name(experiment_name)
-                experiment_id = experiment.experiment_id if experiment else mlflow.create_experiment(experiment_name)
-                if run.info.experiment_id != experiment_id:
-                    experiment = mlflow.get_experiment_by_name(experiment_name)
+            # Run init functions if run already exists but tracking is starting for it now
+            if not disable_run_init:
+                self.api.run_setups()
 
         if experiment is None:
             experiment = self.backend.get_experiment(run.info.experiment_id)

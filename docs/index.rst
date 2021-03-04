@@ -122,6 +122,10 @@ The following tables show the default loggers of pypads.
          * - IMacAddress
            - Pre
            - Mac address
+         * - IContainerize
+           - Pre + Post
+           - Track dependencies of execution and create a Docker Image and MLflow Project that can run the experiment.
+             :ref:`how to use <containerize>`
 
 .. toctree::
    :maxdepth: 2
