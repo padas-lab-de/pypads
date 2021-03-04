@@ -446,7 +446,7 @@ class MLFlowBackendFactory:
     @staticmethod
     def make(uri) -> MLFlowBackend:
         from pypads.app.pypads import get_current_pads, get_current_config
-        if uri.startswith("git://") or uri.startswith("/"):
+        if uri.startswith("git:/") or os.path.isabs(uri):
             if get_current_config()[mongo_db]:
                 return MongoSupportedLocalMlFlowBackend(uri=uri, pypads=get_current_pads())
             else:

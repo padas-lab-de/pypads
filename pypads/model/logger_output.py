@@ -108,11 +108,11 @@ class ParameterMetaModel(MetadataModel):
     Parameter metadata to be stored in MongoDB as part of an tracking object.
     """
     name: str = ...
-    value_format: str = ...
+    value_format: str = ...  # str representation of the parameter type
     category: str = "HyperParameter"
     storage_type: Union[ResultType, str] = ResultType.parameter
     data: Optional[str] = ...  # str representation of the parameter or path to artifact
-    is_a: Optional[str]  # str representation of the parameter type
+    type: Optional[str]
 
     class Config:
         orm_mode = True

@@ -18,6 +18,7 @@ class MetricTO(TrackedObject):
 
     class MetricTOModel(TrackedObjectModel):
         type: str = "Metric"
+        description = "Holding a metric metadata."
         as_artifact: bool = False
         documentation: str = ...
         metric: IdReference = ...
@@ -69,15 +70,17 @@ class MetricILF(InjectionLogger):
                                            _logger_output.producer.original_call.call_id.wrappee.__name__]))
 
         # Find / extract description
+        not_found_content = "No description found."
         description = data_path(_pypads_env.data, "metric", "@schema", "rdfs:comment",
-                                default=getattr(ctx, "__doc__", "No description found."))
+                                default=getattr(ctx, "__doc__", not_found_content) if ctx else not_found_content)
 
         # Find / extract step
         step = data_path(_pypads_env.data, "metric", "@schema", "step",
                          default=_logger_call.original_call.call_id.call_number)
 
         # Find / extract documentation
-        documentation = data_path(_pypads_env.data, "metric", "@schema", "padre:documentation", default=ctx.__doc__)
+        documentation = data_path(_pypads_env.data, "metric", "@schema", "padre:documentation",
+                                  default=description)
 
         # Build tracked object
         metric_to = MetricTO(name=name, description=description, step=_logger_call.original_call.call_id.call_number,

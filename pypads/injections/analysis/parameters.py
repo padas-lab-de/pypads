@@ -155,7 +155,7 @@ class ParametersILF(InjectionLogger):
                             logger.warning(f"Couldn't extract value of in schema defined parameter {parameter}.")
                             continue
                     param_dict["value"] = value
-                    add_data(mapping_data, "is_a", value=data_path(parameter, "@id"))
+                    add_data(mapping_data, "type", value=data_path(parameter, "@id"))
                     relevant_parameters.append(param_dict)
 
         else:
