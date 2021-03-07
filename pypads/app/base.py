@@ -26,7 +26,7 @@ from pypads.injections.analysis.call_tracker import CallTracker
 # from pypads.injections.loggers.mlflow.mlflow_autolog import MlFlowAutoRSF
 from pypads.injections.setup.git import IGitRSF
 from pypads.injections.setup.hardware import ISystemRSF, IRamRSF, ICpuRSF, IDiskRSF, IPidRSF, ISocketInfoRSF, \
-    IMacAddressRSF
+    IMacAddressRSF, IGpuRSF
 from pypads.injections.setup.misc_setup import DependencyRSF, LoguruRSF, StdOutRSF
 from pypads.variables import CONFIG_NAME, DEFAULT_EXPERIMENT_NAME, track_sub_processes, recursion_identity, \
     recursion_depth, log_on_failure, include_default_mappings, mongo_db
@@ -75,7 +75,7 @@ DEFAULT_CONFIG = {**{
 
 DEFAULT_SETUP_FNS = {DependencyRSF(), LoguruRSF(), StdOutRSF(), IGitRSF(_pypads_timeout=3),
                      ISystemRSF(), IRamRSF(), ICpuRSF(),
-                     IDiskRSF(), IPidRSF(), ISocketInfoRSF(), IMacAddressRSF()}
+                     IDiskRSF(), IPidRSF(), ISocketInfoRSF(), IMacAddressRSF(),IGpuRSF()}
 
 # List of exit functions already called. This is used to stop multiple execution on SIGNAL and atexit etc.
 executed_exit_fns = set()

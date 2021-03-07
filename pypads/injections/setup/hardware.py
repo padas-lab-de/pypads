@@ -48,7 +48,6 @@ class IMacAddressRSF(RunSetup):
 
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         import re, uuid
-        print('CP 110')
         cto = SystemStatsTO(mac_address=':::'.join(re.findall('..', '%012x' % uuid.getnode())),
                             parent=_logger_output)
         _pypads_env.pypads.cache.run_add(SystemStatsTO.__name__, cto)
@@ -114,25 +113,28 @@ class GpuUsageTO(TrackedObject):
             class Config:
                 orm_mode = True
 
-        gpu_count: int = ...
-        gpu_arch: str = ...
+        gpu_count: int = 0
+        gpu_arch: str = ""
         gpu_name= []
         gpu_driver_version= []
         gpu_serial_number=[]
         gpu_total_memory = []
         cuda_version = []
         gpu_cores: List[GpuCoreModel] = []
-        period: float = ...
+        period: float = 0.0
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
+        #print("Check here line number 129")
         return cls.GpuUsageTOModel
 
     def __init__(self, *args, **kwargs):
+        #print('Inside the init')
         super().__init__(*args, **kwargs)
         import pynvml
         import pycuda
         import pycuda.driver
+        import GPUtil
         try:
             pynvml.nvmlInit()
             self.gpu_count = pynvml.nvmlDeviceGetCount()
@@ -145,21 +147,21 @@ class GpuUsageTO(TrackedObject):
             for i in range(len(GPUs)):
                 print('Details of %d GPU' % (i + 1))
 
-                self.gpu_name[i] = GPUs[i].name
+                self.gpu_name.append(GPUs[i].name)
                 print('  %d. GPU Name - %s' % (i + 1, self.gpu_name[i]))
 
-                self.gpu_driver_version[i] = GPUs[i].driver
+                self.gpu_driver_version.append(GPUs[i].driver)
                 print('  %d. GPU Driver - %s' % (i + 1, self.gpu_driver_version[i]))
 
-                self.gpu_serial_number[i] = GPUs[i].serial
+                self.gpu_serial_number.append(GPUs[i].serial)
                 print('  %d. GPU Serial Number - %s' % (i + 1,self.gpu_serial_number[i]))
 
-                self.gpu_total_memory[i] = GPUs[i].memoryTotal
+                self.gpu_total_memory.append(GPUs[i].memoryTotal)
                 print('  %d. GPU Total Memory - %s GB' % (i + 1, self.gpu_total_memory[i] / 1024))
 
                 # CUDA version
                 pycuda.driver.init()
-                print("%d device(s) found." % pycuda.driver.Device.count())
+                #print("%d device(s) found." % pycuda.driver.Device.count())
 
                 for ordinal in range(pycuda.driver.Device.count()):
                     #dev = pycuda.driver.Device(ordinal)
@@ -168,10 +170,10 @@ class GpuUsageTO(TrackedObject):
                     cudaVersionStr = str(cudaVersion[0]) + "." + str(cudaVersion[1]) + "." + str(cudaVersion[2])
                     print("CUDA Version", cudaVersionStr)
                     # logger("CUDA_Version",-1,cudaVersionStr)
-                    self.cuda_version.appned(cudaVersionStr)
+                    self.cuda_version.append(cudaVersionStr)
 
-        except:
-            print("Erro occured while fetching GPU details")
+        except Exception as e:
+            print("Error occured while fetching GPU details - " ,e)
 
     def add_gpu_usage(self: Union['GpuUsageTO', GpuUsageTOModel]):
         gpu_cores = _get_gpu_usage(self.gpu_count)
@@ -214,11 +216,11 @@ def _get_gpu_usage(gpu_count):
 
 
 class IGpuRSF(RunSetup):
-    _dependencies = {"pynvml","gputil","pycuda","pycuda.driver"}
+    _dependencies = {"pynvml","pycuda","pycuda.driver","GPUtil"}
     _needed_cached = SystemStatsTO.__name__
     name = "Generic GPU Run Setup Logger"
     type: str = "GPURunLogger"
-
+    #print("Inside IGpuRSF method")
     def __init__(self, *args, order=None, **kwargs):
         super().__init__(*args, order=order if order is not None else DEFAULT_ORDER + 1, **kwargs)
 
@@ -228,13 +230,14 @@ class IGpuRSF(RunSetup):
 
     @classmethod
     def output_schema_class(cls) -> Type[OutputModel]:
+        #print("Inside IGpuRSFOutput method")
         return cls.IGpuRSFOutput
 
-    def _call(self, *args, _pypads_period=1.0, _pypads_env: LoggerEnv, _logger_call, _logger_output,
-              _pypads_cached_results=None, **kwargs):
-        if _pypads_period > 0:
-            gpu_usage_info = GpuUsageTO(parent=_logger_output)
-            gpu_usage_info.period = _pypads_period
+    def _call(self, *args, _pypads_period=1.0, _pypads_env: LoggerEnv, _logger_call, _logger_output,_pypads_cached_results=None, **kwargs):
+            #print("Val of _pypads_period is ", _pypads_period)
+            if _pypads_period > 0:
+                gpu_usage_info = GpuUsageTO(parent=_logger_output)
+                gpu_usage_info.period = _pypads_period
 
             def track_gpu_usage(to: GpuUsageTO):
                 to.add_gpu_usage()
