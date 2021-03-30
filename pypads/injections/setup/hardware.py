@@ -126,11 +126,9 @@ class GpuUsageTO(TrackedObject):
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
-        #print("Check here line number 129")
         return cls.GpuUsageTOModel
 
     def __init__(self, *args, **kwargs):
-        #print('Inside the init')
         super().__init__(*args, **kwargs)
         import pynvml
         import pycuda
