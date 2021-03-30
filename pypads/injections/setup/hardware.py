@@ -48,7 +48,7 @@ class IMacAddressRSF(RunSetup):
 
     def _call(self, *args, _pypads_env: LoggerEnv, _logger_call, _logger_output, **kwargs):
         import re, uuid
-        cto = SystemStatsTO(mac_address=':::'.join(re.findall('..', '%012x' % uuid.getnode())),
+        cto = SystemStatsTO(mac_address=':'.join(re.findall('..', '%012x' % uuid.getnode())),
                             parent=_logger_output)
         _pypads_env.pypads.cache.run_add(SystemStatsTO.__name__, cto)
         cto.store()
@@ -117,6 +117,7 @@ class GpuUsageTO(TrackedObject):
         gpu_arch: str = ""
         gpu_name= []
         gpu_driver_version= []
+        gpu_uuid=[]
         gpu_serial_number=[]
         gpu_total_memory = []
         cuda_version = []
@@ -138,39 +139,29 @@ class GpuUsageTO(TrackedObject):
         try:
             pynvml.nvmlInit()
             self.gpu_count = pynvml.nvmlDeviceGetCount()
-            print("CP 2 ",self.gpu_count)
         except pynvml.NVMLError:
             self.gpu_count = 0
 
         try:
             GPUs = GPUtil.getGPUs()  # Get list of all the GPUs with other parameters
             for i in range(len(GPUs)):
-                print('Details of %d GPU' % (i + 1))
 
-                self.gpu_name.append(GPUs[i].name)
-                print('  %d. GPU Name - %s' % (i + 1, self.gpu_name[i]))
+                self.gpu_name.append(GPUs[i].name)   #Get GPU name
 
-                self.gpu_driver_version.append(GPUs[i].driver)
-                print('  %d. GPU Driver - %s' % (i + 1, self.gpu_driver_version[i]))
+                self.gpu_driver_version.append(GPUs[i].driver)   #Get GPU driver version
 
-                self.gpu_serial_number.append(GPUs[i].serial)
-                print('  %d. GPU Serial Number - %s' % (i + 1,self.gpu_serial_number[i]))
+                self.gpu_uuid.append(GPUs[i].uuid)   #Get GPU UUID
 
-                self.gpu_total_memory.append(GPUs[i].memoryTotal)
-                print('  %d. GPU Total Memory - %s GB' % (i + 1, self.gpu_total_memory[i] / 1024))
+                self.gpu_serial_number.append(GPUs[i].serial)  #Get GPU Serial number (as printed on the label, will be NA fore Pre-Fermi architecture GPUs
+
+                self.gpu_total_memory.append(GPUs[i].memoryTotal)   #Total memory in MB
 
                 # CUDA version
                 pycuda.driver.init()
-                #print("%d device(s) found." % pycuda.driver.Device.count())
+                cudaVersion = pycuda.driver.get_version()
+                cudaVersionStr = str(cudaVersion[0]) + "." + str(cudaVersion[1]) + "." + str(cudaVersion[2])
+                self.cuda_version.append(cudaVersionStr)
 
-                for ordinal in range(pycuda.driver.Device.count()):
-                    #dev = pycuda.driver.Device(ordinal)
-
-                    cudaVersion = pycuda.driver.get_version()
-                    cudaVersionStr = str(cudaVersion[0]) + "." + str(cudaVersion[1]) + "." + str(cudaVersion[2])
-                    print("CUDA Version", cudaVersionStr)
-                    # logger("CUDA_Version",-1,cudaVersionStr)
-                    self.cuda_version.append(cudaVersionStr)
 
         except Exception as e:
             print("Error occured while fetching GPU details - " ,e)
