@@ -133,7 +133,7 @@ class PyPadsApi(IApi):
 
             # For all events we want to hook to
             mapping = Mapping(PackagePathMatcher(ctx_path + "." + fn.__name__), make_run_time_mapping_collection(lib),
-                              _anchors,
+                              _anchors, set(),
                               {**additional_data, **{"mapped_by": "http://www.padre-lab.eu/onto/PyPadsApi"}})
 
         # Wrap the function of given context and return it
@@ -208,7 +208,7 @@ class PyPadsApi(IApi):
             for fn, anchors in fn_anchors.items():
                 _mapping = Mapping(PackagePathMatcher(ctx_path + "." + cls.__name__ + "." + fn),
                                    make_run_time_mapping_collection(lib),
-                                   anchors,
+                                   anchors, set(),
                                    {**additional_data, **{"mapped_by": "http://www.padre-lab.eu/onto/PyPadsApi"}})
                 _matched_mappings.add(MatchedMapping(_mapping, PackagePath(ctx_path + "." + cls.__name__ + "." + fn)))
         else:

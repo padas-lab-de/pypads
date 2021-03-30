@@ -10,8 +10,8 @@ fragments:
       hooks: pypads_transform
 mappings:
   !!python/pPath 'sklearn':
-    !!python/pPath .__init__:
-      hooks: [ "pypads_import" ]
+    !!python/pPath __init__:
+      import-hooks: [ "pypads_import" ]
     data:
       '@json-ld': # Path to json-lds to be added to the ontology with onto-pads
         - metric.@schema
