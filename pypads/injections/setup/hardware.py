@@ -113,9 +113,16 @@ class GpuUsageTO(TrackedObject):
             class Config:
                 orm_mode = True
 
-        gpu_count: int = ...
+        gpu_count: int = 0
+        gpu_arch: str = ""
+        gpu_name= []
+        gpu_driver_version= []
+        gpu_uuid=[]
+        gpu_serial_number=[]
+        gpu_total_memory = []
+        cuda_version = []
         gpu_cores: List[GpuCoreModel] = []
-        period: float = ...
+        period: float = 0.0
 
     @classmethod
     def get_model_cls(cls) -> Type[BaseModel]:
@@ -124,11 +131,38 @@ class GpuUsageTO(TrackedObject):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         import pynvml
+        import pycuda
+        import pycuda.driver
+        import GPUtil
         try:
             pynvml.nvmlInit()
             self.gpu_count = pynvml.nvmlDeviceGetCount()
         except pynvml.NVMLError:
             self.gpu_count = 0
+
+        try:
+            GPUs = GPUtil.getGPUs()  # Get list of all the GPUs with other parameters
+            for i in range(len(GPUs)):
+
+                self.gpu_name.append(GPUs[i].name)   #Get GPU name
+
+                self.gpu_driver_version.append(GPUs[i].driver)   #Get GPU driver version
+
+                self.gpu_uuid.append(GPUs[i].uuid)   #Get GPU UUID
+
+                self.gpu_serial_number.append(GPUs[i].serial)  #Get GPU Serial number (as printed on the label, will be NA fore Pre-Fermi architecture GPUs
+
+                self.gpu_total_memory.append(GPUs[i].memoryTotal)   #Total memory in MB
+
+                # CUDA version
+                pycuda.driver.init()
+                cudaVersion = pycuda.driver.get_version()
+                cudaVersionStr = str(cudaVersion[0]) + "." + str(cudaVersion[1]) + "." + str(cudaVersion[2])
+                self.cuda_version.append(cudaVersionStr)
+
+
+        except Exception as e:
+            print("Error occured while fetching GPU details - " ,e)
 
     def add_gpu_usage(self: Union['GpuUsageTO', GpuUsageTOModel]):
         gpu_cores = _get_gpu_usage(self.gpu_count)
@@ -171,11 +205,11 @@ def _get_gpu_usage(gpu_count):
 
 
 class IGpuRSF(RunSetup):
-    _dependencies = {"pynvml"}
+    _dependencies = {"pynvml","pycuda","pycuda.driver","GPUtil"}
     _needed_cached = SystemStatsTO.__name__
     name = "Generic GPU Run Setup Logger"
     type: str = "GPURunLogger"
-
+    
     def __init__(self, *args, order=None, **kwargs):
         super().__init__(*args, order=order if order is not None else DEFAULT_ORDER + 1, **kwargs)
 
@@ -188,10 +222,10 @@ class IGpuRSF(RunSetup):
         return cls.IGpuRSFOutput
 
     def _call(self, *args, _pypads_period=1.0, _pypads_env: LoggerEnv, _logger_call, _logger_output,
-              _pypads_cached_results=None, **kwargs):
-        if _pypads_period > 0:
-            gpu_usage_info = GpuUsageTO(parent=_logger_output)
-            gpu_usage_info.period = _pypads_period
+    _pypads_cached_results=None, **kwargs):
+            if _pypads_period > 0:
+                gpu_usage_info = GpuUsageTO(parent=_logger_output)
+                gpu_usage_info.period = _pypads_period
 
             def track_gpu_usage(to: GpuUsageTO):
                 to.add_gpu_usage()
