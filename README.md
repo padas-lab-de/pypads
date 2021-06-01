@@ -1,5 +1,5 @@
 # PyPads
-Building on the [MLFlow](https://github.com/mlflow/mlflow/) toolset this project aims to extend the functionality for MLFlow, increase the automation and therefore reduce the workload for the user. The production of structured results is an additional goal of the extension.
+This project aims to ease automated tracking and logging of meta information about experiments without enforcing any conceptual paradigm to be followed by the machine learning experiment and its data.
 
 [![Documentation Status](https://readthedocs.org/projects/pypads/badge/?version=latest)](https://pypads.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/pypads.svg)](https://badge.fury.io/py/pypads)  
