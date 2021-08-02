@@ -3,7 +3,7 @@
 PyPaDS: Documentation!
 ==================================
 
-Building on the MLFlow toolset, `PyPaDS`_ aims to extend the existing tracking functionality, make logging as easy as possible for the user. The production of structured results is an
+`PyPaDS`_ aims to make logging as easy as possible for the user. The production of structured results is an
 additional goal of the extension.
 
 .. _PyPaDS: https://github.com/padre-lab-eu/pypads
