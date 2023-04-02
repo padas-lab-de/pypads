@@ -6,7 +6,7 @@ This project aims to ease automated tracking and logging of meta information abo
 [![pipeline status](https://gitlab.padim.fim.uni-passau.de/RP-17-PaDReP/pypads/badges/master/pipeline.svg)](https://gitlab.padim.fim.uni-passau.de/RP-17-PaDReP/pypads/-/commits/master)
 <!--- ![Build status](https://gitlab.padim.fim.uni-passau.de/RP-17-PaDReP/ontopads/badges/master/pipeline.svg) --->
 
-# Intalling
+# Installing
 This tool requires those libraries to work:
 
     Python (>= 3.6),
